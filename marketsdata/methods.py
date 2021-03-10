@@ -80,7 +80,7 @@ def get_volume_usd_from_ticker(market, response):
     if exid == 'binance':
 
         if market.type_ccxt in ['spot', 'future']:
-            vo = response['quoteVolume']
+            vo = float(response['quoteVolume'])
 
         elif market.type_ccxt == 'delivery':
             # Quote volume not reported by the COIN-margined api. baseVolume is string
@@ -95,7 +95,7 @@ def get_volume_usd_from_ticker(market, response):
                 if market.margined.code == 'USDT':
                     vo = float(response['info']['turnover_24h'])
                 else:
-                    vo = response['info']['volume_24h']
+                    vo = float(response['info']['volume_24h'])
 
     elif exid == 'okex':
 
@@ -104,12 +104,12 @@ def get_volume_usd_from_ticker(market, response):
         elif market.type_ccxt == 'swap':
             if market.margined.code == 'USDT':
                 # volume_24h is the volume of contract priced in ETH
-                vo = response['info']['volume_24h'] * market.contract_value * response['last']
+                vo = float(response['info']['volume_24h']) * market.contract_value * response['last']
             else:
                 # volume_24h is the volume of contract priced in USD
-                vo = response['info']['volume_24h'] * market.contract_value
+                vo = float(response['info']['volume_24h']) * market.contract_value
         elif market.type_ccxt == 'futures':
-            vo = response['info']['volume_token_24h'] * response['last']
+            vo = float(response['info']['volume_token_24h']) * response['last']
         else:
             raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))
 
@@ -118,7 +118,7 @@ def get_volume_usd_from_ticker(market, response):
 
     elif exid == 'huobipro':
         if not market.type_ccxt:
-            vo = response['info']['vol']
+            vo = float(response['info']['vol'])
         else:
             raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))
     else:

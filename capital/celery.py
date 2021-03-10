@@ -28,6 +28,9 @@ app.autodiscover_tasks()
 # A step to initialize django-structlog
 app.steps['worker'].add(DjangoStructLogInitStep)
 
+# Purge unacknowledged tasks. Equivalent to $ celery -A capital purge
+# app.control.purge()
+
 
 @setup_logging.connect
 def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):  # pragma: no cover

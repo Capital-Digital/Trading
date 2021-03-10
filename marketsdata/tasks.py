@@ -87,8 +87,8 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
             log.error('{0} exchange is inactive'.format(exchange.name))
             return
 
-        # if market.is_updated():
-        #     return
+        if market.is_updated():
+            return
 
         end = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
@@ -127,9 +127,13 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
 
                 try:
                     response = client.fetchOHLCV(market.symbol, '1h', since_ts, limit)
+                    # pprint(response)
 
                 except ccxt.BadSymbol as e:
-                    log.error('Bad symbol {0}'.format(market.symbol))
+                    if market.active:
+                        log.error('Bad symbol {0}'.format(market.symbol))
+                        market.active = False
+                        market.save()
                     return
                 else:
                     if not len(response):
@@ -493,8 +497,12 @@ def update_exchange_markets(self, exid):
         # Exchanges specific #
         # ####################
 
+        # Note that OKEx report spot and swap symbols when defaultType == 'futures'
+        if exid == 'okex':
+            pass
+
         if exid == 'bybit':
-            log.warning('Bybit market activity unavailable')
+            # log.warning('Bybit market activity unavailable')
             active = True
 
         if exid == 'huobipro' and not type_ccxt:
@@ -517,7 +525,7 @@ def update_exchange_markets(self, exid):
             'quote': quotes.get(code=values['quote']),
             'base': bases.get(code=values['base']),
             'type': type,
-            'type_ccxt': tp,
+            'type_ccxt': type_ccxt,
             'active': active,
             'maker': values['maker'],
             'taker': values['taker'],
@@ -577,6 +585,7 @@ def update_exchange_markets(self, exid):
             log.unbind('market')
 
     log.unbind('base', 'quote', 'symbol')
+    log.info('Update market complete')
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
@@ -627,28 +636,32 @@ def update_market_prices(self, exid):
         else:
             if symbol not in response:
                 # Print all symbols with the same base
-                print([s for s, v in response.items() if market.base.code in v['symbol']])
+                res = [s for s, v in response.items() if market.base.code in v['symbol']]
+                if res:
+                    print(res)
                 log.exception('Symbol not found')
-
-                # if symbol.replace("/", "") in response:
-                #     symbol = symbol.replace("/", "")
-                # else:
-                #     log.warning('Markets update symbol is inactive')
-                #     # Set market to inactive if not reported by exchange
-                #     market.active = False
-                #     market.save()
-                #     return
 
             else:
                 if not market.active:
-                    pprint(response[symbol])
                     log.warning('Market {0} is inactive'.format(market.symbol))
 
                 # Select latest price
                 last = response[symbol]['last']
-                if last is None or last == 0:
-                    pprint(response[symbol])
-                    log.error('Invalid price')
+
+                # Do some checks
+                if last is None:
+                    if response['ask']:
+                        last = response['ask']
+                    elif response['bid']:
+                        last = response['bid']
+                    else:
+                        market.active = False
+                        market.save()
+                        return
+
+                elif last == 0:
+                    market.active = False
+                    market.save()
                     return
 
                 # Extract 24h rolling volume in USD and calculate hourly average
@@ -685,6 +698,8 @@ def update_market_prices(self, exid):
         response = client.fetch_tickers()
         for market in markets:
             update_tickers(response, market)
+
+    log.info('Update prices complete')
 
 
 # Fetch order book every x seconds

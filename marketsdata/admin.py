@@ -154,7 +154,7 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
     ordering = ('-active', 'symbol',)
-    actions = ['insert_candles_history_full', 'insert_candles_history_recent']
+    actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent']
     save_as = True
     save_on_top = True
 
@@ -205,7 +205,7 @@ class CustomerAdmin(admin.ModelAdmin):
     # Action #
     ##########
 
-    def insert_candles_history_full(self, request, queryset):
+    def insert_candles_history_since_launch(self, request, queryset):
         #
         # Download all history since exchange launch
         #
@@ -214,14 +214,14 @@ class CustomerAdmin(admin.ModelAdmin):
             tasks.insert_candle_history.s(exid=market.exchange.exid, type=market.type,
                                           derivative=market.derivative, symbol=market.symbol).delay()
 
-    insert_candles_history_full.short_description = "Insert candles history full"
+    insert_candles_history_since_launch.short_description = "Insert candles history since launch"
 
     def insert_candles_history_recent(self, request, queryset):
         #
         # Download only the latest history since the last candle received
         #
         for market in queryset.order_by('symbol'):
-            
+
             if not market.is_populated():
                 continue
 

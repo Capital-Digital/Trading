@@ -53,8 +53,8 @@ def get_volume_usd_from_ohlcv(market, vo, cl):
     elif exid == 'bybit':
         if market.type == 'derivative':
             if market.margined.code == 'USDT':
-                # Bybit returns volume of base for USDT-Margined perp
-                vo = vo * cl
+                # Bybit returns volume of quote for USDT-Margined perp
+                vo = vo
             else:
                 # Bybit returns volume of base for COIN-Margined perp
                 vo = vo * cl
@@ -92,11 +92,10 @@ def get_volume_usd_from_ticker(market, response):
     elif exid == 'bybit':
         if market.type == 'derivative':
             if market.derivative == 'perpetual':
-                vo = response['info']['turnover_24h']
-            elif market.derivative == 'future':
-                vo = response['info']['volume_24h']
-            else:
-                raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type))
+                if market.margined.code == 'USDT':
+                    vo = float(response['info']['turnover_24h'])
+                else:
+                    vo = response['info']['volume_24h']
 
     elif exid == 'okex':
 
@@ -118,7 +117,7 @@ def get_volume_usd_from_ticker(market, response):
         vo = response['info']['volumeUsd24h']
 
     elif exid == 'huobipro':
-        if market.type_ccxt == 'spot':
+        if not market.type_ccxt:
             vo = response['info']['vol']
         else:
             raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))

@@ -69,20 +69,27 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
     exchange = Exchange.objects.get(exid=exid)
 
     if start is None:
-        start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+        # Set start date to exchange launch date
+        if exchange.start_date:
+            start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+        else:
+            raise Exception('Exchange {0} has no start_date'.format(exid))
+    else:
+        # Convert start to datetime object (celery converted it to string)
+        start = timezone.make_aware(datetime.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
 
     def insert(market):
 
-        log.bind(type=market.type, exchange=exchange.exid, symbol=market.symbol)
-        log.info('Insert candle history since {1} for {0}'.format(market.symbol, start.strftime("%Y-%m-%d %H:%M")))
+        log.bind(type=market.type, exchange=exchange.exid, symbol=market.symbol, since=start.strftime("%Y-%m-%d %H:%M"))
+        # log.info('Insert candle history')
 
         if not exchange.is_active():
             log.error('{0} exchange is inactive'.format(exchange.name))
             return
 
-        # if self.is_updated():
-        #     log.info('Market is up to date')
+        # if market.is_updated():
         #     return
+
         end = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
         # Create ranges of indexes
@@ -92,13 +99,20 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
         # Check for missing indexes
         idx_miss = idx_range.difference(idx_db)
 
+        # Set limit to it's maximum if start datetime is the exchange launch date.
+        # Else set limit to the minimum
+        if not exchange.limit_ohlcv:
+            raise Exception('There is no OHLCV limit for exchange {0}'.format(exchange.exid))
+        elif not start:
+            limit = exchange.limit_ohlcv
+        else:
+            limit = min(exchange.limit_ohlcv, len(idx_range))
+
+        log.bind(limit=limit)
+
         if len(idx_miss):
 
             # Calculate since variable
-            limit = exchange.limit_ohlcv
-            if not limit:
-                raise Exception('There is no OHLCV limit for exchange {0}'.format(exchange.exid))
-
             since_dt = idx_miss[-1] - timedelta(hours=limit - 1)  # add one hour to get the latest candle
             since_ts = int(since_dt.timestamp() * 1000)
 
@@ -119,18 +133,18 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                     return
                 else:
                     if not len(response):
-                        log.error('Empty response', since=since_dt.strftime("%Y-%m-%d %H:%M"))
                         break
                     else:
 
+                        # Extract a list of datetime objects from response
                         idx_ohlcv = pd.DatetimeIndex(
                             [timezone.make_aware(datetime.fromtimestamp(ohlcv[0] / 1000)) for ohlcv in response])
 
-                        # Return elements common to idx_ohlcv and idx_miss
-                        common = idx_ohlcv.intersection(idx_miss)
+                        # Select datetime objects present in the list of missing datetime objects
+                        missing = idx_ohlcv.intersection(idx_miss)
 
                         # There is at least one candle to insert
-                        if len(common):
+                        if len(missing):
 
                             insert = 0
                             for ohlcv in response:
@@ -172,7 +186,10 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                                     # Candles returned by exchange can be into database
                                     continue
 
-                            log.info('Inserted : {0}'.format(insert), since=since_dt.strftime("%Y-%m-%d %H:%M"))
+                            log.info('Candles inserted : {0}'.format(insert), since=since_dt.strftime("%Y-%m-%d %H:%M"))
+
+                            if insert == 0 and exid == 'huobipro':
+                                break
 
                             if since_dt == start:
                                 break
@@ -199,6 +216,9 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             elif since_dt < idx_miss[0]:
                                 break
 
+                            else:
+                                break
+
                             # Filter unchecked indexes
                             idx_miss_not_checked = idx_miss[idx_miss < since_dt]
 
@@ -207,8 +227,8 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             since_dt = start if since_dt < start else since_dt
                             since_ts = int(since_dt.timestamp() * 1000)
 
-                            log.info('No missing candles found, shift datetime',
-                                     start=since_dt.strftime("%Y-%m-%d %H:%M"))
+                            log.info('Shift datetime...',
+                                     since=since_dt.strftime("%Y-%m-%d %H:%M"))
 
                             time.sleep(1)
 
@@ -273,7 +293,8 @@ def update_markets_prices_execute_strategies(self):
     if exchanges_w_strat:
 
         # Create a list of chains
-        chains = [chain(update_market_prices.s(exid), tasks.run_strategies.s(exid)) for exid in exchanges_w_strat]
+        # chains = [chain(update_market_prices.s(exid), tasks.run_strategies.s(exid)) for exid in exchanges_w_strat]
+        chains = [update_market_prices.s(exid) for exid in exchanges]
         gp = group(*chains).delay()
 
         # start by updating exchanges with a strategy
@@ -384,8 +405,6 @@ def update_exchange_currencies(self, exid):
             client.load_markets(True)
             insert_currencies()
             log.unbind('type')
-
-    log.info('Update currencies complete')
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
@@ -558,7 +577,6 @@ def update_exchange_markets(self, exid):
             log.unbind('market')
 
     log.unbind('base', 'quote', 'symbol')
-    log.info('Update markets complete')
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
@@ -588,24 +606,29 @@ def update_market_prices(self, exid):
 
         symbol = market.symbol
         log.bind(type_ccxt=market.type_ccxt, type=market.type, derivative=market.derivative,
-                 exchange=market.exchange, symbol=market.symbol)
+                 exchange=market.exchange.exid, symbol=market.symbol)
+
+        if not market.is_populated():
+            return
+
+        if market.is_updated():
+            return
 
         # Bulk update prices with fetch_ohlcv() method if more than 120 sec. elapsed.
         if timezone.now().minute > 1:
-            log.warning('More than 120 seconds elapsed since {0} UTC'.format(get_datetime_now(string=True)))
-            insert_candle_history.s(exid=exchange.exid,
-                                    symbol=market.symbol,
-                                    type=market.type,
-                                    derivative=market.derivative,
-                                    start=market.get_candle_datetime_last()  # fetch since the most recent candle in db
-                                    )()
+            log.warning('120+ seconds elapsed')  # since {0} UTC'.format(get_datetime_now(string=True)))
+            return
+            # insert_candle_history.s(exid=exchange.exid,
+            #                         symbol=market.symbol,
+            #                         type=market.type,
+            #                         derivative=market.derivative,
+            #                         start=market.get_candle_datetime_last()  # fetch since the most recent candle in db
+            #                         )()
         else:
-            if market.is_updated():
-                log.warning('Market {0} is already up to date'.format(symbol))
-                return
-
             if symbol not in response:
-                raise Exception('Market symbol {0} not in response'.format(symbol))
+                # Print all symbols with the same base
+                print([s for s, v in response.items() if market.base.code in v['symbol']])
+                log.exception('Symbol not found')
 
                 # if symbol.replace("/", "") in response:
                 #     symbol = symbol.replace("/", "")
@@ -624,7 +647,8 @@ def update_market_prices(self, exid):
                 # Select latest price
                 last = response[symbol]['last']
                 if last is None or last == 0:
-                    log.error('Price found for {0} is invalid (None or zero)'.format(symbol))
+                    pprint(response[symbol])
+                    log.error('Invalid price')
                     return
 
                 # Extract 24h rolling volume in USD and calculate hourly average
@@ -636,6 +660,8 @@ def update_market_prices(self, exid):
 
                 except Candle.DoesNotExist:
                     Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo_avg)
+
+        log.unbind('type_ccxt', 'type', 'derivative', 'exchange', 'symbol')
 
     client = exchange.get_ccxt_client()
     log.info('Update prices')
@@ -659,8 +685,6 @@ def update_market_prices(self, exid):
         response = client.fetch_tickers()
         for market in markets:
             update_tickers(response, market)
-
-    log.info('Update prices complete')
 
 
 # Fetch order book every x seconds

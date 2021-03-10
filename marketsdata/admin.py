@@ -5,6 +5,8 @@ import structlog
 import locale
 from celery import chain, group
 from marketsdata import tasks
+import time
+from tqdm import tqdm
 
 locale.setlocale(locale.LC_ALL, '')
 log = structlog.get_logger(__name__)
@@ -49,7 +51,13 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_candles_history(self, request, queryset):
 
         # Create a Celery task that handle retransmissions and run it
-        group([tasks.insert_candle_history.s(exid=exchange.exid) for exchange in queryset])()
+        res = group([tasks.insert_candle_history.s(exid=exchange.exid) for exchange in queryset])()
+        while not res.ready():
+            time.sleep(0.5)
+        if res.successful():
+            log.info('Insert complete')
+        else:
+            log.error('Insert failed :(')
 
     insert_candles_history.short_description = "Insert candles history"
 
@@ -66,8 +74,13 @@ class CustomerAdmin(admin.ModelAdmin):
         exchanges = [exchange.exid for exchange in queryset]
 
         # Create a groups and execute task
-        gp = group(tasks.update_exchange_markets.s(exchange) for exchange in exchanges)
-        result = gp.delay()
+        res = group(tasks.update_exchange_markets.s(exchange) for exchange in exchanges)()
+        while not res.ready():
+            time.sleep(0.5)
+        if res.successful():
+            log.info('Update currencies complete')
+        else:
+            log.error('Update currencies failed :(')
 
     update_exchange_markets.short_description = "Update markets"
 
@@ -75,16 +88,21 @@ class CustomerAdmin(admin.ModelAdmin):
         exchanges = [exchange.exid for exchange in queryset]
 
         # Create a groups and execute task
-        gp = group(tasks.update_market_prices.s(exchange) for exchange in exchanges)
-        result = gp.delay()
+        res = group(tasks.update_market_prices.s(exchange) for exchange in exchanges)()
+        while not res.ready():
+            time.sleep(0.5)
+        if res.successful():
+            log.info('Update market complete')
+        else:
+            log.error('Update market failed :(')
 
     update_market_prices.short_description = "Update market price"
 
 
 @admin.register(Currency)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('code', 'exchanges','get_types', 'get_stable_coin')
-    readonly_fields = ('exchange', 'code', )
+    list_display = ('code', 'exchanges', 'get_types', 'get_stable_coin')
+    readonly_fields = ('exchange', 'code',)
     list_filter = ('exchange', 'stable_coin', 'code',)
     save_as = True
     save_on_top = True
@@ -136,7 +154,7 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
     ordering = ('-active', 'symbol',)
-    actions = ['insert_candles_history']
+    actions = ['insert_candles_history_full', 'insert_candles_history_recent']
     save_as = True
     save_on_top = True
 
@@ -187,17 +205,32 @@ class CustomerAdmin(admin.ModelAdmin):
     # Action #
     ##########
 
-    def insert_candles_history(self, request, queryset):
-        for market in queryset:
+    def insert_candles_history_full(self, request, queryset):
+        #
+        # Download all history since exchange launch
+        #
+        for market in queryset.order_by('symbol'):
             # Create a Celery task that handle retransmissions and run it
-            task = tasks.insert_candle_history.s(exid=market.exchange.exid,
-                                                 type=market.type,
-                                                 derivative=market.derivative,
-                                                 symbol=market.symbol
-                                                 )
-            task.delay()
+            tasks.insert_candle_history.s(exid=market.exchange.exid, type=market.type,
+                                          derivative=market.derivative, symbol=market.symbol).delay()
 
-    insert_candles_history.short_description = "Insert candles history"
+    insert_candles_history_full.short_description = "Insert candles history full"
+
+    def insert_candles_history_recent(self, request, queryset):
+        #
+        # Download only the latest history since the last candle received
+        #
+        for market in queryset.order_by('symbol'):
+            
+            if not market.is_populated():
+                continue
+
+            # Create a Celery task that handle retransmissions and run it
+            tasks.insert_candle_history.s(exid=market.exchange.exid, type=market.type,
+                                          derivative=market.derivative, symbol=market.symbol,
+                                          start=market.get_candle_datetime_last()).delay()
+
+    insert_candles_history_recent.short_description = "Insert candles history recent"
 
 
 @admin.register(Candle)

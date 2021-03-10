@@ -41,7 +41,7 @@ class BaseTaskWithRetry(Task):
 # Save exchange properties
 @shared_task(bind=True, base=BaseTaskWithRetry)
 def update_exchange_properties(self, exid):
-    log.info('Save exchange properties', exchange=exid)
+    log.debug('Save exchange properties', exchange=exid)
 
     from marketsdata.models import Exchange
     exchange = Exchange.objects.get(exid=exid)
@@ -58,6 +58,8 @@ def update_exchange_properties(self, exid):
     exchange.rate_limit = client.rateLimit
     exchange.credentials = client.requiredCredentials
     exchange.save()
+
+    log.debug('Save exchange properties complete', exchange=exid)
 
 
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
@@ -135,6 +137,10 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                         market.active = False
                         market.save()
                     return
+                except Exception as e:
+                    print(e)
+                    log.exception('An unexpected error occurred')
+                    
                 else:
                     if not len(response):
                         break

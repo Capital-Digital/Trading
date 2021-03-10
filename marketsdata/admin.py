@@ -3,7 +3,7 @@ from datetime import timedelta
 from .models import Exchange, Market, Candle, Currency, CurrencyType, OrderBook
 import structlog
 import locale
-from celery import chain, group
+from celery import chain, group, shared_task
 from marketsdata import tasks
 import time
 from tqdm import tqdm
@@ -20,7 +20,8 @@ class CustomerAdmin(admin.ModelAdmin):
                        'urls', 'credit',
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
-    actions = ['insert_candles_history', 'update_exchange_currencies', 'update_exchange_markets', 'update_market_price']
+    actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
+               'update_exchange_markets', 'update_market_price']
     save_as = True
     save_on_top = True
 
@@ -48,7 +49,7 @@ class CustomerAdmin(admin.ModelAdmin):
     # Action #
     ##########
 
-    def insert_candles_history(self, request, queryset):
+    def insert_candles_history_since_launch(self, request, queryset):
 
         # Create a Celery task that handle retransmissions and run it
         res = group([tasks.insert_candle_history.s(exid=exchange.exid) for exchange in queryset])()
@@ -59,7 +60,25 @@ class CustomerAdmin(admin.ModelAdmin):
         else:
             log.error('Insert failed :(')
 
-    insert_candles_history.short_description = "Insert candles history"
+    insert_candles_history_since_launch.short_description = "Insert candles history since launch"
+
+    def insert_candles_history_recent(self, request, queryset):
+        #
+        # Download only the latest history since the last candle received
+        #
+
+        res = group([tasks.run.s(exchange.exid) for exchange in queryset])()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Insert recent complete')
+
+        else:
+            log.error('Insert recent failed :(')
+
+    insert_candles_history_recent.short_description = "Insert candles history recent"
 
     def update_exchange_currencies(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]

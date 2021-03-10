@@ -83,9 +83,11 @@ def get_volume_usd_from_ticker(market, response):
             vo = float(response['quoteVolume'])
 
         elif market.type_ccxt == 'delivery':
-            # Quote volume not reported by the COIN-margined api. baseVolume is string
-            vo = float(response['info']['baseVolume']) * response['last']
-
+            if 'baseVolume' in response['info']:
+                # Quote volume not reported by the COIN-margined api. baseVolume is string
+                vo = float(response['info']['baseVolume']) * response['last']
+            else:
+                raise Exception('Unable to find key baseVolume')
         else:
             raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type))
 
@@ -101,26 +103,35 @@ def get_volume_usd_from_ticker(market, response):
 
         if market.type_ccxt == 'spot':
             vo = response['info']['quote_volume_24h']
+
         elif market.type_ccxt == 'swap':
+
             if market.margined.code == 'USDT':
                 # volume_24h is the volume of contract priced in ETH
                 vo = float(response['info']['volume_24h']) * market.contract_value * response['last']
+
             else:
                 # volume_24h is the volume of contract priced in USD
                 vo = float(response['info']['volume_24h']) * market.contract_value
+
         elif market.type_ccxt == 'futures':
             vo = float(response['info']['volume_token_24h']) * response['last']
+
         else:
             raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))
 
     elif exid == 'ftx':
+
         vo = response['info']['volumeUsd24h']
 
     elif exid == 'huobipro':
+
         if not market.type_ccxt:
             vo = float(response['info']['vol'])
+
         else:
             raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))
+
     else:
         raise Exception('Unable to extract 24h volume from fetch_tickers() for exchange {0}'.format(exid))
 
@@ -163,6 +174,12 @@ def get_derivative_type(exid, values):
         else:
             return 'future'
 
+    elif exid == 'bitmex':
+        if values['type'] == 'swap':
+            return 'perpetual'
+        elif values['type'] == 'future':
+            return 'future'
+
     else:
         raise Exception('Please set rules for derivative type exchange {0}'.format(exid))
 
@@ -177,9 +194,6 @@ def get_derivative_margined(exid, values):
             return Currency.objects.get(code=values['info']['coin'])
         elif values['type'] == 'futures':
             return Currency.objects.get(code=values['info']['settlement_currency'])
-        else:
-            pprint(values)
-            raise Exception('Unknown derivative at exchange {0}'.format(exid))
 
     elif exid == 'binance':
         return Currency.objects.get(code=values['info']['marginAsset'])
@@ -189,19 +203,16 @@ def get_derivative_margined(exid, values):
             return Currency.objects.get(code=values['base'])
         elif values['future'] and not values['inverse']:
             return Currency.objects.get(code=values['quote'])
-        else:
-            pprint(values)
-            raise Exception('Unknown derivative at exchange {0}'.format(exid))
 
     elif exid == 'ftx':
         if values['future']:
             return Currency.objects.get(code=values['quote'])
-        else:
-            pprint(values)
-            raise Exception('Unknown derivative at exchange {0}'.format(exid))
 
-    else:
-        raise Exception('Please set rules for magined for exchange {0}'.format(exid))
+    elif exid == 'bitmex':
+        if values['info']['settlCurrency'] == 'XBt':
+            return Currency.objects.get(code='BTC')
+
+    raise Exception('Please set rules for magined for exchange {0}'.format(exid))
 
 
 def get_derivative_contract_value(exid, values):
@@ -221,15 +232,33 @@ def get_derivative_contract_value(exid, values):
     elif exid == 'ftx':
         return 1
 
-    else:
-        raise Exception('Please set rules for contract value for exchange {0}'.format(exid))
+    elif exid == 'bitmex':
+
+        if values['type'] in ['swap', 'future']:
+
+            if values['info']['isInverse']:
+                # 1 contract = 1 USD relationship is valid for inverse contracts
+                return 1
+
+            elif values['info']['isQuanto']:
+                # Contract value in XBT = multiplier (in satoschi) * Quanto contract price
+                multiplier = values['info']['multiplier'] / 100000000
+                return multiplier * values['info']['lastPrice']
+
+            elif not values['info']['isQuanto'] and not values['info']['isInverse']:
+                # 1 contract = 1 base relationship
+                return 1
+
+    raise Exception('Please set rules for contract value for exchange {0}'.format(exid))
 
 
 def get_derivative_contract_value_currency(exid, values):
     #
     # Determine the currency of the contract value for a derivative (update_markets())
     #
+
     from marketsdata.models import Currency
+
     if exid == 'okex':
         if values['type'] in ['swap', 'futures']:
             return Currency.objects.get(code=values['info']['contract_val_currency'])
@@ -238,9 +267,11 @@ def get_derivative_contract_value_currency(exid, values):
         return Currency.objects.get(code=values['base'])
 
     elif exid == 'bybit':
+
         if values['future'] and values['inverse']:
             # COIN-Margined perp
             return Currency.objects.get(code=values['quote'])
+
         elif values['future'] and not values['inverse']:
             # USDT-margined perp
             return Currency.objects.get(code=values['base'])
@@ -248,8 +279,20 @@ def get_derivative_contract_value_currency(exid, values):
     elif exid == 'ftx':
         return Currency.objects.get(code=values['base'])
 
-    else:
-        raise Exception('Please set rules for contract currency for exchange {0}'.format(exid))
+    elif exid == 'bitmex':
+
+        if values['info']['isInverse']:
+            return Currency.objects.get(code='USD')
+
+        elif values['info']['isQuanto']:
+            # Contract value is calculated in XBt
+            return Currency.objects.get(code='BTC')
+
+        elif not values['info']['isQuanto'] and not values['info']['isInverse']:
+            # Contract value is calculated in base
+            return Currency.objects.get(code=values['base'])
+
+    raise Exception('Please set rules for contract currency for exchange {0}'.format(exid))
 
 
 def get_derivative_delivery_date(exid, values):
@@ -271,6 +314,12 @@ def get_derivative_delivery_date(exid, values):
     elif exid == 'ftx':
         return None
 
+    elif exid == 'bitmex':
+        if values['type'] == 'future':
+            # '2021-03-26T12:00:00.000Z'
+            return timezone.make_aware(datetime.strptime(values['info']['expiry'], '%Y-%m-%dT%H:%M:%S.000Z'))
+        else:
+            return None
     else:
         raise Exception('Please set rules for contract delivery date for exchange {0}'.format(exid))
 
@@ -293,6 +342,11 @@ def get_derivative_listing_date(exid, values):
 
     elif exid == 'ftx':
         return None
+
+    elif exid == 'bitmex':
+        if values['type'] in ['future', 'swap']:
+            # '2021-03-26T12:00:00.000Z'
+            return timezone.make_aware(datetime.strptime(values['info']['listing'], '%Y-%m-%dT%H:%M:%S.000Z'))
 
     else:
         raise Exception('Please set rules for contract listing date for exchange {0}'.format(exid))

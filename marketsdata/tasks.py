@@ -62,6 +62,19 @@ def update_exchange_properties(self, exid):
     log.debug('Save exchange properties complete', exchange=exid)
 
 
+@shared_task()
+def run(exid):
+    for market in Market.objects.filter(exchange__exid=exid).order_by('symbol'):
+
+        if not market.is_populated():
+            continue
+
+        # Create a Celery task that handle retransmissions and run it
+        insert_candle_history.s(exid=exid, type=market.type,
+                                derivative=market.derivative, symbol=market.symbol,
+                                start=market.get_candle_datetime_last()).delay()
+
+
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
 def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, start=None):
     """"
@@ -82,7 +95,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
 
     def insert(market):
 
-        log.bind(type=market.type, exchange=exchange.exid, symbol=market.symbol, since=start.strftime("%Y-%m-%d %H:%M"))
+        log.bind(type=market.type, exchange=exchange.exid, symbol=market.symbol)
         # log.info('Insert candle history')
 
         if not exchange.is_active():
@@ -140,7 +153,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                 except Exception as e:
                     print(e)
                     log.exception('An unexpected error occurred')
-                    
+
                 else:
                     if not len(response):
                         break
@@ -196,7 +209,8 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                                     # Candles returned by exchange can be into database
                                     continue
 
-                            log.info('Candles inserted : {0}'.format(insert), since=since_dt.strftime("%Y-%m-%d %H:%M"))
+                            log.info(
+                                'Candles inserted : {0}'.format(insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
 
                             if insert == 0 and exid == 'huobipro':
                                 break
@@ -237,7 +251,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             since_dt = start if since_dt < start else since_dt
                             since_ts = int(since_dt.timestamp() * 1000)
 
-                            log.info('Shift datetime...',
+                            log.info('Shift datetime',
                                      since=since_dt.strftime("%Y-%m-%d %H:%M"))
 
                             time.sleep(1)
@@ -477,6 +491,10 @@ def update_exchange_markets(self, exid):
             if not tp:
                 type_ccxt = None
 
+        # Prevent insertion of all unlisted BitMEX contract
+        if exid == 'bitmex' and not values['active']:
+            return
+
         # Set derivative type and margined coin
         if type_ccxt in ['swap', 'future', 'futures', 'delivery']:
 
@@ -624,61 +642,54 @@ def update_market_prices(self, exid):
                  exchange=market.exchange.exid, symbol=market.symbol)
 
         if not market.is_populated():
+            log.debug('Market is not populated')
+            return
+
+        if not market.active:
+            log.debug('Market is inactive')
             return
 
         if market.is_updated():
+            log.debug('Market is already updated')
             return
 
-        # Bulk update prices with fetch_ohlcv() method if more than 120 sec. elapsed.
+        # Bulk update prices if more than 120 sec. elapsed.
         if timezone.now().minute > 1:
-            log.warning('120+ seconds elapsed')  # since {0} UTC'.format(get_datetime_now(string=True)))
+            log.debug('Market update stared too late')  # since {0} UTC'.format(get_datetime_now(string=True)))
             return
-            # insert_candle_history.s(exid=exchange.exid,
-            #                         symbol=market.symbol,
-            #                         type=market.type,
-            #                         derivative=market.derivative,
-            #                         start=market.get_candle_datetime_last()  # fetch since the most recent candle in db
-            #                         )()
+
+            # insert_candle_history.s(exid=exchange.exid, symbol=market.symbol, type=market.type,
+            #                           derivative=market.derivative,
+            #                           start=market.get_candle_datetime_last())()
+
+        # Local function to deactivate a market
+        def deactivate(market):
+            log.warning('Deactivate market')
+            market.active = False
+            market.save()
+            return
+
+        # Select response
+        if symbol not in response:
+            deactivate(market)
         else:
-            if symbol not in response:
-                # Print all symbols with the same base
-                res = [s for s, v in response.items() if market.base.code in v['symbol']]
-                if res:
-                    print(res)
-                log.exception('Symbol not found')
+            response = response[symbol]
 
-            else:
-                if not market.active:
-                    log.warning('Market {0} is inactive'.format(market.symbol))
+        # Select latest price
+        if 'last' not in response or not response['last']:
+            deactivate(market)
+        else:
+            last = response['last']
 
-                # Select latest price
-                last = response[symbol]['last']
+        # Extract 24h rolling volume in USD and calculate hourly average
+        vo_avg = get_volume_usd_from_ticker(market, response[symbol]) / 24
 
-                # Do some checks
-                if last is None:
-                    if response['ask']:
-                        last = response['ask']
-                    elif response['bid']:
-                        last = response['bid']
-                    else:
-                        market.active = False
-                        market.save()
-                        return
+        try:
+            dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            Candle.objects.get(market=market, exchange=exchange, dt=dt)
 
-                elif last == 0:
-                    market.active = False
-                    market.save()
-                    return
-
-                # Extract 24h rolling volume in USD and calculate hourly average
-                vo_avg = get_volume_usd_from_ticker(market, response[symbol]) / 24
-
-                try:
-                    dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-                    Candle.objects.get(market=market, exchange=exchange, dt=dt)
-
-                except Candle.DoesNotExist:
-                    Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo_avg)
+        except Candle.DoesNotExist:
+            Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo_avg)
 
         log.unbind('type_ccxt', 'type', 'derivative', 'exchange', 'symbol')
 

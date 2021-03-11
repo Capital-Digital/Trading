@@ -121,8 +121,8 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Currency)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('code', 'exchanges', 'get_types', 'get_stable_coin')
-    readonly_fields = ('exchange', 'code',)
-    list_filter = ('exchange', 'stable_coin', 'code',)
+    readonly_fields = ('exchange', 'code', 'type', 'stable_coin')  # Modify config.ini to change type
+    list_filter = ('exchange', 'type', 'stable_coin', 'code',)
     save_as = True
     save_on_top = True
 

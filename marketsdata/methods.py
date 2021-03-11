@@ -17,57 +17,55 @@ def get_volume_usd_from_ohlcv(market, vo, cl):
     if exid == 'binance':
         if market.type == 'spot':
             # Binance returns volume of base for spot
-            vo = vo * cl
+            return vo * cl
 
         elif market.type == 'derivative':
             if market.margined.code == 'USDT':
                 # Binance returns volume of base for USDT-margined swap and futures
                 # Note that multiplying by the close price doesn't reflect the true
                 # trading volumes in USDT
-                vo = vo * cl
+                return vo * cl
             else:
                 # Binance returns volume of quote/10 for COIN-margined swap and futures
-                vo = vo * 10
+                return vo * 10
 
     elif exid == 'okex':
         if market.type == 'spot':
             # OKEx returns volume of base for spot
-            vo = vo * cl
+            return vo * cl
         elif market.type == 'derivative':
             if market.margined.code == 'USDT':
                 # OKEx returns volume of base for USDT-margined swap and futures
                 # Note that multiplying by the close price doesn't reflect the true
                 # trading volumes in USDT
-                vo = vo * cl
+                return vo * cl
             else:
                 # OKEx returns volume of base for COIN-margined swap and futures
                 # Note that multiplying by the close price doesn't reflect the true
                 # trading volumes in USD
-                vo = vo * cl
+                return vo * cl
 
     elif exid == 'huobipro':
         if market.type == 'spot':
             # Huobipro returns volume of base for spot
-            vo = vo * cl
+            return vo * cl
 
     elif exid == 'bybit':
         if market.type == 'derivative':
             if market.margined.code == 'USDT':
                 # Bybit returns volume of quote for USDT-Margined perp
-                vo = vo
+                return vo
             else:
                 # Bybit returns volume of base for COIN-Margined perp
-                vo = vo * cl
+                return vo * cl
 
     elif exid == 'ftx':
         if market.type == 'derivative':
             # FTX returns volume of quote for perp and futures
-            vo = vo
+            return vo
 
-    else:
-        raise Exception('There is no volume conversion rules for exchange {0}'.format(exid))
-
-    return vo
+    log.error('No rule OHLCV volume for {2} {1} at {0}'.format(exid, market.symbol, market.type))
+    return False
 
 
 def get_volume_usd_from_ticker(market, response):
@@ -87,7 +85,7 @@ def get_volume_usd_from_ticker(market, response):
 
     elif exid == 'bybit':
         if market.type == 'derivative':
-            if market.derivative == 'perpetual':
+            if market.derivative in ['perpetual', 'future']:
                 if market.margined.code == 'USDT':
                     return float(response['info']['turnover_24h'])
                 else:
@@ -113,8 +111,9 @@ def get_volume_usd_from_ticker(market, response):
         if not market.type_ccxt:
             return float(response['info']['vol'])
 
-    pprint(response)
-    raise Exception('Unable to extract 24h volume from fetch_tickers() for exchange {0}'.format(exid))
+    pprint('\n', response, '\n')
+    log.error('No rule 24h volume for {1} at {0}'.format(exid, market.symbol, derivative=market.derivative))
+    return False
 
 
 def get_derivative_type(exid, values):
@@ -126,9 +125,6 @@ def get_derivative_type(exid, values):
             return 'perpetual'
         elif values['type'] == 'futures':
             return 'future'
-        else:
-            pprint(values)
-            raise Exception('Unknown derivative type at exchange {0}'.format(exid))
 
     elif exid == 'binance':
         if 'contractType' in values['info']:
@@ -136,16 +132,14 @@ def get_derivative_type(exid, values):
                 return 'perpetual'
             elif values['info']['contractType'] in ['CURRENT_QUARTER', 'NEXT_QUARTER DELIVERING', 'NEXT_QUARTER']:
                 return 'future'
-        else:
-            pprint(values)
-            raise Exception('Unknown derivative type at exchange {0}'.format(exid))
 
     elif exid == 'bybit':
         if values['type'] == 'future' and values['future']:
-            return 'perpetual'
-        else:
-            pprint(values)
-            raise Exception('Unknown derivative type at exchange {0}'.format(exid))
+            # Return future if symbol contains a number else perpetual
+            if any(char.isdigit() for char in values['symbol']):
+                return 'future'
+            else:
+                return 'perpetual'
 
     elif exid == 'ftx':
         if values['type'] == 'future' and '-PERP' in values['symbol']:
@@ -159,8 +153,13 @@ def get_derivative_type(exid, values):
         elif values['type'] == 'future':
             return 'future'
 
-    else:
-        raise Exception('Please set rules for derivative type exchange {0}'.format(exid))
+    elif exid == 'bitfinex2':
+        if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
+            return 'perpetual'
+
+    pprint('\n', values, '\n')
+    log.error('No rule for derivative for {1} at {0}'.format(exid, values['symbol']))
+    return False
 
 
 def get_derivative_margined(exid, values):
@@ -168,6 +167,7 @@ def get_derivative_margined(exid, values):
     # Determine the margined currency of derivative (update_markets())
     #
     from marketsdata.models import Currency
+
     if exid == 'okex':
         if values['type'] == 'swap':
             return Currency.objects.get(code=values['info']['coin'])
@@ -191,7 +191,13 @@ def get_derivative_margined(exid, values):
         if values['info']['settlCurrency'] == 'XBt':
             return Currency.objects.get(code='BTC')
 
-    raise Exception('Please set rules for magined for exchange {0}'.format(exid))
+    elif exid == 'bitfinex2':
+        if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
+            return Currency.objects.get(code='USDT')
+
+    pprint('\n', values, '\n')
+    log.error('No rule margined currency for {1} at {0}'.format(exid, values['symbol']))
+    return False
 
 
 def get_derivative_contract_value(exid, values):
@@ -228,7 +234,12 @@ def get_derivative_contract_value(exid, values):
                 # 1 contract = 1 base relationship
                 return 1
 
-    raise Exception('Please set rules for contract value for exchange {0}'.format(exid))
+    elif exid == 'bitfinex2':
+        return 1
+
+    pprint('\n', values, '\n')
+    log.error('No rule contract value for {1} at {0}'.format(exid, values['symbol']))
+    return False
 
 
 def get_derivative_contract_value_currency(exid, values):
@@ -271,7 +282,13 @@ def get_derivative_contract_value_currency(exid, values):
             # Contract value is calculated in base
             return Currency.objects.get(code=values['base'])
 
-    raise Exception('Please set rules for contract currency for exchange {0}'.format(exid))
+    elif exid == 'bitfinex2':
+        base = values['base'].replace('F0', '')
+        return Currency.objects.get(code=base)
+
+    pprint('\n', values, '\n')
+    log.error('No rule for contract value currency for {1} at {0}'.format(exid, values['symbol']))
+    return False
 
 
 def get_derivative_delivery_date(exid, values):
@@ -299,8 +316,10 @@ def get_derivative_delivery_date(exid, values):
             return timezone.make_aware(datetime.strptime(values['info']['expiry'], '%Y-%m-%dT%H:%M:%S.000Z'))
         else:
             return None
-    else:
-        raise Exception('Please set rules for contract delivery date for exchange {0}'.format(exid))
+
+    pprint('\n', values, '\n')
+    log.error('No rule contract delivery date for {1} at {0}'.format(exid, values['symbol']))
+    return False
 
 
 def get_derivative_listing_date(exid, values):
@@ -327,5 +346,6 @@ def get_derivative_listing_date(exid, values):
             # '2021-03-26T12:00:00.000Z'
             return timezone.make_aware(datetime.strptime(values['info']['listing'], '%Y-%m-%dT%H:%M:%S.000Z'))
 
-    else:
-        raise Exception('Please set rules for contract listing date for exchange {0}'.format(exid))
+    pprint('\n', values, '\n')
+    log.error('No rule contract listing date for {1} at {0}'.format(exid, values['symbol']))
+    return False

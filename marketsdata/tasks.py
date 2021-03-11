@@ -18,6 +18,8 @@ from strategy import tasks
 from django.db import models
 from pprint import pprint
 import pandas as pd
+import requests, urllib3
+import configparser
 
 log = structlog.get_logger(__name__)
 
@@ -25,12 +27,19 @@ global data
 data = {}
 
 
+# Load config file
+config = configparser.ConfigParser()
+config.read('capital/config.ini')
+
+
 class BaseTaskWithRetry(Task):
     autoretry_for = (ccxt.DDoSProtection,
                      ccxt.RateLimitExceeded,
                      ccxt.RequestTimeout,
                      ccxt.ExchangeNotAvailable,
-                     ccxt.NetworkError)
+                     ccxt.NetworkError,
+                     urllib3.exceptions.ReadTimeoutError,
+                     requests.exceptions.ReadTimeout)
 
     retry_kwargs = {'max_retries': 5, 'default_retry_delay': 15}
     retry_backoff = True
@@ -96,14 +105,14 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
     def insert(market):
 
         log.bind(type=market.type, exchange=exchange.exid, symbol=market.symbol)
-        # log.info('Insert candle history')
 
         if not exchange.is_active():
             log.error('{0} exchange is inactive'.format(exchange.name))
             return
 
-        if market.is_updated():
-            return
+        if self.request.retries > 0:
+            log.info("Download attempt {0}/{1} for {2} at {3}".format(self.request.retries,
+                                                                      self.max_retries, market.symbol, exid))
 
         end = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
@@ -114,8 +123,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
         # Check for missing indexes
         idx_miss = idx_range.difference(idx_db)
 
-        # Set limit to it's maximum if start datetime is the exchange launch date.
-        # Else set limit to the minimum
+        # Set limit to it's maximum if start datetime is the exchange launch date. Else set limit to the minimum
         if not exchange.limit_ohlcv:
             raise Exception('There is no OHLCV limit for exchange {0}'.format(exchange.exid))
         elif not start:
@@ -150,9 +158,9 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                         market.active = False
                         market.save()
                     return
+
                 except Exception as e:
-                    print(e)
-                    log.exception('An unexpected error occurred')
+                    log.error('An unexpected error occurred', exception=e.__class__.__name__)
 
                 else:
                     if not len(response):
@@ -387,7 +395,7 @@ def update_exchange_currencies(self, exid):
             code = client.currencies[c]['code']
 
             try:
-                Currency.objects.get(code=code, exchange=exchange)
+                curr = Currency.objects.get(code=code, exchange=exchange)
             except MultipleObjectsReturned:
                 log.warning('Duplicate currency {0}'.format(code))
                 pass
@@ -395,6 +403,10 @@ def update_exchange_currencies(self, exid):
 
                 try:
                     curr = Currency.objects.get(code=code)
+
+                except MultipleObjectsReturned:
+                    log.error('Duplicate currency {0}'.format(code))
+                    pass
 
                 except ObjectDoesNotExist:
 
@@ -415,8 +427,27 @@ def update_exchange_currencies(self, exid):
                     curr.exchange.add(exchange)
                     log.info('Exchange attached to currency {0}'.format(code))
                     curr.save()
+
             else:
                 pass
+
+            # Add or remove CurrencyType.type = quote if needed
+            if code in config['MarketsData']['MarketQuotes']:
+                curr.type.add(CurrencyType.objects.get(type='quote'))
+                curr.save()
+            else:
+                quoteType = CurrencyType.objects.get(type='quote')
+                if quoteType in curr.type.all():
+                    curr.type.remove(quoteType)
+                    curr.save()
+
+            # Add or remove stablecoin = True if needed
+            if code in config['MarketsData']['Stablecoins']:
+                curr.stable_coin = True
+                curr.save()
+            else:
+                curr.stable_coin = False
+                curr.save()
 
     if not exchange.supported_market_types or exid == 'okex':
         client.load_markets(True)
@@ -455,16 +486,16 @@ def update_exchange_markets(self, exid):
     if not bases.exists():
         raise ConfigurationError('No base currency attached to exchange {0}, update currencies first'.format(exid))
 
-    def update_info(values, tp):
+    def update_info(values, tp=None):
 
-        log.bind(type_ccxt=tp, symbol=values['symbol'], base=values['base'], quote=values['quote'])
+        log.bind(tp=tp, symbol=values['symbol'], base=values['base'], quote=values['quote'])
 
         # Check is the base currency is in the database (reported by instance.currencies)
         if values['base'] not in [b.code for b in bases]:
-            log.warning("Unknown base currency".format(values['base']))
+            log.debug("Unknown base currency".format(values['base']))
             return
 
-        # Check if the quote currency is supported by the app (CurrencyType = quote)
+        # Check if the quote currency is supported CurrencyType
         if values['quote'] not in [q.code for q in quotes]:
             return
 
@@ -505,6 +536,10 @@ def update_exchange_markets(self, exid):
             listing_date = get_derivative_listing_date(exid, values)
             contract_value_currency = get_derivative_contract_value_currency(exid, values)
             contract_value = get_derivative_contract_value(exid, values)
+
+            # Abort if one of these field is None
+            if not derivative or not margined or not contract_value or not contract_value_currency:
+                return
 
         elif type_ccxt == 'spot':
             type = type_ccxt
@@ -605,10 +640,10 @@ def update_exchange_markets(self, exid):
         client.load_markets(True)
         for market, values in client.markets.items():
             log.bind(market=market)
-            update_info(values, tp=None)
+            update_info(values)
             log.unbind('market')
 
-    log.unbind('base', 'quote', 'symbol')
+    log.unbind('base', 'quote', 'symbol', 'tp')
     log.info('Update market complete')
 
 
@@ -645,9 +680,9 @@ def update_market_prices(self, exid):
         log.bind(type_ccxt=market.type_ccxt, type=market.type, derivative=market.derivative,
                  exchange=market.exchange.exid, symbol=market.symbol)
 
-        if not market.is_populated():
-            log.debug('Market is not populated')
-            return
+        # if not market.is_populated():
+        #     log.warning('Market is not populated')
+        #     return
 
         if not market.active:
             log.debug('Market is inactive')
@@ -696,7 +731,7 @@ def update_market_prices(self, exid):
         except Candle.DoesNotExist:
             Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo_avg)
 
-        log.unbind('type_ccxt', 'type', 'derivative', 'exchange', 'symbol')
+        log.unbind('type_ccxt', 'type', 'derivative', 'symbol')
 
     client = exchange.get_ccxt_client()
     log.info('Update prices')

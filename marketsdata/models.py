@@ -201,6 +201,7 @@ class Market(models.Model):
     listing_date = models.DateTimeField(null=True, blank=True)
     order_book = JSONField(null=True, blank=True)
     config = JSONField(null=True, blank=True)
+    excluded = models.BooleanField(null=True, default=False)
     objects = models.Manager()
 
     class Meta:

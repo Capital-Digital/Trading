@@ -8,7 +8,7 @@ from pprint import pprint
 log = structlog.get_logger(__name__)
 
 
-def get_volume_usd_from_ohlcv(market, vo, cl):
+def get_volume_quote_from_ohlcv(market, vo, cl):
     #
     # Convert trading volumes in OHLCV to quote currency
     #
@@ -68,10 +68,13 @@ def get_volume_usd_from_ohlcv(market, vo, cl):
         if market.type in ['spot', 'derivative']:
             return vo * cl
 
+    elif exid == 'bitmex':
+        return vo
+
     return False
 
 
-def get_volume_usd_from_ticker(market, response):
+def get_volume_quote_from_ticker(market, response):
     #
     # Extract rolling 24h trading volume in USD (fetch_tickers())
     #
@@ -114,7 +117,10 @@ def get_volume_usd_from_ticker(market, response):
         if not market.type_ccxt:
             return float(response['info']['vol'])
 
-    elif exid == 'bitfinex':
+    elif exid == 'bitmex':
+        return float(response['quoteVolume'])
+
+    elif exid == 'bitfinex2':
         return float(response['baseVolume']) * response['last']
 
     pprint(response)

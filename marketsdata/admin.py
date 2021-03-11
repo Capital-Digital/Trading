@@ -15,7 +15,8 @@ log = structlog.get_logger(__name__)
 @admin.register(Exchange)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'supported_market_types', 'get_status', "timeout", "rate_limit", "updated_at", 'status_at',
-                    'get_currencies', 'get_markets', 'precision_mode', 'start_date', 'limit_ohlcv',)
+                    'get_currencies', 'get_markets', 'get_markets_not_updated', 'precision_mode', 'start_date',
+                    'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
                        'urls', 'credit',
                        'has', 'timeframes',
@@ -45,13 +46,21 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_markets.short_description = "Markets"
 
+    def get_markets_not_updated(self, obj):
+        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj) if (m.active and not m.excluded and not m.is_updated())]
+        print(not_upd, '\n')
+        return len(not_upd)
+
+    get_markets_not_updated.short_description = "Not updated"
+
     ##########
     # Action #
     ##########
 
     def insert_candles_history_since_launch(self, request, queryset):
-
+        #
         # Create a Celery task that handle retransmissions and run it
+        #
         res = group([tasks.insert_candle_history.s(exid=exchange.exid) for exchange in queryset])()
         while not res.ready():
             time.sleep(0.5)
@@ -66,7 +75,6 @@ class CustomerAdmin(admin.ModelAdmin):
         #
         # Download only the latest history since the last candle received
         #
-
         res = group([tasks.run.s(exchange.exid) for exchange in queryset])()
 
         while not res.ready():
@@ -162,17 +170,17 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
-                    'margined', 'contract_value', 'contract_value_currency',)
+                    'margined', 'contract_value', 'contract_value_currency')
     readonly_fields = ('symbol', 'exchange', 'type', 'type_ccxt', 'derivative', 'active', 'quote', 'base', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',
                        'taker', 'maker', 'response')
-    list_filter = ('exchange', 'type', 'derivative', 'active',
+    list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded',
                    ('quote', admin.RelatedOnlyFieldListFilter),
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
-    ordering = ('-active', 'symbol',)
+    ordering = ('-excluded', '-active', 'symbol',)
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent']
     save_as = True
     save_on_top = True
@@ -230,8 +238,11 @@ class CustomerAdmin(admin.ModelAdmin):
         #
         for market in queryset.order_by('symbol'):
             # Create a Celery task that handle retransmissions and run it
-            tasks.insert_candle_history.s(exid=market.exchange.exid, type=market.type,
+            tasks.insert_candle_history.s(exid=market.exchange.exid, tp=market.type,
                                           derivative=market.derivative, symbol=market.symbol).delay()
+
+            if market.exchange.exid == 'bitmex':
+                time.sleep(5)
 
     insert_candles_history_since_launch.short_description = "Insert candles history since launch"
 
@@ -245,7 +256,7 @@ class CustomerAdmin(admin.ModelAdmin):
                 continue
 
             # Create a Celery task that handle retransmissions and run it
-            tasks.insert_candle_history.s(exid=market.exchange.exid, type=market.type,
+            tasks.insert_candle_history.s(exid=market.exchange.exid, tp=market.type,
                                           derivative=market.derivative, symbol=market.symbol,
                                           start=market.get_candle_datetime_last()).delay()
 

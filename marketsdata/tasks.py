@@ -81,11 +81,11 @@ def run(exid):
         # Create a Celery task that handle retransmissions and run it
         insert_candle_history.s(exid=exid, type=market.type,
                                 derivative=market.derivative, symbol=market.symbol,
-                                start=market.get_candle_datetime_last()).delay()
+                                start=market.get_candle_datetime_last()).apply_async(countdown=10)
 
 
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
-def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, start=None):
+def insert_candle_history(self, exid, tp=None, derivative=None, symbol=None, start=None):
     """"
     Insert OHLCV candles history
 
@@ -150,7 +150,6 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
 
                 try:
                     response = client.fetchOHLCV(market.symbol, '1h', since_ts, limit)
-                    # pprint(response)
 
                 except ccxt.BadSymbol as e:
                     if market.active:
@@ -159,8 +158,8 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                         market.save()
                     return
 
-                except Exception as e:
-                    log.error('An unexpected error occurred', exception=e.__class__.__name__)
+                # except Exception as e:
+                #     log.error('An unexpected error occurred', exception=e.__class__.__name__)
 
                 else:
                     if not len(response):
@@ -199,7 +198,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                                     continue
 
                                 # convert volumes of spot markets
-                                vo = get_volume_usd_from_ohlcv(market, vo, cl)
+                                vo = get_volume_quote_from_ohlcv(market, vo, cl)
 
                                 # Break the loop if no conversion rule found
                                 if vo is False:
@@ -225,7 +224,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             log.info(
                                 'Candles inserted : {0}'.format(insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
 
-                            if insert == 0 and exid == 'huobipro':
+                            if insert == 0:
                                 break
 
                             if since_dt == start:
@@ -243,7 +242,10 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             since_dt = start if since_dt < start else since_dt
                             since_ts = int(since_dt.timestamp() * 1000)
 
-                            time.sleep(1)
+                            if exid == 'bitfinex2':
+                                time.sleep(3)
+                            else:
+                                time.sleep(1)
 
                         else:
 
@@ -269,14 +271,23 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
 
                             time.sleep(1)
 
+        # Market should be updated at this point. However markets
+        # with low trading volume can return no candles.
+        if market.active and not market.is_updated():
+            market.excluded = True
+            market.save()
+            log.warning('Market excluded')
+
     # Select one or several markets and insert candles. ccxt_type will be set later.
-    if not type and not derivative and not symbol:
+    if not tp and not derivative and not symbol:
         markets = Market.objects.filter(exchange=exchange)
         for market in markets:
             insert(market)
     else:
-        market = Market.objects.get(exchange=exchange, symbol=symbol, type=type, derivative=derivative)
+        market = Market.objects.get(exchange=exchange, symbol=symbol, type=tp, derivative=derivative)
         insert(market)
+
+    log.info('Insert complete')
 
 
 @shared_task(bind=True, name='Markets_____Update information')
@@ -437,7 +448,7 @@ def update_exchange_currencies(self, exid):
                 pass
 
             # Add or remove CurrencyType.type = quote if needed
-            if code in config['MarketsData']['MarketQuotes']:
+            if code in config['MARKETSDATA']['supported_quotes']:
                 curr.type.add(CurrencyType.objects.get(type='quote'))
                 curr.save()
             else:
@@ -447,7 +458,7 @@ def update_exchange_currencies(self, exid):
                     curr.save()
 
             # Add or remove stablecoin = True if needed
-            if code in config['MarketsData']['Stablecoins']:
+            if code in config['MARKETSDATA']['supported_stablecoins']:
                 curr.stable_coin = True
                 curr.save()
             else:
@@ -497,7 +508,7 @@ def update_exchange_markets(self, exid):
 
         # Check is the base currency is in the database (reported by instance.currencies)
         if values['base'] not in [b.code for b in bases]:
-            log.debug("Unknown base currency".format(values['base']))
+            log.warning("Unknown base currency".format(values['base']))
             return
 
         # Check if the quote currency is supported CurrencyType
@@ -661,9 +672,6 @@ def update_market_prices(self, exid):
 
     log.bind(exchange=exid)
 
-    if exid in ['bitmex', 'bitfinex2']:
-        return
-
     from marketsdata.models import Exchange, Market, Candle
     exchange = Exchange.objects.get(exid=exid)
 
@@ -725,7 +733,7 @@ def update_market_prices(self, exid):
             last = response['last']
 
         # Extract 24h rolling volume in USD
-        vo = get_volume_usd_from_ticker(market, response)
+        vo = get_volume_quote_from_ticker(market, response)
 
         # Abort if there is no conversion rule
         if vo is False:

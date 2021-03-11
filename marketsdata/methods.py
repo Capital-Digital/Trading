@@ -78,64 +78,43 @@ def get_volume_usd_from_ticker(market, response):
 
     # Select volume 24h
     if exid == 'binance':
-
         if market.type_ccxt in ['spot', 'future']:
-            vo = float(response['quoteVolume'])
-
+            return float(response['quoteVolume'])
         elif market.type_ccxt == 'delivery':
             if 'baseVolume' in response['info']:
                 # Quote volume not reported by the COIN-margined api. baseVolume is string
-                vo = float(response['info']['baseVolume']) * response['last']
-            else:
-                raise Exception('Unable to find key baseVolume')
-        else:
-            raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type))
+                return float(response['info']['baseVolume']) * response['last']
 
     elif exid == 'bybit':
         if market.type == 'derivative':
             if market.derivative == 'perpetual':
                 if market.margined.code == 'USDT':
-                    vo = float(response['info']['turnover_24h'])
+                    return float(response['info']['turnover_24h'])
                 else:
-                    vo = float(response['info']['volume_24h'])
+                    return float(response['info']['volume_24h'])
 
     elif exid == 'okex':
-
         if market.type_ccxt == 'spot':
-            vo = response['info']['quote_volume_24h']
-
+            return float(response['info']['quote_volume_24h'])
         elif market.type_ccxt == 'swap':
-
             if market.margined.code == 'USDT':
                 # volume_24h is the volume of contract priced in ETH
-                vo = float(response['info']['volume_24h']) * market.contract_value * response['last']
-
+                return float(response['info']['volume_24h']) * market.contract_value * response['last']
             else:
                 # volume_24h is the volume of contract priced in USD
-                vo = float(response['info']['volume_24h']) * market.contract_value
-
+                return float(response['info']['volume_24h']) * market.contract_value
         elif market.type_ccxt == 'futures':
-            vo = float(response['info']['volume_token_24h']) * response['last']
-
-        else:
-            raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))
+            return float(response['info']['volume_token_24h']) * response['last']
 
     elif exid == 'ftx':
-
-        vo = response['info']['volumeUsd24h']
+        return float(response['info']['volumeUsd24h'])
 
     elif exid == 'huobipro':
-
         if not market.type_ccxt:
-            vo = float(response['info']['vol'])
+            return float(response['info']['vol'])
 
-        else:
-            raise Exception('Unable to extract 24h volume from fetch_tickers() for type {0}'.format(market.type_ccxt))
-
-    else:
-        raise Exception('Unable to extract 24h volume from fetch_tickers() for exchange {0}'.format(exid))
-
-    return vo
+    pprint(response)
+    raise Exception('Unable to extract 24h volume from fetch_tickers() for exchange {0}'.format(exid))
 
 
 def get_derivative_type(exid, values):

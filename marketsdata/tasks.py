@@ -621,6 +621,9 @@ def update_market_prices(self, exid):
 
     log.bind(exchange=exid)
 
+    if exid in ['bitmex', 'bitfinex2']:
+        return
+
     from marketsdata.models import Exchange, Market, Candle
     exchange = Exchange.objects.get(exid=exid)
 
@@ -638,6 +641,7 @@ def update_market_prices(self, exid):
         """
 
         symbol = market.symbol
+
         log.bind(type_ccxt=market.type_ccxt, type=market.type, derivative=market.derivative,
                  exchange=market.exchange.exid, symbol=market.symbol)
 
@@ -664,25 +668,26 @@ def update_market_prices(self, exid):
 
         # Local function to deactivate a market
         def deactivate(market):
-            log.warning('Deactivate market')
+            log.warning('Deactivate {0} market'.format(symbol))
             market.active = False
             market.save()
-            return
 
         # Select response
         if symbol not in response:
             deactivate(market)
+            return
         else:
             response = response[symbol]
 
         # Select latest price
         if 'last' not in response or not response['last']:
             deactivate(market)
+            return
         else:
             last = response['last']
 
         # Extract 24h rolling volume in USD and calculate hourly average
-        vo_avg = get_volume_usd_from_ticker(market, response[symbol]) / 24
+        vo_avg = get_volume_usd_from_ticker(market, response) / 24
 
         try:
             dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)

@@ -124,6 +124,11 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_IGNORE_RESULT = False
 CELERY_TASK_TRACK_STARTED = True
 
+CELERY_ROUTES = {
+    'marketsdata.tasks.update_exchange_currencies': {'queue': 'normalPriority'},
+    'marketsdata.tasks.update_exchange_markets': {'queue': 'highPriority'},
+}
+
 # CELERY_REDIS_RETRY_ON_TIMEOUT = True
 # CELERY_RESULT_EXPIRES = 2
 # CELERY_TASK_DEFAULT_DELIVERY_MODE = 'transient'

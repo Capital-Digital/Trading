@@ -60,11 +60,14 @@ def get_volume_usd_from_ohlcv(market, vo, cl):
                 return vo * cl
 
     elif exid == 'ftx':
-        if market.type == 'derivative':
-            # FTX returns volume of quote for perp and futures
+        if market.type in ['derivative', 'spot']:
+            # FTX returns volume of quote for spot, perp and futures
             return vo
 
-    log.error('No rule OHLCV volume for {2} {1} at {0}'.format(exid, market.symbol, market.type))
+    elif exid == 'bitfinex2':
+        if market.type in ['spot', 'derivative']:
+            return vo * cl
+
     return False
 
 
@@ -111,7 +114,10 @@ def get_volume_usd_from_ticker(market, response):
         if not market.type_ccxt:
             return float(response['info']['vol'])
 
-    pprint('\n', response, '\n')
+    elif exid == 'bitfinex':
+        return float(response['baseVolume']) * response['last']
+
+    pprint(response)
     log.error('No rule 24h volume for {1} at {0}'.format(exid, market.symbol, derivative=market.derivative))
     return False
 
@@ -157,7 +163,7 @@ def get_derivative_type(exid, values):
         if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
             return 'perpetual'
 
-    pprint('\n', values, '\n')
+    pprint(values)
     log.error('No rule for derivative for {1} at {0}'.format(exid, values['symbol']))
     return False
 
@@ -195,7 +201,7 @@ def get_derivative_margined(exid, values):
         if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
             return Currency.objects.get(code='USDT')
 
-    pprint('\n', values, '\n')
+    pprint(values)
     log.error('No rule margined currency for {1} at {0}'.format(exid, values['symbol']))
     return False
 
@@ -237,7 +243,7 @@ def get_derivative_contract_value(exid, values):
     elif exid == 'bitfinex2':
         return 1
 
-    pprint('\n', values, '\n')
+    pprint(values)
     log.error('No rule contract value for {1} at {0}'.format(exid, values['symbol']))
     return False
 
@@ -283,10 +289,10 @@ def get_derivative_contract_value_currency(exid, values):
             return Currency.objects.get(code=values['base'])
 
     elif exid == 'bitfinex2':
-        base = values['base'].replace('F0', '')
-        return Currency.objects.get(code=base)
+        if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
+            return Currency.objects.get(code=values['base'])
 
-    pprint('\n', values, '\n')
+    pprint(values)
     log.error('No rule for contract value currency for {1} at {0}'.format(exid, values['symbol']))
     return False
 
@@ -317,7 +323,11 @@ def get_derivative_delivery_date(exid, values):
         else:
             return None
 
-    pprint('\n', values, '\n')
+    elif exid == 'bitfinex2':
+        if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
+            return None
+
+    pprint(values)
     log.error('No rule contract delivery date for {1} at {0}'.format(exid, values['symbol']))
     return False
 
@@ -346,6 +356,10 @@ def get_derivative_listing_date(exid, values):
             # '2021-03-26T12:00:00.000Z'
             return timezone.make_aware(datetime.strptime(values['info']['listing'], '%Y-%m-%dT%H:%M:%S.000Z'))
 
-    pprint('\n', values, '\n')
+    elif exid == 'bitfinex2':
+        if values['type'] == 'futures' and values['info']['expiration'] == 'NA':
+            return None
+
+    pprint(values)
     log.error('No rule contract listing date for {1} at {0}'.format(exid, values['symbol']))
     return False

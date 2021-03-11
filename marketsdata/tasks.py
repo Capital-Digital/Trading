@@ -181,7 +181,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             for ohlcv in response:
 
                                 if len(ohlcv) != 6:
-                                    raise Exception('Unknown OHLCV format')
+                                    log.error('Unknown OHLCV format')
                                 else:
                                     ts, op, hi, lo, cl, vo = ohlcv
                                     dt = timezone.make_aware(datetime.fromtimestamp(ts / 1000))
@@ -200,6 +200,11 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
 
                                 # convert volumes of spot markets
                                 vo = get_volume_usd_from_ohlcv(market, vo, cl)
+
+                                # Break the loop if no conversion rule found
+                                if vo is False:
+                                    log.error('No rule for volume conversion')
+                                    break
 
                                 try:
                                     Candle.objects.get(market=market, dt=dt)
@@ -674,9 +679,7 @@ def update_market_prices(self, exid):
         Update ticker price and volume for a specific market
 
         """
-
         symbol = market.symbol
-
         log.bind(type_ccxt=market.type_ccxt, type=market.type, derivative=market.derivative,
                  exchange=market.exchange.exid, symbol=market.symbol)
 
@@ -721,15 +724,19 @@ def update_market_prices(self, exid):
         else:
             last = response['last']
 
-        # Extract 24h rolling volume in USD and calculate hourly average
-        vo_avg = get_volume_usd_from_ticker(market, response) / 24
+        # Extract 24h rolling volume in USD
+        vo = get_volume_usd_from_ticker(market, response)
+
+        # Abort if there is no conversion rule
+        if vo is False:
+            return
 
         try:
             dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             Candle.objects.get(market=market, exchange=exchange, dt=dt)
 
         except Candle.DoesNotExist:
-            Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo_avg)
+            Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo / 24)
 
         log.unbind('type_ccxt', 'type', 'derivative', 'symbol')
 

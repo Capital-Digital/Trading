@@ -58,7 +58,7 @@ class Exchange(models.Model):
             return False
 
     # Return exchange class (ccxt)
-    def get_ccxt_client(self, account=None, tp=None):
+    def get_ccxt_client(self, account=None, ccxt_type_options=None):
 
         if not self.is_active():
             log.error('Exchange is inactive', exchange=self.exid)
@@ -79,9 +79,9 @@ class Exchange(models.Model):
             if self.credentials['password']:
                 client.password = account.password
 
-        if tp:
+        if ccxt_type_options:
             if 'defaultType' in client.options:
-                client.options['defaultType'] = tp
+                client.options['defaultType'] = ccxt_type_options
 
         self.options = client.options
         self.save()
@@ -129,14 +129,14 @@ class Exchange(models.Model):
         return list(set(Market.objects.filter(exchange=self).values_list('type', flat=True)))
 
     # return a list of supported market types ccxt ('', spot, swap, futures, futures)
-    def get_market_types_ccxt(self):
+    def get_market_ccxt_type_options(self):
         if 'defaultType' in self.get_ccxt_client().options:
 
             # Return a list of supported ccxt types
             if self.supported_market_types:
                 return str(self.supported_market_types).replace(" ", "").split(',')
             else:
-                raise Exception('Exchange {0} requires a list of supported market types'.format(self.exid))
+                raise Exception('Exchange {0} requires a parameter defaultType'.format(self.exid))
         else:
             return None
 
@@ -178,7 +178,8 @@ class Market(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='market', null=True)
     type = models.CharField(max_length=20, blank=True, null=True, choices=(('spot', 'spot'),
                                                                            ('derivative', 'derivative'),))
-    type_ccxt = models.CharField(max_length=20, blank=True, null=True)
+    ccxt_type_response = models.CharField(max_length=20, blank=True, null=True)
+    ccxt_type_options = models.CharField(max_length=20, blank=True, null=True)
     derivative = models.CharField(max_length=20, blank=True, null=True, choices=(('perpetual', 'perpetual'),
                                                                                  ('future', 'future'),))
     delivery_date = models.DateTimeField(null=True, blank=True)

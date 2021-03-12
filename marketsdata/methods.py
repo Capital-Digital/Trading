@@ -82,9 +82,9 @@ def get_volume_quote_from_ticker(market, response):
 
     # Select volume 24h
     if exid == 'binance':
-        if market.type_ccxt in ['spot', 'future']:
+        if market.ccxt_type_options in ['spot', 'future']:
             return float(response['quoteVolume'])
-        elif market.type_ccxt == 'delivery':
+        elif market.ccxt_type_options == 'delivery':
             if 'baseVolume' in response['info']:
                 # Quote volume not reported by the COIN-margined api. baseVolume is string
                 return float(response['info']['baseVolume']) * response['last']
@@ -98,23 +98,23 @@ def get_volume_quote_from_ticker(market, response):
                     return float(response['info']['volume_24h'])
 
     elif exid == 'okex':
-        if market.type_ccxt == 'spot':
+        if market.ccxt_type_options == 'spot':
             return float(response['info']['quote_volume_24h'])
-        elif market.type_ccxt == 'swap':
+        elif market.ccxt_type_options == 'swap':
             if market.margined.code == 'USDT':
                 # volume_24h is the volume of contract priced in ETH
                 return float(response['info']['volume_24h']) * market.contract_value * response['last']
             else:
                 # volume_24h is the volume of contract priced in USD
                 return float(response['info']['volume_24h']) * market.contract_value
-        elif market.type_ccxt == 'futures':
+        elif market.ccxt_type_options == 'futures':
             return float(response['info']['volume_token_24h']) * response['last']
 
     elif exid == 'ftx':
         return float(response['info']['volumeUsd24h'])
 
     elif exid == 'huobipro':
-        if not market.type_ccxt:
+        if not market.ccxt_type_options:
             return float(response['info']['vol'])
 
     elif exid == 'bitmex':
@@ -144,6 +144,9 @@ def get_derivative_type(exid, values):
                 return 'perpetual'
             elif values['info']['contractType'] in ['CURRENT_QUARTER', 'NEXT_QUARTER DELIVERING', 'NEXT_QUARTER']:
                 return 'future'
+            # Return None so market is not created
+            elif not values['info']['contractType'] and values['info']['status'] == 'PENDING_TRADING':
+                return None
 
     elif exid == 'bybit':
         if values['type'] == 'future' and values['future']:
@@ -170,7 +173,7 @@ def get_derivative_type(exid, values):
             return 'perpetual'
 
     pprint(values)
-    log.error('No rule for derivative for {1} at {0}'.format(exid, values['symbol']))
+    log.error('No rule for derivative type for {1} at {0}'.format(exid, values['symbol']))
     return False
 
 
@@ -369,3 +372,14 @@ def get_derivative_listing_date(exid, values):
     pprint(values)
     log.error('No rule contract listing date for {1} at {0}'.format(exid, values['symbol']))
     return False
+
+
+def exclude(market):
+    #
+    # Exclude a market when it's symbol isn't found in fetch_tickers() response
+    # OR when 'last' is not in response or when response['last'] == None
+    # OR when market.active and not market.is_updated() during insert_candle_history()
+    #
+    log.warning('Exclude {1} {0} market at {2}'.format(market.symbol, market.type, market.exchange.exid))
+    market.excluded = True
+    market.save()

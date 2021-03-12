@@ -85,7 +85,7 @@ def run(exid):
 
 
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
-def insert_candle_history(self, exid, tp=None, derivative=None, symbol=None, start=None):
+def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, start=None):
     """"
     Insert OHLCV candles history
 
@@ -141,9 +141,10 @@ def insert_candle_history(self, exid, tp=None, derivative=None, symbol=None, sta
 
             client = exchange.get_ccxt_client()
 
-            # Set market type
-            if market.type_ccxt:
-                client.options['defaultType'] = market.type_ccxt
+            # Set defaultType if needed
+            if market.ccxt_type_options:
+                client.options['defaultType'] = market.ccxt_type_options
+
             client.load_markets(True)
 
             while True:
@@ -152,14 +153,13 @@ def insert_candle_history(self, exid, tp=None, derivative=None, symbol=None, sta
                     response = client.fetchOHLCV(market.symbol, '1h', since_ts, limit)
 
                 except ccxt.BadSymbol as e:
-                    if market.active:
-                        log.error('Bad symbol {0}'.format(market.symbol))
-                        market.active = False
-                        market.save()
+                    if not market.excluded:
+                        log.error('Bad symbol')
+                        exclude(market)
                     return
 
-                # except Exception as e:
-                #     log.error('An unexpected error occurred', exception=e.__class__.__name__)
+                except Exception as e:
+                    log.error('An unexpected error occurred', exception=e.__class__.__name__)
 
                 else:
                     if not len(response):
@@ -274,17 +274,16 @@ def insert_candle_history(self, exid, tp=None, derivative=None, symbol=None, sta
         # Market should be updated at this point. However markets
         # with low trading volume can return no candles.
         if market.active and not market.is_updated():
-            market.excluded = True
-            market.save()
-            log.warning('Market excluded')
+            log.warning('Could not fetch the latest candle')
+            exclude(market)
 
     # Select one or several markets and insert candles. ccxt_type will be set later.
-    if not tp and not derivative and not symbol:
+    if not type and not derivative and not symbol:
         markets = Market.objects.filter(exchange=exchange)
         for market in markets:
             insert(market)
     else:
-        market = Market.objects.get(exchange=exchange, symbol=symbol, type=tp, derivative=derivative)
+        market = Market.objects.get(exchange=exchange, symbol=symbol, type=type, derivative=derivative)
         insert(market)
 
     log.info('Insert complete')
@@ -406,76 +405,84 @@ def update_exchange_currencies(self, exid):
 
     client = exchange.get_ccxt_client()
 
-    def insert_currencies():
-        for c in client.currencies:
-            code = client.currencies[c]['code']
+    def update(value):
+        code = value['code']
+
+        try:
+            curr = Currency.objects.get(code=code, exchange=exchange)
+        except MultipleObjectsReturned:
+            log.warning('Duplicate currency {0}'.format(code))
+            pass
+        except ObjectDoesNotExist:
 
             try:
-                curr = Currency.objects.get(code=code, exchange=exchange)
+                curr = Currency.objects.get(code=code)
+
             except MultipleObjectsReturned:
-                log.warning('Duplicate currency {0}'.format(code))
+                log.error('Duplicate currency {0}'.format(code))
                 pass
+
             except ObjectDoesNotExist:
 
-                try:
-                    curr = Currency.objects.get(code=code)
+                # create currency
+                curr = Currency.objects.create(code=code)
 
-                except MultipleObjectsReturned:
-                    log.error('Duplicate currency {0}'.format(code))
-                    pass
+                # set base type
+                curr.type.add(CurrencyType.objects.get(type='base'))
 
-                except ObjectDoesNotExist:
+                # add exchange
+                curr.exchange.add(exchange)
 
-                    # create currency
-                    curr = Currency.objects.create(code=code)
-
-                    # set base type
-                    curr.type.add(CurrencyType.objects.get(type='base'))
-
-                    # add exchange
-                    curr.exchange.add(exchange)
-
-                    log.info('New currency created {0}'.format(code))
-                    curr.save()
-                else:
-
-                    # add exchange
-                    curr.exchange.add(exchange)
-                    log.info('Exchange attached to currency {0}'.format(code))
-                    curr.save()
-
-            else:
-                pass
-
-            # Add or remove CurrencyType.type = quote if needed
-            if code in config['MARKETSDATA']['supported_quotes']:
-                curr.type.add(CurrencyType.objects.get(type='quote'))
+                log.info('New currency created {0}'.format(code))
                 curr.save()
             else:
-                quoteType = CurrencyType.objects.get(type='quote')
-                if quoteType in curr.type.all():
-                    curr.type.remove(quoteType)
-                    curr.save()
 
-            # Add or remove stablecoin = True if needed
-            if code in config['MARKETSDATA']['supported_stablecoins']:
-                curr.stable_coin = True
-                curr.save()
-            else:
-                curr.stable_coin = False
+                # add exchange
+                curr.exchange.add(exchange)
+                log.info('Exchange attached to currency {0}'.format(code))
                 curr.save()
 
-    if not exchange.supported_market_types or exid == 'okex':
-        client.load_markets(True)
-        insert_currencies()
+        else:
+            pass
 
-    else:
-        for tp in exchange.get_market_types_ccxt():
-            log.bind(type=tp)
-            client.options['defaultType'] = tp
+        # Add or remove CurrencyType.type = quote if needed
+        if code in config['MARKETSDATA']['supported_quotes']:
+            curr.type.add(CurrencyType.objects.get(type='quote'))
+            curr.save()
+        else:
+            quoteType = CurrencyType.objects.get(type='quote')
+            if quoteType in curr.type.all():
+                curr.type.remove(quoteType)
+                curr.save()
+
+        # Add or remove stablecoin = True if needed
+        if code in config['MARKETSDATA']['supported_stablecoins']:
+            curr.stable_coin = True
+            curr.save()
+        else:
+            curr.stable_coin = False
+            curr.save()
+
+    # Iterate through all currencies. Skip OKEx because it returns
+    # all currencies characteristics in a single call ccxt.okex.currencies
+
+    if exchange.supported_market_types and exid != 'okex':
+
+        for ccxt_type_options in exchange.get_market_ccxt_type_options():
+            log.bind(ccxt_type_options=ccxt_type_options)
+            client.options['defaultType'] = ccxt_type_options
             client.load_markets(True)
-            insert_currencies()
-            log.unbind('type')
+
+            for currency, value in client.currencies.items():
+                update(value)
+
+            log.unbind('ccxt_type_options')
+
+    else :
+        client.load_markets(True)
+
+        for currency, value in client.currencies.items():
+            update(value)
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
@@ -502,13 +509,13 @@ def update_exchange_markets(self, exid):
     if not bases.exists():
         raise ConfigurationError('No base currency attached to exchange {0}, update currencies first'.format(exid))
 
-    def update_info(values, tp=None):
+    def update(values, ccxt_type_options=None):
 
-        log.bind(tp=tp, symbol=values['symbol'], base=values['base'], quote=values['quote'])
+        log.bind(symbol=values['symbol'], base=values['base'], quote=values['quote'])
 
         # Check is the base currency is in the database (reported by instance.currencies)
         if values['base'] not in [b.code for b in bases]:
-            log.warning("Unknown base currency".format(values['base']))
+            log.debug("Unknown base currency".format(values['base']))
             return
 
         # Check if the quote currency is supported CurrencyType
@@ -517,33 +524,30 @@ def update_exchange_markets(self, exid):
 
         # Set market type
         if 'type' in values:
-            type_ccxt = values['type']
+            ccxt_type_response = values['type']
         else:
             if 'swap' in values:
                 if values['swap']:
-                    type_ccxt = 'swap'
+                    ccxt_type_response = 'swap'
             if 'spot' in values:
                 if values['spot']:
-                    type_ccxt = 'spot'
+                    ccxt_type_response = 'spot'
             if 'future' in values:
                 if values['future']:
-                    type_ccxt = 'future'
+                    ccxt_type_response = 'future'
             if 'futures' in values:
                 if values['futures']:
-                    type_ccxt = 'futures'
+                    ccxt_type_response = 'futures'
             if 'option' in values:
                 if values['option']:
                     return
-            # At this point the exchange doesn't return any information
-            if not tp:
-                type_ccxt = None
 
         # Prevent insertion of all unlisted BitMEX contract
         if exid == 'bitmex' and not values['active']:
             return
 
         # Set derivative type and margined coin
-        if type_ccxt in ['swap', 'future', 'futures', 'delivery']:
+        if ccxt_type_response in ['swap', 'future', 'futures', 'delivery']:
 
             type = 'derivative'
             derivative = get_derivative_type(exid, values)  # perpetual or future
@@ -557,11 +561,11 @@ def update_exchange_markets(self, exid):
             if not derivative or not margined or not contract_value or not contract_value_currency:
                 return
 
-        elif type_ccxt == 'spot':
-            type = type_ccxt
+        elif ccxt_type_response == 'spot':
+            type = ccxt_type_response
             derivative = None
 
-        elif type_ccxt == 'option':
+        elif ccxt_type_response == 'option':
             return
 
         # Test market activity
@@ -572,17 +576,20 @@ def update_exchange_markets(self, exid):
         # Exchanges specific #
         # ####################
 
-        # Note that OKEx report spot and swap symbols when defaultType == 'futures'
+        # At this point OKEx ccxt_type_options = None, so we need to set the appropriate ccxt_type_options
+        # so we can filter markets and update price with fetch_tickers() later on
+
         if exid == 'okex':
-            pass
+            if type == 'spot':
+                ccxt_type_options = 'spot'
+            elif derivative == 'perpetual':
+                ccxt_type_options = 'swap'
+            elif derivative == 'future':
+                ccxt_type_options = 'futures'
 
         if exid == 'bybit':
             # log.warning('Bybit market activity unavailable')
             active = True
-
-        if exid == 'huobipro' and not type_ccxt:
-            type = 'spot'
-            derivative = None
 
         if exid == 'ftx' and 'MOVE' in values['symbol']:
             return
@@ -600,7 +607,8 @@ def update_exchange_markets(self, exid):
             'quote': quotes.get(code=values['quote']),
             'base': bases.get(code=values['base']),
             'type': type,
-            'type_ccxt': type_ccxt,
+            'ccxt_type_response': ccxt_type_response,
+            'ccxt_type_options': ccxt_type_options,
             'active': active,
             'maker': values['maker'],
             'taker': values['taker'],
@@ -636,30 +644,25 @@ def update_exchange_markets(self, exid):
     # Load markets
     client = exchange.get_ccxt_client()
 
-    # Iterate through supported market types. Skip OKEx as this exchange
-    # returns all markets characteristics in a single call ccxt.okex.markets
-    types_ccxt = exchange.get_market_types_ccxt()
+    # Iterate through supported market types. Skip OKEx because it returns
+    # all markets characteristics in a single call ccxt.okex.markets
 
-    if types_ccxt:
-        for tp in types_ccxt:
-            log.bind(type_ccxt=tp)
-            client.options['defaultType'] = tp
+    if exchange.supported_market_types and exid != 'okex':
+
+        for ccxt_type_options in exchange.get_market_ccxt_type_options():
+
+            client.options['defaultType'] = ccxt_type_options
             client.load_markets(True)
 
             for market, values in client.markets.items():
-                log.bind(market=market)
-                update_info(values, tp=tp)
-                log.unbind('market')
-            log.unbind('type_ccxt')
+                update(values, ccxt_type_options=ccxt_type_options)
 
     else:
         client.load_markets(True)
         for market, values in client.markets.items():
-            log.bind(market=market)
-            update_info(values)
-            log.unbind('market')
+            update(values)
 
-    log.unbind('base', 'quote', 'symbol', 'tp')
+    log.unbind('base', 'quote', 'symbol')
     log.info('Update market complete')
 
 
@@ -682,22 +685,13 @@ def update_market_prices(self, exid):
     if not exchange.has['fetchTickers']:
         raise MethodNotSupported('Exchange {0} does not support fetch_tickers()'.format(exid))
 
-    def update_tickers(response, market):
+    def update(response, market):
         """"
         Update ticker price and volume for a specific market
 
         """
         symbol = market.symbol
-        log.bind(type_ccxt=market.type_ccxt, type=market.type, derivative=market.derivative,
-                 exchange=market.exchange.exid, symbol=market.symbol)
-
-        # if not market.is_populated():
-        #     log.warning('Market is not populated')
-        #     return
-
-        if not market.active:
-            log.debug('Market is inactive')
-            return
+        log.bind(type=market.type, derivative=market.derivative, symbol=symbol)
 
         if market.is_updated():
             log.debug('Market is already updated')
@@ -712,22 +706,16 @@ def update_market_prices(self, exid):
             #                           derivative=market.derivative,
             #                           start=market.get_candle_datetime_last())()
 
-        # Local function to deactivate a market
-        def deactivate(market):
-            log.warning('Deactivate {0} market'.format(symbol))
-            market.active = False
-            market.save()
-
         # Select response
         if symbol not in response:
-            deactivate(market)
+            log.warning('Symbol not in response')
+            exclude(market)
             return
         else:
             response = response[symbol]
 
-        # Select latest price
+        # Select latest price. Do not exclude market when key last isn't found
         if 'last' not in response or not response['last']:
-            deactivate(market)
             return
         else:
             last = response['last']
@@ -746,30 +734,33 @@ def update_market_prices(self, exid):
         except Candle.DoesNotExist:
             Candle.objects.create(market=market, exchange=exchange, dt=dt, close=last, volume_avg=vo / 24)
 
-        log.unbind('type_ccxt', 'type', 'derivative', 'symbol')
+        log.unbind('type', 'derivative', 'symbol')
 
     client = exchange.get_ccxt_client()
     log.info('Update prices')
 
     # Create a list of active markets
-    markets = Market.objects.filter(exchange=exchange, active=True).order_by('symbol', 'derivative')
+    markets = Market.objects.filter(exchange=exchange,
+                                    excluded=False,
+                                    active=True).order_by('symbol', 'derivative')
 
     if exchange.supported_market_types:
 
-        for tp in exchange.get_market_types_ccxt():
-            client.options['defaultType'] = tp
-            client.load_markets(True)  # reload
+        for ccxt_type_options in exchange.get_market_ccxt_type_options():
+
+            client.options['defaultType'] = ccxt_type_options
+            client.load_markets(True)
             response = client.fetch_tickers()
 
-            # Update the list and loop through markets
-            for market in markets.filter(type_ccxt=tp):
-                update_tickers(response, market)
+            for market in markets.filter(ccxt_type_options=ccxt_type_options):
+                update(response, market)
 
     else:
         client.load_markets(True)
         response = client.fetch_tickers()
+
         for market in markets:
-            update_tickers(response, market)
+            update(response, market)
 
     log.info('Update prices complete')
 

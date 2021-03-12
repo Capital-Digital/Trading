@@ -4,6 +4,7 @@ import logging
 import structlog
 from celery import Celery
 from celery.signals import setup_logging
+from kombu import Queue, Exchange
 from django_structlog.celery import signals
 from django_structlog.celery.steps import DjangoStructLogInitStep
 from django.dispatch import receiver
@@ -28,8 +29,37 @@ app.autodiscover_tasks()
 # A step to initialize django-structlog
 app.steps['worker'].add(DjangoStructLogInitStep)
 
-# Purge unacknowledged tasks. Equivalent to $ celery -A capital purge
-# app.control.purge()
+# Change name of the default queue
+app.conf.task_default_queue = 'default'
+
+###########################
+# Configure Celery queues #
+###########################
+
+default_queue_name = 'default'
+default_exchange_name = 'default'
+default_routing_key = 'default'
+
+slow_queue_name = 'slow'
+slow_routing_key = 'slow'
+
+default_exchange = Exchange(default_exchange_name, type='direct')
+
+default_queue = Queue(
+    default_queue_name,
+    default_exchange,
+    routing_key=default_routing_key)
+
+slow_queue = Queue(
+    slow_queue_name,
+    default_exchange,
+    routing_key=slow_routing_key)
+
+app.conf.task_queues = (default_queue, slow_queue)
+
+app.conf.task_default_queue = default_queue_name
+app.conf.task_default_exchange = default_exchange_name
+app.conf.task_default_routing_key = default_routing_key
 
 
 @setup_logging.connect

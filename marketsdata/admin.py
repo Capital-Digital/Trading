@@ -1,12 +1,16 @@
 from django.contrib import admin
 from datetime import timedelta
+from django.contrib.postgres.fields import JSONField
 from .models import Exchange, Market, Candle, Currency, CurrencyType, OrderBook
 import structlog
 import locale
 from celery import chain, group, shared_task
 from marketsdata import tasks
 import time
-from tqdm import tqdm
+from prettyjson import PrettyJSONWidget
+import json
+from pygments import highlight, formatters, lexers
+from django.utils.safestring import mark_safe
 
 locale.setlocale(locale.LC_ALL, '')
 log = structlog.get_logger(__name__)
@@ -14,8 +18,9 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Exchange)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'supported_market_types', 'get_status', "timeout", "rate_limit", "updated_at", 'status_at',
-                    'get_currencies', 'get_markets', 'get_markets_not_updated', 'precision_mode', 'start_date',
+    list_display = ('name', 'supported_market_types', 'get_status', "timeout", "rate_limit", "updated_at",
+                    'get_currencies', 'get_markets', 'get_markets_not_updated', 'get_markets_not_populated',
+                    'precision_mode', 'start_date',
                     'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
                        'urls', 'credit',
@@ -47,11 +52,21 @@ class CustomerAdmin(admin.ModelAdmin):
     get_markets.short_description = "Markets"
 
     def get_markets_not_updated(self, obj):
-        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj) if (m.active and not m.excluded and not m.is_updated())]
+        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj)
+                   if (m.active and m.is_populated() and not m.excluded
+                       and (not m.is_updated() and not m.derivative == 'future'))]
         print(not_upd, '\n')
         return len(not_upd)
 
     get_markets_not_updated.short_description = "Not updated"
+
+    def get_markets_not_populated(self, obj):
+        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj) if m.active
+                   and not m.is_populated() and not m.excluded]
+        print(not_upd, '\n')
+        return len(not_upd)
+
+    get_markets_not_populated.short_description = "Not populated"
 
     ##########
     # Action #
@@ -61,11 +76,15 @@ class CustomerAdmin(admin.ModelAdmin):
         #
         # Create a Celery task that handle retransmissions and run it
         #
-        res = group([tasks.insert_candle_history.s(exid=exchange.exid) for exchange in queryset])()
+        res = group([tasks.insert_candle_history.s(exid=exchange.exid)
+                    .set(queue='slow') for exchange in queryset]).apply_async()
+
         while not res.ready():
             time.sleep(0.5)
+
         if res.successful():
             log.info('Insert complete')
+
         else:
             log.error('Insert failed :(')
 
@@ -75,7 +94,8 @@ class CustomerAdmin(admin.ModelAdmin):
         #
         # Download only the latest history since the last candle received
         #
-        res = group([tasks.run.s(exchange.exid) for exchange in queryset])()
+        res = group([tasks.run.s(exchange.exid).set(queue='slow')
+                     for exchange in queryset]).apply_async()
 
         while not res.ready():
             time.sleep(0.5)
@@ -102,10 +122,13 @@ class CustomerAdmin(admin.ModelAdmin):
 
         # Create a groups and execute task
         res = group(tasks.update_exchange_markets.s(exchange) for exchange in exchanges)()
+
         while not res.ready():
             time.sleep(0.5)
+
         if res.successful():
             log.info('Update currencies complete')
+
         else:
             log.error('Update currencies failed :(')
 
@@ -116,10 +139,13 @@ class CustomerAdmin(admin.ModelAdmin):
 
         # Create a groups and execute task
         res = group(tasks.update_market_prices.s(exchange) for exchange in exchanges)()
+
         while not res.ready():
             time.sleep(0.5)
+
         if res.successful():
             log.info('Update market complete')
+
         else:
             log.error('Update market failed :(')
 
@@ -170,17 +196,18 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
-                    'margined', 'contract_value', 'contract_value_currency')
-    readonly_fields = ('symbol', 'exchange', 'type', 'type_ccxt', 'derivative', 'active', 'quote', 'base', 'margined',
+                    'margined', 'contract_value', 'contract_value_currency', )
+    readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'ccxt_type_options', 'derivative', 'active', 'quote',
+                       'base', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',
                        'taker', 'maker', 'response')
-    list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded',
+    list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded', 'ccxt_type_options',
                    ('quote', admin.RelatedOnlyFieldListFilter),
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
-    ordering = ('-excluded', '-active', 'symbol',)
+    ordering = ('excluded', '-active', 'symbol',)
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent']
     save_as = True
     save_on_top = True
@@ -238,8 +265,11 @@ class CustomerAdmin(admin.ModelAdmin):
         #
         for market in queryset.order_by('symbol'):
             # Create a Celery task that handle retransmissions and run it
-            tasks.insert_candle_history.s(exid=market.exchange.exid, tp=market.type,
-                                          derivative=market.derivative, symbol=market.symbol).delay()
+            tasks.insert_candle_history.s(exid=market.exchange.exid,
+                                          type=market.type,
+                                          derivative=market.derivative,
+                                          symbol=market.symbol
+                                          ).apply_async(queue='slow')
 
             if market.exchange.exid == 'bitmex':
                 time.sleep(5)
@@ -256,9 +286,12 @@ class CustomerAdmin(admin.ModelAdmin):
                 continue
 
             # Create a Celery task that handle retransmissions and run it
-            tasks.insert_candle_history.s(exid=market.exchange.exid, tp=market.type,
-                                          derivative=market.derivative, symbol=market.symbol,
-                                          start=market.get_candle_datetime_last()).delay()
+            tasks.insert_candle_history.s(exid=market.exchange.exid,
+                                          type=market.type,
+                                          derivative=market.derivative,
+                                          symbol=market.symbol,
+                                          start=market.get_candle_datetime_last()
+                                          ).apply_async(queue='slow')
 
     insert_candles_history_recent.short_description = "Insert candles history recent"
 

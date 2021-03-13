@@ -40,32 +40,41 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Return True if credentials are valid
     def is_valid_credentials(self):
+        #
+        # Return True if credentials are valid
+        ######################################
+
         self.set_credentials()
         return self.valid_credentials
 
-    # Check crendentials validity
     def set_credentials(self):
+        #
+        # Check crendentials validity
+        #############################
+
         try:
-            client = self.exchange.get_client(self)
+            client = self.exchange.get_ccxt_client(self)
             client.load_markets(True)
             cred = client.checkRequiredCredentials()
-            print('cred', cred)
+
         except ccxt.AuthenticationError as e:
-            print('auth error', e)
             self.valid_credentials = False
+
         except Exception as e:
-            log.exception('unknwon exception', e)
             self.valid_credentials = False
+
         else:
-            print('auth OK')
             self.valid_credentials = cred
+
         finally:
             self.save()
 
-    # Determine if an account can hold long and short position at same time (hedge)
     def get_position_mode(self):
+        #
+        # Determine if an account can hold long and short position at same time (hedge)
+        ###############################################################################
+
         if self.strategy.margin:
             if self.exchange.ccxt == 'binance':
 
@@ -82,14 +91,20 @@ class Account(models.Model):
                 self.position_mode = 'hedge'
                 self.save()
 
-    # return datetime of latest order
     def get_latest_order_dt(self, market):
+        #
+        # return datetime of latest order
+        #################################
+
         orders = Order.objects.filter(account=self, market=market)
         if orders.exists():
             return orders.latest('dt_create').dt
 
-    # return funds
     def get_funds(self, account_type):
+        #
+        # return funds
+        ##############
+
         dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         funds = self.funds.all().filter(dt=dt, type=account_type)
         if funds.exists():
@@ -100,8 +115,11 @@ class Account(models.Model):
         else:
             raise TradingError('Unable to select {1} funds for {0}'.format(self.name, account_type))
 
-    # return positions
     def get_positions(self):
+        #
+        # Return positions
+        ##################
+
         positions = self.positions.all()
         if positions.exists():
             lst = []
@@ -111,8 +129,11 @@ class Account(models.Model):
         else:
             return []
 
-    # return long positions
     def get_positions_long(self):
+        #
+        # Return long positions
+        #######################
+
         positions = self.positions.all().filter(side='buy')
         if positions.exists():
             lst = []
@@ -122,8 +143,11 @@ class Account(models.Model):
         else:
             return []
 
-    # return short positions
     def get_positions_short(self):
+        #
+        # Return short positions
+        ########################
+
         positions = self.positions.all().filter(side='sell')
         if positions.exists():
             lst = []
@@ -133,8 +157,11 @@ class Account(models.Model):
         else:
             return []
 
-    # select currencies that need to be traded without margin
     def bases_alloc_no_margin(self):
+        #
+        # Select currencies that need to be traded without margin
+        #########################################################
+
         dt = self.strategy.get_latest_alloc_dt()
         allocations = Allocation.objects.filter(strategy=self.strategy, dt=dt)
         if allocations.exists():
@@ -146,9 +173,10 @@ class Account(models.Model):
         else:
             return []
 
-
-    # select bases (margin short) from the new allocations
+    # Select bases (margin short) from the new allocations
+    ######################################################
     def get_allocations_short(self):
+
         dt = self.strategy.get_latest_alloc_dt()
         allocations = Allocation.objects.filter(strategy=self.strategy, dt=dt)
         if allocations.exists():
@@ -159,6 +187,7 @@ class Account(models.Model):
             return lst
 
     # Transfer funds between accounts
+    #################################
     def transfer_fund(self):
 
         if self.exchange.ccxt == 'okex':
@@ -166,14 +195,19 @@ class Account(models.Model):
             okex.transfer_funds(self)
 
     # Return True if fund account was created in the last 5 minutes
+    ###############################################################
     def is_fund_updated(self):
+
         return True if (timezone.now() - self.fund.latest('dt_create').dt_create).seconds < 60 * 5 else False
 
     # Return True if position has been updated recently
+    ###################################################
     def is_positions_updated(self):
+
         return True if all([position.is_updated() for position in self.position.all()]) else False
 
     # Return True if account exchange is compatible with strategy
+    #############################################################
     def is_compatible(self):
 
         # Fire an exception if one currency from the strategy isn't available on exchange
@@ -203,9 +237,9 @@ class Account(models.Model):
         return True
 
     # Create/update an order object with response returned by exchange
+    ##################################################################
     def order_create_update(self, response, tp=None):
 
-        # create search arguments
         market = Market.objects.get(exchange=self.exchange, type=tp, symbol=response['symbol'])
         args = dict(account=self, market=market, orderId=response['id'])
 
@@ -235,6 +269,7 @@ class Account(models.Model):
             log.info('Order object updated', orderId=object.orderId)
 
     # Create an order object (to open, add, remove or close a position)
+    ###################################################################
     def order_create(self, market, market_type, type, side, size):
 
         from trading.methods import format_decimal
@@ -264,9 +299,9 @@ class Account(models.Model):
         Order.objects.create(**defaults)
 
     # Create, delete or update a position object
+    ############################################
     def create_update_delete_position(self, market, defaults):
 
-        # select side and size
         side = defaults['side']
         size = defaults['size']
 
@@ -365,7 +400,7 @@ class Position(models.Model):
         verbose_name_plural = "Positions"
 
     def __str__(self):
-        return self.market.symbol
+        return self.exchange.exid
 
     # Return margin ratio
     def get_margin_ratio(self):

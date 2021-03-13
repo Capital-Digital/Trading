@@ -79,11 +79,10 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('dt', 'account', 'exchange', 'type', 'currency', 'get_total', 'get_used', 'get_free')
+    list_display = ('dt', 'account', 'exchange', 'currency', 'get_total', 'get_used', 'get_free')
     readonly_fields = ('account', 'exchange', 'currency', 'total', 'free', 'dt_create',
                        'response', 'dt')
     list_filter = (
-        'type',
         ('account', admin.RelatedOnlyFieldListFilter),
         ('currency', admin.RelatedOnlyFieldListFilter)
     )
@@ -162,7 +161,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Position)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'exchange', 'market', 'get_type', 'get_side', 'last', 'liquidation_price', 'size',
+    list_display = ('account', 'exchange', 'market', 'get_side', 'last', 'liquidation_price', 'size',
                     'size_available', 'value_usd', 'sub_account_equity', 'margin_ratio',
                     'entry_price', 'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
                     'leverage', 'dt_update',)
@@ -176,11 +175,6 @@ class CustomerAdmin(admin.ModelAdmin):
         ('account', admin.RelatedOnlyFieldListFilter),
         ('market', admin.RelatedOnlyFieldListFilter)
     )
-
-    def get_type(self, obj):
-        return obj.market.type
-
-    get_type.short_description = 'Type'
 
     def get_side(self, obj):
         return True if obj.side == 'buy' else False

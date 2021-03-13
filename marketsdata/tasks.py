@@ -341,31 +341,31 @@ def update_markets_prices_execute_strategies(self):
 
         # Create a list of chains
         chains = [chain(update_market_prices.s(exid), tasks.run_strategies.s(exid)) for exid in exchanges_w_strat]
-        gp = group(*chains).delay()
+        result = group(*chains).delay()
 
         # start by updating exchanges with a strategy
         # gp1 = group(update_market_prices.s(exid) for exid in exchanges_w_strat).delay()
 
-        while not gp.ready():
+        while not result.ready():
             time.sleep(0.5)
 
-        if gp.successful():
+        if result.successful():
             log.info('Markets and strategies update complete')
 
-            # then exchanges without strategy
-            ex2 = group([update_market_prices.s(exid) for exid in exchanges_wo_strat]).delay()
+            # Then update the rest of our exchanges
+            result = group([update_market_prices.s(exid) for exid in exchanges_wo_strat]).delay()
 
-            while not ex2.ready():
+            while not result.ready():
                 time.sleep(0.5)
 
-            if ex2.successful():
-                log.info('Markets and strategies update complete')
+            if result.successful():
+                log.info('Rest of exchanges update complete')
 
             else:
-                log.error('Update exchanges_wo_strat failed :(')
+                log.error('Rest of exchanges update failed')
 
         else:
-            log.error('Markets and strategies update failed :(')
+            log.error('Markets and strategies update failed')
 
     else:
         log.info('There is no strategy in production. Update prices')
@@ -772,17 +772,23 @@ def update_market_prices(self, exid):
     log.info('Update prices complete')
 
 
-# Fetch order book every x seconds
 # @shared_task(bind=True, name='fetch_order_book', base=BaseTaskWithRetry)
 def watch_order_books(self, exid):
+    #
+    # Fetch order book every x seconds
+    ##################################
+
     log.info('Fetch book for {0}'.format(exid))
     ob = OrderBook.objects.get(name='orderbook')
     ob.data = {}
     ob.save()
 
+    exchange = Exchange.objects.get(exid=exid)
+    accounts = exchange.get_trading_accounts()
+
     from trading import tasks
 
-    async def symbol_loop(client, symbol, tp):
+    async def symbol_loop(client, symbol, ccxt_type_options):
 
         while True:
             try:
@@ -818,12 +824,10 @@ def watch_order_books(self, exid):
                 # raise e  # uncomment to break all loops in case of an error in any one of them
                 break  # you can break just this one loop if it fails
 
-    async def exchange_loop(asyncio_loop, exid, tp=None):
-
-        exchange = Exchange.objects.get(exid=exid)
-        accounts = exchange.get_trading_accounts()
+    async def exchange_loop(asyncio_loop, exid, ccxt_type_options=None):
 
         if accounts.exists():
+
             # select bases actually in accounts
             ac_spot = [a.get_bases_spot() for a in accounts]
             ac_marg = [a.get_bases_margin() for a in accounts]
@@ -840,45 +844,52 @@ def watch_order_books(self, exid):
             al_marg_long = [a for a in al_marg_long if a]
             al_marg_shor = [a for a in al_marg_shor if a]
 
+            # Remove duplicate
             bases = [*ac_spot, *ac_marg, *al_spot, *al_marg_long, *al_marg_shor]
-
             from itertools import chain
             bases = set(list(chain(*bases)))
 
+            # Select all markets to watch (various quotes)
             markets = Market.objects.filter(exchange__exid=exid, base__in=bases)
             print([m.symbol for m in markets])
 
-        def get_symbols(exid, tp=None):
+        def get_symbols(exid, ccxt_type_options=None):
+
             exid = 'bitfinex2' if exid == 'bitfinex' else exid
-            markets = Market.objects.filter(exchange__exid=exid,
-                                            type=tp,
+
+            markets = Market.objects.filter(exchange=exchange,
+                                            ccxt_type_options=ccxt_type_options,
                                             candle__dt__gte=timezone.now() - timedelta(hours=6),
                                             active=True)
+
             markets = markets.annotate(candle_vol=models.Sum('candle__vo_avg')).order_by('-candle_vol')[:10]
             symbols = list(markets.values_list('symbol', flat=True))
-
             return symbols
 
-        client = getattr(ccxtpro, exid)({
-            'enableRateLimit': True,
-            'asyncio_loop': asyncio_loop,
-        })
-        if tp:
-            client.options['defaultType'] = tp
+        # Initialize and configure client
+        client = exchange.get_ccxt_client_pro()
+        client.enableRateLimit = True
+        client.asyncio_loop = asyncio_loop
 
-        loops = [symbol_loop(client, symbol, tp) for symbol in get_symbols(exid, tp=tp)]
+        if ccxt_type_options:
+            client.options['defaultType'] = ccxt_type_options
+
+        loops = [symbol_loop(client, symbol, ccxt_type_options)
+                 for symbol in get_symbols(exid, ccxt_type_options=ccxt_type_options)]
+
         await asyncio.gather(*loops)
         await client.close()
 
     async def main(asyncio_loop):
 
-        # select types
-        types = list(set(Market.objects.filter(exchange__exid=exid).values_list('type', flat=True)))
+        # select available defaultType
+        defaultTypes = exchange.get_market_ccxt_type_options()
 
-        if types:
-            loops = [exchange_loop(asyncio_loop, exid, tp) for tp in types]
+        if defaultTypes:
+            loops = [exchange_loop(asyncio_loop, exid, ccxt_type_options) for ccxt_type_options in defaultTypes]
         else:
             loops = [exchange_loop(asyncio_loop, exid)]
+
         await asyncio.gather(*loops)
 
     asyncio_loop = asyncio.get_event_loop()  # new_event_loop

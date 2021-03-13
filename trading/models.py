@@ -76,9 +76,9 @@ class Account(models.Model):
         ###############################################################################
 
         if self.strategy.margin:
-            if self.exchange.ccxt == 'binance':
+            if self.exchange.exid == 'binance':
 
-                client = self.exchange.get_client(self)
+                client = self.exchange.get_ccxt_client(self)
                 if self.margin_preference == 'swap':
                     mode = client.fapiPrivateGetPositionSideDual()['dualSidePosition']
                 elif self.margin_preference == 'future':
@@ -86,7 +86,7 @@ class Account(models.Model):
                 self.position_mode = 'dual' if mode else False
                 self.save()
 
-            elif self.exchange.ccxt == 'okex':
+            elif self.exchange.exid == 'okex':
 
                 self.position_mode = 'hedge'
                 self.save()
@@ -190,7 +190,7 @@ class Account(models.Model):
     #################################
     def transfer_fund(self):
 
-        if self.exchange.ccxt == 'okex':
+        if self.exchange.exid == 'okex':
             from . import okex
             okex.transfer_funds(self)
 
@@ -225,7 +225,7 @@ class Account(models.Model):
                     mk = 'future market' if margin else 'spot market'
                     raise SettingError('{1} {0} is not available on {2}'.format(mk,
                                                                                         base,
-                                                                                        self.exchange.ccxt))
+                                                                                        self.exchange.exid))
                 except MultipleObjectsReturned:
                     pass
 
@@ -337,12 +337,9 @@ class Fund(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='funds', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
-    currency = models.ForeignKey(Currency, on_delete=models.SET_NULL, related_name='funds', null=True)
-    type = models.CharField(max_length=20, null=True, blank=True)
-    free, total, used, margin = [models.FloatField(null=True) for i in range(4)]
-    response = JSONField(null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
+    balance, total, free, used = [JSONField(null=True) for i in range(4)]
 
     class Meta:
         verbose_name_plural = "Funds"

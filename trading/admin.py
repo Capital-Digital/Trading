@@ -1,9 +1,14 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
 from trading.models import Account, Fund, Position, Order
-from trading.tasks import orders_fetch_all_open
+from trading.tasks import *
 import structlog
 from django.contrib.admin import SimpleListFilter
+from django.contrib.postgres.fields import JSONField
+from prettyjson import PrettyJSONWidget
+import json
+from pygments import highlight, formatters, lexers
+from django.utils.safestring import mark_safe
 
 log = structlog.get_logger(__name__)
 
@@ -12,10 +17,10 @@ log = structlog.get_logger(__name__)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'exchange',  'trading', 'valid_credentials', 'spot_preference', 'contract_preference',
                     'contract_margin',
-                    'strategy', 'get_fund',
-                    'get_limit_price_tolerance', 'limit_order','updated_at',)
+                    'strategy', 'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'position_mode')
-    actions = ['set_credentials', 'get_position_mode', 'create_fund', 'refresh_orders', 'refresh_positions',
+    actions = ['set_credentials', 'get_position_mode', 'create_fund_and_positions', 'refresh_orders',
+               'refresh_positions',
                'update_allocation', 'fetch_all_open_orders']
     save_as = True
     save_on_top = True
@@ -52,11 +57,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
     refresh_orders.short_description = "Refresh orders"
 
-    def create_fund(self, request, queryset):
+    def create_fund_and_positions(self, request, queryset):
         for account in queryset:
-            created = account.create_fund()
+            create_fund_and_positions(account)
 
-    create_fund.short_description = "Create fund"
+    create_fund_and_positions.short_description = "Create fund and positions"
 
     def refresh_positions(self, request, queryset):
         for account in queryset:
@@ -79,31 +84,17 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('dt', 'account', 'exchange', 'currency', 'get_total', 'get_used', 'get_free')
-    readonly_fields = ('account', 'exchange', 'currency', 'total', 'free', 'dt_create',
-                       'response', 'dt')
+    list_display = ('dt', 'account', 'exchange', 'get_balance', )
+    readonly_fields = ('account', 'exchange', 'balance', 'dt_create', 'dt', 'total', 'free', 'used', )
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
-        ('currency', admin.RelatedOnlyFieldListFilter)
+        ('exchange', admin.RelatedOnlyFieldListFilter)
     )
 
-    def get_free(self, obj):
-        return round(obj.free, 2)
+    def get_balance(self, obj):
+        return f'{int(round(sum([v for k, v in obj.balance.items()]), 2)):n}'
 
-    get_free.short_description = 'Free'
-
-    def get_total(self, obj):
-        return round(obj.total, 2)
-
-    get_total.short_description = 'Total'
-
-    def get_used(self, obj):
-        if obj.used:
-            return round(obj.used, 2)
-        else:
-            return None
-
-    get_used.short_description = 'Used'
+    get_balance.short_description = 'Balance'
 
 
 @admin.register(Order)

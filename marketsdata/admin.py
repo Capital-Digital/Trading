@@ -1,12 +1,12 @@
 from django.contrib import admin
 from datetime import timedelta
-from django.contrib.postgres.fields import JSONField
 from .models import Exchange, Market, Candle, Currency, CurrencyType, OrderBook
 import structlog
 import locale
 from celery import chain, group, shared_task
 from marketsdata import tasks
 import time
+from django.contrib.postgres.fields import JSONField
 from prettyjson import PrettyJSONWidget
 import json
 from pygments import highlight, formatters, lexers

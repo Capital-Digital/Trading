@@ -45,7 +45,7 @@ def order_place(account, tp, args):
         clientOrderId = args['params']['newClientOrderId']
 
         account = Account.objects.get(name=account)
-        client = account.exchange.get_client(account)
+        client = account.exchange.get_ccxt_client(account)
         market = Market.objects.get(exchange=account.exchange, type=tp, symbol=symbol)
         order = Order.objects.get(clientOrderId=clientOrderId)
 
@@ -53,7 +53,7 @@ def order_place(account, tp, args):
             client.options['defaultType'] = market.type
 
         # Specific to OKEx
-        # if order.account.exchange.ccxt == 'okex':
+        # if order.account.exchange.exid == 'okex':
         #     # Set params
         #     if order.account.limit_order:
         #         args['params'] = {'order_type': '0'}
@@ -69,12 +69,12 @@ def order_place(account, tp, args):
                 args['price'] = 0
                 response = client.create_order(**args)
             else:
-                raise MethodUnsupported('Limit order not supported with'.format(account.exchange.ccxt))
+                raise MethodUnsupported('Limit order not supported with'.format(account.exchange.exid))
         else:
             if account.exchange.has['createMarketOrder']:
                 response = client.create_order(**args)
             else:
-                raise MethodUnsupported('Market order not supported with'.format(account.exchange.ccxt))
+                raise MethodUnsupported('Market order not supported with'.format(account.exchange.exid))
 
     except ccxt.ExchangeError as e:
         log.exception('Error when placing an order: {0}'.format(e), args=args)
@@ -82,7 +82,7 @@ def order_place(account, tp, args):
         log.exception('Exception when placing an order: {0}'.format(e), args=args)
     else:
 
-        # if account.exchange.ccxt == 'okex':
+        # if account.exchange.exid == 'okex':
         #     if response['info']['error_code'] == '0':
         #         order.refresh()
         #     else:
@@ -124,8 +124,8 @@ def orders_fetch_symbols(account, symbols, tp):
 
     if account.exchange.has['fetchOrders']:
 
-        log.bind(account=account.name, exchange=account.exchange.ccxt)
-        client = account.exchange.get_client(account)
+        log.bind(account=account.name, exchange=account.exchange.exid)
+        client = account.exchange.get_ccxt_client(account)
 
         # set market type
         if 'defaultType' in client.options:
@@ -139,7 +139,7 @@ def orders_fetch_symbols(account, symbols, tp):
             since = max(client.parse8601(account.created_at), account.get_latest_order_dt)
             response = client.fetch_orders(symbol, since)
 
-            if account.exchange.ccxt == 'binance':
+            if account.exchange.exid == 'binance':
                 account.exchange.credit[int(timezone.now().timestamp())] = 1
                 account.exchange.save()
 
@@ -157,10 +157,10 @@ def orders_fetch_all_open(account):
 
     if account.exchange.has['fetchOpenOrders']:
 
-        log.bind(account=account.name, exchange=account.exchange.ccxt)
-        client = account.exchange.get_client(account=account)
+        log.bind(account=account.name, exchange=account.exchange.exid)
+        client = account.exchange.get_ccxt_client(account=account)
 
-        if account.exchange.ccxt == 'binance':
+        if account.exchange.exid == 'binance':
             client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
         def fetch_orders(tp=None):
@@ -171,7 +171,7 @@ def orders_fetch_all_open(account):
             client.load_markets(reload=True)
             response = client.fetchOpenOrders()
 
-            if account.exchange.ccxt == 'binance':
+            if account.exchange.exid == 'binance':
                 account.exchange.credit[int(timezone.now().timestamp())] = 40
                 account.exchange.save()
 
@@ -187,7 +187,7 @@ def orders_fetch_all_open(account):
             fetch_orders()
 
     else:
-        raise MethodUnsupported('Method fetchOpenOrders not supported for exchange'.format(account.exchange.ccxt))
+        raise MethodUnsupported('Method fetchOpenOrders not supported for exchange'.format(account.exchange.exid))
 
 
 # Fetch an orderId (reload = True)
@@ -201,13 +201,13 @@ def order_fetch_id(account, orderid):
     # check if market is active
     if not order.market.active:
         raise TradingError('Cannot fetch order {0} market {1} on {2} is inactive'
-                           .format(orderid, order.market.symbol, order.market.exchange.ccxt))
+                           .format(orderid, order.market.symbol, order.market.exchange.exid))
 
     # check order status
     if order.status != 'open':
         raise TradingError('Cannot fetch order {0} with status {1}'.format(orderid, order.status))
 
-    client = account.exchange.get_client(account)
+    client = account.exchange.get_ccxt_client(account)
 
     # set client options
     if 'defaultType' in client.options:
@@ -216,10 +216,10 @@ def order_fetch_id(account, orderid):
     # check if method is supported
     if not account.exchange.has['fetchOrder']:
         raise TradingError('Cannot fetch order {0} method fetchOrder() is not supported by {1}'
-                           .format(orderid, order.market.exchange.ccxt))
+                           .format(orderid, order.market.exchange.exid))
 
     params = None
-    if account.exchange.ccxt == 'okex':
+    if account.exchange.exid == 'okex':
         params = dict(instrument_id=order.market.info['instrument_id'],
                       order_id=orderid)
 
@@ -228,7 +228,7 @@ def order_fetch_id(account, orderid):
     client.load_markets(True)
     response = client.fetchOrder(id=orderid, symbol=order.market.symbol, params=params)
 
-    if account.exchange.ccxt == 'binance':
+    if account.exchange.exid == 'binance':
         account.exchange.credit[int(timezone.now().timestamp())] = 1
         account.exchange.save()
 
@@ -256,13 +256,13 @@ def orders_fetch_id(account, tp):
         # check if market is active
         if not order.market.active:
             raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                               .format(order.orderId, order.market.symbol, order.market.exchange.ccxt, order.market.type))
+                               .format(order.orderId, order.market.symbol, order.market.exchange.exid, order.market.type))
 
         # check order status
         if order.status != 'open':
             raise TradingError('Cannot fetch order {0} with status {1}'.format(order.orderId, order.status))
 
-        client = account.exchange.get_client(account)
+        client = account.exchange.get_ccxt_client(account)
 
         # set client options
         if 'defaultType' in client.options:
@@ -271,10 +271,10 @@ def orders_fetch_id(account, tp):
         # check if method is supported
         if not account.exchange.has['fetchOrder']:
             raise TradingError('Cannot fetch order {0} method fetchOrder() is not supported by {1}'
-                               .format(order.orderId, order.market.exchange.ccxt))
+                               .format(order.orderId, order.market.exchange.exid))
 
         params = None
-        if account.exchange.ccxt == 'okex':
+        if account.exchange.exid == 'okex':
             params = dict(instrument_id=order.market.info['instrument_id'],
                           order_id=order.orderId)
 
@@ -295,14 +295,14 @@ def order_cancel_pending(account, orderid):
     # check if market is active
     if not order.market.active:
         raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                           .format(orderid, order.market.symbol, order.market.exchange.ccxt, order.market.type))
+                           .format(orderid, order.market.symbol, order.market.exchange.exid, order.market.type))
 
     # check order status
     if order.status != 'open':
         raise TradingError('Cannot fetch order {0} with status {1}'.format(orderid, order.status))
 
     log.info('Cancel order', id=order.orderId)
-    client = account.exchange.get_client(account)
+    client = account.exchange.get_ccxt_client(account)
 
     # set market type
     if 'defaultType' in client.options:
@@ -312,7 +312,7 @@ def order_cancel_pending(account, orderid):
     client.load_markets(True)
     client.cancel_order(id=order.orderId, symbol=order.market.symbol)
 
-    if account.exchange.ccxt == 'binance':
+    if account.exchange.exid == 'binance':
         account.exchange.credit[int(timezone.now().timestamp())] = 1
         account.exchange.save()
 
@@ -334,14 +334,14 @@ def orders_cancel_pending(account, tp):
             # check if market is active
             if not order.market.active:
                 raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                                   .format(order.orderId, order.market.symbol, order.market.exchange.ccxt, order.market.type))
+                                   .format(order.orderId, order.market.symbol, order.market.exchange.exid, order.market.type))
 
             # check order status
             if order.status != 'open':
                 raise TradingError('Cannot fetch order {0} with status {1}'.format(order.orderId, order.status))
 
             log.info('Cancel order', id=order.orderId)
-            client = account.exchange.get_client(account)
+            client = account.exchange.get_ccxt_client(account)
 
             # set market type
             if 'defaultType' in client.options:
@@ -351,7 +351,7 @@ def orders_cancel_pending(account, tp):
             client.load_markets(True)
             client.cancel_order(id=order.orderId, symbol=order.market.symbol)
 
-            if account.exchange.ccxt == 'binance':
+            if account.exchange.exid == 'binance':
                 account.exchange.credit[int(timezone.now().timestamp())] = 1
                 account.exchange.save()
 
@@ -359,8 +359,9 @@ def orders_cancel_pending(account, tp):
 
 
 # Fetch balance and create fund object
-#@shared_task(name='account_fund_create', base=BaseTaskWithRetry)
-def create_fund(account):
+# @shared_task(name='account_fund_create') #, base=BaseTaskWithRetry)
+def create_fund_and_positions(account):
+
     log.bind(account=account)
     account = Account.objects.get(name=account)
 
@@ -370,76 +371,101 @@ def create_fund(account):
     # add 1h because the balance is fetched at :59
     dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
 
-    # insert one object per currency
-    def insert(response):
-        total = [[code, value] for code, value in response['total'].items() if value > 0]
-        for fund in total:
-            code = fund[0]
-            qty = fund[1]
+    total = dict()
+    free = dict()
+    used = dict()
 
-            kwargs = dict(
-                account=account,
-                exchange=account.exchange,
-                total=qty,
-                used=response['used'][code],
-                free=response['free'][code],
-                type=tp,
-                response=response['info'],
-                currency=Currency.objects.get(code=code),
-                dt=dt
-            )
-            try:
-                Fund.objects.get(account=account,
-                                 exchange=account.exchange,
-                                 currency=Currency.objects.get(code=code),
-                                 type=tp,
-                                 dt=dt)
+    # Create fund
+    def create_dict(response):
 
-            except ObjectDoesNotExist:
-                Fund.objects.create(**kwargs)
+        # Select total, free and used currencies
+        try:
+            total = [dict(code=k, quantity=v) for k, v in response['total'].items() if v > 0]
+        except KeyError:
+            raise Exception('Empty account')
+        else:
+            total_code = [k['code'] for k in total]
 
-    # replace dictionary keys for OKEX swap response
-    def okex_keys(response):
-        for dic in ['total', 'used', 'free']:
+            free = [dict(code=k, quantity=v) for k, v in response['free'].items() if k in total_code]
+            used = [dict(code=k, quantity=v) for k, v in response['used'].items() if k in total_code]
 
-            # sum swap accounts USDT marginated
-            usdt = sum([response[dic][key] for key, value in response[dic].items() if '-USDT' in key])
+            return dict(total=total, used=used, free=free)
 
-            # select keys with value > 0
-            usdt_k = [key for key, value in response[dic].items() if '-USDT' in key and value > 0]
-            usd_k = [key for key, value in response[dic].items() if '-USD-' in key and value > 0]
+    def create_fund(total, free, used):
 
-            # clean dictionary
-            for key in list(response[dic]):
-                if '-USDT' in key:
-                    del response[dic][key]
-                elif '-USD-' in key:
-                    response[dic][key.replace('-USD-SWAP', '')] = response[dic].pop(key)
+        kwargs = dict(
+            account=account,
+            exchange=account.exchange,
+            balance=calculate_balance(total),
+            total=total,
+            used=used,
+            free=free,
+            dt=dt
+        )
+        try:
+            Fund.objects.get(account=account,
+                             exchange=account.exchange,
+                             dt=dt
+                             )
 
-            # create new key for USDT
-            response[dic]['USDT'] = usdt
+        except ObjectDoesNotExist:
+            Fund.objects.create(**kwargs)
 
-        # select exchange info for swap accounts
-        usdt_info = [d for d in response['info']['info'] if d['instrument_id'] in usdt_k]
-        usd_info = [d for d in response['info']['info'] if d['instrument_id'] in usd_k]
+    def calculate_balance(total):
 
-        # rewrite info
-        response['info'] = usdt_info + usd_info
+        balance = dict()
 
-        return response
+        for k, v in total.items():
+            bal = []
+            for t in v:
+                if t['code'] != account.exchange.dollar_currency:
+                    try:
+                        m = Market.objects.get(exchange=account.exchange, base__code=t['code'],
+                                               quote__code=account.exchange.dollar_currency, type='spot')
+                    except Exception:
+                        log.error('Unable to select market', base=t['code'], quote=account.exchange.dollar_currency)
+                    else:
+                        price = m.get_candle_price_last()
+                else:
+                    price = 1
+                bal.append(price * t['quantity'])
 
-    if 'defaultType' in client.options:
-        for tp in client.get_market_types():
-            print(tp)
-            client.options['defaultType'] = tp
-            client.load_markets(True)
+            balance[k] = sum(bal)
+
+        return balance
+
+    def create_positions(response):
+        pass
+
+    if account.exchange.supported_market_types:
+
+        for ccxt_type_options in account.exchange.get_market_ccxt_type_options():
+            log.bind(ccxt_type_options=ccxt_type_options)
+
+            client.options['defaultType'] = ccxt_type_options
             response = client.fetchBalance()
-            if account.exchange.ccxt == 'okex' and tp == 'swap':
-                response = okex_keys(response)
-            insert(response)
+
+            funds = create_dict(response)
+
+            total[ccxt_type_options] = funds['total']
+            free[ccxt_type_options] = funds['free']
+            used[ccxt_type_options] = funds['used']
+
+        create_fund(total, free, used)
+        create_positions(response)
+
     else:
         response = client.fetchBalance()
-        insert(response)
+
+        pprint(response)
+        funds = create_dict(response)
+
+        total['default_account'] = funds['total']
+        free['default_account'] = funds['free']
+        used['default_account'] = funds['used']
+
+        create_fund(total, free, used)
+        create_positions(response)
 
 
 # Create or update future and swap open positions
@@ -449,9 +475,9 @@ def fetch_positions(account):
     account = Account.objects.get(name=account)
 
     log.info('Fetch position')
-    client = account.exchange.get_client(account)
+    client = account.exchange.get_ccxt_client(account)
 
-    if account.exchange.ccxt == 'okex':
+    if account.exchange.exid == 'okex':
         if not account.strategy.margin:
             return
 
@@ -524,7 +550,7 @@ def fetch_positions(account):
 
                     account.create_update_delete_position(market, dic)
 
-    if account.exchange.ccxt == 'binance':
+    if account.exchange.exid == 'binance':
         if not account.strategy.margin:
             return
 
@@ -616,7 +642,7 @@ def trade(account):
     # Check exchange
     if not account.exchange.is_active():
         raise TradingError(
-            'Exchange {1} of account {0} is inactive'.format(account.name, account.exchange.ccxt))
+            'Exchange {1} of account {0} is inactive'.format(account.name, account.exchange.exid))
 
     # Fire an exception if account is not compatible with the strategy
     account.is_compatible()
@@ -1102,7 +1128,7 @@ def trade_ws_account(self, account):
 
     async def create_client(loop, tp):
 
-        client = getattr(ccxtpro, exchange.ccxt)({'enableRateLimit': True,
+        client = getattr(ccxtpro, exchange.exid)({'enableRateLimit': True,
                                                   'asyncio_loop': loop, })
         client.apiKey = account.api_key
         client.secret = account.api_secret

@@ -16,6 +16,7 @@ class Exchange(models.Model):
     objects = models.Manager()
     exid = models.CharField(max_length=12, blank=True, null=True)
     supported_market_types = models.CharField(max_length=50, blank=True, null=True)
+    dollar_currency = models.CharField(max_length=4, blank=False, null=True)
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
     api, countries, urls, has, timeframes, credentials, options = [JSONField(blank=True, null=True) for i in range(7)]
     timeout = models.IntegerField(default=30000)

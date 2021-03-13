@@ -340,7 +340,7 @@ def update_markets_prices_execute_strategies(self):
     if exchanges_w_strat:
 
         # Create a list of chains
-        chains = [chain(update_market_prices.s(exid), tasks.run_strategies.s(exid)) for exid in exchanges_w_strat]
+        chains = [chain(update_market_prices.s(exid), tasks.run_strategies.si(exid)) for exid in exchanges_w_strat]
         result = group(*chains).delay()
 
         # start by updating exchanges with a strategy

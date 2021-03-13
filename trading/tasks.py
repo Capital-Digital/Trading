@@ -365,7 +365,8 @@ def create_fund(account):
     account = Account.objects.get(name=account)
 
     log.info('Fetch balance')
-    client = account.exchange.get_client(account)
+    client = account.exchange.get_ccxt_client(account)
+
     # add 1h because the balance is fetched at :59
     dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
 

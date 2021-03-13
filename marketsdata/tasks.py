@@ -340,8 +340,7 @@ def update_markets_prices_execute_strategies(self):
     if exchanges_w_strat:
 
         # Create a list of chains
-        # chains = [chain(update_market_prices.s(exid), tasks.run_strategies.s(exid)) for exid in exchanges_w_strat]
-        chains = [update_market_prices.s(exid) for exid in exchanges]
+        chains = [chain(update_market_prices.s(exid), tasks.run_strategies.s(exid)) for exid in exchanges_w_strat]
         gp = group(*chains).delay()
 
         # start by updating exchanges with a strategy
@@ -351,12 +350,20 @@ def update_markets_prices_execute_strategies(self):
             time.sleep(0.5)
 
         if gp.successful():
-
             log.info('Markets and strategies update complete')
 
-            # tasks.run_strategies()
             # then exchanges without strategy
-            # ex2 = group([update_market_prices.s(exid) for exid in exchanges_wo_strat]).delay()
+            ex2 = group([update_market_prices.s(exid) for exid in exchanges_wo_strat]).delay()
+
+            while not ex2.ready():
+                time.sleep(0.5)
+
+            if ex2.successful():
+                log.info('Markets and strategies update complete')
+
+            else:
+                log.error('Update exchanges_wo_strat failed :(')
+
         else:
             log.error('Markets and strategies update failed :(')
 

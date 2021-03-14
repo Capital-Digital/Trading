@@ -458,7 +458,6 @@ def create_fund(account):
             client.options['defaultType'] = default_type
 
             if account.exchange.has_credit(default_type):
-
                 response = client.fetchBalance()
                 account.exchange.update_credit('fetchBalance', default_type)
 
@@ -474,7 +473,6 @@ def create_fund(account):
     else:
 
         if account.exchange.has_credit():
-
             response = client.fetchBalance()
             account.exchange.update_credit('fetchBalance')
 
@@ -488,164 +486,246 @@ def create_fund(account):
             create_fund(total, free, used, derivative)
 
 
-# Create or update future and swap open positions
+# Create, update or delete objects
 # @shared_task(name='account_position_refresh', base=BaseTaskWithRetry)
-def fetch_positions(account):
+def update_positions(account):
     log.bind(account=account)
     account = Account.objects.get(name=account)
 
-    log.info('Fetch position')
-    client = account.exchange.get_ccxt_client(account)
+    if account.type == 'derivative':
 
-    if account.exchange.exid == 'okex':
-        if not account.strategy.margin:
-            return
+        log.info('Fetch position')
+        client = account.exchange.get_ccxt_client(account)
 
-        # select all bases from strategy and select markets
-        bases = list(
-            chain([s.get_markets().values_list('base', flat=True) for s in account.strategy.sub_strategies.all()]))
-        markets = Market.objects.filter(exchange=account.exchange, base__in=bases)
+        # Create/update object of an open position
+        def update(market, defaults):
 
-        if account.contract_preference == 0:  # swap
+            # create search arguments
+            args = dict(exchange=account.exchange, account=account, market=market)
 
-            # loop through markets we can possibly trade
-            for market in markets.filter(type='swap'):
+            try:
+                Position.objects.get(**args)
 
-                params = dict(instrument_id=market.info['instrument_id'])
-                response = client.swap_get_instrument_id_position(params)
-                for p in response['holding']:
-                    if p['last']:
-                        defaults = dict(
+            except Position.DoesNotExist:
+                args.update(defaults)
+                Position.objects.create(**args)
+                log.info('Position object created for {0}'.format(market.symbol))
+
+            else:
+                Position.objects.update_or_create(**args, defaults=defaults)
+                log.info('Position object updated for {0}'.format(market.symbol))
+
+        # Delete object of a closed position
+        def delete(position):
+
+            try:
+                obj = Position.objects.get(account=account,
+                                           exchange=account.exchange,
+                                           market__type=account.type,
+                                           market__derivative=account.derivative,
+                                           market__response__id=position['symbol']
+                                           )
+
+            except ObjectDoesNotExist:
+                pass
+
+            else:
+                obj.delete()
+                log.info('Position objet deleted for {0}'.format(position['symbol']))
+
+        if account.exchange.exid == 'okex':
+            if not account.strategy.margin:
+                return
+
+            # select all bases from strategy and select markets
+            bases = list(
+                chain([s.get_markets().values_list('base', flat=True) for s in account.strategy.sub_strategies.all()]))
+            markets = Market.objects.filter(exchange=account.exchange, base__in=bases)
+
+            if account.contract_preference == 0:  # swap
+
+                # loop through markets we can possibly trade
+                for market in markets.filter(type='swap'):
+
+                    params = dict(instrument_id=market.info['instrument_id'])
+                    response = client.swap_get_instrument_id_position(params)
+                    for p in response['holding']:
+                        if p['last']:
+                            defaults = dict(
+                                last=float(p['last']),
+                                liquidation_price=float(p['liquidation_price']),
+                                instrument_id=p['instrument_id'],
+                                response=p,
+                                leverage=p['leverage'],
+                                size_available=p['avail_position'],
+                                size=float(p['position']),
+                                side='buy' if p['side'] == 'long' else 'sell',
+                                margin_mode=response['margin_mode'],
+                                entry_price=float(p['avg_cost']),
+                                margin_maint_ratio=float(p['maint_margin_ratio']),
+                                realized_pnl=float(p['realized_pnl']),
+                                unrealized_pnl=float(p['unrealized_pnl']),
+                                created_at=timezone.make_aware(
+                                    datetime.strptime(p['timestamp'], datetime_directives_std))
+                            )
+                            account.create_update_delete_position(market, defaults)
+
+            elif account.contract_preference == 1:  # future w. delivery
+
+                # loop through markets we can possibly trade
+                for market in markets.filter(type='futures'):
+                    params = dict(instrument_id=market.info['instrument_id'])
+                    response = client.futures_get_instrument_id_position(params)
+
+                    for p in response['holding']:
+                        dic = dict(
                             last=float(p['last']),
                             liquidation_price=float(p['liquidation_price']),
                             instrument_id=p['instrument_id'],
                             response=p,
                             leverage=p['leverage'],
-                            size_available=p['avail_position'],
-                            size=float(p['position']),
-                            side='buy' if p['side'] == 'long' else 'sell',
-                            margin_mode=response['margin_mode'],
-                            entry_price=float(p['avg_cost']),
-                            margin_maint_ratio=float(p['maint_margin_ratio']),
-                            realized_pnl=float(p['realized_pnl']),
-                            unrealized_pnl=float(p['unrealized_pnl']),
-                            created_at=timezone.make_aware(
-                                datetime.strptime(p['timestamp'], datetime_directives_std))
+                            margin_mode=p['margin_mode'],
+                            realized_pnl=float(p['realised_pnl']),
+                            size_available=float(p['long_avail_qty']),
+                            size=float(p['long_qty']),
+                            entry_price=float(p['long_avg_cost']),
+                            margin=float(p['long_margin']),
+                            unrealized_pnl=float(p['long_unrealised_pnl']),
+                            side='buy',
+                            created_at=timezone.make_aware(datetime.strptime(p['created_at'], datetime_directives_std))
                         )
-                        account.create_update_delete_position(market, defaults)
+                        account.create_update_delete_position(market, dic)
 
-        elif account.contract_preference == 1:  # future w. delivery
+                        # insert short position
+                        dic['size_available'] = float(p['short_avail_qty'])
+                        dic['size'] = float(p['short_qty'])
+                        dic['entry_price'] = float(p['short_avg_cost'])
+                        dic['margin'] = float(p['short_margin'])
+                        dic['unrealized_pnl'] = float(p['short_unrealised_pnl'])
+                        dic['side'] = 'sell'
 
-            # loop through markets we can possibly trade
-            for market in markets.filter(type='futures'):
-                params = dict(instrument_id=market.info['instrument_id'])
-                response = client.futures_get_instrument_id_position(params)
+                        account.create_update_delete_position(market, dic)
 
-                for p in response['holding']:
-                    dic = dict(
-                        last=float(p['last']),
-                        liquidation_price=float(p['liquidation_price']),
-                        instrument_id=p['instrument_id'],
-                        response=p,
-                        leverage=p['leverage'],
-                        margin_mode=p['margin_mode'],
-                        realized_pnl=float(p['realised_pnl']),
-                        size_available=float(p['long_avail_qty']),
-                        size=float(p['long_qty']),
-                        entry_price=float(p['long_avg_cost']),
-                        margin=float(p['long_margin']),
-                        unrealized_pnl=float(p['long_unrealised_pnl']),
-                        side='buy',
-                        created_at=timezone.make_aware(datetime.strptime(p['created_at'], datetime_directives_std))
-                    )
-                    account.create_update_delete_position(market, dic)
+        if account.exchange.exid == 'binance':
 
-                    # insert short position
-                    dic['size_available'] = float(p['short_avail_qty'])
-                    dic['size'] = float(p['short_qty'])
-                    dic['entry_price'] = float(p['short_avg_cost'])
-                    dic['margin'] = float(p['short_margin'])
-                    dic['unrealized_pnl'] = float(p['short_unrealised_pnl'])
-                    dic['side'] = 'sell'
+            # fetch open positions in USD-margined contract
+            if account.margined.stable_coin:
 
-                    account.create_update_delete_position(market, dic)
+                if not account.exchange.has_credit():
+                    return
 
-    if account.exchange.exid == 'binance':
-        if not account.strategy.margin:
-            return
+                response = client.fapiPrivateGetPositionRisk()
+                account.exchange.update_credit('positionRisk', 'future')
 
-        # fetch all positions in USDT margined swap
-        if account.contract_preference == 0:  # swap
-            response = client.fapiPrivateGetPositionRisk()
-            for r in response:
+                # Select long and short positions
+                positions_open = [i for i in response if float(i['positionAmt']) != 0]
+                positions_close = [i for i in response if float(i['positionAmt']) == 0]
 
-                if 'USDT' in r['symbol']:
-                    symbol = r['symbol'].replace('USDT', '/USDT')
+                for position in positions_open:
 
-                # select market
-                try:
-                    market = Market.objects.get(exchange=account.exchange, type='future', symbol=symbol)
-                except ObjectDoesNotExist:
-                    log.error('Future market {0} is not created'.format(symbol))
-                    continue
-                else:
-                    size = float(r['positionAmt'])
-                    side = 'buy' if size > 0 else 'sell'
-                    size = abs(size)
+                    # Symbol returned is in the form ETHUSDT
+                    symbol = position['symbol'].replace('USDT', '/USDT')
 
-                    if size != 0:
+                    try:
+                        market = Market.objects.get(exchange=account.exchange,
+                                                    type='derivative',
+                                                    derivative='perpetual',
+                                                    symbol=symbol
+                                                    )
+
+                    except ObjectDoesNotExist:
+
+                        log.error('Unable to select {0} and update position'.format(symbol))
+                        continue
+
+                    else:
+
+                        size = float(position['positionAmt'])
+                        side = 'buy' if size > 0 else 'sell'
+                        size = abs(size)
+
+                        # calculate position value in USDT
+                        if side == 'buy':
+                            value = size * market.contract_value
+                        elif side == 'sell':
+                            value = -size * market.contract_value
+
                         defaults = dict(
                             size=size,
                             side=side,
-                            last=float(r['markPrice']),
-                            leverage=float(r['leverage']),
-                            entry_price=float(r['entryPrice']),
-                            unrealized_pnl=float(r['unRealizedProfit']),
-                            liquidation_price=float(r['liquidationPrice']),
-                            margin_mode=r['marginType'],
-                            response=r
+                            value_usd=round(value, 2),
+                            last=float(position['markPrice']),
+                            leverage=float(position['leverage']),
+                            entry_price=float(position['entryPrice']),
+                            unrealized_pnl=float(position['unRealizedProfit']),
+                            liquidation_price=float(position['liquidationPrice']),
+                            margin_mode=position['marginType'],
+                            response=position
                         )
-                        account.create_update_delete_position(market, defaults)
 
-        # fetch all positions in coin margined futures (perp, delivery)
-        elif account.contract_preference == 1:
-            log.error('Binance delivery future markets not supported created')
-            return
+                        update(market, defaults)
 
-            # response = client.dapiPrivateGetPositionRisk()
-            #
-            # for r in response:
-            #
-            #     if 'USDT' in r['symbol']:
-            #         symbol = r['symbol'].replace('USDT', '/USDT')
-            #
-            #     print(symbol)
-            #     # select market
-            #     try:
-            #         market = Market.objects.get(exchange=account.exchange, type='future', symbol=symbol)
-            #     except ObjectDoesNotExist:
-            #         log.error('Future market {0} is not created'.format(symbol))
-            #         continue
-            #     else:
-            #         size = float(r['positionAmt'])
-            #         side = 'buy' if size > 0 else 'sell'
-            #         size = abs(size)
-            #
-            #         if size != 0:
-            #
-            #             defaults = dict(
-            #                 size=size,
-            #                 side=side,
-            #                 last=float(r['markPrice']),
-            #                 leverage=float(r['leverage']),
-            #                 entry_price=float(r['entryPrice']),
-            #                 unrealized_pnl=float(r['unRealizedProfit']),
-            #                 liquidation_price=float(r['liquidationPrice']),
-            #                 margin_mode=r['marginType'],
-            #                 max_qty=r['maxQty'],  # defines the maximum quantity allowed
-            #                 response=r
-            #             )
-            #             account.create_update_delete_position(market, defaults)
+                for position in positions_close:
+                    delete(position)
+
+            # fetch all positions in coin margined products
+            if not account.margined.stable_coin:
+
+                if not account.exchange.has_credit():
+                    return
+
+                response = client.dapiPrivateGetPositionRisk()
+                account.exchange.update_credit('positionRisk', 'delivery')
+
+                # Select long and short open positions
+                positions_open = [i for i in response if float(i['positionAmt']) != 0]
+                positions_close = [i for i in response if float(i['positionAmt']) == 0]
+
+                # Create dictionary of open positions
+                for position in positions_open:
+
+                    try:
+                        market = Market.objects.get(exchange=account.exchange,
+                                                    type='derivative',
+                                                    response__id=position['symbol']
+                                                    )
+
+                    except ObjectDoesNotExist:
+
+                        log.error('Unable to select {0}'.format(position['symbol']))
+                        continue
+
+                    else:
+
+                        size = float(position['notionalValue'])
+                        side = 'buy' if size > 0 else 'sell'
+                        size = abs(size)
+
+                        # calculate position value in USDT
+                        if side == 'buy':
+                            value = size * market.contract_value * float(position['markPrice'])
+                        elif side == 'sell':
+                            value = -size * market.contract_value * float(position['markPrice'])
+
+                        defaults = dict(
+                            size=size,
+                            side=side,
+                            value_usd=round(value, 2),
+                            last=float(position['markPrice']),
+                            leverage=float(position['leverage']),
+                            entry_price=float(position['entryPrice']),
+                            unrealized_pnl=float(position['unRealizedProfit']),
+                            liquidation_price=float(position['liquidationPrice']),
+                            margin_mode=position['marginType'],
+                            max_qty=float(position['maxQty']),  # defines the maximum quantity allowed
+                            response=position
+                        )
+
+                        update(market, defaults)
+
+                # Delete object of closed positions
+                for position in positions_close:
+                    delete(position)
 
 
 # Trade with account

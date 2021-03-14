@@ -16,10 +16,9 @@ log = structlog.get_logger(__name__)
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'exchange',  'trading', 'valid_credentials', 'strategy', 'type', 'derivative',
-                    'margined',
-                    'get_limit_price_tolerance', 'limit_order','updated_at',)
+                    'margined', 'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'position_mode')
-    actions = ['set_credentials', 'get_position_mode', 'create_fund', 'refresh_orders', 'refresh_positions',
+    actions = ['set_credentials', 'get_position_mode', 'create_fund', 'refresh_orders', 'update_positions',
                'update_allocation', 'fetch_all_open_orders']
     save_as = True
     save_on_top = True
@@ -62,11 +61,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
     create_fund.short_description = "Create fund"
 
-    def refresh_positions(self, request, queryset):
+    def update_positions(self, request, queryset):
         for account in queryset:
-            account.refresh_positions()
+            account.update_positions()
 
-    refresh_positions.short_description = "Refresh positions"
+    update_positions.short_description = "Update positions"
 
     def update_allocation(self, request, queryset):
         for account in queryset:
@@ -155,10 +154,12 @@ class CustomerAdmin(admin.ModelAdmin):
                     'size_available', 'value_usd', 'sub_account_equity', 'margin_ratio',
                     'entry_price', 'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
                     'leverage', 'dt_update',)
-    readonly_fields = ('exchange', 'account', 'market', 'side', 'last', 'liquidation_price', 'size', 'size_available',
-                       'entry_price', 'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'response',
-                       'margin_mode', 'leverage', 'dt_update', 'dt_create', 'instrument_id', 'created_at', 'value_usd',
-                       'sub_account_equity', 'margin_ratio')
+    readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'value_usd', 'entry_price', 'last',
+                       'liquidation_price',
+                       'size_available',
+                       'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl',
+                       'margin_mode', 'leverage', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
+                       'sub_account_equity', 'margin_ratio', 'response', 'max_qty')
     actions = ['refresh_position', 'close_position']
     list_filter = (
         ('exchange', admin.RelatedOnlyFieldListFilter),

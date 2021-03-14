@@ -281,6 +281,10 @@ class Exchange(models.Model):
                     weight = 40
                     order = False
 
+                elif method == 'positionRisk':
+                    weight = 5
+                    order = False
+
             # Create new dictionary or append to an existing dictionary
             if default_type in credit:
                 credit[default_type][ts] = dict(weight=weight, order=order, method=method)

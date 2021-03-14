@@ -1,5 +1,5 @@
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 import structlog
 
 log = structlog.get_logger(__name__)
@@ -22,3 +22,9 @@ def get_datetime_now(delta=None, string=False):
         dt = dt.strftime("%Y-%m-%d %H:%M")
 
     return dt
+
+
+def get_timestamp_now():
+    dt = datetime.now()
+    utc_time = dt.replace(tzinfo=timezone.utc)
+    return utc_time.timestamp()

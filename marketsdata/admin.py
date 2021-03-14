@@ -18,12 +18,12 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Exchange)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'supported_market_types', 'get_status', "timeout", "rate_limit", "updated_at",
+    list_display = ('name', 'get_status', "timeout", "rate_limit", "updated_at",
                     'get_currencies', 'get_markets', 'get_markets_not_updated', 'get_markets_not_populated',
                     'precision_mode', 'start_date',
                     'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
-                       'urls', 'credit',
+                       'urls', 'rate_limits', 'credit', 'credit_max_reached',
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
@@ -197,13 +197,13 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
                     'margined', 'contract_value', 'contract_value_currency', )
-    readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'ccxt_type_options', 'derivative', 'active', 'quote',
+    readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'default_type', 'derivative', 'active', 'quote',
                        'base', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',
                        'taker', 'maker', 'response')
-    list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded', 'ccxt_type_options',
+    list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded', 'default_type',
                    ('quote', admin.RelatedOnlyFieldListFilter),
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )

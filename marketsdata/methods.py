@@ -82,9 +82,9 @@ def get_volume_quote_from_ticker(market, response):
 
     # Select volume 24h
     if exid == 'binance':
-        if market.ccxt_type_options in ['spot', 'future']:
+        if market.default_type in ['spot', 'future']:
             return float(response['quoteVolume'])
-        elif market.ccxt_type_options == 'delivery':
+        elif market.default_type == 'delivery':
             if 'baseVolume' in response['info']:
                 # Quote volume not reported by the COIN-margined api. baseVolume is string
                 return float(response['info']['baseVolume']) * response['last']
@@ -98,23 +98,23 @@ def get_volume_quote_from_ticker(market, response):
                     return float(response['info']['volume_24h'])
 
     elif exid == 'okex':
-        if market.ccxt_type_options == 'spot':
+        if market.default_type == 'spot':
             return float(response['info']['quote_volume_24h'])
-        elif market.ccxt_type_options == 'swap':
+        elif market.default_type == 'swap':
             if market.margined.code == 'USDT':
                 # volume_24h is the volume of contract priced in ETH
                 return float(response['info']['volume_24h']) * market.contract_value * response['last']
             else:
                 # volume_24h is the volume of contract priced in USD
                 return float(response['info']['volume_24h']) * market.contract_value
-        elif market.ccxt_type_options == 'futures':
+        elif market.default_type == 'futures':
             return float(response['info']['volume_token_24h']) * response['last']
 
     elif exid == 'ftx':
         return float(response['info']['volumeUsd24h'])
 
     elif exid == 'huobipro':
-        if not market.ccxt_type_options:
+        if not market.default_type:
             return float(response['info']['vol'])
 
     elif exid == 'bitmex':
@@ -383,3 +383,5 @@ def exclude(market):
     log.warning('Exclude {1} {0} market at {2}'.format(market.symbol, market.type, market.exchange.exid))
     market.excluded = True
     market.save()
+
+

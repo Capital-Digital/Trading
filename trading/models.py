@@ -22,9 +22,9 @@ class Account(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='account', blank=True, null=True)
     strategy = models.ForeignKey(Strategy, on_delete=models.SET_NULL, related_name='account', null=True)
-    spot_preference = models.CharField(max_length=20, choices=[('USDT', 'USDT'), ('BTC', 'BTC')], blank=True)
-    contract_preference = models.CharField(max_length=20, choices=[('perp', 'perpetual'), ('fut', 'delivery')], blank=True)
-    contract_margin = models.CharField(max_length=20, choices=[('USDT', 'USDT'), ('BTC', 'BTC'), ('coin', 'underlying asset')], blank=True)
+    type = models.CharField(max_length=20, choices=[('spot', 'spot'), ('derivative', 'derivative')], blank=True)
+    derivative = models.CharField(max_length=20, choices=[('perpetual', 'perpetual'), ('delivery', 'delivery')], blank=True)
+    margined = models.ForeignKey(Currency, on_delete=models.DO_NOTHING, related_name='account_margined', blank=True, null=True)
     limit_order, valid_credentials, trading = [models.BooleanField(null=True, default=None) for i in range(3)]
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)
     position_mode = models.CharField(max_length=20, choices=[('dual', 'dual'), ('hedge', 'hedge')], blank=True)
@@ -339,7 +339,7 @@ class Fund(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    balance, total, free, used = [JSONField(null=True) for i in range(4)]
+    balance, total, free, used, derivative = [JSONField(null=True) for i in range(5)]
 
     class Meta:
         verbose_name_plural = "Funds"

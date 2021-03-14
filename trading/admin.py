@@ -15,12 +15,11 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'exchange',  'trading', 'valid_credentials', 'spot_preference', 'contract_preference',
-                    'contract_margin',
-                    'strategy', 'get_limit_price_tolerance', 'limit_order','updated_at',)
+    list_display = ('name', 'exchange',  'trading', 'valid_credentials', 'strategy', 'type', 'derivative',
+                    'margined',
+                    'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'position_mode')
-    actions = ['set_credentials', 'get_position_mode', 'create_fund_and_positions', 'refresh_orders',
-               'refresh_positions',
+    actions = ['set_credentials', 'get_position_mode', 'create_fund', 'refresh_orders', 'refresh_positions',
                'update_allocation', 'fetch_all_open_orders']
     save_as = True
     save_on_top = True
@@ -57,11 +56,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
     refresh_orders.short_description = "Refresh orders"
 
-    def create_fund_and_positions(self, request, queryset):
+    def create_fund(self, request, queryset):
         for account in queryset:
-            create_fund_and_positions(account)
+            create_fund(account)
 
-    create_fund_and_positions.short_description = "Create fund and positions"
+    create_fund.short_description = "Create fund"
 
     def refresh_positions(self, request, queryset):
         for account in queryset:
@@ -85,7 +84,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('dt', 'account', 'exchange', 'get_balance', )
-    readonly_fields = ('account', 'exchange', 'balance', 'dt_create', 'dt', 'total', 'free', 'used', )
+    readonly_fields = ('account', 'exchange', 'balance', 'dt_create', 'dt', 'total', 'free', 'used', 'derivative')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)

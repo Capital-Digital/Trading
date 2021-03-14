@@ -6,8 +6,10 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django_pandas.managers import DataFrameManager
 from marketsdata.methods import *
+from capital.methods import *
 import pandas as pd
 from pprint import pprint
+import json
 
 log = structlog.get_logger(__name__)
 
@@ -15,12 +17,12 @@ log = structlog.get_logger(__name__)
 class Exchange(models.Model):
     objects = models.Manager()
     exid = models.CharField(max_length=12, blank=True, null=True)
-    supported_market_types = models.CharField(max_length=50, blank=True, null=True)
+    default_types = models.CharField(max_length=50, blank=True, null=True)
     dollar_currency = models.CharField(max_length=4, blank=False, null=True)
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
     api, countries, urls, has, timeframes, credentials, options = [JSONField(blank=True, null=True) for i in range(7)]
-    timeout = models.IntegerField(default=30000)
-    rate_limit = models.IntegerField(default=10000)
+    timeout = models.IntegerField(default=3000)
+    rate_limit = models.IntegerField(default=1000)
     precision_mode = models.IntegerField(null=True, blank=True)
     status_at, eta = [models.DateTimeField(blank=True, null=True) for i in range(2)]
     url = models.URLField(blank=True, null=True)
@@ -30,8 +32,9 @@ class Exchange(models.Model):
     verbose = models.BooleanField(default=False)
     enable_rate_limit = models.BooleanField(default=True)
     limit_ohlcv = models.PositiveIntegerField(null=True, blank=True)
-    # api_credit = models.PositiveSmallIntegerField(null=True, default=0)
     credit = JSONField(blank=True, null=True)
+    credit_max_reached = JSONField(blank=True, null=True)
+    rate_limits = JSONField(blank=True, null=True)
 
     status = models.CharField(max_length=12, default='ok', null=True, blank=True,
                               choices=[('ok', 'ok'), ('maintenance', 'maintenance'),
@@ -125,26 +128,223 @@ class Exchange(models.Model):
 
         return client
 
-    # return a list of market types (spot or derivative)
-    def get_market_types(self):
-        return list(set(Market.objects.filter(exchange=self).values_list('type', flat=True)))
+    # Convert default_types into a list of supported CCXT market types ('', spot, swap, futures, futures, delivery)
+    def get_default_types(self):
 
-    # return a list of supported market types ccxt ('', spot, swap, futures, futures)
-    def get_market_ccxt_type_options(self):
         if 'defaultType' in self.get_ccxt_client().options:
 
             # Return a list of supported ccxt types
-            if self.supported_market_types:
-                return str(self.supported_market_types).replace(" ", "").split(',')
+            if self.default_types:
+                return str(self.default_types).replace(" ", "").split(',')
             else:
                 raise Exception('Exchange {0} requires a parameter defaultType'.format(self.exid))
         else:
             return None
 
+    # return a list of market types (spot or derivative)
+    def get_market_types(self):
+        return list(set(Market.objects.filter(exchange=self).values_list('type', flat=True)))
+
     # return accounts linked to this exchange
     def get_trading_accounts(self):
         from trading.models import Account
         return Account.objects.filter(exchange=self, trading=True)
+
+    # Return True if there is available credit
+    def has_credit(self, default_type=None):
+
+        credit = self.credit
+        ts = int(get_timestamp_now())
+
+        # Return True is new
+        if default_type not in credit:
+            return True
+
+        credit = credit[default_type]
+
+        # Return a list with total number of weight and orders
+        def count():
+
+            # Filter dictionary and count weights
+            req = dict(filter(
+                lambda elem: float(elem[0]) > ts - (request_weight_interval * request_weight_interval_num),
+                credit.items())
+            )
+            weight = sum([v['weight'] for k, v in req.items()])
+
+            # Count order for rule 1
+            tensec = dict(filter(
+                lambda elem: float(elem[0]) > ts - (order_1_count_interval * order_1_count_interval_num),
+                credit.items())
+            )
+            order_count_1 = len([v['order'] for k, v in tensec.items() if v['order']])
+
+            # Count orders for rule 2
+            if default_type in ['spot', 'future']:
+
+                day = dict(filter(
+                    lambda elem: float(elem[0]) > ts - (order_2_count_interval * order_2_count_interval_num),
+                    credit.items())
+                )
+                order_count_2 = len([v['order'] for k, v in day.items() if v['order']])
+
+            else:
+                order_count_2 = 0
+
+            return [weight, order_count_1, order_count_2]
+
+        if self.exid == 'binance':
+
+            if default_type == 'spot':
+
+                request_weight_interval = 60  # 60 seconds
+                request_weight_interval_num = 1  # 1 * 60 sec
+                request_weight_limit = 1200
+
+                order_1_count_interval = 1
+                order_1_count_interval_num = 10
+                order_1_count_limit = 100
+
+                order_2_count_interval = 60 * 60 * 24
+                order_2_count_interval_num = 1
+                order_2_count_limit = 200000
+
+            elif default_type == 'future':
+
+                request_weight_interval = 60
+                request_weight_interval_num = 1
+                request_weight_limit = 2400
+
+                order_1_count_interval = 60
+                order_1_count_interval_num = 1
+                order_1_count_limit = 1200
+
+                order_2_count_interval = 1
+                order_2_count_interval_num = 10
+                order_2_count_limit = 300
+
+            elif default_type == 'delivery':
+
+                request_weight_interval = 60
+                request_weight_interval_num = 1
+                request_weight_limit = 2400
+
+                order_1_count_interval = 60
+                order_1_count_interval_num = 1
+                order_1_count_limit = 1200
+
+            # Count
+            weight, order_count_1, order_count_2 = count()
+
+            # Check thresholds
+            if weight > request_weight_limit:
+                return False
+
+            if order_count_1 > order_1_count_limit:
+                return False
+
+            if default_type in ['spot', 'future']:
+                if order_count_2 > order_2_count_limit:
+                    return False
+
+            # Update credit max reached
+            self.update_credit_max_reached(default_type, weight, order_count_1, order_count_2)
+
+            # Finally filter out expired entries
+            self.credit[default_type] = dict(filter(lambda elem: float(elem[0]) > ts - (60 * 60 * 24), credit.items()))
+            self.save()
+
+        return True
+
+    # Append weights and order to credit dictionary
+    def update_credit(self, method, default_type=None):
+        credit = self.credit
+        ts = int(get_timestamp_now())
+
+        if self.exid == 'binance':
+
+            if default_type in ['spot', 'future', 'delivery']:
+
+                if method == 'fetchBalance':
+                    weight = 5 + 1  # +1 for exchangeInfo
+                    order = False
+
+                elif method == 'load_markets':
+                    weight = 1
+                    order = False
+
+                elif method == 'fetchOHLCV':
+                    weight = 1
+                    order = False
+
+                elif method == 'fetch_tickers':
+                    weight = 40
+                    order = False
+
+            # Create new dictionary or append to an existing dictionary
+            if default_type in credit:
+                credit[default_type][ts] = dict(weight=weight, order=order, method=method)
+            else:
+                dic = dict()
+                dic[ts] = dict(weight=weight,
+                               order=order,
+                               method=method)
+                credit[default_type] = dic
+
+            self.credit = credit
+            self.save()
+
+    # Replace max credit reached if a new high is reached
+    def update_credit_max_reached(self, default_type, weight, order_count_1, order_count_2):
+
+        credit_max = self.credit_max_reached
+
+        if not default_type:
+            default_type = 'default'
+
+        if default_type in credit_max:
+
+            # Select max values
+            if 'weight' in credit_max[default_type]:
+                if 'max' in credit_max[default_type]['weight']:
+                    max_w = credit_max[default_type]['weight']['max']
+            if 'order_count_1' in credit_max[default_type]:
+                if 'max' in credit_max[default_type]['order_count_1']:
+                    max_o1 = credit_max[default_type]['order_count_1']['max']
+            if 'order_count_2' in credit_max[default_type]:
+                if 'max' in credit_max[default_type]['order_count_2']:
+                    max_o2 = credit_max[default_type]['order_count_2']['max']
+
+            # Compare to current values and update field credit_max_reached
+            if weight > max_w:
+                log.info('Max requests weigh is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
+                w = dict(date=get_datetime_now(string=True), max=weight)
+                self.credit_max_reached[default_type]['weight'] = w
+
+            if order_count_1 > max_o1:
+                log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
+                order_1 = dict(date=get_datetime_now(string=True), max=order_count_1)
+                self.credit_max_reached[default_type]['order_count_1'] = order_1
+
+            if order_count_2 > max_o2:
+                log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
+                order_2 = dict(date=get_datetime_now(string=True), max=order_count_2)
+                self.credit_max_reached[default_type]['order_count_2'] = order_2
+
+            self.save()
+
+        else:
+
+            # Create a new dictionary if necessary
+            w = dict(date=get_datetime_now(string=True), max=weight)
+            order_1 = dict(date=get_datetime_now(string=True), max=order_count_1)
+            order_2 = dict(date=get_datetime_now(string=True), max=order_count_2)
+
+            self.credit_max_reached[default_type] = dict(weight=w,
+                                                         order_count_1=order_1,
+                                                         order_count_2=order_2
+                                                         )
+            self.save()
 
 
 class CurrencyType(models.Model):
@@ -180,7 +380,7 @@ class Market(models.Model):
     type = models.CharField(max_length=20, blank=True, null=True, choices=(('spot', 'spot'),
                                                                            ('derivative', 'derivative'),))
     ccxt_type_response = models.CharField(max_length=20, blank=True, null=True)
-    ccxt_type_options = models.CharField(max_length=20, blank=True, null=True)
+    default_type = models.CharField(max_length=20, blank=True, null=True)
     derivative = models.CharField(max_length=20, blank=True, null=True, choices=(('perpetual', 'perpetual'),
                                                                                  ('future', 'future'),))
     delivery_date = models.DateTimeField(null=True, blank=True)

@@ -37,7 +37,7 @@ class BaseTaskWithRetry(Task):
 
 
 # Place an order to the market after an object is created
-#@shared_task(name='account_order_place', base=BaseTaskWithRetry)
+# @shared_task(name='account_order_place', base=BaseTaskWithRetry)
 def order_place(account, tp, args):
     try:
         symbol = args['symbol']
@@ -118,7 +118,7 @@ def order_place(account, tp, args):
 # Fetch all orders for a list of symbols of a market type
 # create or update objects
 # weight = 1 per symbol
-#@shared_task(name='account_orders_fetch_symbols', base=BaseTaskWithRetry)
+# @shared_task(name='account_orders_fetch_symbols', base=BaseTaskWithRetry)
 def orders_fetch_symbols(account, symbols, tp):
     account = Account.objects.get(name=account)
 
@@ -150,7 +150,7 @@ def orders_fetch_symbols(account, symbols, tp):
 # Fetch open orders for all symbols of a market type
 # create or update objects
 # weight = 40
-#@shared_task(name='account_orders_fetch_all_open', base=BaseTaskWithRetry)
+# @shared_task(name='account_orders_fetch_all_open', base=BaseTaskWithRetry)
 def orders_fetch_all_open(account):
     account = Account.objects.get(name=account)
     types = account.exchange.get_market_types()
@@ -193,7 +193,7 @@ def orders_fetch_all_open(account):
 # Fetch an orderId (reload = True)
 # update object
 # weight = 1
-#@shared_task(name='account_order_fetch_id', base=BaseTaskWithRetry)
+# @shared_task(name='account_order_fetch_id', base=BaseTaskWithRetry)
 def order_fetch_id(account, orderid):
     account = Account.objects.get(name=account)
     order = Order.objects.get(orderId=orderid)
@@ -241,9 +241,8 @@ def order_fetch_id(account, orderid):
 # Fetch a list of open orders by orderId for a market type
 # update objects
 # weight = 1 per order
-#@shared_task(name='account_orders_fetch_id', base=BaseTaskWithRetry)
+# @shared_task(name='account_orders_fetch_id', base=BaseTaskWithRetry)
 def orders_fetch_id(account, tp):
-
     # search for open orders
     orders = Order.objects.filter(Q(status='open') | Q(status='open'), account=account, market__type=tp)
 
@@ -256,7 +255,8 @@ def orders_fetch_id(account, tp):
         # check if market is active
         if not order.market.active:
             raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                               .format(order.orderId, order.market.symbol, order.market.exchange.exid, order.market.type))
+                               .format(order.orderId, order.market.symbol, order.market.exchange.exid,
+                                       order.market.type))
 
         # check order status
         if order.status != 'open':
@@ -287,7 +287,7 @@ def orders_fetch_id(account, tp):
 
 # Cancel an open order by orderId
 # weight = 1
-#@shared_task(name='account_orders_cancel_all', base=BaseTaskWithRetry)
+# @shared_task(name='account_orders_cancel_all', base=BaseTaskWithRetry)
 def order_cancel_pending(account, orderid):
     account = Account.objects.get(name=account)
     order = Order.objects.get(orderId=orderid)
@@ -321,7 +321,7 @@ def order_cancel_pending(account, orderid):
 
 # Cancel all open orders by market type
 # weight = 1 per order
-#@shared_task(name='account_orders_cancel_all', base=BaseTaskWithRetry)
+# @shared_task(name='account_orders_cancel_all', base=BaseTaskWithRetry)
 def orders_cancel_pending(account, tp):
     account = Account.objects.get(name=account)
 
@@ -334,7 +334,8 @@ def orders_cancel_pending(account, tp):
             # check if market is active
             if not order.market.active:
                 raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                                   .format(order.orderId, order.market.symbol, order.market.exchange.exid, order.market.type))
+                                   .format(order.orderId, order.market.symbol, order.market.exchange.exid,
+                                           order.market.type))
 
             # check order status
             if order.status != 'open':
@@ -360,8 +361,7 @@ def orders_cancel_pending(account, tp):
 
 # Fetch balance and create fund object
 # @shared_task(name='account_fund_create') #, base=BaseTaskWithRetry)
-def create_fund_and_positions(account):
-
+def create_fund(account):
     log.bind(account=account)
     account = Account.objects.get(name=account)
 
@@ -374,8 +374,9 @@ def create_fund_and_positions(account):
     total = dict()
     free = dict()
     used = dict()
+    derivative = dict()
 
-    # Create fund
+    # Returns a dictionary with assets quantity > 0
     def create_dict(response):
 
         # Select total, free and used currencies
@@ -391,12 +392,14 @@ def create_fund_and_positions(account):
 
             return dict(total=total, used=used, free=free)
 
-    def create_fund(total, free, used):
+    # Create Fund objects
+    def create_fund(total, free, used, derivative):
 
         kwargs = dict(
             account=account,
             exchange=account.exchange,
             balance=calculate_balance(total),
+            derivative=derivative,
             total=total,
             used=used,
             free=free,
@@ -411,6 +414,7 @@ def create_fund_and_positions(account):
         except ObjectDoesNotExist:
             Fund.objects.create(**kwargs)
 
+    # Calculate balance in dollar_currency
     def calculate_balance(total):
 
         balance = dict()
@@ -434,42 +438,58 @@ def create_fund_and_positions(account):
 
         return balance
 
-    def create_positions(response):
-        pass
+    # Create Position objects
+    def get_derivative(response, default_type=None):
 
-    if account.exchange.supported_market_types:
+        if account.exchange.exid == 'binance':
+            if default_type in ['future', 'delivery']:
+                return [i for i in response['info']['assets'] if float(i['walletBalance']) > 0]
 
-        for ccxt_type_options in account.exchange.get_market_ccxt_type_options():
-            log.bind(ccxt_type_options=ccxt_type_options)
+        elif account.exchange.exid == 'bybit':
+            return [v for k, v in response['info']['result'].items() if v['wallet_balance'] > 0]
 
-            client.options['defaultType'] = ccxt_type_options
+        return None
+
+    if account.exchange.default_types:
+
+        for default_type in account.exchange.default_types:
+            log.bind(defaultType=default_type)
+
+            client.options['defaultType'] = default_type
+
+            if account.exchange.has_credit(default_type):
+
+                response = client.fetchBalance()
+                account.exchange.update_credit('fetchBalance', default_type)
+
+                funds = create_dict(response)
+
+                total[default_type] = funds['total']
+                free[default_type] = funds['free']
+                used[default_type] = funds['used']
+                derivative[default_type] = get_derivative(response, default_type)
+
+        create_fund(total, free, used, derivative)
+
+    else:
+
+        if account.exchange.has_credit():
+
             response = client.fetchBalance()
+            account.exchange.update_credit('fetchBalance')
 
             funds = create_dict(response)
 
-            total[ccxt_type_options] = funds['total']
-            free[ccxt_type_options] = funds['free']
-            used[ccxt_type_options] = funds['used']
+            total['default_account'] = funds['total']
+            free['default_account'] = funds['free']
+            used['default_account'] = funds['used']
+            derivative['default_account'] = get_derivative(response)
 
-        create_fund(total, free, used)
-        create_positions(response)
-
-    else:
-        response = client.fetchBalance()
-
-        pprint(response)
-        funds = create_dict(response)
-
-        total['default_account'] = funds['total']
-        free['default_account'] = funds['free']
-        used['default_account'] = funds['used']
-
-        create_fund(total, free, used)
-        create_positions(response)
+            create_fund(total, free, used, derivative)
 
 
 # Create or update future and swap open positions
-#@shared_task(name='account_position_refresh', base=BaseTaskWithRetry)
+# @shared_task(name='account_position_refresh', base=BaseTaskWithRetry)
 def fetch_positions(account):
     log.bind(account=account)
     account = Account.objects.get(name=account)
@@ -629,7 +649,7 @@ def fetch_positions(account):
 
 
 # Trade with account
-#@shared_task(name='account_trade', base=BaseTaskWithRetry)
+# @shared_task(name='account_trade', base=BaseTaskWithRetry)
 def trade(account):
     # Check account
     if not account.is_valid_credentials():
@@ -724,7 +744,7 @@ def trade(account):
 
 
 # Fetch order book every x seconds
-#@shared_task(bind=True, name='trade_ws_account')
+# @shared_task(bind=True, name='trade_ws_account')
 def trade_ws_account(self, account):
     log.info('Trade with account {0}'.format(account))
     account = Account.objects.get(name=account)
@@ -1178,7 +1198,7 @@ def trade_ws_account(self, account):
 
 
 # Fetch order book every x seconds
-#@shared_task(bind=True, name='trade_ws_accounts')
+# @shared_task(bind=True, name='trade_ws_accounts')
 def trade_ws_accounts(self):
     accounts = [account.name for account in Account.objects.filter(strategy__production=True, trading=True)]
     gp = group([trade_ws_account.s(account) for account in accounts])
@@ -1186,7 +1206,7 @@ def trade_ws_accounts(self):
     res = gp.delay()
 
 
-#@shared_task(name='fetch_balance_n_positions')
+# @shared_task(name='fetch_balance_n_positions')
 def fetch_balance_n_positions():
     accounts = [account.name for account in Account.objects.filter(trading=True)]
     chains = [chain(orders_fetch_all_open.si(account),

@@ -1,7 +1,7 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
 from trading.models import Account, Fund, Position, Order
-from trading.tasks import *
+from trading import tasks
 import structlog
 from django.contrib.admin import SimpleListFilter
 from django.contrib.postgres.fields import JSONField
@@ -18,8 +18,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'exchange',  'trading', 'valid_credentials', 'strategy', 'type', 'derivative',
                     'margined', 'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'position_mode')
-    actions = ['set_credentials', 'get_position_mode', 'create_fund', 'refresh_orders', 'update_positions',
-               'update_allocation', 'fetch_all_open_orders']
+    actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all']
     save_as = True
     save_on_top = True
 
@@ -37,29 +36,17 @@ class CustomerAdmin(admin.ModelAdmin):
 
     # Actions
 
-    def set_credentials(self, request, queryset):
+    def update_credentials(self, request, queryset):
         for account in queryset:
             account.set_credentials()
 
-    set_credentials.short_description = "Set credentials"
+    update_credentials.short_description = "Update credentials"
 
-    def get_position_mode(self, request, queryset):
+    def update_fund(self, request, queryset):
         for account in queryset:
-            account.get_position_mode()
+            tasks.create_fund(account)
 
-    get_position_mode.short_description = "Get position mode"
-
-    def refresh_orders(self, request, queryset):
-        for account in queryset:
-            account.refresh_orders()
-
-    refresh_orders.short_description = "Refresh orders"
-
-    def create_fund(self, request, queryset):
-        for account in queryset:
-            create_fund(account)
-
-    create_fund.short_description = "Create fund"
+    update_fund.short_description = "Update fund"
 
     def update_positions(self, request, queryset):
         for account in queryset:
@@ -67,17 +54,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_positions.short_description = "Update positions"
 
-    def update_allocation(self, request, queryset):
+    def fetch_order_open_all(self, request, queryset):
         for account in queryset:
-            account.update()
+            tasks.fetch_order_open_all(account)
 
-    update_allocation.short_description = "Update allocation"
-
-    def fetch_all_open_orders(self, request, queryset):
-        for account in queryset:
-            orders_fetch_all_open(account.name)
-
-    fetch_all_open_orders.short_description = "Fetch open orders"
+    fetch_order_open_all.short_description = "Fetch all open orders"
 
 
 @admin.register(Fund)
@@ -98,13 +79,13 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('orderId', 'account', 'market', 'status', 'side', 'cost', 'trades',
-                    'type', 'price', 'price_strategy', 'filled', 'contract_val',
-                    'dt_create', 'dt_update')
+                    'type', 'price', 'price_strategy', 'filled',  'dt_create', 'dt_update')
 
-    readonly_fields = ('account', 'market', 'status', 'api', 'orderId', 'clientOrderId', 'type', 'amount', 'side',
-                       'cost', 'remaining', 'timestamp', 'max_qty', 'trades',
-                       'price', 'price_strategy', 'contract_val', 'fee', 'response', 'filled', 'average',
-                       'api', 'last_trade_timestamp', 'leverage', 'datetime')
+    readonly_fields = ('account', 'market', 'status',  'type', 'amount', 'side', 'orderId', 'clientOrderId',
+                       'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
+                       'last_trade_timestamp',
+                       'price', 'price_strategy', 'fee', 'response',
+                       'leverage', 'datetime', 'response')
     actions = ['place_order', 'refresh', 'cancel_order']
 
     list_filter = (
@@ -151,15 +132,14 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Position)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('account', 'exchange', 'market', 'get_side', 'last', 'liquidation_price', 'size',
-                    'size_available', 'value_usd', 'sub_account_equity', 'margin_ratio',
-                    'entry_price', 'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
-                    'leverage', 'dt_update',)
+                    'value_usd', 'margin_ratio',
+                    'entry_price', 'get_margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
+                    'leverage_max', 'dt_update',)
     readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'value_usd', 'entry_price', 'last',
                        'liquidation_price',
-                       'size_available',
                        'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl',
-                       'margin_mode', 'leverage', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
-                       'sub_account_equity', 'margin_ratio', 'response', 'max_qty')
+                       'margin_mode', 'leverage', 'leverage_max', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
+                       'margin_ratio', 'response', 'max_qty')
     actions = ['refresh_position', 'close_position']
     list_filter = (
         ('exchange', admin.RelatedOnlyFieldListFilter),
@@ -172,6 +152,12 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_side.boolean = True
     get_side.short_description = 'Side'
+
+    def get_margin(self, obj):
+        if obj.margin:
+            return round(obj.margin, 4)
+
+    get_margin.short_description = 'Margin'
 
     # Action
 

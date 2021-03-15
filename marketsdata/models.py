@@ -10,6 +10,7 @@ from capital.methods import *
 import pandas as pd
 from pprint import pprint
 import json
+import cloudscraper
 
 log = structlog.get_logger(__name__)
 
@@ -33,7 +34,7 @@ class Exchange(models.Model):
     enable_rate_limit = models.BooleanField(default=True)
     limit_ohlcv = models.PositiveIntegerField(null=True, blank=True)
     credit = JSONField(blank=True, null=True)
-    credit_max_reached = JSONField(blank=True, null=True)
+    credit_max = JSONField(blank=True, null=True)
     rate_limits = JSONField(blank=True, null=True)
 
     status = models.CharField(max_length=12, default='ok', null=True, blank=True,
@@ -73,7 +74,9 @@ class Exchange(models.Model):
             'timeout': self.timeout,
             'verbose': self.verbose,
             'enableRateLimit': self.enable_rate_limit,
-            'rateLimit': self.rate_limit
+            'rateLimit': self.rate_limit,
+            'adjustForTimeDifference': True,
+            'session': cloudscraper.create_scraper(allow_brotli=True),
         })
 
         # Set API key/secret
@@ -248,7 +251,7 @@ class Exchange(models.Model):
                     return False
 
             # Update credit max reached
-            self.update_credit_max_reached(default_type, weight, order_count_1, order_count_2)
+            self.update_credit_max(default_type, weight, order_count_1, order_count_2)
 
             # Finally filter out expired entries
             self.credit[default_type] = dict(filter(lambda elem: float(elem[0]) > ts - (60 * 60 * 24), credit.items()))
@@ -285,6 +288,16 @@ class Exchange(models.Model):
                     weight = 5
                     order = False
 
+                elif method == 'fetchAllOpenOrders':
+                    weight = 40 + 1
+                    order = False
+
+                else:
+                    raise Exception('Method unknown : {0}'.format(method))
+
+            else:
+                raise Exception('{0} is not valid defaultType for {1}'.format(default_type, self.name))
+
             # Create new dictionary or append to an existing dictionary
             if default_type in credit:
                 credit[default_type][ts] = dict(weight=weight, order=order, method=method)
@@ -299,9 +312,9 @@ class Exchange(models.Model):
             self.save()
 
     # Replace max credit reached if a new high is reached
-    def update_credit_max_reached(self, default_type, weight, order_count_1, order_count_2):
+    def update_credit_max(self, default_type, weight, order_count_1, order_count_2):
 
-        credit_max = self.credit_max_reached
+        credit_max = self.credit_max
 
         if not default_type:
             default_type = 'default'
@@ -323,17 +336,17 @@ class Exchange(models.Model):
             if weight > max_w:
                 log.info('Max requests weigh is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
                 w = dict(date=get_datetime_now(string=True), max=weight)
-                self.credit_max_reached[default_type]['weight'] = w
+                self.credit_max[default_type]['weight'] = w
 
             if order_count_1 > max_o1:
                 log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
                 order_1 = dict(date=get_datetime_now(string=True), max=order_count_1)
-                self.credit_max_reached[default_type]['order_count_1'] = order_1
+                self.credit_max[default_type]['order_count_1'] = order_1
 
             if order_count_2 > max_o2:
                 log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
                 order_2 = dict(date=get_datetime_now(string=True), max=order_count_2)
-                self.credit_max_reached[default_type]['order_count_2'] = order_2
+                self.credit_max[default_type]['order_count_2'] = order_2
 
             self.save()
 
@@ -344,7 +357,7 @@ class Exchange(models.Model):
             order_1 = dict(date=get_datetime_now(string=True), max=order_count_1)
             order_2 = dict(date=get_datetime_now(string=True), max=order_count_2)
 
-            self.credit_max_reached[default_type] = dict(weight=w,
+            self.credit_max[default_type] = dict(weight=w,
                                                          order_count_1=order_1,
                                                          order_count_2=order_2
                                                          )

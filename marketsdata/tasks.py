@@ -41,7 +41,7 @@ class BaseTaskWithRetry(Task):
                      urllib3.exceptions.ReadTimeoutError,
                      requests.exceptions.ReadTimeout)
 
-    retry_kwargs = {'max_retries': 5, 'default_retry_delay': 15}
+    retry_kwargs = {'max_retries': 5, 'default_retry_delay': 3}
     retry_backoff = True
     retry_backoff_max = 30
     retry_jitter = False
@@ -719,7 +719,7 @@ def update_market_prices(self, exid):
 
         # Bulk update prices if more than 120 sec. elapsed.
         if timezone.now().minute > 1:
-            log.debug('Market update stared too late')  # since {0} UTC'.format(get_datetime_now(string=True)))
+            log.debug('Market update started too late')  # since {0} UTC'.format(get_datetime_now(string=True)))
             return
 
             # insert_candle_history.s(exid=exchange.exid, symbol=market.symbol, type=market.type,

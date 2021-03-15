@@ -216,11 +216,9 @@ class Account(models.Model):
         return True
 
     # Create/update an order object with response returned by exchange
-    def order_create_update(self, response, tp=None):
+    def order_update(self, response, default_type=None):
 
-        market = Market.objects.get(exchange=self.exchange, type=tp, symbol=response['symbol'])
-        args = dict(account=self, market=market, orderId=response['id'])
-
+        # Create dictionary
         defaults = dict(
             clientOrderId=response['clientOrderId'],
             timestamp=response['timestamp'],
@@ -236,15 +234,22 @@ class Account(models.Model):
             remaining=response['remaining'],
             status=response['status'],
             fee=response['fee'],
-            trades=response['trades']
+            trades=response['trades'],
+            response=response
         )
 
-        object, created = Order.objects.update_or_create(**args, defaults=defaults)
+        market = Market.objects.get(exchange=self.exchange,
+                                    default_type=default_type,
+                                    symbol=response['symbol']
+                                    )
+        args = dict(account=self, market=market, orderId=response['id'])
+
+        obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
         if created:
-            log.info('Order object created', orderId=object.orderId)
+            log.info('Order object created', orderId=obj.orderId)
         else:
-            log.info('Order object updated', orderId=object.orderId)
+            log.info('Order object updated', orderId=obj.orderId)
 
     # Create an order object (to open, add, remove or close a position)
     def order_create(self, market, market_type, type, side, size):
@@ -308,10 +313,8 @@ class Order(models.Model):
     side = models.CharField(max_length=10, null=True, choices=(('buy', 'buy'), ('sell', 'sell')))
     cost = models.FloatField(null=True)
     trades = models.CharField(max_length=10, null=True)
-    average, price, price_strategy, contract_val, leverage = [models.FloatField(null=True) for i in range(5)]
-    api = models.BooleanField(null=True)
+    average, price, price_strategy, leverage = [models.FloatField(null=True) for i in range(4)]
     fee = JSONField(null=True)
-    params = JSONField(null=True)
     response = JSONField(null=True)
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
@@ -331,13 +334,16 @@ class Position(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='positions', null=True)
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='positions', null=True)
     last, liquidation_price = [models.FloatField(null=True) for i in range(2)]
-    size, size_available = [models.CharField(max_length=100, null=True) for i in range(2)]
+    size = models.CharField(max_length=100, null=True)
     entry_price = models.FloatField(null=True)
     max_qty = models.FloatField(null=True)
-    margin, margin_maint_ratio, sub_account_equity, margin_ratio = [models.FloatField(null=True) for i in range(4)]
+    margin, margin_maint_ratio, margin_ratio = [models.FloatField(null=True) for i in range(3)]
     realized_pnl, unrealized_pnl, value_usd = [models.FloatField(null=True) for i in range(3)]
-    instrument_id, side, margin_mode = [models.CharField(max_length=150, null=True) for i in range(3)]
+    instrument_id, side = [models.CharField(max_length=150, null=True) for i in range(2)]
+    margin_mode = models.CharField(max_length=10, null=True, choices=(('isolated', 'isolated'),
+                                                                      ('crossed', 'crossed')))
     leverage = models.DecimalField(null=True, max_digits=5, decimal_places=2)
+    leverage_max = models.DecimalField(null=True, max_digits=5, decimal_places=2)
     created_at = models.DateTimeField(null=True)
     response = JSONField(null=True)
     dt_update = models.DateTimeField(auto_now=True)

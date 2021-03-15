@@ -23,7 +23,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     'precision_mode', 'start_date',
                     'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
-                       'urls', 'rate_limits', 'credit', 'credit_max_reached',
+                       'urls', 'rate_limits', 'credit', 'credit_max',
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
@@ -196,7 +196,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
-                    'margined', 'contract_value', 'contract_value_currency', )
+                    'margined', 'contract_value', 'contract_value_currency', 'default_type')
     readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'default_type', 'derivative', 'active', 'quote',
                        'base', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
@@ -204,6 +204,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',
                        'taker', 'maker', 'response')
     list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded', 'default_type',
+                   ('margined', admin.RelatedOnlyFieldListFilter),
                    ('quote', admin.RelatedOnlyFieldListFilter),
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )

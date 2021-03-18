@@ -5,20 +5,22 @@ from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 import capital.celery as celery
 from celery import chain, group, shared_task, Task
+from marketsdata.models import Market, Candle, Currency, Exchange
+from strategy.models import Allocation, Strategy
+from trading.methods import target_size_n_side, format_decimal, get_spot_balance_used, get_position_size, \
+    get_spot_balance_free, calculate_target_quantity
+from trading.models import Account, Order, Fund, Position
+from trading import methods
+from trading import error
+from capital.error import *
 from itertools import chain as itertools_chain
 from itertools import accumulate
-import ccxtpro
+import ccxtpro, ccxt
 import asyncio
-from trading.models import Account, Order, Fund, Position
-from trading.methods import *
-from trading.error import *
-from marketsdata.models import Market, Candle, Currency, Exchange
-from capital.error import *
-from strategy.models import Allocation, Strategy
 import pandas as pd
-import sys, traceback
-from trading.methods import format_decimal
-import time
+import sys, traceback, time
+import structlog
+from pprint import pprint
 
 log = structlog.get_logger(__name__)
 
@@ -37,9 +39,8 @@ class BaseTaskWithRetry(Task):
 
 
 # Fetch open orders for all symbols of a market type
-@shared_task(name='Trading_____Fetch all open orders', base=BaseTaskWithRetry)
-def fetch_order_open_all(account):
-
+@shared_task(name='Trading_____Fetch open orders by account', base=BaseTaskWithRetry)
+def fetch_order_open(account):
     account = Account.objects.get(name=account)
     if account.exchange.has['fetchOpenOrders']:
 
@@ -49,7 +50,6 @@ def fetch_order_open_all(account):
 
         # Set market type
         if account.exchange.default_types:
-
             # Select default_type of this account
             default_type = list(set(Market.objects.filter(exchange=account.exchange,
                                                           derivative=account.derivative,
@@ -86,7 +86,7 @@ def fetch_order_open_all(account):
                     if response:
 
                         for order in response:
-                            account.order_update(order, default_type)
+                            methods.order_create_update(account, order, default_type)
 
         # fetch others exchanges orders
         ###############################
@@ -94,228 +94,138 @@ def fetch_order_open_all(account):
 
             # Check credit and fetch open orders
             if account.exchange.has_credit():
-
                 response = client.fetchOpenOrders()
                 account.exchange.update_credit('fetchAllOpenOrders', default_type)
 
             for order in response:
-                account.order_update(order, default_type)
+                methods.order_create_update(account, order, default_type)
 
     else:
         raise MethodUnsupported('Method fetchOpenOrders not supported for exchange'.format(account.exchange.exid))
 
 
-# Fetch past orders over a specific period of time
-@shared_task(name='Trading_____Fetch past orders', base=BaseTaskWithRetry)
-def fetch_order_past(account, symbols, tp):
-
+# Fetch past orders for a specific period of time
+@shared_task(name='Trading_____Fetch orders by date', base=BaseTaskWithRetry)
+def fetch_order_past(account, market, timestamp):
     account = Account.objects.get(name=account)
+    log.bind(account=account.name, exchange=account.exchange.exid)
 
     if account.exchange.has['fetchOrders']:
 
-        log.bind(account=account.name, exchange=account.exchange.exid)
+        # Initialize client
         client = account.exchange.get_ccxt_client(account)
 
-        # set market type
-        if 'defaultType' in client.options:
-            client.options['defaultType'] = tp
-            client.load_markets(reload=True)
+        if market.default_type:
+            client.options['defaultType'] = market.default_type
 
-        for symbol in symbols:
+        log.info('Fetch orders for {0}'.format(market.symbol))
 
-            market = Market.objects.get(symbol=symbol, type=tp, exchange=account.exchange)
-            log.info('Fetch orders for {1} {0}'.format(market.symbol, tp))
-            since = max(client.parse8601(account.created_at), account.get_latest_order_dt)
-            response = client.fetch_orders(symbol, since)
+        # Check credit and fetch orders
+        if account.exchange.has_credit():
+            response = client.fetch_orders(market.symbol, since=timestamp)
+            account.exchange.update_credit('fetch_orders', market.default_type)
 
-            if account.exchange.exid == 'binance':
-                account.exchange.credit[int(timezone.now().timestamp())] = 1
-                account.exchange.save()
+        # Insert orders
+        for order in response:
+            methods.order_create_update(account, order, market.default_type)
 
-            for order in response:
-                account.order_create_update(order, tp)
+    else:
+        raise Exception('Methode fetchOrders is not supported by {0}'.format(account.exchange.name))
 
 
 # Fetch an orderId (reload = True)
-@shared_task(name='Trading_____Fetch order ID', base=BaseTaskWithRetry)
+@shared_task(name='Trading_____Fetch order by ID', base=BaseTaskWithRetry)
 def fetch_order_id(account, orderid):
     account = Account.objects.get(name=account)
-    order = Order.objects.get(orderId=orderid)
+    log.bind(account=account.name, exchange=account.exchange.exid, orderId=orderid)
 
-    # check if market is active
-    if not order.market.active:
-        raise TradingError('Cannot fetch order {0} market {1} on {2} is inactive'
-                           .format(orderid, order.market.symbol, order.market.exchange.exid))
+    try:
+        # First select object
+        order = Order.objects.get(account=account, orderId=orderid)
 
-    # check order status
-    if order.status != 'open':
-        raise TradingError('Cannot fetch order {0} with status {1}'.format(orderid, order.status))
+    except ObjectDoesNotExist:
+        log.error('Unable to select order object')
 
-    client = account.exchange.get_ccxt_client(account)
-
-    # set client options
-    if 'defaultType' in client.options:
-        client.options['defaultType'] = order.market.type
-
-    # check if method is supported
-    if not account.exchange.has['fetchOrder']:
-        raise TradingError('Cannot fetch order {0} method fetchOrder() is not supported by {1}'
-                           .format(orderid, order.market.exchange.exid))
-
-    params = None
-    if account.exchange.exid == 'okex':
-        params = dict(instrument_id=order.market.info['instrument_id'],
-                      order_id=orderid)
-
-    log.info('Fetch order {0}'.format(orderid))
-
-    client.load_markets(True)
-    response = client.fetchOrder(id=orderid, symbol=order.market.symbol, params=params)
-
-    if account.exchange.exid == 'binance':
-        account.exchange.credit[int(timezone.now().timestamp())] = 1
-        account.exchange.save()
-
-    # update order object
-    account.order_create_update(response)
-
-    log.info('Fetch order {0} complete'.format(orderid))
-
-
-# Fetch a list of open orders by orderId for a market type
-# @shared_task(name='account_orders_fetch_id', base=BaseTaskWithRetry)
-def fetch_order_ids(account, tp):
-    # search for open orders
-    orders = Order.objects.filter(Q(status='open') | Q(status='open'), account=account, market__type=tp)
-
-    if not orders.exists():
-        log.info('Unable to find open order on {0} for {1}'.format(tp, account.name))
-        return
-
-    for order in orders:
-
-        # check if market is active
-        if not order.market.active:
-            raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                               .format(order.orderId, order.market.symbol, order.market.exchange.exid,
-                                       order.market.type))
-
-        # check order status
-        if order.status != 'open':
-            raise TradingError('Cannot fetch order {0} with status {1}'.format(order.orderId, order.status))
-
+    else:
         client = account.exchange.get_ccxt_client(account)
 
-        # set client options
-        if 'defaultType' in client.options:
-            client.options['defaultType'] = order.market.type
+        if order.market.default_type:
+            client.options['defaultType'] = order.market.default_type
 
         # check if method is supported
-        if not account.exchange.has['fetchOrder']:
-            raise TradingError('Cannot fetch order {0} method fetchOrder() is not supported by {1}'
-                               .format(order.orderId, order.market.exchange.exid))
+        if account.exchange.has['fetchOrder']:
 
-        params = None
-        if account.exchange.exid == 'okex':
-            params = dict(instrument_id=order.market.info['instrument_id'],
-                          order_id=order.orderId)
+            params = None
 
-        log.info('Fetch order {0}'.format(order.orderId))
-        response = client.fetchOrder(id=order.orderId, symbol=order.market.symbol, params=params)
+            # OKEx specific
+            if account.exchange.exid == 'okex':
+                params = dict(instrument_id=order.market.info['instrument_id'], order_id=orderid)
 
-        # update order object
-        account.order_create_update(response)
+            log.info('Fetch order')
+
+            # Check credit and insert order
+            if account.exchange.has_credit():
+                response = client.fetchOrder(id=orderid, symbol=order.market.symbol, params=params)
+                account.exchange.update_credit('fetchOrder', order.market.default_type)
+                methods.order_create_update(account, response, order.market.default_type)
+
+        else:
+            raise Exception('Methode fetchOrder is not supported by {0}'.format(account.exchange.name))
 
 
-# Cancel an open order by orderId
-# weight = 1
-# @shared_task(name='account_orders_cancel_all', base=BaseTaskWithRetry)
-def order_cancel_pending(account, orderid):
+# Cancel order by orderId
+@shared_task(name='Trading_____Cancel order by ID', base=BaseTaskWithRetry)
+def cancel_order_id(account, orderid):
     account = Account.objects.get(name=account)
-    order = Order.objects.get(orderId=orderid)
+    log.bind(account=account.name, exchange=account.exchange.exid, orderId=orderid)
 
-    # check if market is active
-    if not order.market.active:
-        raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                           .format(orderid, order.market.symbol, order.market.exchange.exid, order.market.type))
+    try:
+        # First select object
+        order = Order.objects.get(orderId=orderid)
 
-    # check order status
-    if order.status != 'open':
-        raise TradingError('Cannot fetch order {0} with status {1}'.format(orderid, order.status))
+    except ObjectDoesNotExist:
+        log.error('Unable to select order object')
 
-    log.info('Cancel order', id=order.orderId)
-    client = account.exchange.get_ccxt_client(account)
+    else:
+        client = account.exchange.get_ccxt_client(account)
 
-    # set market type
-    if 'defaultType' in client.options:
-        client.options['defaultType'] = order.market.type
+        if order.market.default_type:
+            client.options['defaultType'] = order.market.default_type
 
-    # reload markets and cancel order
-    client.load_markets(True)
-    client.cancel_order(id=order.orderId, symbol=order.market.symbol)
+        log.info('Cancel order')
 
-    if account.exchange.exid == 'binance':
-        account.exchange.credit[int(timezone.now().timestamp())] = 1
-        account.exchange.save()
-
-    log.info('Cancel order complete', id=order.orderId)
-
-
-# Cancel all open orders by market type
-# weight = 1 per order
-# @shared_task(name='account_orders_cancel_all', base=BaseTaskWithRetry)
-def orders_cancel_pending(account, tp):
-    account = Account.objects.get(name=account)
-
-    # search for open orders
-    orders = Order.objects.filter(Q(status='open') | Q(status='open'), account=account, market__type=tp)
-
-    if orders.exists():
-        for order in orders:
-
-            # check if market is active
-            if not order.market.active:
-                raise TradingError('Cannot fetch order {0} for {3} market {1} on {2} is inactive'
-                                   .format(order.orderId, order.market.symbol, order.market.exchange.exid,
-                                           order.market.type))
-
-            # check order status
-            if order.status != 'open':
-                raise TradingError('Cannot fetch order {0} with status {1}'.format(order.orderId, order.status))
-
-            log.info('Cancel order', id=order.orderId)
-            client = account.exchange.get_ccxt_client(account)
-
-            # set market type
-            if 'defaultType' in client.options:
-                client.options['defaultType'] = order.market.type
-
-            # reload markets and cancel order
-            client.load_markets(True)
+        # Check credit and cancel order
+        if account.exchange.has_credit():
             client.cancel_order(id=order.orderId, symbol=order.market.symbol)
-
-            if account.exchange.exid == 'binance':
-                account.exchange.credit[int(timezone.now().timestamp())] = 1
-                account.exchange.save()
-
-            log.info('Cancel order complete', id=order.orderId)
+            account.exchange.update_credit('cancel_order', order.market.default_type)
 
 
 # Place an order to the market after an object is created
-# @shared_task(name='account_order_place', base=BaseTaskWithRetry)
-def order_place(account, tp, args):
+@shared_task(name='Trading_____Place order by ID', base=BaseTaskWithRetry)
+def order_place(account, orderid):
+    account = Account.objects.get(name=account)
+    log.bind(account=account.name, exchange=account.exchange.exid)
+
     try:
+        # First select object
+        order = Order.objects.get(orderId=orderid)
+
+    except ObjectDoesNotExist:
+        log.error('Unable to select order object')
+
+    else:
+        client = account.exchange.get_ccxt_client(account)
+
+        if order.market.default_type:
+            client.options['defaultType'] = order.market.default_type
+
+        log.info('Place order')
+
+        args = []
+
         symbol = args['symbol']
         order_type = args['type']
         clientOrderId = args['params']['newClientOrderId']
-
-        account = Account.objects.get(name=account)
-        client = account.exchange.get_ccxt_client(account)
-        market = Market.objects.get(exchange=account.exchange, type=tp, symbol=symbol)
-        order = Order.objects.get(clientOrderId=clientOrderId)
-
-        if 'defaultType' in client.options:
-            client.options['defaultType'] = market.type
 
         # Specific to OKEx
         # if order.account.exchange.exid == 'okex':
@@ -330,6 +240,7 @@ def order_place(account, tp, args):
 
         # Place limit or market order
         if order_type == 'limit':
+
             if account.exchange.has['createLimitOrder']:
                 args['price'] = 0
                 response = client.create_order(**args)
@@ -341,12 +252,6 @@ def order_place(account, tp, args):
             else:
                 raise MethodUnsupported('Market order not supported with'.format(account.exchange.exid))
 
-    except ccxt.ExchangeError as e:
-        log.exception('Error when placing an order: {0}'.format(e), args=args)
-    except Exception as e:
-        log.exception('Exception when placing an order: {0}'.format(e), args=args)
-    else:
-
         # if account.exchange.exid == 'okex':
         #     if response['info']['error_code'] == '0':
         #         order.refresh()
@@ -355,7 +260,6 @@ def order_place(account, tp, args):
         #         pprint(response)
 
         print('response')
-        pprint(response)
 
         if response['id']:
 
@@ -372,8 +276,7 @@ def order_place(account, tp, args):
             log.info('Order ID {0} placed'.format(order.orderId), account=order.account.name)
 
         else:
-            pprint(response)
-            log.error('Order ID unknown', account=order.account.name, args=args)
+            log.error('Order ID unknown')
 
         order.response = response
         order.save()
@@ -392,26 +295,31 @@ def create_fund(account):
     # add 1h because the balance is fetched at :59
     dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
 
-    total = dict()
-    free = dict()
-    used = dict()
-    derivative = dict()
-
     # Returns a dictionary with assets quantity > 0
     def create_dict(response):
 
-        # Select total, free and used currencies
-        try:
-            total = [dict(code=k, quantity=v) for k, v in response['total'].items() if v > 0]
-        except KeyError:
-            raise Exception('Empty account')
-        else:
-            total_code = [k['code'] for k in total]
+        total, free, used = [dict() for _ in range(3)]
 
-            free = [dict(code=k, quantity=v) for k, v in response['free'].items() if k in total_code]
-            used = [dict(code=k, quantity=v) for k, v in response['used'].items() if k in total_code]
+        # Select total quantities > 0
+        for k, v in response['total'].items():
+            if v > 0:
+                code = dict()
+                code[k] = dict(quantity=v, value=calculate_value(k, v))
+                total.update(code)
 
-            return dict(total=total, used=used, free=free)
+        for k, v in response['free'].items():
+            if response['total'][k] > 0:
+                code = dict()
+                code[k] = dict(quantity=v, value=calculate_value(k, v))
+                free.update(code)
+
+        for k, v in response['used'].items():
+            if response['total'][k] > 0:
+                code = dict()
+                code[k] = dict(quantity=v, value=calculate_value(k, v))
+                used.update(code)
+
+        return total, used, free
 
     # Create Fund objects
     def create_fund(total, free, used, derivative):
@@ -419,7 +327,7 @@ def create_fund(account):
         kwargs = dict(
             account=account,
             exchange=account.exchange,
-            balance=calculate_balance(total),
+            balance=sum(value['value'] for key in total.keys() for value in total[key].values()),
             derivative=derivative,
             total=total,
             used=used,
@@ -435,29 +343,37 @@ def create_fund(account):
         except ObjectDoesNotExist:
             Fund.objects.create(**kwargs)
 
-    # Calculate balance in dollar_currency
-    def calculate_balance(total):
+    # Calculate value in dollar_currency
+    def calculate_value(code, quantity):
 
-        balance = dict()
+        # Test if code is a currency or an instrument (OKEx)
+        if Currency.objects.filter(code=code).exists():
 
-        for k, v in total.items():
-            bal = []
-            for t in v:
-                if t['code'] != account.exchange.dollar_currency:
-                    try:
-                        m = Market.objects.get(exchange=account.exchange, base__code=t['code'],
-                                               quote__code=account.exchange.dollar_currency, type='spot')
-                    except Exception:
-                        log.error('Unable to select market', base=t['code'], quote=account.exchange.dollar_currency)
-                    else:
-                        price = m.get_candle_price_last()
-                else:
-                    price = 1
-                bal.append(price * t['quantity'])
+            # Convert base quantity in USD
+            if not Currency.objects.get(code=code).stable_coin:
+                from django.db.models import Q
 
-            balance[k] = sum(bal)
+                # Select spot market to prevent MultipleObjects
+                market = Market.objects.filter(Q(default_type='spot') | Q(default_type=None)).get(
+                    exchange=account.exchange,
+                    base__code=code,
+                    quote__code=account.exchange.dollar_currency
+                )
+                return quantity * market.get_candle_price_last()
 
-        return balance
+            else:
+                return quantity
+
+        else:
+            market = Market.objects.get(exchange=account.exchange, symbol=code)
+
+            # Return quantity is market is marginated in USDT
+            if market.margined.stable_coin:
+                return quantity
+
+            else:
+                # Else it's marginated in base currency
+                return quantity * market.get_candle_price_last()
 
     # Create Position objects
     def get_derivative(response, default_type=None):
@@ -471,9 +387,12 @@ def create_fund(account):
 
         return None
 
+    # Create empty dictionaries
+    total, used, free, derivative = [dict() for _ in range(4)]
+
     if account.exchange.default_types:
 
-        for default_type in account.exchange.default_types:
+        for default_type in account.exchange.get_default_types():
             log.bind(defaultType=default_type)
 
             client.options['defaultType'] = default_type
@@ -482,27 +401,31 @@ def create_fund(account):
                 response = client.fetchBalance()
                 account.exchange.update_credit('fetchBalance', default_type)
 
-                funds = create_dict(response)
+                t, u, f = create_dict(response)
 
-                total[default_type] = funds['total']
-                free[default_type] = funds['free']
-                used[default_type] = funds['used']
+                total[default_type] = t
+                used[default_type] = u
+                free[default_type] = f
+
                 derivative[default_type] = get_derivative(response, default_type)
 
         create_fund(total, free, used, derivative)
 
     else:
 
+        default_type = 'default'
+
         if account.exchange.has_credit():
             response = client.fetchBalance()
             account.exchange.update_credit('fetchBalance')
 
-            funds = create_dict(response)
+            t, u, f = create_dict(response)
 
-            total['default_account'] = funds['total']
-            free['default_account'] = funds['free']
-            used['default_account'] = funds['used']
-            derivative['default_account'] = get_derivative(response)
+            total[default_type] = t
+            used[default_type] = u
+            free[default_type] = f
+
+            derivative[default_type] = get_derivative(response)
 
             create_fund(total, free, used, derivative)
 
@@ -513,55 +436,52 @@ def update_positions(account):
     log.bind(account=account.name)
     account = Account.objects.get(name=account)
 
-    if account.type == 'derivative':
+    client = account.exchange.get_ccxt_client(account)
 
-        client = account.exchange.get_ccxt_client(account)
+    # Create/update object of an open position
+    def create_update(market, defaults):
 
-        # Create/update object of an open position
-        def update(market, defaults):
+        # create search arguments
+        args = dict(exchange=account.exchange, account=account, market=market)
 
-            # create search arguments
-            args = dict(exchange=account.exchange, account=account, market=market)
+        try:
+            Position.objects.get(**args)
 
-            try:
-                Position.objects.get(**args)
+        except Position.DoesNotExist:
+            args.update(defaults)
+            Position.objects.create(**args)
+            log.info('Position object created for {0}'.format(market.symbol))
 
-            except Position.DoesNotExist:
-                args.update(defaults)
-                Position.objects.create(**args)
-                log.info('Position object created for {0}'.format(market.symbol))
+        else:
+            Position.objects.update_or_create(**args, defaults=defaults)
+            log.info('Position object updated for {0}'.format(market.symbol))
 
-            else:
-                Position.objects.update_or_create(**args, defaults=defaults)
-                log.info('Position object updated for {0}'.format(market.symbol))
+    # Delete object of a closed position
+    def delete(position):
 
-        # Delete object of a closed position
-        def delete(position):
+        try:
+            obj = Position.objects.get(account=account,
+                                       exchange=account.exchange,
+                                       market__type=account.type,
+                                       market__derivative=account.derivative,
+                                       market__response__id=position['symbol']
+                                       )
 
-            try:
-                obj = Position.objects.get(account=account,
-                                           exchange=account.exchange,
-                                           market__type=account.type,
-                                           market__derivative=account.derivative,
-                                           market__response__id=position['symbol']
-                                           )
+        except ObjectDoesNotExist:
+            pass
 
-            except ObjectDoesNotExist:
-                pass
+        else:
+            obj.delete()
+            log.info('Position object deleted for {0}'.format(position['symbol']))
 
-            else:
-                obj.delete()
-                log.info('Position object deleted for {0}'.format(position['symbol']))
+    # OKEx
+    ######
+    if account.exchange.exid == 'okex':
 
-        # Update position at OKEx
-        #########################
-        if account.exchange.exid == 'okex':
+        # fetch Okex perpetual positions
+        def okex_swap():
 
-            # fetch open positions fo perpetual contracts
-            if account.derivative == 'perpetual':
-
-                if not account.exchange.has_credit():
-                    return
+            if account.exchange.has_credit():
 
                 response = client.swapGetPosition()
                 account.exchange.update_credit('swapGetPosition', 'swap')
@@ -584,256 +504,213 @@ def update_positions(account):
 
                     else:
 
-                        # Only insert account margin's positions
-                        if market.margined == account.margined:
-
-                            size = float(position['position'])  # contract qty
-                            side = 'buy' if position['side'] == 'long' else 'sell'
-                            last = float(position['last'])
-                            size = abs(size)
-                            value = size
-
-                            # calculate position value in USDT
-                            if not account.margined.stable_coin:
-                                value = size * market.contract_value
-                            else:
-                                value = size * market.contract_value * last
-
-                            defaults = dict(
-                                size=size,
-                                side=side,
-                                last=last,
-                                value_usd=value,
-                                entry_price=float(position['avg_cost']),
-                                liquidation_price=float(position['liquidation_price']),
-                                leverage_max=position['leverage'],
-                                margin_mode='crossed' if response[0]['margin_mode'] == 'crossed' else 'isolated',
-                                margin_maint_ratio=float(position['maint_margin_ratio']),
-                                realized_pnl=float(position['realized_pnl']),
-                                unrealized_pnl=float(position['unrealized_pnl']),
-                                response=position
-                            )
-
-                            update(market, defaults)
-
-            # fetch open positions fo future contracts
-            elif account.derivative == 'future':
-                pass
-
-        # Update position at Binance
-        ############################
-        if account.exchange.exid == 'binance':
-
-            # fetch open positions in USD-margined contract
-            if account.margined.stable_coin:
-
-                if not account.exchange.has_credit():
-                    return
-
-                response = client.fapiPrivateGetPositionRisk()
-                account.exchange.update_credit('positionRisk', 'future')
-
-                # Select long and short positions
-                positions_open = [i for i in response if float(i['positionAmt']) != 0]
-                positions_close = [i for i in response if float(i['positionAmt']) == 0]
-
-                # Create dictionary of open positions
-                for position in positions_open:
-
-                    try:
-                        market = Market.objects.get(exchange=account.exchange,
-                                                    type='derivative',
-                                                    response__id=position['symbol']
-                                                    )
-
-                    except ObjectDoesNotExist:
-
-                        log.error('Unable to select {0} and update position'.format(position['symbol']))
-                        continue
-
-                    else:
-
-                        size = float(position['positionAmt'])
-                        side = 'buy' if size > 0 else 'sell'
+                        size = float(position['position'])  # contract qty
+                        side = 'buy' if position['side'] == 'long' else 'sell'
+                        last = float(position['last'])
                         size = abs(size)
 
                         # calculate position value in USDT
-                        value = size * market.contract_value
+                        if market.contract_value_currency.stable_coin:
+                            value = size * market.contract_value
+                        else:
+                            value = size * market.contract_value * last
 
                         defaults = dict(
                             size=size,
                             side=side,
-                            value_usd=round(value, 2),
-                            last=float(position['markPrice']),
-                            leverage_max=float(position['leverage']),
-                            entry_price=float(position['entryPrice']),
-                            unrealized_pnl=float(position['unRealizedProfit']),
-                            liquidation_price=float(position['liquidationPrice']),
-                            margin_mode='crossed' if position['marginType'] == 'cross' else 'isolated',
+                            last=last,
+                            value_usd=value,
+                            entry_price=float(position['avg_cost']),
+                            liquidation_price=float(position['liquidation_price']),
+                            leverage_max=position['leverage'],
+                            margin_mode='crossed' if response[0]['margin_mode'] == 'crossed' else 'isolated',
+                            margin_maint_ratio=float(position['maint_margin_ratio']),
+                            realized_pnl=float(position['realized_pnl']),
+                            unrealized_pnl=float(position['unrealized_pnl']),
                             response=position
                         )
 
-                        update(market, defaults)
+                        create_update(market, defaults)
 
-            # fetch all positions in coin margined products
-            elif not account.margined.stable_coin:
+        # fetch Okex futures positions
+        def okex_futures():
+            log.info('OKEx futures not supported')
 
-                if not account.exchange.has_credit():
-                    return
+        okex_swap()
+        okex_futures()
 
-                response = client.dapiPrivateGetPositionRisk()
-                account.exchange.update_credit('positionRisk', 'delivery')
+    # Binance
+    #########
+    if account.exchange.exid == 'binance':
 
-                # Select long and short open positions
-                positions_open = [i for i in response if float(i['positionAmt']) != 0]
-                positions_close = [i for i in response if float(i['positionAmt']) == 0]
+        # fetch Binance USDT-margined positions
+        def binance_usd_margined():
 
-                # Create dictionary of open positions
-                for position in positions_open:
+            if not account.exchange.has_credit():
+                return
 
-                    try:
-                        market = Market.objects.get(exchange=account.exchange,
-                                                    type='derivative',
-                                                    response__id=position['symbol']
-                                                    )
+            response = client.fapiPrivateGetPositionRisk()
+            account.exchange.update_credit('positionRisk', 'future')
 
-                    except ObjectDoesNotExist:
+            # Select long and short positions
+            positions_open = [i for i in response if float(i['positionAmt']) != 0]
+            positions_close = [i for i in response if float(i['positionAmt']) == 0]
 
-                        log.error('Unable to select {0}'.format(position['symbol']))
-                        continue
+            # Create dictionary of open positions
+            for position in positions_open:
 
-                    else:
+                try:
+                    market = Market.objects.get(exchange=account.exchange,
+                                                type='derivative',
+                                                response__id=position['symbol']
+                                                )
 
-                        size = float(position['notionalValue'])
-                        side = 'buy' if size > 0 else 'sell'
-                        size = abs(size)
+                except ObjectDoesNotExist:
 
-                        # calculate position value in USDT
-                        value = size * market.contract_value * float(position['markPrice'])
+                    log.error('Unable to select {0} and update position'.format(position['symbol']))
+                    continue
 
-                        defaults = dict(
-                            size=size,
-                            side=side,
-                            value_usd=round(value, 2),
-                            last=float(position['markPrice']),
-                            leverage_max=float(position['leverage']),
-                            entry_price=float(position['entryPrice']),
-                            unrealized_pnl=float(position['unRealizedProfit']),
-                            liquidation_price=float(position['liquidationPrice']),
-                            margin_mode='crossed' if position['marginType'] == 'cross' else 'isolated',
-                            max_qty=float(position['maxQty']),  # defines the maximum quantity allowed
-                            response=position
-                        )
+                else:
 
-                        update(market, defaults)
+                    size = float(position['positionAmt'])
+                    side = 'buy' if size > 0 else 'sell'
+                    size = abs(size)
+
+                    # calculate position value in USDT
+                    value = size * market.contract_value
+
+                    defaults = dict(
+                        size=size,
+                        side=side,
+                        value_usd=round(value, 2),
+                        last=float(position['markPrice']),
+                        leverage_max=float(position['leverage']),
+                        entry_price=float(position['entryPrice']),
+                        unrealized_pnl=float(position['unRealizedProfit']),
+                        liquidation_price=float(position['liquidationPrice']),
+                        margin_mode='crossed' if position['marginType'] == 'cross' else 'isolated',
+                        response=position
+                    )
+
+                    create_update(market, defaults)
 
             # Finally delete object of closed positions
             if Position.objects.filter(account=account).exists():
                 for position in positions_close:
                     delete(position)
 
-        # Update position at Bybit
-        ##########################
-        if account.exchange.exid == 'bybit':
+        # fetch Binance COIN-margined positions
+        def binance_coin_margined():
 
-            # fetch open positions in USD-margined contract
-            if account.margined.stable_coin and account.derivative == 'perpetual':
+            if not account.exchange.has_credit():
+                return
 
-                if not account.exchange.has_credit():
-                    return
+            response = client.dapiPrivateGetPositionRisk()
+            account.exchange.update_credit('positionRisk', 'delivery')
 
-                response = client.privateLinearGetPositionList()
-                account.exchange.update_credit('positionList')
+            # Select long and short open positions
+            positions_open = [i for i in response if float(i['positionAmt']) != 0]
+            positions_close = [i for i in response if float(i['positionAmt']) == 0]
 
-                # Select long and short positions
-                positions_open = [i['data'] for i in response['result'] if i['data']['size'] > 0]
-                positions_close = [i['data'] for i in response['result'] if i['data']['size'] == 0]
+            # Create dictionary of open positions
+            for position in positions_open:
 
-                # Create dictionary of open positions
-                for position in positions_open:
+                try:
+                    market = Market.objects.get(exchange=account.exchange,
+                                                type='derivative',
+                                                response__id=position['symbol']
+                                                )
 
-                    try:
-                        # First select market
-                        market = Market.objects.get(exchange=account.exchange,
-                                                    type='derivative',
-                                                    response__id=position['symbol']
-                                                    )
+                except ObjectDoesNotExist:
 
-                    except ObjectDoesNotExist:
+                    log.error('Unable to select {0}'.format(position['symbol']))
+                    continue
 
-                        log.error('Unable to select {0} and update position'.format(position['symbol']))
-                        continue
+                else:
 
-                    else:
+                    size = float(position['notionalValue'])
+                    side = 'buy' if size > 0 else 'sell'
+                    size = abs(size)
 
-                        size = position['size']
-                        side = position['side'].lower()
+                    # calculate position value in USDT
+                    value = size * market.contract_value * float(position['markPrice'])
 
-                        defaults = dict(
-                            size=size,
-                            side=side,
-                            value_usd=position['position_value'],
-                            leverage_max=float(position['leverage']),
-                            entry_price=float(position['entry_price']),
-                            realized_pnl=float(position['realised_pnl']),
-                            unrealized_pnl=float(position['unrealised_pnl']),
-                            liquidation_price=float(position['liq_price']),
-                            margin_mode='isolated' if position['is_isolated'] else 'crossed',
-                            margin=position['position_margin'],
-                            response=position
-                        )
+                    defaults = dict(
+                        size=size,
+                        side=side,
+                        value_usd=round(value, 2),
+                        last=float(position['markPrice']),
+                        leverage_max=float(position['leverage']),
+                        entry_price=float(position['entryPrice']),
+                        unrealized_pnl=float(position['unRealizedProfit']),
+                        liquidation_price=float(position['liquidationPrice']),
+                        margin_mode='crossed' if position['marginType'] == 'cross' else 'isolated',
+                        max_qty=float(position['maxQty']),  # defines the maximum quantity allowed
+                        response=position
+                    )
 
-                        update(market, defaults)
+                    create_update(market, defaults)
 
-            # Fetch all positions in coin margined products
-            elif not account.margined.stable_coin and account.derivative == 'perpetual':
+            # Finally delete object of closed positions
+            if Position.objects.filter(account=account).exists():
+                for position in positions_close:
+                    delete(position)
 
-                if not account.exchange.has_credit():
-                    return
+        binance_usd_margined()
+        binance_coin_margined()
 
-                response = client.v2PrivateGetPositionList()
-                account.exchange.update_credit('positionList')
+    # Bybit
+    #######
+    if account.exchange.exid == 'bybit':
 
-                # Select long and short positions
-                positions_open = [i['data'] for i in response['result'] if i['data']['size'] > 0]
-                positions_close = [i['data'] for i in response['result'] if i['data']['size'] == 0]
+        # Fetch Bybit USDT-marginated positions
+        def bybit_usdt_margined():
 
-                # Create dictionary of open positions
-                for position in positions_open:
+            if not account.exchange.has_credit():
+                return
 
-                    try:
-                        # First select market
-                        market = Market.objects.get(exchange=account.exchange,
-                                                    type='derivative',
-                                                    response__id=position['symbol']
-                                                    )
+            response = client.privateLinearGetPositionList()
+            account.exchange.update_credit('positionList')
 
-                    except ObjectDoesNotExist:
+            # Select long and short positions
+            positions_open = [i['data'] for i in response['result'] if i['data']['size'] > 0]
+            positions_close = [i['data'] for i in response['result'] if i['data']['size'] == 0]
 
-                        log.error('Unable to select {0} and update position'.format(position['symbol']))
-                        continue
+            # Create dictionary of open positions
+            for position in positions_open:
 
-                    else:
+                try:
+                    # First select market
+                    market = Market.objects.get(exchange=account.exchange,
+                                                type='derivative',
+                                                response__id=position['symbol']
+                                                )
 
-                        size = position['size']
-                        side = position['side'].lower()
+                except ObjectDoesNotExist:
 
-                        defaults = dict(
-                            size=size,
-                            side=side,
-                            value_usd=position['size'],  # Position size in USD
-                            leverage=float(position['effective_leverage']),
-                            leverage_max=float(position['leverage']),
-                            entry_price=float(position['entry_price']),
-                            realized_pnl=float(position['realised_pnl']),
-                            unrealized_pnl=float(position['unrealised_pnl']),
-                            liquidation_price=float(position['liq_price']),
-                            margin_mode='isolated' if position['is_isolated'] else 'crossed',
-                            margin=position['position_margin'],
-                            response=position
-                        )
+                    log.error('Unable to select {0} and update position'.format(position['symbol']))
+                    continue
 
-                        update(market, defaults)
+                else:
+
+                    size = position['size']
+                    side = position['side'].lower()
+
+                    defaults = dict(
+                        size=size,
+                        side=side,
+                        value_usd=position['position_value'],
+                        leverage_max=float(position['leverage']),
+                        entry_price=float(position['entry_price']),
+                        realized_pnl=float(position['realised_pnl']),
+                        unrealized_pnl=float(position['unrealised_pnl']),
+                        liquidation_price=float(position['liq_price']),
+                        margin_mode='isolated' if position['is_isolated'] else 'crossed',
+                        margin=position['position_margin'],
+                        response=position
+                    )
+
+                    create_update(market, defaults)
 
             # Delete object of closed positions
             for position in positions_close:
@@ -842,10 +719,65 @@ def update_positions(account):
                                            market__response__id=position['symbol']).exists():
                     delete(position)
 
-        # Delete object of positions if market.margined != account.margined
-        for position in Position.objects.filter(account=account).filter(~Q(market__margined=account.margined)):
-            position.delete()
-            log.info('Position object deleted for {0}'.format(position.market.symbol))
+        # Fetch Bybit COIN-margined positions
+        def bybit_coin_margined():
+
+            if not account.exchange.has_credit():
+                return
+
+            response = client.v2PrivateGetPositionList()
+            account.exchange.update_credit('positionList')
+
+            # Select long and short positions
+            positions_open = [i['data'] for i in response['result'] if i['data']['size'] > 0]
+            positions_close = [i['data'] for i in response['result'] if i['data']['size'] == 0]
+
+            # Create dictionary of open positions
+            for position in positions_open:
+
+                try:
+                    # First select market
+                    market = Market.objects.get(exchange=account.exchange,
+                                                type='derivative',
+                                                response__id=position['symbol']
+                                                )
+
+                except ObjectDoesNotExist:
+
+                    log.error('Unable to select {0} and update position'.format(position['symbol']))
+                    continue
+
+                else:
+
+                    size = position['size']
+                    side = position['side'].lower()
+
+                    defaults = dict(
+                        size=size,
+                        side=side,
+                        value_usd=position['size'],  # Position size in USD
+                        leverage=float(position['effective_leverage']),
+                        leverage_max=float(position['leverage']),
+                        entry_price=float(position['entry_price']),
+                        realized_pnl=float(position['realised_pnl']),
+                        unrealized_pnl=float(position['unrealised_pnl']),
+                        liquidation_price=float(position['liq_price']),
+                        margin_mode='isolated' if position['is_isolated'] else 'crossed',
+                        margin=position['position_margin'],
+                        response=position
+                    )
+
+                    create_update(market, defaults)
+
+            # Delete object of closed positions
+            for position in positions_close:
+                if Position.objects.filter(account=account,
+                                           side=position['side'].lower(),
+                                           market__response__id=position['symbol']).exists():
+                    delete(position)
+
+        bybit_usdt_margined()
+        bybit_coin_margined()
 
 
 # Trade with account
@@ -853,10 +785,10 @@ def update_positions(account):
 def trade(account):
     # Check account
     if not account.is_valid_credentials():
-        raise InvalidCredentials(
+        raise error.InvalidCredentials(
             'Account {0} has invalid credentials {1}'.format(account.name, account.api_key))
     if not account.trading:
-        raise InactiveAccount(
+        raise error.InactiveAccount(
             'Account trading is deactivated for {0}'.format(account.name))
 
     # Check exchange
@@ -869,7 +801,7 @@ def trade(account):
 
     # Check strategy update
     if not account.strategy.is_updated():
-        raise StrategyNotUpdated(
+        raise error.StrategyNotUpdated(
             'Cannot update account {0} ''strategy {1} is not updated'.format(account.name, account.strategy.name))
 
     # Check time
@@ -967,7 +899,7 @@ def trade_ws_account(self, account):
         price_limit = best - best * limit
 
         if price_limit < book[-1][0]:
-            raise SettingError('Increase orderbook limit over {0}'.format(account.exchange.orderbook_limit))
+            raise Exception('Increase orderbook limit over {0}'.format(account.exchange.orderbook_limit))
 
         # filter
         bid_filtered = [bid for bid in book if bid[0] > price_limit]
@@ -981,7 +913,7 @@ def trade_ws_account(self, account):
         price_limit = best + best * limit
 
         if price_limit > book[-1][0]:
-            raise SettingError('Increase orderbook limit over {0}'.format(account.exchange.orderbook_limit))
+            raise Exception('Increase orderbook limit over {0}'.format(account.exchange.orderbook_limit))
 
         # filter
         ask_filtered = [ask for ask in book if ask[0] < price_limit]
@@ -1234,7 +1166,6 @@ def trade_ws_account(self, account):
                         if orders:
 
                             print(account.name)
-                            pprint(orders)
 
                             gp = group([order_place.s(account.name, tp, args) for args in orders.values()])
                             res = gp.delay()
@@ -1397,20 +1328,11 @@ def trade_ws_account(self, account):
     # loop.close()
 
 
-# Fetch order book every x seconds
-# @shared_task(bind=True, name='trade_ws_accounts')
-def trade_ws_accounts(self):
-    accounts = [account.name for account in Account.objects.filter(strategy__production=True, trading=True)]
-    gp = group([trade_ws_account.s(account) for account in accounts])
-
-    res = gp.delay()
-
-
 # @shared_task(name='fetch_balance_n_positions')
 def fetch_balance_n_positions():
     accounts = [account.name for account in Account.objects.filter(trading=True)]
-    chains = [chain(orders_fetch_all_open.si(account),
-                    orders_cancel_pending.si(account),
+    chains = [chain(fetch_order_open.si(account),
+                    cancel_order_id.si(account),
                     create_fund.si(account),
                     update_positions.si(account)) for account in accounts]
 

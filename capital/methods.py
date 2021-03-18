@@ -4,27 +4,32 @@ import structlog
 
 log = structlog.get_logger(__name__)
 
+datetime_directive_s = "%Y-%m-%d %H:%M:%S"
+datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
 
-def get_datetime_now(delta=None, string=False):
-    #
-    # Return a Python datetime object TZ aware if USE_TZ=True
-    #
 
-    args = dict(minute=0, second=0, microsecond=0)
+# Return a Python datetime object TZ aware if USE_TZ=True
+def get_datetime(hour=None, minute=None, delta=None, string=False, timestamp=False, ms=False):
 
-    # Create a datetime object
-    dt = timezone.now().replace(**args)
+    # Create datetime object and set minute or hour
+    if hour:
+        dt = timezone.now().replace(hour=hour, minute=0, microsecond=0)
+    elif minute:
+        dt = timezone.now().replace(minute=minute, microsecond=0)
+    else:
+        dt = timezone.now()
 
+    # Remove a duration in seconds
     if delta:
-        dt = dt - timedelta(hours=delta)
+        dt = dt - timedelta(seconds=delta)
 
+    # Return object in the appropriate format
     if string:
-        dt = dt.strftime("%Y-%m-%d %H:%M")
-
-    return dt
-
-
-def get_timestamp_now():
-    dt = datetime.now()
-    utc_time = dt.replace(tzinfo=timezone.utc)
-    return utc_time.timestamp()
+        if ms:
+            return dt.strftime(datetime_directive_ms)
+        else:
+            return dt.strftime(datetime_directive_s)
+    elif timestamp:
+        return int(dt.timestamp())
+    else:
+        return dt

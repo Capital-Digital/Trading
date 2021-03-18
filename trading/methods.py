@@ -17,66 +17,41 @@ datetime_directives_std = '%Y-%m-%dT%H:%M:%S.%fZ'
 dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
 
-# spot market selection
-def select_market_long(account, alloc):
-    if not alloc.margin:
-        try:
-            market = Market.objects.get(exchange=account.exchange,
-                                        type__in=tp,
-                                        base=alloc.market.base
-                                        )
-        except ObjectDoesNotExist:
-            raise MarketSelectionError('Unable to select spot market {0} on {1}'
-                                       .format(alloc.market.base.code,
-                                               account.exchange.ccxt))
-        except MultipleObjectsReturned:
-            raise MarketSelectionError('More than one spot market found for {0} on {1}'
-                                       .format(alloc.market.base.code,
-                                               account.exchange.ccxt))
-        else:
-            return market
+# Create/update an order object with response returned by exchange
+def order_create_update(account, response, default_type=None):
 
+    # Create dictionary
+    defaults = dict(
+        clientOrderId=response['clientOrderId'],
+        timestamp=response['timestamp'],
+        datetime=response['datetime'],
+        last_trade_timestamp=response['lastTradeTimestamp'],
+        type=response['type'],
+        side=response['side'],
+        price=response['price'],
+        amount=response['amount'],
+        cost=response['cost'],
+        average=response['average'],
+        filled=response['filled'],
+        remaining=response['remaining'],
+        status=response['status'],
+        fee=response['fee'],
+        trades=response['trades'],
+        response=response
+    )
 
-# swap/future market selection
-def select_market_marg(account, alloc):
-    # alloc need margin trade
-    if alloc.margin:
+    market = Market.objects.get(exchange=account.exchange,
+                                default_type=default_type,
+                                symbol=response['symbol']
+                                )
+    args = dict(account=account, market=market, orderId=response['id'])
 
-        # set user preferences
-        if account.contract_preference == 'perp':
+    obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
-            if account.exchange.ccxt == 'binance':
-                tp = ['future']
-            else:
-                tp = ['swap']
-
-        elif account.contract_preference == 'fut':
-            tp = ['future', 'futures']
-        if account.contract_margin == 'USDT':
-            margin = Currency.objects.get(code='USDT')
-        elif account.contract_margin == 'underlying asset':
-            margin = alloc.market.base
-
-        try:
-            market = Market.objects.get(exchange=account.exchange,
-                                        type__in=tp,
-                                        base=alloc.market.base,
-                                        settlement=margin
-                                        )
-        except ObjectDoesNotExist:
-            raise MarketSelectionError('Unable to select {1} market {0}{3} on {2}'
-                                       .format(alloc.market.base.code,
-                                               account.contract_preference,
-                                               account.exchange.ccxt,
-                                               margin))
-        except MultipleObjectsReturned:
-            raise MarketSelectionError('More than one {1} market found for {0}{3} on {2}'
-                                       .format(alloc.market.base.code,
-                                               account.contract_preference,
-                                               account.exchange.ccxt,
-                                               margin))
-        else:
-            return market
+    if created:
+        log.info('Order object created', orderId=obj.orderId)
+    else:
+        log.info('Order object updated', orderId=obj.orderId)
 
 
 # Calculate target position
@@ -151,6 +126,9 @@ def format_decimal(number, precision, account):
                                      counting_mode=account.exchange.precision_mode)
 
 
+# Return USD value
+##################
+
 # return USD value of spot account
 def get_spot_balance_usd(account):
     try:
@@ -173,7 +151,10 @@ def get_future_balance_usd(account):
         return balance
 
 
-# Convert base quantity in USD
+# Convert base
+##############
+
+# quantity in USD
 def convert_to_usd(quantity, base, tp, exchange):
     if base not in ['USD', 'USDT']:
         try:
@@ -205,7 +186,10 @@ def convert_to_base(amount_usd, base, exchange):
         return amount_usd / market.get_last_price()
 
 
-# Return spot account total fund
+# Return spot balance
+# ####################
+
+# account total fund
 def get_spot_balance_total(account, base):
     for f in account.get_funds('spot'):
         if f.currency == base:
@@ -225,6 +209,8 @@ def get_spot_balance_used(account, base):
         if f.currency == base:
             return f.used
 
+# Return future account balance
+###############################
 
 # Return future account total fund
 def get_future_balance_total(account, base):
@@ -239,6 +225,9 @@ def get_future_balance_free(account, base):
         if f.currency == base:
             return f.free
 
+
+# Return quantity
+#################
 
 # Return position quantity
 def get_position_size(account, base):

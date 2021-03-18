@@ -157,7 +157,7 @@ class Exchange(models.Model):
     def has_credit(self, default_type=None):
 
         credit = self.credit
-        ts = int(get_timestamp_now())
+        ts = get_datetime(timestamp=True)
 
         # Return True is new
         if default_type not in credit:
@@ -262,7 +262,7 @@ class Exchange(models.Model):
     # Append weights and order to credit dictionary
     def update_credit(self, method, default_type=None):
         credit = self.credit
-        ts = int(get_timestamp_now())
+        ts = get_datetime(timestamp=True)
 
         if self.exid == 'binance':
 
@@ -335,17 +335,17 @@ class Exchange(models.Model):
             # Compare to current values and update field credit_max_reached
             if weight > max_w:
                 log.info('Max requests weigh is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
-                w = dict(date=get_datetime_now(string=True), max=weight)
+                w = dict(date=get_datetime(string=True), max=weight)
                 self.credit_max[default_type]['weight'] = w
 
             if order_count_1 > max_o1:
                 log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
-                order_1 = dict(date=get_datetime_now(string=True), max=order_count_1)
+                order_1 = dict(date=get_datetime(string=True), max=order_count_1)
                 self.credit_max[default_type]['order_count_1'] = order_1
 
             if order_count_2 > max_o2:
                 log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
-                order_2 = dict(date=get_datetime_now(string=True), max=order_count_2)
+                order_2 = dict(date=get_datetime(string=True), max=order_count_2)
                 self.credit_max[default_type]['order_count_2'] = order_2
 
             self.save()
@@ -353,14 +353,14 @@ class Exchange(models.Model):
         else:
 
             # Create a new dictionary if necessary
-            w = dict(date=get_datetime_now(string=True), max=weight)
-            order_1 = dict(date=get_datetime_now(string=True), max=order_count_1)
-            order_2 = dict(date=get_datetime_now(string=True), max=order_count_2)
+            w = dict(date=get_datetime(string=True), max=weight)
+            order_1 = dict(date=get_datetime(string=True), max=order_count_1)
+            order_2 = dict(date=get_datetime(string=True), max=order_count_2)
 
             self.credit_max[default_type] = dict(weight=w,
-                                                         order_count_1=order_1,
-                                                         order_count_2=order_2
-                                                         )
+                                                 order_count_1=order_1,
+                                                 order_count_2=order_2
+                                                 )
             self.save()
 
 

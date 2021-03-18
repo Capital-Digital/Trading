@@ -50,30 +50,30 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_positions(self, request, queryset):
         for account in queryset:
-            account.update_positions()
+            tasks.update_positions(account)
 
     update_positions.short_description = "Update positions"
 
     def fetch_order_open_all(self, request, queryset):
         for account in queryset:
-            tasks.fetch_order_open_all(account)
+            tasks.fetch_order_open(account)
 
     fetch_order_open_all.short_description = "Fetch all open orders"
 
 
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('dt', 'account', 'exchange', 'get_balance', )
+    list_display = ('dt', 'account', 'exchange', 'balance', )
     readonly_fields = ('account', 'exchange', 'balance', 'dt_create', 'dt', 'total', 'free', 'used', 'derivative')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
     )
 
-    def get_balance(self, obj):
-        return f'{int(round(sum([v for k, v in obj.balance.items()]), 2)):n}'
-
-    get_balance.short_description = 'Balance'
+    # def get_balance(self, obj):
+    #     return f'{int(round(sum([v for k, v in obj.balance.items()]), 2)):n}'
+    #
+    # get_balance.short_description = 'Balance'
 
 
 @admin.register(Order)

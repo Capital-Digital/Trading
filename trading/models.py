@@ -4,6 +4,7 @@ from django.contrib.postgres.fields import JSONField
 from django.utils import timezone
 from django.db.models import Q
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
+from capital.methods import *
 from strategy.models import Strategy, Allocation
 from marketsdata.models import Exchange, Market, Currency
 from trading.error import *
@@ -11,6 +12,8 @@ import structlog
 from datetime import timedelta, datetime
 from pprint import pprint
 from decimal import Decimal
+import numpy as np
+import pandas as pd
 
 log = structlog.get_logger(__name__)
 
@@ -42,19 +45,12 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Return True if credentials are valid
-    def is_valid_credentials(self):
-
-        self.set_credentials()
-        return self.valid_credentials
-
-    # Check crendentials validity
-    def set_credentials(self):
+    # Check crendentials and update field
+    def update_credentials(self):
 
         try:
             client = self.exchange.get_ccxt_client(self)
-            client.load_markets(True)
-            cred = client.checkRequiredCredentials()
+            client.checkRequiredCredentials()
 
         except ccxt.AuthenticationError as e:
             self.valid_credentials = False
@@ -63,49 +59,57 @@ class Account(models.Model):
             self.valid_credentials = False
 
         else:
-            self.valid_credentials = cred
+            self.valid_credentials = True
 
         finally:
             self.save()
 
-    # Determine if an account can hold long and short position at same time (hedge)
-    def get_position_mode(self):
+    # Return latest funds object
+    def get_fund_latest(self):
 
-        if self.strategy.margin:
-            if self.exchange.exid == 'binance':
+        if self.is_fund_updated():
+            return self.funds.latest('dt')
 
-                client = self.exchange.get_ccxt_client(self)
-                if self.margin_preference == 'swap':
-                    mode = client.fapiPrivateGetPositionSideDual()['dualSidePosition']
-                elif self.margin_preference == 'future':
-                    mode = client.dapiPrivateGetPositionSideDual()['dualSidePosition']
-                self.position_mode = 'dual' if mode else False
-                self.save()
-
-            elif self.exchange.exid == 'okex':
-
-                self.position_mode = 'hedge'
-                self.save()
-
-    # return datetime of latest order
-    def get_latest_order_dt(self, market):
-
-        orders = Order.objects.filter(account=self, market=market)
-        if orders.exists():
-            return orders.latest('dt_create').dt
-
-    # Return funds
-    def get_funds(self, account_type):
-
-        dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-        funds = self.funds.all().filter(dt=dt, type=account_type)
-        if funds.exists():
-            lst = []
-            for fund in funds:
-                lst.append(fund)
-            return lst
         else:
-            raise TradingError('Unable to select {1} funds for {0}'.format(self.name, account_type))
+            log.warning('Fund object is not updated')
+            return self.funds.latest('dt_create')
+            # raise Exception('Fund object is not updated')
+
+    # Construct a table
+    def get_table(self):
+
+        funds = self.get_fund_latest()
+        instructions = self.strategy.get_instructions()
+        d = pd.DataFrame()
+
+        for default_type, dic1 in funds.total.items():
+            for code, dic2 in dic1.items():
+
+                # Loop through fund
+                for field, value in dic2.items():
+                    # Create multilevel columns
+                    columns = pd.MultiIndex.from_product([[default_type], [field]], names=['type', 'indicator'])
+                    indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'type'])
+
+                    # Construct dataframe and normalize rows
+                    df = pd.DataFrame(value, index=indexes, columns=columns)
+                    d = pd.concat([df, d], axis=0).groupby(level=[0, 1]).mean()
+
+            # Loop through instructions
+            for k, v in instructions.items():
+                for code in list(v.keys()):
+                    # Create a new row AND/OR a column with instruction weight
+                    d.loc[code, ('account', 'target %')] = v[code]['weight']
+
+            # Create a column with target quantity
+            total_usd = d.xs('value', axis=1, level=1, drop_level=False).sum().sum()
+            d[('account', 'target $')] = d[('account', 'target %')] * total_usd
+
+        # Sort dataframe
+        d.sort_index(axis=1, inplace=True)
+        d.sort_index(axis=0, inplace=True)
+
+        return d
 
     # Return positions
     def get_positions(self):
@@ -143,6 +147,13 @@ class Account(models.Model):
         else:
             return []
 
+    # return datetime of latest order
+    def get_order_latest_dt(self, market):
+
+        orders = Order.objects.filter(account=self, market=market)
+        if orders.exists():
+            return orders.latest('dt_create').dt
+
     # Select currencies that need to be traded without margin
     def bases_alloc_no_margin(self):
 
@@ -176,10 +187,12 @@ class Account(models.Model):
             from . import okex
             okex.transfer_funds(self)
 
-    # Return True if fund account was created in the last 5 minutes
+    # Return True if fund object is stamped at 0
     def is_fund_updated(self):
-
-        return True if (timezone.now() - self.fund.latest('dt_create').dt_create).seconds < 60 * 5 else False
+        if self.funds.latest('dt_create').dt == get_datetime(minute=0):
+            return True
+        else:
+            return False
 
     # Return True if position has been updated recently
     def is_positions_updated(self):
@@ -215,42 +228,6 @@ class Account(models.Model):
             check(self.strategy)
         return True
 
-    # Create/update an order object with response returned by exchange
-    def order_update(self, response, default_type=None):
-
-        # Create dictionary
-        defaults = dict(
-            clientOrderId=response['clientOrderId'],
-            timestamp=response['timestamp'],
-            datetime=response['datetime'],
-            last_trade_timestamp=response['lastTradeTimestamp'],
-            type=response['type'],
-            side=response['side'],
-            price=response['price'],
-            amount=response['amount'],
-            cost=response['cost'],
-            average=response['average'],
-            filled=response['filled'],
-            remaining=response['remaining'],
-            status=response['status'],
-            fee=response['fee'],
-            trades=response['trades'],
-            response=response
-        )
-
-        market = Market.objects.get(exchange=self.exchange,
-                                    default_type=default_type,
-                                    symbol=response['symbol']
-                                    )
-        args = dict(account=self, market=market, orderId=response['id'])
-
-        obj, created = Order.objects.update_or_create(**args, defaults=defaults)
-
-        if created:
-            log.info('Order object created', orderId=obj.orderId)
-        else:
-            log.info('Order object updated', orderId=obj.orderId)
-
     # Create an order object (to open, add, remove or close a position)
     def order_create(self, market, market_type, type, side, size):
 
@@ -279,12 +256,6 @@ class Account(models.Model):
         log.info('Create order object')
         pprint(defaults)
         Order.objects.create(**defaults)
-
-    # Create, delete or update a position object
-    def update_positions(self):
-
-        from trading import tasks
-        tasks.update_positions(self)
 
 
 class Fund(models.Model):

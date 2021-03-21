@@ -22,38 +22,126 @@ def order_create_update(account, response, default_type=None):
 
     # Create dictionary
     defaults = dict(
-        clientOrderId=response['clientOrderId'],
-        timestamp=response['timestamp'],
-        datetime=response['datetime'],
-        last_trade_timestamp=response['lastTradeTimestamp'],
-        type=response['type'],
-        side=response['side'],
-        price=response['price'],
         amount=response['amount'],
-        cost=response['cost'],
         average=response['average'],
-        filled=response['filled'],
-        remaining=response['remaining'],
-        status=response['status'],
+        cost=response['cost'],
+        datetime=response['datetime'],
         fee=response['fee'],
+        filled=response['filled'],
+        response=response,
+        last_trade_timestamp=response['lastTradeTimestamp'],
+        price=response['price'],
+        remaining=response['remaining'],
+        side=response['side'],
+        status=response['status'],
+        timestamp=response['timestamp'],
         trades=response['trades'],
-        response=response
+        type=response['type']
     )
 
     market = Market.objects.get(exchange=account.exchange,
                                 default_type=default_type,
                                 symbol=response['symbol']
                                 )
-    args = dict(account=account, market=market, orderId=response['id'])
 
+    # Create filter and create / update
+    args = dict(account=account, market=market, orderid=response['id'])
     obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
     if created:
-        log.info('Order object created', orderId=obj.orderId)
+        log.info('Order object created', id=obj.id)
     else:
-        log.info('Order object updated', orderId=obj.orderId)
+        log.info('Order object updated', id=obj.id)
 
 
+# Format decimal
+def format_decimal(counting_mode, precision, n):
+
+    # Rounding mode
+    TRUNCATE = 0  # will round the last decimal digits to precision
+    ROUND = 1  # will cut off the digits after certain precision
+
+    # Counting mode
+    # If exchange.precisionMode is DECIMAL_PLACES then the market['precision'] designates the number of decimal
+    # digits after the dot. If exchange.precisionMode is SIGNIFICANT_DIGITS then the market['precision'] designates
+    # the number of non-zero digits after the dot. When exchange.precisionMode is TICK_SIZE then the market[
+    # 'precision'] designates the smallest possible float fractions. rounding mode
+
+    DECIMAL_PLACES = 2  # 99% of exchanges use this counting mode (Binance)
+    SIGNIFICANT_DIGITS = 3  # Bitfinex
+    TICK_SIZE = 4  # Bitmex, FTX
+
+    # Padding mode
+    NO_PADDING = 5  # default for most cases
+    PAD_WITH_ZERO = 6  # appends zero characters up to precision
+
+    return ccxt.decimal_to_precision(n,
+                                     rounding_mode=0,
+                                     precision=precision,
+                                     counting_mode=counting_mode,
+                                     padding_mode=5
+                                     )
+
+
+# Return amount limit min or amount limit max if condition is not satisfy
+def limit_amount(market, amount):
+
+    # Check amount limits
+    if market.limits['amount']['min']:
+        if amount < market.limits['amount']['min']:
+            log.warning('Amount < limit min', amount=amount, limit=market.limits['amount']['min'])
+            return 0
+
+    if market.limits['amount']['max']:
+        if amount > market.limits['amount']['max']:
+            log.warning('Amount > limit max', amount=amount, limit=market.limits['amount']['max'])
+            return market.limits['amount']['max']
+
+    return amount
+
+
+# Return True if price limit conditions are satisfy otherwise False
+def limit_price(market, price):
+
+    # Check price limits
+    if market.limits['price']['min']:
+        if price < market.limits['price']['min']:
+            log.warning('Price < limit min', price=price, limit=market.limits['price']['min'])
+            return False
+
+    if market.limits['price']['max']:
+        if price > market.limits['price']['max']:
+            log.warning('Price > limit max', price=price, limit=market.limits['price']['max'])
+            return False
+
+    return True
+
+
+# Return True if cost limit conditions are satisfy otherwise False
+def limit_cost(market, amount, price):
+
+    # Check cost limits
+    if market.limits['cost']['min']:
+        if amount * price < market.limits['cost']['min']:
+            log.warning('Cost < limit min', cost=amount * price, limit=market.limits['cost']['min'])
+            return False
+
+    if market.limits['cost']['max']:
+        if amount * price > market.limits['cost']['max']:
+            log.warning('Cost > limit max', cost=amount * price, limit=market.limits['cost']['max'])
+            return False
+
+    return True
+
+
+# Calculate target position
+# Calculate target position
+# Calculate target position
+# Calculate target position
+# Calculate target position
+# Calculate target position
+# Calculate target position
+# Calculate target position
 # Calculate target position
 def target_size_n_side(account, allocation):
     log.bind(account=account.name)
@@ -89,45 +177,6 @@ def target_size_n_side(account, allocation):
 
     return size, side
 
-
-# Format decimal
-def format_decimal(number, precision, account):
-    # # rounding mode
-    # TRUNCATE = 0
-    # ROUND = 1
-    #
-    # # digits counting mode
-    # DECIMAL_PLACES = 2
-    # SIGNIFICANT_DIGITS = 3
-    # TICK_SIZE = 4
-    #
-    # # padding mode
-    # NO_PADDING = 5
-    # PAD_WITH_ZERO = 6
-
-    # if account.name == 'OKEx future USD':
-    #     print('\naccount', account.name)
-    #     print('precision_mode', account.exchange.precision_mode)
-    #     test1 = ccxt.decimal_to_precision(number,
-    #                                       rounding_mode=0,
-    #                                       precision=precision,
-    #                                       counting_mode=account.exchange.precision_mode)
-    #
-    #     test2 = ccxt.decimal_to_precision(number,
-    #                                       rounding_mode=1,
-    #                                       precision=precision,
-    #                                       counting_mode=account.exchange.precision_mode)
-    #
-    #     print('test', number, test1, test2, '\n')
-
-    return ccxt.decimal_to_precision(number,
-                                     rounding_mode=0,
-                                     precision=precision,
-                                     counting_mode=account.exchange.precision_mode)
-
-
-# Return USD value
-##################
 
 # return USD value of spot account
 def get_spot_balance_usd(account):

@@ -30,7 +30,9 @@ class Account(models.Model):
                                   blank=True)
     margined = models.ForeignKey(Currency, on_delete=models.DO_NOTHING, related_name='account_margined',
                                  blank=True, null=True)
-    limit_order, valid_credentials, trading = [models.BooleanField(null=True, default=None) for i in range(3)]
+    valid_credentials = models.BooleanField(null=True, default=None)
+    trading = models.BooleanField(null=True, blank=False, default=False)
+    limit_order = models.BooleanField(null=True, blank=False, default=True)
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)
     position_mode = models.CharField(max_length=20, choices=[('dual', 'dual'), ('hedge', 'hedge')], blank=True)
     email = models.EmailField(max_length=100, blank=True)
@@ -44,6 +46,125 @@ class Account(models.Model):
 
     def __str__(self):
         return self.name
+
+    # Construct a dataframe with account balance and instructions
+    def create_dataframe(self):
+
+        funds = self.get_fund_latest()
+        instructions = self.strategy.get_instructions()
+        d = pd.DataFrame()
+
+        for default_type, dic1 in funds.total.items():
+
+            for code, dic2 in dic1.items():
+
+                # Loop through fund
+                for field, value in dic2.items():
+                    # Create multilevel columns
+                    columns = pd.MultiIndex.from_product([[default_type], [field]])
+                    indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'type'])
+
+                    # Construct dataframe and normalize rows
+                    df = pd.DataFrame(value, index=indexes, columns=columns)
+                    d = pd.concat([df, d], axis=0).groupby(level=[0, 1]).mean()
+
+        for default_type, dic1 in funds.total.items():
+
+            # Loop through instructions
+            for k, v in instructions.items():
+                inst_codes = list(v.keys())
+                for code in inst_codes:
+                    # Create a new row AND/OR a column with instruction weight
+                    d.loc[(code, default_type), ('target', 'percent')] = v[code]['weight']
+
+            # Create a column with target value
+            total_usd = d.drop(['target'], axis=1).xs('value', axis=1, level=1, drop_level=False).sum().sum()
+            d['target', 'value'] = d[('target', 'percent')] * total_usd
+
+            # And target quantity
+            for code in inst_codes:
+
+                if code != self.exchange.dollar_currency:
+                    price = Market.objects.get(base__code=code,
+                                               quote__code=self.exchange.dollar_currency,
+                                               exchange=self.exchange,
+                                               default_type__in=['spot', None]
+                                               ).get_candle_price_last()
+
+                else:
+                    price = 1
+
+                d.loc[code, ('target', 'quantity')] = d.loc[(code, 'spot'), ('target', 'value')] / price
+
+        # Sort dataframe
+        d.sort_index(axis=1, inplace=True)
+        d.sort_index(axis=0, inplace=True)
+
+        return d
+
+    # Create a new order object
+    def create_order(self, market, side, amount):
+
+        from trading import methods
+
+        # Check amount limits min & max conditions and format decimal
+        amount = methods.limit_amount(market, amount)
+        amount = methods.format_decimal(counting_mode=self.exchange.precision_mode,
+                                        precision=market.precision['amount'],
+                                        n=amount
+                                        )
+
+        defaults = dict(
+            account=self,
+            market=market,
+            type='limit' if self.limit_order else 'market',
+            side=side,
+            amount=str(amount),
+            status='created'
+        )
+
+        # Limit price order
+        if self.limit_order:
+            if self.exchange.has['createLimitOrder']:
+
+                price = market.get_candle_price_last()
+
+                # Add or remove tolerance
+                if side == 'buy':
+                    price = price + price * float(self.limit_price_tolerance)
+                elif side == 'sell':
+                    price = price - price * float(self.limit_price_tolerance)
+
+                # Check price limits and format decimal
+                if methods.limit_price(market, price):
+                    price = methods.format_decimal(counting_mode=self.exchange.precision_mode,
+                                                   precision=market.precision['price'],
+                                                   n=price
+                                                   )
+                    defaults['price'] = str(price)
+                else:
+                    raise Exception('Price limits conditions error')
+            else:
+                raise Exception('Limit order not supported')
+
+        # Market order
+        else:
+            if self.exchange.has['createMarketOrder']:
+
+                # Set price to check cost limit conditions
+                price = market.get_candle_price_last()
+
+            else:
+                raise Exception('Market order not supported')
+
+        # Finally check cost and create object
+        if methods.limit_cost(market, float(amount), float(price)):
+
+            order = Order.objects.create(**defaults)
+            return order.id
+
+        else:
+            pass
 
     # Check crendentials and update field
     def update_credentials(self):
@@ -64,6 +185,15 @@ class Account(models.Model):
         finally:
             self.save()
 
+    # Return a list with orderid of open orders
+    def get_pending_order_ids(self):
+
+        from trading import tasks
+        orders = Order.objects.filter(account=self, status='open')
+
+        if orders.exists():
+            return [order.orderid for order in orders.all()]
+
     # Return latest funds object
     def get_fund_latest(self):
 
@@ -71,45 +201,10 @@ class Account(models.Model):
             return self.funds.latest('dt')
 
         else:
-            log.warning('Fund object is not updated')
-            return self.funds.latest('dt_create')
-            # raise Exception('Fund object is not updated')
 
-    # Construct a table
-    def get_table(self):
-
-        funds = self.get_fund_latest()
-        instructions = self.strategy.get_instructions()
-        d = pd.DataFrame()
-
-        for default_type, dic1 in funds.total.items():
-            for code, dic2 in dic1.items():
-
-                # Loop through fund
-                for field, value in dic2.items():
-                    # Create multilevel columns
-                    columns = pd.MultiIndex.from_product([[default_type], [field]], names=['type', 'indicator'])
-                    indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'type'])
-
-                    # Construct dataframe and normalize rows
-                    df = pd.DataFrame(value, index=indexes, columns=columns)
-                    d = pd.concat([df, d], axis=0).groupby(level=[0, 1]).mean()
-
-            # Loop through instructions
-            for k, v in instructions.items():
-                for code in list(v.keys()):
-                    # Create a new row AND/OR a column with instruction weight
-                    d.loc[code, ('account', 'target %')] = v[code]['weight']
-
-            # Create a column with target quantity
-            total_usd = d.xs('value', axis=1, level=1, drop_level=False).sum().sum()
-            d[('account', 'target $')] = d[('account', 'target %')] * total_usd
-
-        # Sort dataframe
-        d.sort_index(axis=1, inplace=True)
-        d.sort_index(axis=0, inplace=True)
-
-        return d
+            from trading.tasks import create_fund
+            create_fund(self.name)
+            return self.funds.latest('dt')
 
     # Return positions
     def get_positions(self):
@@ -154,32 +249,6 @@ class Account(models.Model):
         if orders.exists():
             return orders.latest('dt_create').dt
 
-    # Select currencies that need to be traded without margin
-    def bases_alloc_no_margin(self):
-
-        dt = self.strategy.get_latest_alloc_dt()
-        allocations = Allocation.objects.filter(strategy=self.strategy, dt=dt)
-        if allocations.exists():
-            lst = []
-            for a in allocations:
-                if not a.margin or (a.margin and a.side == 'buy'):
-                    lst.append(a)
-            return lst
-        else:
-            return []
-
-    # Select bases (margin short) from the new allocations
-    def get_allocations_short(self):
-
-        dt = self.strategy.get_latest_alloc_dt()
-        allocations = Allocation.objects.filter(strategy=self.strategy, dt=dt)
-        if allocations.exists():
-            lst = []
-            for a in allocations:
-                if a.margin and a.side == 'sell':
-                    lst.append(a)
-            return lst
-
     # Transfer funds between accounts
     def transfer_fund(self):
 
@@ -198,64 +267,6 @@ class Account(models.Model):
     def is_positions_updated(self):
 
         return True if all([position.is_updated() for position in self.position.all()]) else False
-
-    # Return True if account exchange is compatible with strategy
-    def is_compatible(self):
-
-        # Fire an exception if one currency from the strategy isn't available on exchange
-        def check(strategy):
-
-            # set type to future/swap if strategy.margin else all types
-            bases, quote, margin = strategy.get_markets(flat=True)
-            tp = ['swap', 'future', 'futures'] if margin else ['swap', 'spot', 'future', 'futures', None]
-
-            # try to select all bases from the strategy
-            for base in bases:
-                try:
-                    Market.objects.get(exchange=self.exchange, type__in=tp, base__code=base)
-                except ObjectDoesNotExist:
-                    mk = 'future market' if margin else 'spot market'
-                    raise SettingError('{1} {0} is not available on {2}'.format(mk,
-                                                                                        base,
-                                                                                        self.exchange.exid))
-                except MultipleObjectsReturned:
-                    pass
-
-        if self.strategy.master:
-            for strategy in self.strategy.sub_strategies.all():
-                check(strategy)
-        else:
-            check(self.strategy)
-        return True
-
-    # Create an order object (to open, add, remove or close a position)
-    def order_create(self, market, market_type, type, side, size):
-
-        from trading.methods import format_decimal
-        market = Market.objects.get(symbol=market, type=market_type, exchange=self.exchange)
-
-        # Format decimal
-        size = format_decimal(size, market.precision['amount'], self)
-
-        defaults = dict(
-            account=self,
-            api=True,
-            market=market,
-            size=str(size),
-            status='created',
-            price_strategy=market.get_last_price(),
-            type=type
-        )
-
-        # Set price
-        if type == 'limit':
-            price = market.get_last_price()
-            price = format_decimal(price, market.precision['price'], self)
-            defaults['price'] = str(price)
-
-        log.info('Create order object')
-        pprint(defaults)
-        Order.objects.create(**defaults)
 
 
 class Fund(models.Model):
@@ -279,12 +290,13 @@ class Order(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='order', null=True)
     market = models.ForeignKey(Market, on_delete=models.SET_NULL, related_name='order', null=True)
-    orderId, clientOrderId, status, type = [models.CharField(max_length=150, null=True) for i in range(4)]
+    orderid = models.CharField(max_length=150, null=True)  # order exchange's ID
+    status, type = [models.CharField(max_length=150, null=True) for i in range(2)]
     amount, filled, remaining, max_qty = [models.CharField(max_length=10, null=True) for i in range(4)]
     side = models.CharField(max_length=10, null=True, choices=(('buy', 'buy'), ('sell', 'sell')))
     cost = models.FloatField(null=True)
     trades = models.CharField(max_length=10, null=True)
-    average, price, price_strategy, leverage = [models.FloatField(null=True) for i in range(4)]
+    average, price, price_strategy = [models.FloatField(null=True, blank=True) for i in range(3)]
     fee = JSONField(null=True)
     response = JSONField(null=True)
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
@@ -296,7 +308,7 @@ class Order(models.Model):
         verbose_name_plural = "Orders"
 
     def __str__(self):
-        return self.type
+        return str(self.pk)
 
 
 class Position(models.Model):

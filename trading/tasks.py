@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 import capital.celery as celery
 from celery import chain, group, shared_task, Task
+from capital.methods import *
 from marketsdata.models import Market, Candle, Currency, Exchange
 from strategy.models import Allocation, Strategy
 from trading.methods import target_size_n_side, format_decimal, get_spot_balance_used, get_position_size, \
@@ -133,46 +134,6 @@ def fetch_order_past(account, market, timestamp):
         raise Exception('Methode fetchOrders is not supported by {0}'.format(account.exchange.name))
 
 
-# Fetch an orderId (reload = True)
-@shared_task(name='Trading_____Fetch order by ID', base=BaseTaskWithRetry)
-def fetch_order_id(account, orderid):
-    account = Account.objects.get(name=account)
-    log.bind(account=account.name, exchange=account.exchange.exid, orderId=orderid)
-
-    try:
-        # First select object
-        order = Order.objects.get(account=account, orderId=orderid)
-
-    except ObjectDoesNotExist:
-        log.error('Unable to select order object')
-
-    else:
-        client = account.exchange.get_ccxt_client(account)
-
-        if order.market.default_type:
-            client.options['defaultType'] = order.market.default_type
-
-        # check if method is supported
-        if account.exchange.has['fetchOrder']:
-
-            params = None
-
-            # OKEx specific
-            if account.exchange.exid == 'okex':
-                params = dict(instrument_id=order.market.info['instrument_id'], order_id=orderid)
-
-            log.info('Fetch order')
-
-            # Check credit and insert order
-            if account.exchange.has_credit():
-                response = client.fetchOrder(id=orderid, symbol=order.market.symbol, params=params)
-                account.exchange.update_credit('fetchOrder', order.market.default_type)
-                methods.order_create_update(account, response, order.market.default_type)
-
-        else:
-            raise Exception('Methode fetchOrder is not supported by {0}'.format(account.exchange.name))
-
-
 # Cancel order by orderId
 @shared_task(name='Trading_____Cancel order by ID', base=BaseTaskWithRetry)
 def cancel_order_id(account, orderid):
@@ -202,32 +163,79 @@ def cancel_order_id(account, orderid):
 
 # Place an order to the market after an object is created
 @shared_task(name='Trading_____Place order by ID', base=BaseTaskWithRetry)
-def order_place(account, orderid):
+def place_order(account, pk):
     account = Account.objects.get(name=account)
     log.bind(account=account.name, exchange=account.exchange.exid)
 
     try:
-        # First select object
-        order = Order.objects.get(orderId=orderid)
+        # Select object by it's primary key
+        order = Order.objects.get(id=pk)
 
     except ObjectDoesNotExist:
-        log.error('Unable to select order object')
+        raise Exception('Unable to select order object {0}'.format(pk))
 
     else:
+
+        # Get client
         client = account.exchange.get_ccxt_client(account)
 
+        # Set default_type is necessary
         if order.market.default_type:
             client.options['defaultType'] = order.market.default_type
 
-        log.info('Place order')
+        args = dict(
+            symbol=order.market.symbol,
+            type=order.type,
+            side=order.side,
+            amount=float(order.amount),
+            params=dict(clientOrderId=pk)  # Set primary key as clientOrderId
+        )
 
-        args = []
+        # Set limit price
+        if account.limit_order:
+            args['price'] = order.price
 
-        symbol = args['symbol']
-        order_type = args['type']
-        clientOrderId = args['params']['newClientOrderId']
+        pprint(args)
+
+        # Check API credit and place order
+        if account.exchange.has_credit():
+            response = client.create_order(**args)
+            account.exchange.update_credit('create_order', order.market.default_type)
+
+            pprint(response)
+
+            if response['id']:
+
+                # Check if it's our order
+                if float(response['clientOrderId']) == pk:
+
+                    log.info('Order {0} successfully placed'.format(pk))
+
+                    order.orderid = response['id']
+                    order.price_average = response['average']
+                    order.fee = response['fee']
+                    order.cost = response['cost']
+                    order.filled = response['filled']
+                    order.price = response['price']
+                    order.status = response['status']
+                    order.timestamp = response['timestamp']
+                    order.datetime = convert_string_to_date(response['datetime'], datetime_directive_binance_order)
+                    order.response = response
+                    order.save()
+
+                    log.info('Order {0} saved'.format(pk))
+
+                    return response
+
+                else:
+                    raise Exception('Exchange returned an unknown order ID')
+            else:
+                raise Exception('Exchange does not return an order ID')
+        else:
+            raise Exception('No credit left')
 
         # Specific to OKEx
+        # clientOrderId = args['params']['newClientOrderId']
         # if order.account.exchange.exid == 'okex':
         #     # Set params
         #     if order.account.limit_order:
@@ -237,21 +245,6 @@ def order_place(account, orderid):
         #     # Rewrite type
         #     args['type'] = 1 if order.type == 'open_long' else 2 if order.type == 'open_short' \
         #         else 3 if order.type == 'close_long' else 4 if order.type == 'close_short' else None
-
-        # Place limit or market order
-        if order_type == 'limit':
-
-            if account.exchange.has['createLimitOrder']:
-                args['price'] = 0
-                response = client.create_order(**args)
-            else:
-                raise MethodUnsupported('Limit order not supported with'.format(account.exchange.exid))
-        else:
-            if account.exchange.has['createMarketOrder']:
-                response = client.create_order(**args)
-            else:
-                raise MethodUnsupported('Market order not supported with'.format(account.exchange.exid))
-
         # if account.exchange.exid == 'okex':
         #     if response['info']['error_code'] == '0':
         #         order.refresh()
@@ -259,37 +252,13 @@ def order_place(account, orderid):
         #         log.error('Error code is not 0', account=account.name, args=args)
         #         pprint(response)
 
-        print('response')
-
-        if response['id']:
-
-            order.orderId = response['id']
-            order.price_average = response['average']
-            order.fee = response['fee']
-            order.filled = response['filled']
-            order.price = response['price']
-            order.status = response['status']
-
-            if 'clientOrderId' in response:
-                order.clientOrderId = response['clientOrderId']
-
-            log.info('Order ID {0} placed'.format(order.orderId), account=order.account.name)
-
-        else:
-            log.error('Order ID unknown')
-
-        order.response = response
-        order.save()
-        log.info('Order ID {0} object saved'.format(order.orderId), account=order.account.name)
-
 
 # Fetch balance and create fund object
-@shared_task(name='Trading_____Create_fund', base=BaseTaskWithRetry)
+@shared_task(base=BaseTaskWithRetry)
 def create_fund(account):
     log.bind(account=account)
     account = Account.objects.get(name=account)
 
-    log.info('Fetch balance')
     client = account.exchange.get_ccxt_client(account)
 
     # add 1h because the balance is fetched at :59
@@ -428,6 +397,89 @@ def create_fund(account):
             derivative[default_type] = get_derivative(response)
 
             create_fund(total, free, used, derivative)
+
+
+@shared_task(name='Trading_____Create_funds')
+def create_funds():
+    accounts = [account.name for account in Account.objects.filter(trading=True)]
+    chains = [chain(create_fund.si(account)) for account in accounts]
+
+    result = group(*chains).delay()
+
+    while not result.ready():
+        time.sleep(0.5)
+
+    if result.successful():
+        log.info('Funds successfully created')
+
+
+# Fetch an order by it's ID
+@shared_task(base=BaseTaskWithRetry)
+def update_order_id(account, orderid):
+    account = Account.objects.get(name=account)
+
+    log.bind(account=account.name, exchange=account.exchange.exid, orderid=orderid)
+
+    try:
+        # First select object
+        order = Order.objects.get(account=account, orderid=orderid)
+
+    except ObjectDoesNotExist:
+        log.error('Unable to select order object')
+
+    else:
+
+        if order.status == 'open':
+
+            client = account.exchange.get_ccxt_client(account)
+
+            # Set default_type if necessary
+            if order.market.default_type:
+                client.options['defaultType'] = order.market.default_type
+
+            # check if method is supported
+            if account.exchange.has['fetchOrder']:
+
+                params = None
+
+                # OKEx specific
+                if account.exchange.exid == 'okex':
+                    params = dict(instrument_id=order.market.info['instrument_id'], order_id=orderid)
+
+                # Check credit and insert order
+                if account.exchange.has_credit():
+
+                    response = client.fetchOrder(id=orderid, symbol=order.market.symbol) #, params=params)
+                    account.exchange.update_credit('fetchOrder', order.market.default_type)
+                    methods.order_create_update(account, response, order.market.default_type)
+
+            else:
+                raise Exception('Methode fetchOrder is not supported by {0}'.format(account.exchange.name))
+        else:
+            log.info('Order is not open but {0}'.format(order.status))
+
+
+# Update all open orders of trading accounts
+@shared_task(name='Trading_____Update_pending_orders')
+def update_pending_orders():
+
+    accounts = Account.objects.filter(trading=True)
+
+    if accounts.exists():
+        tasks = [[update_order_id.si(account.name, orderid) for orderid in account.get_pending_order_ids() if orderid]
+                 for account in accounts if account.get_pending_order_ids()]
+
+        if tasks:
+            result = group(*tasks).delay()
+
+            while not result.ready():
+                time.sleep(0.5)
+
+            if result.successful():
+                log.info('Order updated successfully')
+
+        else:
+            pass
 
 
 # Create, update or delete objects

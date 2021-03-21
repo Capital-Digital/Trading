@@ -292,6 +292,14 @@ class Exchange(models.Model):
                     weight = 40 + 1
                     order = False
 
+                elif method == 'create_order':
+                    weight = 1 + 1
+                    order = True
+
+                elif method == 'fetchOrder':
+                    weight = 1 + 1
+                    order = True
+
                 else:
                     raise Exception('Method unknown : {0}'.format(method))
 

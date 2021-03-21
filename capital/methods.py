@@ -1,11 +1,13 @@
 from django.utils import timezone
 from datetime import timedelta, datetime
 import structlog
+import pytz
 
 log = structlog.get_logger(__name__)
 
 datetime_directive_s = "%Y-%m-%d %H:%M:%S"
 datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
+datetime_directive_binance_order = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
 # Return a Python datetime object TZ aware if USE_TZ=True
@@ -33,3 +35,8 @@ def get_datetime(hour=None, minute=None, delta=None, string=False, timestamp=Fal
         return int(dt.timestamp())
     else:
         return dt
+
+
+# Convert a string to a datetime object
+def convert_string_to_date(string, directive):
+    return pytz.utc.localize(datetime.strptime(string, directive))

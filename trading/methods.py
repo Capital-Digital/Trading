@@ -20,6 +20,8 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 # Create/update an order object with response returned by exchange
 def order_create_update(account, response, default_type=None):
 
+    log.info('Updating order...')
+
     # Create dictionary
     defaults = dict(
         amount=response['amount'],
@@ -51,7 +53,13 @@ def order_create_update(account, response, default_type=None):
     if created:
         log.info('Order object created', id=obj.id)
     else:
-        log.info('Order object updated', id=obj.id)
+        log.info('Order object updated', id=obj.id, filled=obj.filled)
+
+
+# Place an order to the market and return a json object
+def place_order(pk):
+
+    order = Order.objects.get(id=pk)
 
 
 # Format decimal
@@ -90,7 +98,7 @@ def limit_amount(market, amount):
     if market.limits['amount']['min']:
         if amount < market.limits['amount']['min']:
             log.warning('Amount < limit min', amount=amount, limit=market.limits['amount']['min'])
-            return 0
+            return
 
     if market.limits['amount']['max']:
         if amount > market.limits['amount']['max']:
@@ -134,48 +142,23 @@ def limit_cost(market, amount, price):
     return True
 
 
-# Calculate target position
-# Calculate target position
-# Calculate target position
-# Calculate target position
-# Calculate target position
-# Calculate target position
-# Calculate target position
-# Calculate target position
-# Calculate target position
-def target_size_n_side(account, allocation):
-    log.bind(account=account.name)
+# Convert currency amount to contract quantity
+def convert_amount(market, amount):
 
-    # select the best market to trade
-    market = select_market(account, allocation)
+    if market.type == 'derivative':
 
-    # Calculate the value of 1 unit in USD
-    if market.type is 'spot':
-        contract_value_usd = 1 / market.get_last_price()
-    elif market.type in ['swap', 'future', 'futures']:
-        contract_value_usd = market.get_contract_value()
+        # Contract value currency is COIN
+        if market.contract_value_currency == market.base:
+            return amount / market.contract_value
 
-    # Get latest equity value
-    equity_value = Fund.objects.get(account=account, total=True, dt=dt).equity
+        # Contract value currency is US pegged currency
+        elif market.contract_value_currency.stable_coin:
+            last = market.get_candle_price_last()
+            return amount * last / market.contract_value
 
-    # Calculate the target position value in USD
-    position_value_target = allocation.weight * equity_value
-
-    # Calculate synthetic short
-    if allocation.market.settlement == allocation.market.base \
-            and allocation.market.settlement not in ['USD', 'USDT']:
-        synthetic_short = equity_value / contract_value_usd
     else:
-        synthetic_short = 0
+        return amount
 
-    # Calculate total number of contracts needed
-    size = abs((position_value_target / contract_value_usd) - synthetic_short)
-    side = 'buy' if allocation.weight > 0 else 'sell'
-
-    # Format decimals
-    size = float(format_decimal(size, allocation.market.precision['amount'], account))
-
-    return size, side
 
 
 # return USD value of spot account

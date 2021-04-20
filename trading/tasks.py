@@ -8,7 +8,7 @@ from celery import chain, group, shared_task, Task
 from capital.methods import *
 from marketsdata.models import Market, Candle, Currency, Exchange
 from strategy.models import Allocation, Strategy
-from trading.methods import target_size_n_side, format_decimal, get_spot_balance_used, get_position_size, \
+from trading.methods import format_decimal, get_spot_balance_used, get_position_size, \
     get_spot_balance_free, calculate_target_quantity
 from trading.models import Account, Order, Fund, Position
 from trading import methods
@@ -210,6 +210,10 @@ def place_order(account, pk):
                 if float(response['clientOrderId']) == pk:
 
                     log.info('Order {0} successfully placed'.format(pk))
+
+                    # Select Binance datetime
+                    if account.exchange.exid == 'binance':
+                        response['datetime'] = str(response['info']['updateTime'])
 
                     order.orderid = response['id']
                     order.price_average = response['average']
@@ -539,50 +543,51 @@ def update_positions(account):
                 account.exchange.update_credit('swapGetPosition', 'swap')
 
                 # Construct dictionary
-                for position in response[0]['holding']:
+                if response[0]['holding']:
+                    for position in response[0]['holding']:
 
-                    try:
-                        # First select market
-                        market = Market.objects.get(exchange=account.exchange,
-                                                    type='derivative',
-                                                    derivative='perpetual',
-                                                    response__id=position['instrument_id']
-                                                    )
+                        try:
+                            # First select market
+                            market = Market.objects.get(exchange=account.exchange,
+                                                        type='derivative',
+                                                        derivative='perpetual',
+                                                        response__id=position['instrument_id']
+                                                        )
 
-                    except ObjectDoesNotExist:
+                        except ObjectDoesNotExist:
 
-                        log.error('Unable to select {0}'.format(position['instrument_id']))
-                        continue
+                            log.error('Unable to select {0}'.format(position['instrument_id']))
+                            continue
 
-                    else:
-
-                        size = float(position['position'])  # contract qty
-                        side = 'buy' if position['side'] == 'long' else 'sell'
-                        last = float(position['last'])
-                        size = abs(size)
-
-                        # calculate position value in USDT
-                        if market.contract_value_currency.stable_coin:
-                            value = size * market.contract_value
                         else:
-                            value = size * market.contract_value * last
 
-                        defaults = dict(
-                            size=size,
-                            side=side,
-                            last=last,
-                            value_usd=value,
-                            entry_price=float(position['avg_cost']),
-                            liquidation_price=float(position['liquidation_price']),
-                            leverage_max=position['leverage'],
-                            margin_mode='crossed' if response[0]['margin_mode'] == 'crossed' else 'isolated',
-                            margin_maint_ratio=float(position['maint_margin_ratio']),
-                            realized_pnl=float(position['realized_pnl']),
-                            unrealized_pnl=float(position['unrealized_pnl']),
-                            response=position
-                        )
+                            size = float(position['position'])  # contract qty
+                            side = 'buy' if position['side'] == 'long' else 'sell'
+                            last = float(position['last'])
+                            size = abs(size)
 
-                        create_update(market, defaults)
+                            # calculate position value in USDT
+                            if market.contract_value_currency.stable_coin:
+                                value = size * market.contract_value
+                            else:
+                                value = size * market.contract_value * last
+
+                            defaults = dict(
+                                size=size,
+                                side=side,
+                                last=last,
+                                value_usd=value,
+                                entry_price=float(position['avg_cost']),
+                                liquidation_price=float(position['liquidation_price']),
+                                leverage_max=position['leverage'],
+                                margin_mode='crossed' if response[0]['margin_mode'] == 'crossed' else 'isolated',
+                                margin_maint_ratio=float(position['maint_margin_ratio']),
+                                realized_pnl=float(position['realized_pnl']),
+                                unrealized_pnl=float(position['unrealized_pnl']),
+                                response=position
+                            )
+
+                            create_update(market, defaults)
 
         # fetch Okex futures positions
         def okex_futures():
@@ -629,7 +634,7 @@ def update_positions(account):
                     size = abs(size)
 
                     # calculate position value in USDT
-                    value = size * market.contract_value
+                    value = size * market.contract_value * float(position['markPrice'])
 
                     defaults = dict(
                         size=size,
@@ -685,7 +690,7 @@ def update_positions(account):
                     size = abs(size)
 
                     # calculate position value in USDT
-                    value = size * market.contract_value * float(position['markPrice'])
+                    value = size * market.contract_value
 
                     defaults = dict(
                         size=size,
@@ -830,101 +835,6 @@ def update_positions(account):
 
         bybit_usdt_margined()
         bybit_coin_margined()
-
-
-# Trade with account
-# @shared_task(name='account_trade', base=BaseTaskWithRetry)
-def trade(account):
-    # Check account
-    if not account.is_valid_credentials():
-        raise error.InvalidCredentials(
-            'Account {0} has invalid credentials {1}'.format(account.name, account.api_key))
-    if not account.trading:
-        raise error.InactiveAccount(
-            'Account trading is deactivated for {0}'.format(account.name))
-
-    # Check exchange
-    if not account.exchange.is_active():
-        raise TradingError(
-            'Exchange {1} of account {0} is inactive'.format(account.name, account.exchange.exid))
-
-    # Fire an exception if account is not compatible with the strategy
-    account.is_compatible()
-
-    # Check strategy update
-    if not account.strategy.is_updated():
-        raise error.StrategyNotUpdated(
-            'Cannot update account {0} ''strategy {1} is not updated'.format(account.name, account.strategy.name))
-
-    # Check time
-    # if timezone.now().hour not in account.strategy.get_hours():
-    #     raise WaitUpdateTime('Account {0} does not need to trade now'.format(account.name))
-
-    # get allocations
-    allocations = Allocation.objects.filter(strategy=account.strategy, dt=account.strategy.get_latest_alloc_dt())
-
-    # calculate delta between open position and target
-    def delta_size(allocation, position):
-        size, side = target_size_n_side(account, allocation)
-        delta = size - float(position.size)
-        amount = float(format_decimal(abs(delta), position.market.precision['amount'], account))
-        if delta < 0:
-            return -amount  # return a negative amount if contracts need to be removed from position
-        elif delta > 0:
-            return amount
-
-    return
-
-    # close open positions if necessary (i.e opposite side or undesired market)
-    ###########################################################################
-    for position in account.positions.all():
-        if position.market in markets_marg:
-            if position.side != alloc.side:
-                position.close()
-        else:
-            position.close()
-
-    # remove contracts from open positions if necessary
-    ###################################################
-    for position in account.positions.all():
-        if position.market in markets_marg:
-            if position.side == alloc.side:
-                delta = delta_size(alloc, position)
-                if delta < 0:
-                    position.remove(-delta)
-
-    # add contracts to an open position
-    ###################################
-    for position in account.positions.all():
-        if position.market in markets_marg:
-            if position.side == alloc.side:
-                delta = delta_size(alloc, position)
-                if delta > 0:
-                    position.add(delta)
-
-    # or create a new position if necessary
-    #######################################
-    for market in markets_marg:
-        try:
-            Position.objects.get(account=account, market=market)
-        except ObjectDoesNotExist:
-            account.create_update_delete_position(market)
-        except MultipleObjectsReturned:
-            pass
-        else:
-            pass
-
-    # determine long only bases that need to be bought
-    buy = []
-    for alloc in allocations:
-        if not alloc.margin:
-            buy.append(alloc.market.base.code)
-
-    # determine long only bases that need to be sold
-    sell = []
-    for fund in Fund.objects.filter(account=account, dt=dt, type='spot'):
-        if not alloc.margin:
-            sell.append(alloc.market.base.code)
 
 
 # Fetch order book every x seconds

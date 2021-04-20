@@ -65,10 +65,6 @@ class Exchange(models.Model):
     # Return exchange class (ccxt)
     def get_ccxt_client(self, account=None, ccxt_type_options=None):
 
-        if not self.is_active():
-            log.error('Exchange is inactive', exchange=self.exid)
-            return
-
         client = getattr(ccxt, self.exid)
         client = client({
             'timeout': self.timeout,
@@ -429,6 +425,7 @@ class Market(models.Model):
     order_book = JSONField(null=True, blank=True)
     config = JSONField(null=True, blank=True)
     excluded = models.BooleanField(null=True, default=False)
+    funding_rate = JSONField(null=True, blank=True)
     objects = models.Manager()
 
     class Meta:

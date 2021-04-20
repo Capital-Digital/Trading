@@ -12,6 +12,7 @@ from celery import chain, chord, group, shared_task, Task
 import time
 from datetime import datetime, date, timedelta
 from django.utils import timezone
+from django.db.models import Q
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from marketsdata.models import Exchange, Candle, Market, OrderBook
 from strategy import tasks
@@ -25,7 +26,6 @@ log = structlog.get_logger(__name__)
 
 global data
 data = {}
-
 
 # Load config file
 config = configparser.ConfigParser()
@@ -45,6 +45,7 @@ class BaseTaskWithRetry(Task):
     retry_backoff = True
     retry_backoff_max = 30
     retry_jitter = False
+
 
 @shared_task()
 def run(exid):
@@ -137,7 +138,14 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                         exclude(market)
                     return
 
+                except ccxt.ExchangeError as e:
+                    print(since_ts, limit)
+                    log.error('Exchange error')
+                    return
+
                 except Exception as e:
+                    print(getattr(e, 'message', repr(e)))
+                    print(getattr(e, 'message', str(e)))
                     log.error('An unexpected error occurred', exception=e.__class__.__name__)
 
                 else:
@@ -250,10 +258,9 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
                             #
                             # time.sleep(1)
 
-        # Market should be updated at this point. However markets
-        # with low trading volume can return no candles.
+        # Market should be updated at this point. However some markets with low trading volume can return no candles
         if market.active and not market.is_updated():
-            log.warning('Could not fetch the latest candle')
+            log.warning('Exclude market. No candle returned by exchange, maybe there is 0 volume ?')
             exclude(market)
 
     # Select one or several markets and insert candles. ccxt_type will be set later.
@@ -491,7 +498,7 @@ def update_exchange_currencies(self, exid):
 
                 log.unbind('default_type')
 
-    else :
+    else:
         if exchange.has_credit():
             client.load_markets(True)
             exchange.update_credit('load_markets')
@@ -686,6 +693,62 @@ def update_exchange_markets(self, exid):
     log.info('Update market complete')
 
 
+@shared_task(bind=True, name='Markets_____Update funding rate')
+def update_funding_rate(self):
+
+    log.info('Update funding rate')
+
+    from marketsdata.models import Exchange
+    exchanges = [e.exid for e in Exchange.objects.all()]
+
+    # must use si() signatures
+    lst = [funding_rate.s(exid) for exid in exchanges]
+    res = group(*lst)()
+
+    while not res.ready():
+        # print(res.completed_count())
+        time.sleep(0.5)
+
+    if res.successful():
+        log.info('Update funding rate complete on {0} exchange'.format(res.completed_count()))
+
+    elif res.failed():
+        res.forget()
+        log.error('Update funding rate failed')
+
+
+@shared_task(bind=True, base=BaseTaskWithRetry)
+def funding_rate(self, exid):
+    log.bind(exchange=exid)
+
+    if exid == 'binance':
+
+        from marketsdata.models import Exchange, Market, Candle
+        exchange = Exchange.objects.get(exid=exid)
+
+        def update(response, market):
+            premiumindex = [i for i in response if i['symbol'] == market.response['id']][0]
+            market.funding_rate = premiumindex
+            market.save()
+
+        client = exchange.get_ccxt_client()
+
+        # Fetch funding rates for USDT-margined contracts
+        response = client.fapiPublic_get_premiumindex()
+        markets_usdt_margined = Market.objects.filter(exchange=exchange, derivative='perpetual', margined__code='USDT')
+
+        for market in markets_usdt_margined:
+            update(response, market)
+
+        # Fetch funding rates for COIN-margined contracts
+        response = client.dapiPublic_get_premiumindex()
+        markets_coin_margined = Market.objects.filter(exchange=exchange, derivative='perpetual')
+        markets_coin_margined = markets_coin_margined.filter(~Q(margined__code='USDT'))
+
+        for market in markets_coin_margined:
+            update(response, market)
+
+
 @shared_task(bind=True, base=BaseTaskWithRetry)
 def update_market_prices(self, exid):
     """
@@ -718,13 +781,13 @@ def update_market_prices(self, exid):
             return
 
         # Bulk update prices if more than 120 sec. elapsed.
-        if timezone.now().minute > 1:
-            log.debug('Market update started too late')  # since {0} UTC'.format(get_datetime_now(string=True)))
-            return
+        # if timezone.now().minute > 1:
+        #     log.debug('Market update started too late')  # since {0} UTC'.format(get_datetime_now(string=True)))
+        #     return
 
-            # insert_candle_history.s(exid=exchange.exid, symbol=market.symbol, type=market.type,
-            #                           derivative=market.derivative,
-            #                           start=market.get_candle_datetime_last())()
+        # insert_candle_history.s(exid=exchange.exid, symbol=market.symbol, type=market.type,
+        #                           derivative=market.derivative,
+        #                           start=market.get_candle_datetime_last())()
 
         # Select response
         if symbol not in response:
@@ -852,7 +915,6 @@ def watch_order_books(self, exid):
     async def exchange_loop(asyncio_loop, exid, ccxt_type_options=None):
 
         if accounts.exists():
-
             # select bases actually in accounts
             ac_spot = [a.get_bases_spot() for a in accounts]
             ac_marg = [a.get_bases_margin() for a in accounts]
@@ -876,7 +938,6 @@ def watch_order_books(self, exid):
 
             # Select all markets to watch (various quotes)
             markets = Market.objects.filter(exchange__exid=exid, base__in=bases)
-            print([m.symbol for m in markets])
 
         def get_symbols(exid, ccxt_type_options=None):
 

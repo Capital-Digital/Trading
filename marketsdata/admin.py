@@ -27,7 +27,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
-               'update_exchange_markets', 'update_market_price']
+               'update_exchange_markets', 'update_market_price', 'update_exchange_status']
     save_as = True
     save_on_top = True
 
@@ -150,6 +150,15 @@ class CustomerAdmin(admin.ModelAdmin):
             log.error('Update market failed :(')
 
     update_market_prices.short_description = "Update market price"
+
+    def update_exchange_status(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+
+        # Create a groups and execute task
+        gp = group(tasks.update_exchange_status.s(exchange) for exchange in exchanges)
+        result = gp.delay()
+
+    update_exchange_status.short_description = "Update status"
 
 
 @admin.register(Currency)

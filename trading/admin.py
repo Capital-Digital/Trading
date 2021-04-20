@@ -15,7 +15,7 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'exchange',  'trading', 'valid_credentials', 'strategy', 'type', 'derivative',
+    list_display = ('name', 'exchange', 'trading', 'valid_credentials', 'strategy', 'type', 'derivative',
                     'margined', 'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'position_mode')
     actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all']
@@ -38,7 +38,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_credentials(self, request, queryset):
         for account in queryset:
-            account.set_credentials()
+            account.update_credentials()
 
     update_credentials.short_description = "Update credentials"
 
@@ -78,7 +78,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'orderid', 'account', 'market', 'status', 'side', 'amount', 'cost', 'trades',
+    list_display = ('id', 'orderid', 'account', 'market', 'action', 'status', 'side', 'amount', 'cost', 'trades',
                     'type', 'price', 'price_strategy', 'filled',  'dt_create', 'dt_update')
 
     readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side',

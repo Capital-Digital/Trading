@@ -40,3 +40,9 @@ def get_datetime(hour=None, minute=None, delta=None, string=False, timestamp=Fal
 # Convert a string to a datetime object
 def convert_string_to_date(string, directive):
     return pytz.utc.localize(datetime.strptime(string, directive))
+
+
+# Convert timestamp
+def convert_timestamp_to_datetime(ts):
+    return pytz.utc.localize(datetime.strptime(ts))
+

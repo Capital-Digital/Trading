@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Portfolio allocation for {{strategy.name}}</h1>
+
+<hr/>
+
+<ul>
+{% for alloc in allocations %}
+  <li>{{ alloc.dt|date:"DATETIME_FORMAT" }} {{alloc.market.base.code}} {{alloc.weight|floatformat:3}}</li>
+{% endfor %}
+</ul>
+
+{% endblock content %}

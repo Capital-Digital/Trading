@@ -1,3 +1,4 @@
+import sys
 from django.apps import AppConfig
 from django.utils.translation import ugettext_lazy as _
 
@@ -8,4 +9,4 @@ class TradingConfig(AppConfig):
 
     def ready(self):
         from . import signals
-
+        print('Hello world')

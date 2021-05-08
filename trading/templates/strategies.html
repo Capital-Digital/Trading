@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Strategies</h1>
+
+<ul>
+{% for strategy in strategies %}
+  <li> <a href="{% url 'allocations' strategy.id %}">{{strategy.name}}</a> </li>
+{% endfor %}
+</ul>
+
+<a href="{% url 'dashboard' %}">Dashboard</a>
+{% endblock content %}

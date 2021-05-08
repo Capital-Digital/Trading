@@ -1,0 +1,7 @@
+<h1>Edit account</h1>
+<form action="{% url 'account_edit' account.pk %}"
+      method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+<button class="button" type="submit">Update</button>
+</form>

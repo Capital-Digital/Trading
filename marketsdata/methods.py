@@ -224,7 +224,14 @@ def get_derivative_contract_value(exid, values):
             return values['info']['contract_val']
 
     elif exid == 'binance':
-        return 1
+
+        # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
+        if values['info']['marginAsset'] == values['base']:
+            return values['info']['contractSize']  # Select USD value of 1 contract
+
+        # USDT-margined see https://www.binance.com/en/futures/trading-rules
+        elif values['info']['marginAsset'] == values['quote']:
+            return 1
 
     elif exid == 'bybit':
         return 1
@@ -269,7 +276,11 @@ def get_derivative_contract_value_currency(exid, values):
             return Currency.objects.get(code=values['info']['contract_val_currency'])
 
     elif exid == 'binance':
-        return Currency.objects.get(code=values['base'])
+        # base asset are used as contract value currency for USDT-margined and COIN-margined
+        if values['info']['marginAsset'] == 'USDT':
+            return Currency.objects.get(code=values['base'])
+        else:
+            return Currency.objects.get(code=values['quote'])
 
     elif exid == 'bybit':
 

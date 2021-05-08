@@ -43,6 +43,6 @@ def convert_string_to_date(string, directive):
 
 
 # Convert timestamp
-def convert_timestamp_to_datetime(ts):
-    return pytz.utc.localize(datetime.strptime(ts))
+def convert_timestamp_to_datetime(ts, directive):
+    return datetime.fromtimestamp(ts).strftime(directive)
 

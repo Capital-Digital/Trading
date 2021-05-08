@@ -153,6 +153,10 @@ class Exchange(models.Model):
     def has_credit(self, default_type=None):
 
         credit = self.credit
+
+        if not credit:
+            credit = dict()
+
         ts = get_datetime(timestamp=True)
 
         # Return True is new
@@ -296,6 +300,14 @@ class Exchange(models.Model):
                     weight = 1 + 1
                     order = True
 
+                elif method == 'fetchOpenOrders':
+                    weight = 1 + 1
+                    order = True
+
+                elif method == 'cancel_order':
+                    weight = 1
+                    order = True
+
                 else:
                     raise Exception('Method unknown : {0}'.format(method))
 
@@ -319,6 +331,9 @@ class Exchange(models.Model):
     def update_credit_max(self, default_type, weight, order_count_1, order_count_2):
 
         credit_max = self.credit_max
+
+        if not credit_max:
+            credit_max = dict()
 
         if not default_type:
             default_type = 'default'
@@ -361,6 +376,7 @@ class Exchange(models.Model):
             order_1 = dict(date=get_datetime(string=True), max=order_count_1)
             order_2 = dict(date=get_datetime(string=True), max=order_count_2)
 
+            self.credit_max = dict()
             self.credit_max[default_type] = dict(weight=w,
                                                  order_count_1=order_1,
                                                  order_count_2=order_2

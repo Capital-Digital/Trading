@@ -1,5 +1,6 @@
 import ccxt
 from django.db import models
+from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
@@ -23,7 +24,7 @@ datetime_directives_std = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 class Account(models.Model):
     objects = models.Manager()
-    name = models.CharField(max_length=100, null=True, blank=True)
+    name = models.CharField(max_length=100, null=True, blank=False)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='account', blank=True, null=True)
     strategy = models.ForeignKey(Strategy, on_delete=models.SET_NULL, related_name='account', null=True)
     type = models.CharField(max_length=20, choices=[('spot', 'spot'), ('derivative', 'derivative')], blank=True)
@@ -49,6 +50,11 @@ class Account(models.Model):
             MinValueValidator(0)
         ]
     )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True
+    )
 
     class Meta:
         verbose_name_plural = "Accounts"
@@ -56,42 +62,59 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Construct a dataframe with account balance and instructions
-    def create_dataframe_funds(self):
+    # Construct a dataframe with wallet balances and instructions
+    # Wallets specify a list of wallet's funds need to be updated
+    def create_df_account(self):
+
+        log.info('Create account dataframe', account=self.name)
 
         funds = self.get_fund_latest()
         instructions = self.strategy.get_instructions()
         df_account = pd.DataFrame()
 
         # Loop through funds
-        for default_type, dic1 in funds.total.items():
+        for i in ['total', 'free']:
+            for default_type, dic1 in funds.total.items():
 
-            for code, dic2 in dic1.items():
-                for field, value in dic2.items():
-                    # Create multilevel columns
-                    columns = pd.MultiIndex.from_product([['account'], [field]])
-                    indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'type'])
+                for code, dic2 in dic1.items():
+                    for field, value in dic2.items():
+                        # Create multilevel columns
+                        columns = pd.MultiIndex.from_product([['wallet'], [i + '_' + field]])
+                        indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
 
-                    # Construct dataframe and normalize rows
-                    df = pd.DataFrame(value, index=indexes, columns=columns)
-                    df_account = pd.concat([df, df_account], axis=0).groupby(level=[0, 1]).mean()
+                        # Construct dataframe and normalize rows
+                        df = pd.DataFrame(value, index=indexes, columns=columns)
+                        df_account = pd.concat([df, df_account], axis=0).groupby(level=[0, 1]).mean()
 
         # Get a dataframe with positions
-        positions = self.create_dataframe_positions()
+        positions = self.create_df_positions()
 
-        # If multiple position on a same code raise exception
-        if len(list(positions.index.get_level_values(0))) > 2:
-            raise Exception('You should normalize size of positions before creating a dataframe')
+        if not positions.empty:
 
-        # Sum quantity and value of positions with the same code and default_type
-        for index, position in positions.groupby(level=[0, 2]).sum().iterrows():
-            # Add position size and position value
-            df_account.loc[(index[0], index[1]), ('position', 'quantity')] = position['size']
-            df_account.loc[(index[0], index[1]), ('position', 'value')] = position['value']
+            # If multiple position on a same code raise exception
+            if len(list(positions.index.get_level_values(0))) > 2:
+                raise Exception('There are more than one open position for the same underlying asset, '
+                                'please normalize size before creating a dataframe')
+
+            # Sum quantity and value of positions with the same code and default_type
+            for index, position in positions.groupby(level=[0, 2]).sum().iterrows():
+                # Add position size and position value
+                df_account.loc[(index[0], index[1]), ('position', 'quantity')] = position['amount']
+                df_account.loc[(index[0], index[1]), ('position', 'value')] = position['value']
+
+        else:
+            # No position open
+            for index, position in df_account.iterrows():
+                df_account.loc[index, ('position', 'quantity')] = np.nan
+                df_account.loc[index, ('position', 'value')] = np.nan
+
+        # Select columns with total wallet quantity/value and position quantity/value
+        qty = df_account.droplevel(axis=1, level=0)[['total_quantity', 'quantity']]
+        val = df_account.droplevel(axis=1, level=0)[['total_value', 'value']]
 
         # Create exposure columns (exposure=account+positions)
-        df_account[('exposure', 'quantity')] = df_account.xs('quantity', axis=1, level=1).sum(axis=1)
-        df_account[('exposure', 'value')] = df_account.xs('value', axis=1, level=1).sum(axis=1)
+        df_account[('exposure', 'quantity')] = qty.sum(axis=1)
+        df_account[('exposure', 'value')] = val.sum(axis=1)
 
         # Create a column for instruction weight
         for default_type, dic1 in funds.total.items():
@@ -113,7 +136,7 @@ class Account(models.Model):
                     df_account.loc[(code, default_type), 'price'] = price
 
         # Create a column with target value
-        account_value = df_account[('account', 'value')].sum()
+        account_value = df_account[('wallet', 'total_value')].sum()
         df_account['target', 'value'] = df_account[('target', 'percent')] * account_value * float(self.leverage)
 
         # Create a column with target quantity (quantity=value/price)
@@ -133,58 +156,63 @@ class Account(models.Model):
         return df_account
 
     # Construct a dataframe is account open positions
-    def create_dataframe_positions(self):
+    def create_df_positions(self):
 
+        from trading import methods
         df = pd.DataFrame()
         positions = self.get_positions()
 
-        for position in positions:
+        if positions:
+            for position in positions:
 
-            default_type = position.market.default_type
-            type = position.market.type
-            margined = position.market.margined.code
-            symbol = position.market.symbol
-            code = position.market.base.code
-            size = float(position.size) if position.side == 'buy' else -float(position.size)
-            value = float(position.value_usd) if position.side == 'buy' else -float(position.value_usd)
-            # Create multilevel columns
-            indexes = pd.MultiIndex.from_tuples([(code,
-                                                  position.market.quote.code,
-                                                  default_type,
-                                                  symbol,
-                                                  type,
-                                                  position.market.derivative,
-                                                  margined
-                                                  )], names=['code',
-                                                             'quote',
-                                                             'default_type',
-                                                             'symbol',
-                                                             'type',
-                                                             'derivative',
-                                                             'margined'])
-            # Construct dataframe and normalize rows
-            d = pd.DataFrame([[position.side, size, value]], index=indexes, columns=['side', 'size', 'value'])
-            df = pd.concat([df, d], axis=0)
+                default_type = position.market.default_type
+                type = position.market.type
+                margined = position.market.margined.code
+                symbol = position.market.symbol
+                code = position.market.base.code
+                size = float(position.size) if position.side == 'buy' else -float(position.size)
+                amount = methods.contract_to_amount(position.market, size) # Convert position size to currency amount
+                value = float(position.value_usd) if position.side == 'buy' else -float(position.value_usd)
+                # Create multilevel columns
+                indexes = pd.MultiIndex.from_tuples([(code,
+                                                      position.market.quote.code,
+                                                      default_type,
+                                                      symbol,
+                                                      type,
+                                                      position.market.derivative,
+                                                      margined
+                                                      )], names=['code',
+                                                                 'quote',
+                                                                 'default_type',
+                                                                 'symbol',
+                                                                 'type',
+                                                                 'derivative',
+                                                                 'margined'])
+                # Construct dataframe and normalize rows
+                d = pd.DataFrame([[position.side, amount, size, value]],
+                                 index=indexes,
+                                 columns=['side', 'size', 'amount', 'value']
+                                 )
+                df = pd.concat([df, d], axis=0)
 
-        return df
+            return df
 
     # Create a new order object
     def create_order(self, market, action, amount):
 
         from trading import methods
-        print('amount before', amount)
-        # Check amount limits min & max conditions
-        amount = methods.limit_amount(market, amount)
-
-        print('amount after', amount)
-        if not amount:
-            return
 
         # Format decimal
         amount = methods.format_decimal(counting_mode=self.exchange.precision_mode,
                                         precision=market.precision['amount'],
                                         n=amount
                                         )
+
+        # Check amount limits min & max conditions
+        amount = methods.limit_amount(market, float(amount))
+
+        if not amount:
+            return
 
         if action in ['open_long', 'close_short', 'buy']:
             side = 'buy'
@@ -235,18 +263,18 @@ class Account(models.Model):
             else:
                 raise Exception('Market order not supported')
 
-        # Finally check cost and create object
-        if methods.limit_cost(market, float(amount), float(price)):
+        pprint(defaults)
 
-            order = Order.objects.create(**defaults)
+        # Check cost only if action is open or buy
+        if ('open' or 'buy') in action:
+            if not methods.limit_cost(market, float(amount), float(price)):
+                return
 
-            print('Create order object:')
-            pprint(defaults)
+        order = Order.objects.create(**defaults)
+        log.info('Object created with id {0}'.format(order.id))
 
-            return order.id
-
-        else:
-            pass
+        pprint(defaults)
+        return order.id
 
     # Check crendentials and update field
     def update_credentials(self):
@@ -277,7 +305,7 @@ class Account(models.Model):
         orders = Order.objects.filter(account=self, status='open')
 
         if orders.exists():
-            return [order.orderid for order in orders.all()]
+            return [order.orderid for order in orders]
 
     # Return latest funds object
     def get_fund_latest(self):
@@ -288,7 +316,7 @@ class Account(models.Model):
         else:
 
             from trading.tasks import create_fund
-            create_fund(self.name)
+            create_fund(self.id)
             return self.funds.latest('dt')
 
     # Return positions
@@ -361,6 +389,11 @@ class Fund(models.Model):
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
     balance, total, free, used, derivative = [JSONField(null=True) for i in range(5)]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True
+    )
 
     class Meta:
         verbose_name_plural = "Funds"
@@ -389,6 +422,11 @@ class Order(models.Model):
     timestamp = models.BigIntegerField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True
+    )
 
     class Meta:
         verbose_name_plural = "Orders"
@@ -417,6 +455,11 @@ class Position(models.Model):
     response = JSONField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True
+    )
 
     class Meta:
         verbose_name_plural = "Positions"

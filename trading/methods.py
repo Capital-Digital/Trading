@@ -20,7 +20,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 # Create/update an order object with response returned by exchange
 def order_create_update(account, response, default_type=None):
 
-    log.info('Updating order...')
+    order = Order.objects.get(orderid=response['id'])
 
     # Create dictionary
     defaults = dict(
@@ -29,7 +29,7 @@ def order_create_update(account, response, default_type=None):
         cost=response['cost'],
         datetime=response['datetime'],
         fee=response['fee'],
-        filled=response['filled'],
+        filled=float(response['filled']),
         response=response,
         last_trade_timestamp=response['lastTradeTimestamp'],
         price=response['price'],
@@ -51,15 +51,37 @@ def order_create_update(account, response, default_type=None):
     obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
     if created:
-        log.info('Order object created', id=obj.id)
+        pass
     else:
-        log.info('Order object updated', id=obj.id, filled=obj.filled)
 
+        dic = dict(
+            amount=obj.amount,
+            filled=obj.filled,
+            orderid=obj.orderid,
+            pk=str(obj.id),
+            remaining=obj.remaining,
+            side=obj.side
+        )
 
-# Place an order to the market and return a json object
-def place_order(pk):
+        if obj.filled > float(order.filled):
 
-    order = Order.objects.get(id=pk)
+            dic['new_trade'] = True
+
+            # Signal trade engine an order is filled
+            if obj.status == 'close':
+                log.info('Order filled', orderid=obj.orderid, filled=obj.filled, amount=obj.amount)
+                dic['status'] = 'close'
+
+            # Signal trade engine new trade occurred but order isn't filled
+            else:
+                log.info('Trade detected', orderid=obj.orderid, filled=obj.filled, amount=obj.amount)
+                dic['status'] = 'open'
+
+        else:
+            dic['new_trade'] = False
+            dic['status'] = 'open'
+
+        return dic
 
 
 # Format decimal
@@ -97,12 +119,14 @@ def limit_amount(market, amount):
     # Check amount limits
     if market.limits['amount']['min']:
         if amount < market.limits['amount']['min']:
-            log.warning('Amount < limit min', amount=amount, limit=market.limits['amount']['min'])
+            log.warning('Amount < limit min', market=market.symbol, type=market.type,
+                        amount=amount, limit=market.limits['amount']['min'])
             return
 
     if market.limits['amount']['max']:
         if amount > market.limits['amount']['max']:
-            log.warning('Amount > limit max', amount=amount, limit=market.limits['amount']['max'])
+            log.warning('Amount > limit max', market=market.symbol, type=market.type,
+                        amount=amount, limit=market.limits['amount']['max'])
             return market.limits['amount']['max']
 
     return amount
@@ -142,23 +166,40 @@ def limit_cost(market, amount, price):
     return True
 
 
-# Convert currency amount to contract quantity
-def convert_amount(market, amount):
+# Convert currency amount to derivative contract quantity
+def amount_to_contract(market, amount):
 
-    if market.type == 'derivative':
+    if market.exchange.exid == 'binance':
+        if market.type == 'derivative':
 
-        # Contract value currency is COIN
-        if market.contract_value_currency == market.base:
-            return amount / market.contract_value
-
-        # Contract value currency is US pegged currency
-        elif market.contract_value_currency.stable_coin:
             last = market.get_candle_price_last()
-            return amount * last / market.contract_value
 
-    else:
-        return amount
+            # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
+            if market.response['info']['marginAsset'] == market.response['base']:
+                contract_value = market.response['info']['contractSize']  # Select USD value of 1 contract
+                return amount * last / contract_value
 
+            # USDT-margined see https://www.binance.com/en/futures/trading-rules
+            elif market.response['info']['marginAsset'] == market.response['quote']:
+                return amount
+
+
+# Convert contract quantity to currency amount
+def contract_to_amount(market, contract):
+
+    if market.exchange.exid == 'binance':
+        if market.type == 'derivative':
+
+            last = market.get_candle_price_last()
+
+            # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
+            if market.response['info']['marginAsset'] == market.response['base']:
+                contract_value = market.response['info']['contractSize']  # Select USD value of 1 contract
+                return contract * contract_value / last
+
+            # USDT-margined see https://www.binance.com/en/futures/trading-rules
+            elif market.response['info']['marginAsset'] == market.response['quote']:
+                return contract
 
 
 # return USD value of spot account

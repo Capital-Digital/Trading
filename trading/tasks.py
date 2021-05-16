@@ -1,28 +1,25 @@
 from __future__ import absolute_import, unicode_literals
-from datetime import datetime, date, timedelta
-from django.db.models import Q
-from django.utils import timezone
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
-import capital.celery as celery
-from celery import chain, group, shared_task, Task
-from capital.methods import *
-from marketsdata.models import Market, Candle, Currency, Exchange
-from strategy.models import Allocation, Strategy
-from trading.methods import format_decimal, get_spot_balance_used, get_position_size, \
-    get_spot_balance_free, calculate_target_quantity
-from trading.models import Account, Order, Fund, Position
-from trading import methods
-from trading import error
-from capital.error import *
-from itertools import chain as itertools_chain
-from itertools import accumulate
-import ccxtpro, ccxt
+
 import asyncio
-import pandas as pd
-import numpy as np
-import sys, traceback, time
-import structlog
+import time
+import traceback
+from itertools import accumulate
 from pprint import pprint
+
+import ccxt
+import ccxtpro
+import numpy as np
+import pandas as pd
+import structlog
+from celery import chain, group, shared_task, Task
+from django.core.exceptions import ObjectDoesNotExist
+
+from capital.error import *
+from capital.methods import *
+from marketsdata.models import Market, Currency, Exchange
+from strategy.models import Strategy
+from trading import methods
+from trading.models import Account, Order, Fund, Position
 
 log = structlog.get_logger(__name__)
 
@@ -82,13 +79,13 @@ def fetch_order_open(account):
 
                 # Check credit, fetch and insert open orders
                 if account.exchange.has_credit():
-                    response = client.fetchOpenOrders(instrument_id)
+                    responses = client.fetchOpenOrders(instrument_id)
                     account.exchange.update_credit('fetchOpenOrders', default_type)
 
-                    if response:
+                    if responses:
 
-                        for order in response:
-                            methods.order_create_update(account, order, default_type)
+                        for response in responses:
+                            methods.order_create_update(account, response)
 
         # fetch others exchanges orders
         ###############################
@@ -96,11 +93,11 @@ def fetch_order_open(account):
 
             # Check credit and fetch open orders
             if account.exchange.has_credit():
-                response = client.fetchOpenOrders()
+                responses = client.fetchOpenOrders()
                 account.exchange.update_credit('fetchAllOpenOrders', default_type)
 
-            for order in response:
-                methods.order_create_update(account, order, default_type)
+            for response in responses:
+                methods.order_create_update(account, response)
 
     else:
         raise MethodUnsupported('Method fetchOpenOrders not supported for exchange'.format(account.exchange.exid))
@@ -124,12 +121,12 @@ def fetch_order_past(account, market, timestamp):
 
         # Check credit and fetch orders
         if account.exchange.has_credit():
-            response = client.fetch_orders(market.symbol, since=timestamp)
+            responses = client.fetch_orders(market.symbol, since=timestamp)
             account.exchange.update_credit('fetch_orders', market.default_type)
 
         # Insert orders
-        for order in response:
-            methods.order_create_update(account, order, market.default_type)
+        for response in responses:
+            methods.order_create_update(account, response)
 
     else:
         raise Exception('Methode fetchOrders is not supported by {0}'.format(account.exchange.name))
@@ -165,20 +162,18 @@ def cancel_order_id(account, orderid):
             finally:
                 account.exchange.update_credit('cancel_order', order.market.default_type)
 
-
 # Place an order to the market after an object is created
 @shared_task(name='Trading_____Place order by ID', base=BaseTaskWithRetry)
-def place_order(account_id, pk):
-
-    log.info('Placing order {0}'.format(pk))
+def place_order(account_id, object_id):
+    log.info('Placing order {0}'.format(object_id))
     account = Account.objects.get(id=account_id)
 
     try:
         # Select object by it's primary key
-        order = Order.objects.get(id=pk)
+        order = Order.objects.get(id=object_id)
 
     except ObjectDoesNotExist:
-        raise Exception('Placing order {0} failed, cannot select object'.format(pk))
+        raise Exception('Placing order {0} failed, cannot select object'.format(object_id))
 
     else:
 
@@ -194,16 +189,19 @@ def place_order(account_id, pk):
             type=order.type,
             side=order.side,
             amount=float(order.amount),
-            params=dict(clientOrderId=pk)  # Set primary key as clientOrderId
+            params=dict(clientOrderId=object_id)  # Set primary key as clientOrderId
         )
+
+        # Set reduce-only
+        if 'close' in order.action:
+            args['params'] = args['params']['reduceOnly'] = True
+
+        print('\nargs\n')
+        pprint(args)
 
         # Set limit price
         if account.limit_order:
             args['price'] = order.price
-
-        # print('\n')
-        # pprint(args)
-        # print('\n')
 
         # Check API credit
         if account.exchange.has_credit():
@@ -213,7 +211,7 @@ def place_order(account_id, pk):
                 response = client.create_order(**args)
 
             except ccxt.InsufficientFunds:
-                log.error('Placing order {0} failed, margin insufficient'.format(pk))
+                log.error('Placing order {0} failed, margin insufficient'.format(object_id))
 
             else:
                 account.exchange.update_credit('create_order', order.market.default_type)
@@ -221,10 +219,10 @@ def place_order(account_id, pk):
                 if response['id']:
 
                     # Check if it's our order
-                    if float(response['clientOrderId']) == pk:
+                    if float(response['clientOrderId']) == object_id:
 
-                        log.bind(pk=pk)
-                        log.info('Placing order {0} done'.format(pk))
+                        log.bind(clientOrderId=object_id)
+                        log.info('Placing order {0} done'.format(object_id))
 
                         # Select Binance datetime
                         if account.exchange.exid == 'binance':
@@ -232,8 +230,6 @@ def place_order(account_id, pk):
                                 response['timestamp'] = response['info']['transactTime']
                             else:
                                 response['timestamp'] = response['info']['updateTime']
-
-                        log.info('Update order object')
 
                         # Update order object
                         order.orderid = response['id']
@@ -249,19 +245,7 @@ def place_order(account_id, pk):
                         order.response = response
                         order.save()
 
-                        log.info('Update order object done')
-
-                        # Return a dictionary to signal order status and trades
-                        return dict(
-                            amount=order.amount,
-                            filled=order.filled,
-                            orderid=order.orderid,
-                            pk=str(order.id),
-                            remaining=order.remaining,
-                            status=order.status,
-                            symbol=order.market.symbol,
-                            wallet=order.market.default_type
-                        )
+                        return order.id
 
                     else:
                         pprint(response)
@@ -430,7 +414,6 @@ def create_fund(account_id, wallet=None):
     if account.exchange.default_types:
 
         for default_type in account.exchange.get_default_types():
-            log.bind(defaultType=default_type)
 
             client.options['defaultType'] = default_type
 
@@ -481,19 +464,15 @@ def create_funds():
         log.info('Funds successfully created')
 
 
-# Fetch an order by it's ID and update it's order object
+# Fetch an order by it's ID and update object
 @shared_task(base=BaseTaskWithRetry)
-def update_order_id(account_id, orderid):
-
-    print(id)
+def update_order_id(account_id, order_id):
     account = Account.objects.get(id=account_id)
-
-    log.bind(account=account.name, exchange=account.exchange.exid, orderid=orderid)
-    log.info('Update order {0}'.format(orderid))
+    log.info('Update order {0}'.format(order_id))
 
     try:
         # First select object
-        order = Order.objects.get(account=account, orderid=orderid)
+        order = Order.objects.get(account=account, orderid=order_id)
 
     except ObjectDoesNotExist:
         log.error('Unable to select order object')
@@ -515,21 +494,21 @@ def update_order_id(account_id, orderid):
 
                 # OKEx specific
                 if account.exchange.exid == 'okex':
-                    params = dict(instrument_id=order.market.info['instrument_id'], order_id=orderid)
+                    params = dict(instrument_id=order.market.info['instrument_id'], order_id=order_id)
 
                 # Check credit and insert order
                 if account.exchange.has_credit():
-                    response = client.fetchOrder(id=orderid, symbol=order.market.symbol)  # , params=params)
+                    response = client.fetchOrder(id=order_id, symbol=order.market.symbol)  # , params=params)
                     account.exchange.update_credit('fetchOrder', order.market.default_type)
 
                     # Return order.orderid if new trade occurred
-                    dic = methods.order_create_update(account, response, order.market.default_type)
+                    dic = methods.order_create_update(account, response)
                     return dic
 
             else:
                 raise Exception('Methode fetchOrder is not supported by {0}'.format(account.exchange.name))
         else:
-            log.info('Order is not open but {0}'.format(order.status))
+            log.warning('Order is not open but {0}'.format(order.status))
 
         return False
 
@@ -538,7 +517,6 @@ def update_order_id(account_id, orderid):
 @shared_task(name='Trading_____Update position', base=BaseTaskWithRetry)
 def update_positions(account_id, orderids=None):
     account = Account.objects.get(id=account_id)
-    log.bind(account=account.name)
 
     log.info('Update positions')
     client = account.exchange.get_ccxt_client(account)
@@ -922,17 +900,42 @@ def update_positions(account_id, orderids=None):
     log.info('Update positions done')
 
 
+# Transfer fund between wallets
+@shared_task(base=BaseTaskWithRetry)
+def transfer(account_id, code, amount, from_wallet, to_wallet):
+
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    # Check credit and transfer fund
+    if account.exchange.has_credit():
+        try:
+            log.info('Transfer {0} {1} from {2} to {3}'.format(amount, code, from_wallet, to_wallet))
+            client.transfer(code, amount, from_wallet, to_wallet)
+
+        except Exception as e:
+
+            account.exchange.update_credit('transfer', 'spot')
+            log.error('Unable to transfer fund')
+            # print('exception', str(e))
+            traceback.print_exc()
+            raise e
+
+        else:
+            account.exchange.update_credit('transfer', 'spot')
+            return True
+
+
 global accounts, codes
 
 
 @shared_task()
-def trade(exid):
-
-    log.bind(exid=exid)
-    log.info('Manage accounts')
-
+def trade(exid, strategy_id):
     # Select exchange and run checks
     exchange = Exchange.objects.get(exid=exid)
+    strategy = Strategy.objects.get(id=strategy_id)
+
+    log.bind(exid=exid, strategy=strategy.name)
 
     if exchange.status != 'ok':
         log.error('Exchange {0} status error'.format(exid))
@@ -976,9 +979,9 @@ def trade(exid):
 
                     # Select funding rate for perp
                     if market.derivative == 'perpetual':
-                        funding = market.funding_rate['lastFundingRate']
+                        funding = float(market.funding_rate['lastFundingRate'])
                     else:
-                        funding = np.nan
+                        funding = 0
 
                     # Construct dataframe and normalize rows
                     df = pd.DataFrame(np.nan, index=indexes, columns=cols)
@@ -998,6 +1001,7 @@ def trade(exid):
         df_markets.sort_index(axis=0, inplace=True)
         df_markets.sort_index(axis=1, inplace=True)
 
+        print(df_markets.to_string())
         return df_markets
 
     # Create a dataframe with available routes
@@ -1009,37 +1013,40 @@ def trade(exid):
         #####
 
         # Create a list of currency to long and to short
-        codes_short = list(
-            df_account[df_account[('target', 'quantity')] < 0].index.get_level_values('code').unique())
-        codes_long = list(
-            df_account[df_account[('target', 'quantity')] > 0].index.get_level_values('code').unique())
+        codes_short = list(df_account[df_account[('target', 'quantity')] < 0].index.get_level_values('code').unique())
+        codes_long = list(df_account[df_account[('target', 'quantity')] > 0].index.get_level_values('code').unique())
 
         # Create a list of currencies to buy : open long (derivative or spot) and close short (derivative)
-        codes_open_long = list(df_account[(df_account[('target', 'delta')] < 0) & (
+        codes_open_long = list(df_account[(df_account[('delta', 'value')] < 0) & (
                 df_account[('target', 'quantity')] > 0)].index.get_level_values('code').unique())
-        codes_close_short = list(df_account[(df_account[('target', 'delta')] < 0) & (
+        codes_close_short = list(df_account[(df_account[('delta', 'value')] < 0) & (
                 df_account[('position', 'quantity')] < 0)].index.get_level_values('code').unique())
 
         # Sell
         ######
 
         # Create a list of currencies to sell : close long (derivative) and open short (derivative)
-        codes_close_long = list(df_account[(df_account[('target', 'delta')] > 0) & (
+        codes_close_long = list(df_account[(df_account[('delta', 'value')] > 0) & (
                 df_account[('position', 'quantity')] > 0)].index.get_level_values('code').unique())
-        codes_open_short = list(df_account[(df_account[('target', 'delta')] > 0) & (
+        codes_open_short = list(df_account[(df_account[('delta', 'value')] > 0) & (
                 df_account[('target', 'quantity')] < 0)].index.get_level_values('code').unique())
 
         # Create a list of currencies we should sell in spot markets
-        codes_sell_spot = list(df_account[(df_account[('target', 'delta')] > 0) & (
+        codes_sell_spot = list(df_account[(df_account[('delta', 'value')] > 0) & (
                 df_account[('wallet', 'total_quantity')] > 0)].index.get_level_values('code').unique())
 
         # Market candidates
         ###################
 
-        # Create a list of spot markets to sell
-        mk_spot_sell = [dic_markets[id][dic_markets[id].index.isin([sell], level='base')
-                                        & dic_markets[id].index.isin(['spot'], level='type')].index.tolist()
-                        for sell in codes_sell_spot]
+        # Create a list of spot markets where a currency could be sold as base
+        mk_spot_sell_base = [dic_markets[id][dic_markets[id].index.isin([sell], level='base')
+                                             & dic_markets[id].index.isin(['spot'], level='type')].index.tolist()
+                             for sell in codes_sell_spot]
+
+        # Create a list of spot markets where a currency could be sold as quote
+        mk_spot_sell_quote = [dic_markets[id][dic_markets[id].index.isin([sell], level='quote')
+                                              & dic_markets[id].index.isin(['spot'], level='type')].index.tolist()
+                              for sell in codes_sell_spot]
 
         # Create a list of markets to open a short
         mk_deri_open_short = [dic_markets[id][dic_markets[id].index.isin([short], level='base')
@@ -1073,11 +1080,14 @@ def trade(exid):
 
         # Unnest lists and remove duplicate candidates
         mk_spot_buy = list(set(sum(mk_spot_buy, [])))
-        mk_spot_sell = list(set(sum(mk_spot_sell, [])))
+        mk_spot_sell_base = list(set(sum(mk_spot_sell_base, [])))
+        mk_spot_sell_quote = list(set(sum(mk_spot_sell_quote, [])))
         mk_deri_open_short = list(set(sum(mk_deri_open_short, [])))
         mk_deri_open_long = list(set(sum(mk_deri_open_long, [])))
         mk_deri_hedge = list(set(sum(mk_deri_hedge, [])))
 
+        print('currency to long', codes_long)
+        print('currency to short', codes_short)
         print('currency to buy (open long):', codes_open_long)
         print('currency to buy (close short):', codes_close_short)
         print('currency to sell (close long):', codes_close_long)
@@ -1087,8 +1097,11 @@ def trade(exid):
         for i in mk_spot_buy:
             print('market buy spot:', i[3])
 
-        for i in mk_spot_sell:
-            print('market sell spot:', i[3])
+        for i in mk_spot_sell_base:
+            print('market sell spot as base:', i[3])
+
+        for i in mk_spot_sell_quote:
+            print('market sell spot as quote:', i[3])
 
         for i in mk_deri_open_short:
             print('market open short:', i[3])
@@ -1102,9 +1115,8 @@ def trade(exid):
         for i in mk_opened_short:
             print('market with position short:', i[3])
 
-        if mk_deri_hedge:
-            for i in mk_deri_hedge:
-                print('market for a hedge:', i[3])
+        for i in mk_deri_hedge:
+            print('market for a hedge:', i[3])
 
         routes = []
 
@@ -1116,177 +1128,262 @@ def trade(exid):
         # [5] : derivative
         # [6] : margined
 
-        # Loop through markets where a long position is opened
-        ######################################################
+        # List of routes
+        ################
+
+        # [0] : market (or code) source
+        # [1] : market destination
+        # [2] : route type (normal, yield, margin or default)
+        # [3] : first action
+        # [4] : second action
+
+        # Close long position
+        #####################
 
         for long in mk_opened_long:
 
             # Position should be reduced
             if long[0] in codes_close_long:
 
+                # Direct
+                ########
+
                 # Margined currency is a desired currency
-                if long[6] in codes_open_long + codes_close_short:
+                if long[6] in codes_open_long:
+                    routes.append([long, None, 'normal', 'close_long', None])
 
-                    # [0] : market source
-                    # [1] : market destination
-                    # [2] : route type
-                    # [3] : order type source
-                    # [4] : order type destination
+                # Margined currency is a desired currency
+                # Allow to keep short open and continue earning funding rate if longs pay shorts
+                if long[6] in codes_close_short:
+                    routes.append([long, None, 'yield', 'close_long', None])
 
-                    routes.append([long, None, 'direct', 'close_long', None])
+                # Deri -> spot
+                ##############
 
-                    # Loop through spot markets where a currency could be bought on spot
+                # Loop through spot markets where a currency could be bought on spot
                 for spot in mk_spot_buy:
 
-                    # Margin currency is an intermediary
+                    # Margined currency could buy a desired currency on spot
                     if long[6] == spot[1]:
-                        routes.append([long, spot, 'inter', 'close_long', 'buy'])
+                        routes.append([long, spot, 'normal', 'close_long', 'buy'])
 
-                # Loop through derivative markets for a buy on derivative
+                # Deri -> deri
+                ##############
+
+                # Loop through derivative markets for open buy
                 for deri in mk_deri_open_long:
 
-                    # Margin currency is an intermediary
+                    # Margin currency in common
                     if long[6] == deri[6]:
 
-                        # Markets share the same symbol and default_type
-                        if long[2] == deri[2] and long[3] == deri[3]:
-                            routes.append([long, None, 'direct', 'close_long', 'open_long'])
+                        # Close long and open long on a different market
+                        routes.append([long, deri, 'normal', 'close_long', 'open_long'])
 
-                        else:
-                            routes.append([long, deri, 'inter', 'close_long', 'open_long'])
-
-                # Loop through markets where a short could be opened
+                # Loop through derivative markets for open short
                 for deri in mk_deri_open_short:
 
-                    # If quote is an intermediary currency
+                    # Margin currency in common
                     if long[1] == deri[6]:
-                        routes.append([long, deri, 'inter', 'close_long', 'open_short'])
 
-                # Finally append close_long
-                routes.append([long, None, 'direct', 'close_long', None])
+                        # Close long and open short on the same market
+                        if long[2] == deri[2] and long[3] == deri[3]:
+                            routes.append([long, None, 'normal', 'close_long', 'open_short'])
 
-        # Loop through markets where a short position is opened
-        #######################################################
+                        else:
+                            routes.append([long, deri, 'normal', 'close_long', 'open_short'])
+
+                # In case no route is found
+                routes.append([long, None, 'default', 'close_long', None])
+
+        # Close short position
+        ######################
 
         for short in mk_opened_short:
 
             # Position should be reduced
             if short[0] in codes_close_short:
 
-                # Margined currency is a desired currency
-                if short[6] in codes_open_long + codes_close_short:
-                    routes.append([short, None, 'direct', 'close_short', None])
+                # Direct
+                ########
 
-                    # Loop through spot markets where a currency could be bought on spot
+                # Margined currency is a desired currency
+                if short[6] in codes_open_long:
+                    routes.append([short, None, 'normal', 'close_short', None])
+
+                # Margined currency is a desired currency
+                # Allow to keep short open and continue earning funding rate if longs pay shorts
+                if short[6] in codes_close_short:
+                    routes.append([short, None, 'yield', 'close_short', None])
+
+                # Deri -> spot
+                ##############
+
+                # Loop through spot markets where a currency could be bought on spot
                 for spot in mk_spot_buy:
 
-                    # Margin (and quote) currency is an intermediary
+                    # Margined currency could buy a desired currency on spot
                     if short[6] == spot[1]:
-                        routes.append([short, spot, 'inter', 'close_short', 'buy'])
+                        routes.append([short, spot, 'normal', 'close_short', 'buy'])
 
-                # Loop through derivative markets for a buy on derivative
+                # Deri -> deri
+                ##############
+
+                # Loop through derivative markets for open a buy
                 for deri in mk_deri_open_long:
 
-                    # Margin currency is an intermediary
+                    # Margin currency in common
                     if short[6] == deri[6]:
 
-                        # Markets share the same symbol and default_type
+                        # Close short and open long on the same market
                         if short[2] == deri[2] and short[3] == deri[3]:
-                            routes.append([short, None, 'direct', 'close_short', 'open_long'])
+                            routes.append([short, None, 'normal', 'close_short', 'open_long'])
 
+                        # Close short and open long on different markets
                         else:
-                            routes.append([short, deri, 'inter', 'close_short', 'open_long'])
+                            routes.append([short, deri, 'normal', 'close_short', 'open_long'])
 
-                # Loop through markets where a short could be opened
+                # Loop through derivative markets for open a short
                 for deri in mk_deri_open_short:
 
-                    # If quote is an intermediary currency
+                    # Margin currency in common
                     if short[1] == deri[6]:
-                        routes.append([short, deri, 'inter', 'close_short', 'open_short'])
 
-                # Finally append close_short
-                routes.append([short, None, 'direct', 'close_short', None])
+                        # Open short on a different market
+                        routes.append([short, deri, 'normal', 'close_short', 'open_short'])
 
-        # Loop through markets where the base currency should be sold
-        #############################################################
+                # In case no route is found
+                routes.append([short, None, 'default', 'close_short', None])
 
-        for spot_sell in mk_spot_sell:
+        # Use a currency (that should be sold) as margin
+        ################################################
+
+        for code in codes_sell_spot:
+
+            # Loop through markets where a long could be opened
+            for mk_deri_long in mk_deri_open_long:
+
+                # Code is margin currency
+                if code == mk_deri_long[6]:
+
+                    # Code is quote currency (USD-margined)
+                    if code != mk_deri_long[0]:
+                        routes.append([code, mk_deri_long, 'margin', 'open_long', None])
+
+            # Loop through markets where a short could be opened
+            for mk_deri_short in list(set(mk_deri_open_short + mk_deri_hedge)):
+
+                # Code is margin currency
+                if code == mk_deri_short[6]:
+
+                    # Code is base currency (COIN-margined)
+                    if code == mk_deri_short[0]:
+                        routes.append([code, mk_deri_short, 'margin', 'hedge', None])
+
+                    # Code is quote currency (USD-margined)
+                    else:
+                        routes.append([code, mk_deri_short, 'margin', 'open_short', None])
+
+        # Sell currency as quote (spot)
+        ###############################
+
+        for spot_sell in mk_spot_sell_quote:
+
+            # Base currency is a desired currency
+            if spot_sell[0] in codes_open_long:
+                routes.append([spot_sell, None, 'normal', 'sell_quote', None])
+
+            # Base currency is a desired currency
+            # Allow to keep short open and continue earning funding rate if longs pay shorts
+            if spot_sell[0] in codes_close_short:
+                routes.append([spot_sell, None, 'yield', 'sell_quote', None])
+
+        # Sell currency as base (spot)
+        ##############################
+
+        for spot_sell in mk_spot_sell_base:
 
             # Quote currency is a desired currency
-            if spot_sell[1] in codes_open_long + codes_close_short:
-                routes.append([spot_sell, None, 'direct', 'sell', None])
+            if spot_sell[1] in codes_open_long:
+                routes.append([spot_sell, None, 'normal', 'sell_base', None])
+
+            # Quote currency is a desired currency
+            # Allow to keep short open and continue earning funding rate if longs pay shorts
+            if spot_sell[1] in codes_close_short:
+                routes.append([spot_sell, None, 'yield', 'sell_base', None])
 
             # Loop through markets where a currency could be bought on spot
             for spot_buy in mk_spot_buy:
 
                 # If quote is an intermediary currency
                 if spot_sell[1] == spot_buy[1]:
-                    routes.append([spot_sell, spot_buy, 'inter', 'sell', 'buy'])
+                    routes.append([spot_sell, spot_buy, 'normal', 'sell_base', 'buy'])
+
+            # Spot -> deri
+            ##############
 
             # Loop through markets where a long could be opened
             for deri_buy in mk_deri_open_long:
 
-                # Quote is an intermediary currency
+                # Code could be margined to open long
                 if spot_sell[1] == deri_buy[6]:
-                    routes.append([spot_sell, deri_buy, 'inter', 'sell', 'open_long'])
+                    routes.append([spot_sell, deri_buy, 'normal', 'sell_base', 'open_long'])
 
             # Loop through markets where a short could be opened
             for short in mk_deri_open_short:
 
-                # If quote is an intermediary currency
+                # Code could be margined to open short
                 if spot_sell[1] == short[6]:
-                    routes.append([spot_sell, short, 'inter', 'sell', 'open_short'])
+                    routes.append([spot_sell, short, 'normal', 'sell_base', 'open_short'])
 
-            # Finally append a sell
-            routes.append([spot_sell, None, 'direct', 'sell', None])
-
-        # Search markets where a currency we should sell on spot could be hedged
-        ########################################################################
-
-        if mk_deri_hedge:
-
-            # Loop through currency to sell
-            for sell in codes_sell_spot:
-
-                # Loop candidates for a hedge
-                for deri in mk_deri_hedge:
-
-                    # Currency can be hedged
-                    if sell == deri[0]:
-                        if sell == deri[6]:
-                            routes.append([deri, None, 'hedge', 'open_short', None])
-
-                            # Create dataframe
+        # Create dataframe
         df_routes = pd.DataFrame()
-        names = ['code1', 'source', 'type', 'code2', 'destination', 'type']
+        names = ['base_s', 'quote_s', 'symbol_s', 'wallet_s', 'base_d', 'quote_d', 'symbol_d', 'wallet_d']
 
         # Insert routes into dataframe
         for r in routes:
 
-            # Create an index with market source and market destination
-            if r[1] is None:
-                # code, symbol, default_type => code, symbol, default_type,
-                index = [r[0][0], r[0][3], r[0][2], r[0][0], r[0][3], r[0][2]]
+            route_type = r[2]
+            action_first = r[3]
+            action_second = r[4]
+
+            # If 1st element is a market or a currency
+            if route_type == 'margin':
+                code_src = r[0]
+                wallet_src = 'spot'
+                quote_src, symbol_src = [np.nan for i in range(2)]
             else:
-                # Duplicate market source if it's a direct trade
-                index = [r[0][0], r[0][3], r[0][2], r[1][0], r[1][3], r[1][2]]
+                code_src = r[0][0]
+                quote_src = r[0][1]
+                symbol_src = r[0][3]
+                wallet_src = r[0][2]
+
+            # If 2nd element is a destination market
+            if r[1] is not None:
+                code_dst = r[1][0]
+                quote_dst = r[1][1]
+                symbol_dst = r[1][3]
+                wallet_dst = r[1][2]
+            else:
+                code_dst, quote_dst, symbol_dst, wallet_dst = [np.nan for i in range(4)]
+
+            # Construct an index
+            index = [code_src, quote_src, symbol_src, wallet_src, code_dst, quote_dst, symbol_dst, wallet_dst]
 
             indexes = pd.MultiIndex.from_tuples([index], names=names)
-            columns = pd.MultiIndex.from_product([['route'], ['type']], names=['first', 'second'])
+            columns = pd.MultiIndex.from_product([['route'], ['type']], names=['level_1', 'level_2'])
 
             # Create a dataframe with route type
-            df = pd.DataFrame([[r[2]]], index=indexes, columns=columns)
+            df = pd.DataFrame([[route_type]], index=indexes, columns=columns)
 
             # Add actions
-            df.loc[indexes, ('action', 'source')] = r[3]
-            df.loc[indexes, ('action', 'destination')] = r[4]
+            df.loc[indexes, ('action', 'first')] = action_first
+            df.loc[indexes, ('action', 'second')] = action_second
 
+            # Finally concatenate dataframe
             df_routes = pd.concat([df, df_routes], axis=0)
 
         df_routes.sort_index(axis=0, inplace=True)
         df_routes.sort_index(axis=1, inplace=True)
-
-        # print('\nroutes dataframe\n', df_routes.to_string())
 
         log.info('Create routes dataframe done')
         return df_routes
@@ -1300,171 +1397,252 @@ def trade(exid):
         dic_markets[id].loc[(code, quote, wallet, symbol), ('price', 'ask')] = asks[0][0]
         dic_markets[id].sort_index(axis=0, inplace=True)  # Prevent past lexsort depth PerformanceWarning
 
-    # Update df_routes with costs at every iteration
-    def update_routes_cost(id, wallet, symbol, code, quote, bids, asks):
+    # Update df_routes with amount and costs at every iteration
+    def update_routes_cost(id, wallet, symbol, base, quote, bids, asks):
 
-        # If the current market match a currency held in the account
-        if any(dic_accounts[id].index.isin([(code, wallet)])):
+        # Sort dataframe to avoid warning when df.index.is_lexsorted() == False
+        dic_routes[id].sort_index(axis=0, inplace=True)
 
-            # Select indexes where market is a source or a destination of an existing route
-            indexes_src = dic_routes[id].loc[(dic_routes[id].index.get_level_values(1) == symbol) & (
-                    dic_routes[id].index.get_level_values(2) == wallet)].index
-            indexes_dst = dic_routes[id].loc[(dic_routes[id].index.get_level_values(4) == symbol) & (
-                    dic_routes[id].index.get_level_values(5) == wallet)].index
+        # Select route indexes where market is a source (or a destination) of an existing route
+        indexes_src = dic_routes[id].loc[(dic_routes[id].index.get_level_values(2) == symbol) & (
+                dic_routes[id].index.get_level_values(3) == wallet)].index
+        indexes_dst = dic_routes[id].loc[(dic_routes[id].index.get_level_values(6) == symbol) & (
+                dic_routes[id].index.get_level_values(7) == wallet)].index
 
-            # Select value of delta, exposure and spot price
-            delta = dic_accounts[id].loc[(code, wallet), ('target', 'delta_usd')]
-            expos = dic_accounts[id].loc[(code, wallet), ('exposure', 'value')]
-            delta_qty = dic_accounts[id].loc[(code, wallet), ('target', 'delta')]
+        # Update df_routes dataframe
+        def update(side, value, code, depth, funding=None):
+
+            # Convert trade value from US. Dollar to currency amount
             spot = dic_accounts[id].loc[(code, wallet), 'price'][0]
+            amount = value / spot
 
-            # Should we address the bids (sell coins, open a short)
-            # or should we address the asks (buy coins, open a long) ?
-            if delta > 0:
-                depth = bids
-            else:
-                depth = asks
-
-            # Calculate market spread
+            # Get best price and distance % for the desired amount
+            best_price, distance = calculate_distance(depth, amount)
             spread = calculate_spread(bids, asks)
+            cost = distance + spread
 
-            # Set absolute value to buy (if long) or sell (if short)
-            delta = abs(delta)
-            expos = abs(expos)
+            # Select delta quantity
+            delta_qty = dic_accounts[id].loc[(code, wallet), ('delta', 'quantity')]
 
-            # Select funding rate
-            funding = dic_markets[id].loc[(code, quote, wallet, symbol), ('funding', 'rate')][0]
+            dic_routes[id].loc[route, (side, 'amount')] = amount
+            dic_routes[id].loc[route, (side, 'distance')] = distance
+            # dic_routes[id].loc[route, (side, 'best price')] = best_price
+            dic_routes[id].loc[route, (side, 'spread')] = spread
+            dic_routes[id].loc[route, (side, 'cost')] = cost
+            dic_routes[id].loc[route, (side, 'quantity %')] = abs(amount / delta_qty)
 
-            # Iterate through routes for which market is among source markets
-            for route in indexes_src:
+            if funding is not None:
+                dic_routes[id].loc[route, (side, 'funding')] = funding
 
-                # select route type
-                route_type = dic_routes[id].loc[route, ('route', 'type')][0]
+        # Return trade value and depth book
+        def get_value_n_depth(route, route_type, action_1, action_2):
 
-                # If there is nothing to sell or hedge drop route and continue
-                if pd.isna(expos):
-                    if route_type != 'hedge':
-                        dic_routes[id].drop([route], inplace=True)
-                        # Also remove index from destination indexes
-                        indexes_dst = indexes_dst.drop(route)
-                        continue
+            base_s, quote_s, symbol_s, wallet_s, base_d, quote_d, symbol_d, wallet_d = [route[i] for i in range(8)]
 
-                # Determine the value to be released
-                value_released = min(delta, expos)
+            # Route with type margin have one of these three instructions
+            if route_type == 'margin':
 
-                # Select the desired value in the destination market
-                value_desired = abs(dic_accounts[id].loc[(route[3], route[5]), ('target', 'delta_usd')])
+                if action_1 == 'hedge':
+                    # Get value to hedge and multiply by 2 (currency isn't sold but margined)
+                    delta = dic_accounts[id].loc[(base_d, wallet_d), ('delta', 'value')]  # delta is positive
+                    trade_value = delta * 2
+                    depth = bids
 
-                # Determine maximum value to trade through this route
-                value = min(value_released, value_desired)
+                elif action_1 == 'open_short':
+                    # Get max value to use as margin and get value to short
+                    expos = dic_accounts[id].loc[(base_s, wallet_s), ('exposure', 'value')]
+                    delta = dic_accounts[id].loc[(base_d, wallet_d), ('delta', 'value')]  # delta is positive
+                    trade_value = min(expos, delta)
+                    depth = bids
 
-                # Convert trade value from US. Dollar to currency amount
-                amount = value / spot
+                elif action_1 == 'open_long':
+                    # Get max value to use as margin and get value to long
+                    expos = dic_accounts[id].loc[(base_s, wallet_s), ('exposure', 'value')]
+                    delta = dic_accounts[id].loc[(base_d, wallet_d), ('delta', 'value')]  # delta is negative
+                    trade_value = min(expos, abs(delta))
+                    depth = asks
 
-                # Get best price and distance % for the desired amount
-                best_price, distance = calculate_distance(depth, amount)
-                cost = distance + spread
+            # Rest of the routes can have one or two instructions
+            # Instruction 1 is executed on market source, instruction 2
+            # is executed on market destination
+            else:
 
-                dic_routes[id].loc[route, ('source', 'amount')] = amount
-                dic_routes[id].loc[route, ('source', 'distance')] = distance
-                dic_routes[id].loc[route, ('source', 'best price')] = best_price
-                dic_routes[id].loc[route, ('source', 'spread')] = spread
-                dic_routes[id].loc[route, ('source', 'cost')] = cost
-                dic_routes[id].loc[route, ('source', 'quantity %')] = abs(amount / delta_qty)
+                # Start with instruction 1 (release fund)
+                #########################################
 
-            # Iterate through routes for which market is among destination markets
-            for route in indexes_dst:
+                if action_1 in ['sell_quote']:
 
-                # select route type
-                route_type = dic_routes[id].loc[route, ('route', 'type')][0]
+                    # Get exposure value (quote) and delta value (base)
+                    expos = dic_accounts[id].loc[(quote_s, wallet_s), ('exposure', 'value')]
+                    delta = dic_accounts[id].loc[(base_s, wallet_s), ('delta', 'value')]  # negative
+                    trade_value = min(abs(delta), expos)
+                    depth = asks
 
-                # If route is direct of a hedge then continue (only source market)
-                if route_type in ['direct', 'hedge']:
-                    continue
+                elif action_1 in ['close_short']:
 
-                # Select the exposition value and the value to be released in the source market
-                value_released = dic_accounts[id].loc[(route[0], route[2]), ('target', 'delta_usd')]
-                value_exposure = dic_accounts[id].loc[(route[0], route[2]), ('exposure', 'value')]
+                    # Get delta value (base)
+                    delta = dic_accounts[id].loc[(base_s, wallet_s), ('delta', 'value')]  # negative
+                    trade_value = abs(delta)
+                    depth = asks
 
-                # If there is no exposure in source market drop and continue
-                if pd.isna(value_exposure):
-                    dic_routes[id].drop([route], inplace=True)
-                    continue
+                elif action_1 in ['sell_base', 'close_long']:
 
-                # Determine the maximum value to be released in source market
-                elif value_exposure < 0 and value_released < 0:  # close_short
-                    value_released = abs(max(value_released, value_exposure))
-                elif value_exposure > 0 and value_released > 0:  # sell
-                    value_released = min(value_released, value_exposure)
+                    # Get exposure value and delta
+                    expos = dic_accounts[id].loc[(base_s, wallet_s), ('exposure', 'value')]
+                    delta = dic_accounts[id].loc[(base_s, wallet_s), ('delta', 'value')]
+                    trade_value = min(delta, expos)
+                    depth = bids
 
-                # Determine maximum value to trade through this route
-                value = min(delta, value_released)
+                # Continue with instruction 2 (allocate fund)
+                #############################################
 
-                # Convert value from US. Dollar to currency amount
-                amount = value / spot
+                if not pd.isna(action_2):
 
-                # Get best price and distance % for the desired amount
-                best_price, distance = calculate_distance(depth, amount)
-                cost = distance + spread
-                funding_rate = funding
+                    if action_2 in ['buy', 'open_long']:
+                        delta = dic_accounts[id].loc[(base_d, wallet_d), ('delta', 'value')]
+                        desired_value = abs(delta)  # delta is negative
+                        depth = asks
 
-                dic_routes[id].loc[route, ('destination', 'amount')] = amount
-                dic_routes[id].loc[route, ('destination', 'distance')] = distance
-                dic_routes[id].loc[route, ('destination', 'best price')] = best_price
-                dic_routes[id].loc[route, ('destination', 'spread')] = spread
-                dic_routes[id].loc[route, ('destination', 'cost')] = cost
-                dic_routes[id].loc[route, ('destination', 'quantity %')] = abs(amount / delta_qty)
-                dic_routes[id].loc[route, ('destination', 'funding')] = funding_rate
+                    elif action_2 in ['open_short']:
+                        delta = dic_accounts[id].loc[(base_d, wallet_d), ('delta', 'value')]
+                        desired_value = delta
+                        depth = bids
 
-            # Iterate through rows and sum cost
-            if 'source' in dic_routes[id].droplevel('second', axis=1).columns:
-                for index, route in dic_routes[id].iterrows():
-                    if not route.empty:
-                        if not pd.isna(route['source']['cost']):
+                    # Determine the maximum value to trade through this route
+                    trade_value = min(trade_value, desired_value)
 
-                            # Set cost = source cost if direct or hedge trade
-                            if route['route']['type'] in ['direct', 'hedge']:
-                                dic_routes[id].loc[index, ('route', 'cost')] = route['source']['cost']
+            return trade_value, depth
 
-                            # Else cost = source cost + destination cost
-                            elif 'destination' in dic_routes[id].droplevel('second', axis=1).columns:
+        # Iterate through routes for which market is among source markets
+        for route in indexes_src:
 
-                                if not pd.isna(route['destination']['cost']):
-                                    # or sum cost source and destination
-                                    dic_routes[id].loc[index, ('route', 'cost')] = route['source']['cost'] + \
-                                                                                   route['destination']['cost']
+            # select route type and actions
+            route_type = dic_routes[id].loc[route, ('route', 'type')]
+            action_1 = dic_routes[id].loc[route, ('action', 'first')]
+            action_2 = dic_routes[id].loc[route, ('action', 'second')]
 
-    # Update df_markets with order details after an order is placed
-    def update_markets_order_details(id, dic):
+            # Get trade value and depth book and update
+            trade_value, depth = get_value_n_depth(route, route_type, action_1, action_2)
+            update('source', trade_value, base, depth)
 
-        log.info('Update order in dataframe', order=dic['pk'])
+        # Iterate through routes for which market is among destination markets
+        for route in indexes_dst:
 
-        # New order
-        if 'route_type' in dic.keys():
+            # select route_type and actions
+            route_type = dic_routes[id].loc[route, ('route', 'type')]
+            action_1 = dic_routes[id].loc[route, ('action', 'first')]
+            action_2 = dic_routes[id].loc[route, ('action', 'second')]
 
-            # Get market index
-            idx = dic['index']
+            # Get trade value and depth book
+            trade_value, depth = get_value_n_depth(route, route_type, action_1, action_2)
 
-            dic_markets[id].loc[idx, ('order', 'id')] = dic['pk']
-            dic_markets[id].loc[idx, ('order', 'type')] = dic['route_type']
-            dic_markets[id].loc[idx, ('order', 'amount')] = dic['amount']
+            # In case nothing could be traded in source market then drop route
+            if pd.isna(trade_value):
+                log.warning('Drop route')
+                dic_routes[id].drop([route], inplace=True)
+                continue
 
-        else:
+            # Get latest funding rate and update dataframe with route cost
+            funding = dic_markets[id].loc[(base, quote, wallet, symbol), ('funding', 'rate')][0]
+            update('destination', trade_value, base, depth, funding)
 
-            # Select market index by order primary key
-            idx = dic_markets[id].loc[dic_markets[id]['order']['id'] == dic['pk']].index
+        # Sum source and destination routes costs
+        #########################################
+
+        # Return route cost for market source or destination
+        def get_cost(route, side):
+            if side in route.index.get_level_values('level_1'):
+                if 'cost' in route[side].index:
+                    if not pd.isna(route[side]['cost']):
+
+                        cost = route[side]['cost']
+                        route_type = route['route']['type']
+                        action_1 = route['action']['first']
+                        action_2 = route['action']['second']
+
+                        # Add funding rate
+                        if side == 'destination':
+                            if 'funding' in route['destination'].index:
+                                funding = float(route['destination']['funding']) * 3
+
+                                # Test is route action requires to negate funding rate
+                                if (route_type == 'margin' and action_1 in ['hedge', 'open_short']) \
+                                        or (action_2 == 'open_short'):
+
+                                    # Negate funding rate to favor route
+                                    funding = - funding
+
+                                cost += funding
+
+                            else:
+                                print('\nFunding column not found\n')
+                                cost = np.nan
+
+                        return cost
+
+        # Create a new column with total route cost
+        if 'source' in dic_routes[id].droplevel('level_2', axis=1).columns:
+
+            # Iterate through our routes
+            for index, route in dic_routes[id].iterrows():
+
+                # If route type is margin get cost from destination market
+                if route['route']['type'] == 'margin':
+                    cost = get_cost(route, 'destination')
+
+                else:
+
+                    # Route has only one instruction
+                    if pd.isna(route['action']['second']):
+                        cost = get_cost(route, 'source')
+
+                    # Route has only two instructions
+                    else:
+                        cost_src = get_cost(route, 'source')
+                        cost_dst = get_cost(route, 'destination')
+
+                        # Sum source and destination costs
+                        if (cost_src and cost_dst) is not None:
+                            cost = cost_src + cost_dst
+                        else:
+                            cost = np.nan
+
+                # Create a new column with total route cost
+                dic_routes[id].loc[index, ('route', 'cost')] = cost
+
+    # Update df_markets with order status after an order is placed
+    def update_markets_df(id, client_order_id):
+
+        order = Order.objects.get(id=client_order_id)
+        log.info('Update df_markets', order=order.id)
+
+        # Construct index
+        idx = (order.market.base.code,
+               order.market.quote.code,
+               'default' if order.market.default_type is None else order.market.default_type,
+               order.market.symbol,
+               order.market.type,
+               order.market.derivative,
+               order.market.margined.code
+               )
 
         # Add/update order informations
-        dic_markets[id].loc[idx, ('order', 'status')] = dic['status']
-        dic_markets[id].loc[idx, ('order', 'filled')] = dic['filled']
+        dic_markets[id].loc[idx, ('order', 'id')] = order.id
+        dic_markets[id].loc[idx, ('order', 'type')] = order.route_type
+        dic_markets[id].loc[idx, ('order', 'amount')] = order.amount
+        dic_markets[id].loc[idx, ('order', 'status')] = order.status
+        dic_markets[id].loc[idx, ('order', 'filled')] = order.filled
 
     # Update the latest fund object after a trade is executed
-    def update_fund_object(account, orderids):
+    def update_fund_object(account, order_ids):
 
         log.info('Update fund object')
+        print(Order.objects.filter(id__in=order_ids))
 
         # Select wallet of markets where trades occurred
-        wallets = list(set([order.market.default_type for order in Order.objects.filter(orderid__in=orderids)]))
+        wallets = list(set([order.market.default_type for order in Order.objects.filter(orderid__in=order_ids)]))
+
+        print(order_ids, wallets)
 
         if wallets:
             for wallet in wallets:
@@ -1475,34 +1653,32 @@ def trade(exid):
         log.info('Update fund object done')
 
     # Update open orders and return a list of orders with new trades
-    def update_open_order_objects(account):
-
-        log.info('Update open orders')
+    def update_orders(account):
 
         # Fetch open orders and update order objects
         open_orders = account.get_pending_order_ids()
 
         if open_orders:
+
             tasks = [update_order_id.si(account.id, orderid) for orderid in open_orders]  # create a list of task
             result = group(*tasks).apply_async(queue='slow')  # execute tasks in parallel
 
             while not result.ready():
-                print('wait...')
                 time.sleep(0.5)
 
             # Update complete
             if result.successful():
 
-                # Return a list of dictionaries as tasks result
+                # Return a list of ids for orders with new trade
                 res = result.get(disable_sync_subtasks=False)
 
-                log.info('Update open orders done')
+                log.info('Open orders updated')
                 return res
 
             else:
-                log.error('Update open orders failed')
+                log.error('Open orders update failed')
         else:
-            log.info('Update open orders unnecessary')
+            log.info('Open order not found')
 
     # return cumulative orderbook
     def cumulative_book(ob):
@@ -1555,23 +1731,20 @@ def trade(exid):
 
         id = account.id
         log.bind(account=account.name)
-        log.info('Trading start')
 
-        # Check routes
-        ##############
+        # Wait route cost
+        #################
 
         if not any(dic_routes[id].columns.isin([('route', 'cost')])):
-            log.info('Trading cost unavailable')
             return
 
         if any(pd.isna(dic_routes[id]['route']['cost'].array)):
-            log.info('Trading cost incomplete')
             return
 
         # Execute trade logic
         #####################
 
-        log.info('Trading routes available')
+        log.info('Trading...')
 
         # Sort routes by source currency and cost, then reorder columns
         dic_routes[id] = dic_routes[id].sort_values([('route', 'cost')], ascending=True)
@@ -1607,71 +1780,80 @@ def trade(exid):
                 log.info('Order filled')
                 continue
 
-            # Continue trade execution
+            # Select best route
             else:
 
-                # Select first route in df_routes
-                route = dic_routes[id].xs(code, level='code1', axis=0).iloc[0]
-                index = route.name  # Pandas series .name = .index
-                route_type = route['route']['type']
+                # Loop through df_routes and execute trade logic
+                for index, route in dic_routes[id].xs(code, level='base_s', axis=0).iterrows():
 
-                # Select symbol, wallet and market to trade
-                symbol = index[0]
-                wallet = index[1]
-                market = Market.objects.get(exchange=exchange, symbol=symbol, default_type=wallet)
+                    # Select symbol, wallet and market to trade
+                    route_type = route['route']['type']
+                    action_first = route['action']['first']
+                    symbol = index[0]
+                    wallet = index[1]
+                    market = Market.objects.get(exchange=exchange, symbol=symbol, default_type=wallet)
 
-                log.bind(symbol=symbol, wallet=wallet, route_type=route_type)
-                log.info('Trading {0}'.format(symbol))
+                    # Set default side to source
+                    side = 'source'
 
-                # Abort trade execution if route type is hedge and there is no fund is available
-                if route_type == 'hedge':
-                    free = dic_accounts[id].loc[(code, index[1]), ('wallet', 'free_quantity')]
-                    if pd.isna(free):
-                        log.warning('Trading impossible, no resource to hedge')
-                        continue
+                    # Loop to the next route if there is no fund available to hedge
+                    if route_type == 'hedge':
+                        free = dic_accounts[id].loc[(code, wallet), ('wallet', 'free_quantity')]
+                        if pd.isna(free):
+                            log.warning('Trading impossible due to lack of resource')
+                            continue
 
-                # Select amount and action
-                amount = route['source']['amount']
-                action = route['action']['source']
+                    # Transfer fund
+                    elif action_first == 'transfer_base':
 
-                # Convert amount to contract quantity
-                if market.type == 'derivative':
-                    amount = methods.amount_to_contract(market, amount)
+                        code = index[0]
+                        amount = ''
+                        res = transfer(account.id, )
+                        if res:
+                            # Change side to destination after transfer is complete
+                            side = 'destination'
+                        else:
+                            continue
 
-                log.bind(action=action)
+                    # Create object and place order
+                    ###############################
 
-                # Get account, create an order object and return it's primary key
-                account = Account.objects.get(id=id)
-                pk = account.create_order(market, action, amount)
+                    log.info('Trading {0} market'.format(side))
 
-                if pk:
+                    # Select amount and action
+                    amount = route[side]['amount']
+                    action = route[side]['source']
 
-                    # Place an order, update object
-                    # and return a dictionary with order status and trade
-                    #####################################################
+                    # Convert amount to contract quantity
+                    if market.type == 'derivative':
+                        amount = methods.amount_to_contract(market, amount)
 
-                    dic = place_order.run(account.id, pk)
+                    # Create an order object and return it's primary key
+                    object_id = account.create_order(market, route_type, action, amount)
 
-                    # Order placed
-                    if dic:
+                    # If object is created
+                    if object_id:
 
-                        # Update df_markets after an order is place
-                        ###########################################
+                        # Place an order, update object and return a client order id
+                        client_order_id = place_order.run(account.id, object_id)
 
-                        # Append route type and market index in dictionary
-                        dic['route_type'] = route_type
-                        dic['index'] = dic_markets[id].iloc[
-                            (dic_markets[id].index.get_level_values('symbol') == symbol)
-                            & (dic_markets[id].index.get_level_values('default_type') == wallet)].index
+                        # if order is placed
+                        if client_order_id:
 
-                        update_markets_order_details(id, dic)
+                            # Update markets_df with order status
+                            update_markets_df(id, client_order_id)
+                            log.info('df_markets updated, break index loop for {0}'.format(code))
+                            break
+
+                        else:
+                            log.error('Trading failed no response from exchange')
 
                     else:
-                        log.error('Trading failed no response from exchange', task='place_order')
-                else:
-                    pass
+                        # Break index loop
+                        log.warning('Trade failed, break index loop for {0}'.format(code))
+                        break
 
-        log.info('Trading end')
+        log.info('Trade complete')
 
     # Asyncio loops
     ###############
@@ -1720,39 +1902,30 @@ def trade(exid):
                             trade(account)
 
                             # Update objects of open orders and return a list
-                            # of dictionaries (one for every open order)
-                            res = update_open_order_objects(account)
+                            # of ids when a new trade is detected
+                            order_ids = update_orders(account)
 
-                            if res:
+                            if order_ids:
+                                print('\norder_ids', order_ids, '\n')
 
-                                # Select id of orders with new trades
-                                orderids = [dic['orderid'] for dic in res if dic['new_trade']]
+                                log.info('Trades detected')
+                                # Update df_markets
+                                [update_markets_df(account.id, order_id) for order_id in order_ids]
 
-                                # Update dataframes after a trade is executed
-                                if orderids:
+                                # Update df_positions if a trade occurred on a derivative market
+                                update_positions.run(account.id, order_ids)
+                                dic_positions[account.id] = account.create_df_positions()
 
-                                    log.info('Trades detected')
-                                    # Update df_markets
-                                    [update_markets_order_details(account.id, dic) for dic in res if dic['new_trade']]
+                                # Update the latest fund object and df_account
+                                update_fund_object(account, order_ids)
+                                dic_accounts[account.id] = account.create_df_account()
 
-                                    # Update df_positions if a trade occurred on a derivative market
-                                    update_positions.run(account.id, orderids)
-                                    dic_positions[account.id] = account.create_df_positions()
+                                # Update df_routes
+                                dic_routes[account.id] = create_routes(account.id,
+                                                                       dic_accounts[account.id],
+                                                                       dic_positions[account.id]
+                                                                       )
 
-                                    # Update the latest fund object and df_account
-                                    update_fund_object(account, orderids)
-                                    dic_accounts[account.id] = account.create_df_account()
-
-                                    # Update df_routes
-                                    dic_routes[account.id] = create_routes(account.id,
-                                                                           dic_accounts[account.id],
-                                                                           dic_positions[account.id]
-                                                                           )
-
-                                else:
-                                    log.info('No trade detected')
-
-                        log.info('Trading cycle complete')
                 else:
                     print('wait')
 
@@ -1768,6 +1941,7 @@ def trade(exid):
     async def wallet_loop(loop, i, wallet):
 
         client = getattr(ccxtpro, exchange.exid)({'enableRateLimit': True, 'asyncio_loop': loop, })
+
         if exchange.default_types:
             client.options['defaultType'] = wallet
 
@@ -1790,8 +1964,7 @@ def trade(exid):
     # Get codes to monitor and accounts to trade with
     #################################################
 
-    strategies = Strategy.objects.filter(exchange=exchange, production=True)
-    instructions = [s.get_instructions() for s in strategies if s.is_updated()]
+    instructions = [strategy.get_instructions()]
     codes = list(set(sum([list(l[list(l.keys())[0]].keys()) for l in instructions], [])))
     if not codes:
         log.warning('No valid strategy found')
@@ -1803,7 +1976,7 @@ def trade(exid):
     ###################################
 
     dic_accounts, dic_positions, dic_routes, dic_markets = [dict() for i in range(4)]
-    accounts = Account.objects.filter(strategy__in=strategies, exchange=exchange, trading=True)
+    accounts = Account.objects.filter(strategy=strategy, exchange=exchange, trading=True)
     if not accounts:
         log.warning('No trading account found')
         return
@@ -1811,15 +1984,12 @@ def trade(exid):
     log.info('Found {0} accounts'.format(len(accounts)), accounts=[a.name for a in accounts])
 
     for account in accounts:
-
         # df_accounts
         create_fund.run(account.id)
         dic_accounts[account.id] = account.create_df_account()
 
         # df_positions
-        print('update position')
         update_positions.run(account.id)
-        print('update position done')
         dic_positions[account.id] = account.create_df_positions()
 
         # df_markets
@@ -1843,8 +2013,11 @@ def trade(exid):
 
 @shared_task(name='Trading_____Trade with accounts')
 def trade_exchanges():
+    exchanges = Exchange.objects.filter(exid='binance')
 
-    tasks = [trade.s(exchange.exid) for exchange in Exchange.objects.filter(exid='binance')]
+    tasks = [trade.s(exchange.exid, strategy.id) for exchange in exchanges
+             for strategy in Strategy.objects.filter(exchange=exchange) if strategy.production]
+
     res = group(*tasks).apply_async(queue='slow')
 
     while not res.ready():

@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, date
-import ccxt, ccxtpro
+import ccxt
+import ccxtpro
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
@@ -305,7 +306,11 @@ class Exchange(models.Model):
                     order = True
 
                 elif method == 'cancel_order':
-                    weight = 1
+                    weight = 1 + 1
+                    order = True
+
+                elif method == 'transfer':
+                    weight = 1 + 1
                     order = True
 
                 else:

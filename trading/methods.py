@@ -18,7 +18,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 
 # Create/update an order object with response returned by exchange
-def order_create_update(account, response, default_type=None):
+def order_create_update(account, response):
 
     order = Order.objects.get(orderid=response['id'])
 
@@ -41,47 +41,17 @@ def order_create_update(account, response, default_type=None):
         type=response['type']
     )
 
-    market = Market.objects.get(exchange=account.exchange,
-                                default_type=default_type,
-                                symbol=response['symbol']
-                                )
-
     # Create filter and create / update
-    args = dict(account=account, market=market, orderid=response['id'])
+    args = dict(account=account, orderid=response['id'])
     obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
     if created:
         pass
     else:
 
-        dic = dict(
-            amount=obj.amount,
-            filled=obj.filled,
-            orderid=obj.orderid,
-            pk=str(obj.id),
-            remaining=obj.remaining,
-            side=obj.side
-        )
-
+        # Return order if when a trade is detected
         if obj.filled > float(order.filled):
-
-            dic['new_trade'] = True
-
-            # Signal trade engine an order is filled
-            if obj.status == 'close':
-                log.info('Order filled', orderid=obj.orderid, filled=obj.filled, amount=obj.amount)
-                dic['status'] = 'close'
-
-            # Signal trade engine new trade occurred but order isn't filled
-            else:
-                log.info('Trade detected', orderid=obj.orderid, filled=obj.filled, amount=obj.amount)
-                dic['status'] = 'open'
-
-        else:
-            dic['new_trade'] = False
-            dic['status'] = 'open'
-
-        return dic
+            return obj.id
 
 
 # Format decimal

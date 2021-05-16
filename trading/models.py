@@ -137,6 +137,8 @@ class Account(models.Model):
 
         # Create a column with target value
         account_value = df_account[('wallet', 'total_value')].sum()
+        log.info('Account value is {0}'.format(account_value))
+
         df_account['target', 'value'] = df_account[('target', 'percent')] * account_value * float(self.leverage)
 
         # Create a column with target quantity (quantity=value/price)
@@ -146,8 +148,8 @@ class Account(models.Model):
         for code, row in df_account.groupby(level=0):
             exposure = df_account.loc[code, ('exposure', 'quantity')].sum()  # sum all default_type qty of the same coin
             delta = exposure - df_account[('target', 'quantity')]
-            df_account.loc[code, ('target', 'delta')] = delta
-            df_account.loc[code, ('target', 'delta_usd')] = delta * df_account.loc[code, 'price'].mean()
+            df_account.loc[code, ('delta', 'quantity')] = delta
+            df_account.loc[code, ('delta', 'value')] = delta * df_account.loc[code, 'price'].mean()
 
         # Sort dataframe
         df_account.sort_index(axis=1, inplace=True)
@@ -198,7 +200,7 @@ class Account(models.Model):
             return df
 
     # Create a new order object
-    def create_order(self, market, action, amount):
+    def create_order(self, market, route_type, action, amount):
 
         from trading import methods
 
@@ -223,6 +225,7 @@ class Account(models.Model):
             account=self,
             action=action,
             market=market,
+            route_type=route_type,
             type='limit' if self.limit_order else 'market',
             side=side,
             amount=str(amount),
@@ -263,8 +266,6 @@ class Account(models.Model):
             else:
                 raise Exception('Market order not supported')
 
-        pprint(defaults)
-
         # Check cost only if action is open or buy
         if ('open' or 'buy') in action:
             if not methods.limit_cost(market, float(amount), float(price)):
@@ -274,6 +275,7 @@ class Account(models.Model):
         log.info('Object created with id {0}'.format(order.id))
 
         pprint(defaults)
+
         return order.id
 
     # Check crendentials and update field
@@ -414,6 +416,7 @@ class Order(models.Model):
     side = models.CharField(max_length=10, null=True, choices=(('buy', 'buy'), ('sell', 'sell')))
     cost = models.FloatField(null=True)
     trades = models.CharField(max_length=10, null=True)
+    route_type = models.CharField(max_length=10, null=True)
     action = models.CharField(max_length=20, null=True)
     average, price, price_strategy = [models.FloatField(null=True, blank=True) for i in range(3)]
     fee = JSONField(null=True)

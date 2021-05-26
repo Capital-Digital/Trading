@@ -146,7 +146,7 @@ def amount_to_contract(market, amount):
 
             # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
             if market.response['info']['marginAsset'] == market.response['base']:
-                contract_value = market.response['info']['contractSize']  # Select USD value of 1 contract
+                contract_value = float(market.response['info']['contractSize'])  # Select USD value of 1 contract
                 return amount * last / contract_value
 
             # USDT-margined see https://www.binance.com/en/futures/trading-rules
@@ -164,7 +164,7 @@ def contract_to_amount(market, contract):
 
             # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
             if market.response['info']['marginAsset'] == market.response['base']:
-                contract_value = market.response['info']['contractSize']  # Select USD value of 1 contract
+                contract_value = float(market.response['info']['contractSize'])  # Select USD value of 1 contract
                 return contract * contract_value / last
 
             # USDT-margined see https://www.binance.com/en/futures/trading-rules

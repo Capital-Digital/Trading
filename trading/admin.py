@@ -81,7 +81,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('id', 'orderid', 'account', 'market', 'action', 'status', 'side', 'amount', 'cost', 'trades',
                     'type', 'price', 'price_strategy', 'filled',  'dt_create', 'dt_update')
 
-    readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side',
+    readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'options',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
                        'last_trade_timestamp', 'price', 'price_strategy', 'fee', 'datetime', 'response')
     actions = ['place_order', 'refresh', 'cancel_order']
@@ -129,11 +129,12 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Position)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'exchange', 'market', 'get_side', 'last', 'liquidation_price', 'size',
-                    'value_usd', 'margin_ratio',
+    list_display = ('account', 'exchange', 'market', 'get_side', 'get_size', 'size_cont', 'get_contract_value',
+                    'get_contract_value_curr', 'value_usd', 'margin_ratio', 'get_liquidation_price', 'last',
                     'entry_price', 'get_margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
                     'leverage_max', 'dt_update',)
-    readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'value_usd', 'entry_price', 'last',
+    readonly_fields = ('account', 'exchange', 'market', 'side', 'size',  'size_cont', 'value_usd', 'entry_price',
+                       'last',
                        'liquidation_price',
                        'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl',
                        'margin_mode', 'leverage', 'leverage_max', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
@@ -147,15 +148,30 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_side(self, obj):
         return True if obj.side == 'buy' else False
-
     get_side.boolean = True
     get_side.short_description = 'Side'
+
+    def get_size(self, obj):
+        return round(float(obj.size), 4)
+    get_size.short_description = 'Size'
 
     def get_margin(self, obj):
         if obj.margin:
             return round(obj.margin, 4)
-
     get_margin.short_description = 'Margin'
+
+    def get_contract_value(self, obj):
+        return obj.market.contract_value
+    get_contract_value.short_description = 'Contract value'
+
+    def get_contract_value_curr(self, obj):
+        return obj.market.contract_value_currency.code
+    get_contract_value_curr.short_description = 'Contract currency'
+
+    def get_liquidation_price(self, obj):
+        if obj.liquidation_price:
+            return round(obj.liquidation_price, 2)
+    get_liquidation_price.short_description = 'Liquidation'
 
     # Action
 

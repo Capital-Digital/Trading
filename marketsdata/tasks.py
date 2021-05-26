@@ -1,26 +1,29 @@
 from __future__ import absolute_import, unicode_literals
+
+import asyncio
+import configparser
+import time
+from datetime import datetime, timedelta
+from pprint import pprint
+
+import ccxt
+import pandas as pd
+import requests
+import structlog
+import urllib3
+from celery import chain, group, shared_task, Task, Celery, states
+from celery.exceptions import Ignore
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from django.db import models
+from django.db.models import Q
+from django.utils import timezone
+
 import capital.celery as celery
 from capital.methods import *
-from marketsdata.methods import *
 from marketsdata.error import *
-import structlog
-import ccxt
-import ccxtpro
-import asyncio
-import websockets
-from celery import chain, chord, group, shared_task, Task
-import time
-from datetime import datetime, date, timedelta
-from django.utils import timezone
-from django.db.models import Q
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from marketsdata.methods import *
 from marketsdata.models import Exchange, Candle, Market, OrderBook
 from strategy import tasks
-from django.db import models
-from pprint import pprint
-import pandas as pd
-import requests, urllib3
-import configparser
 
 log = structlog.get_logger(__name__)
 
@@ -520,7 +523,7 @@ def update_exchange_markets(self, exid):
     exchange = Exchange.objects.get(exid=exid)
 
     if not exchange.is_active():
-        raise InactiveExchange('Exchange {0} is inactive'.format(exid))
+        return
 
     quotes = Currency.objects.filter(exchange=exchange, type__type='quote')
     bases = Currency.objects.filter(exchange=exchange, type__type='base')
@@ -695,7 +698,6 @@ def update_exchange_markets(self, exid):
 
 @shared_task(bind=True, name='Markets_____Update funding rate')
 def update_funding_rate(self):
-
     log.info('Update funding rate')
 
     from marketsdata.models import Exchange
@@ -834,15 +836,26 @@ def update_market_prices(self, exid):
             client.options['defaultType'] = default_type
 
             if exchange.has_credit(default_type):
-                client.load_markets(True)
-                exchange.update_credit('load_markets', default_type)
 
-                if exchange.has_credit(default_type):
-                    response = client.fetch_tickers()
-                    exchange.update_credit('fetch_tickers', default_type)
+                try:
+                    client.load_markets(True)
+                    exchange.update_credit('load_markets', default_type)
 
-                    for market in markets.filter(default_type=default_type):
-                        update(response, market)
+                    if exchange.has_credit(default_type):
+                        response = client.fetch_tickers()
+                        exchange.update_credit('fetch_tickers', default_type)
+
+                        for market in markets.filter(default_type=default_type):
+                            update(response, market)
+
+                except Exception as e:
+                    # manually update the task state
+                    self.update_state(
+                        state=states.FAILURE,
+                        meta=str(e)
+                    )
+                    # ignore the task so no other state is recorded
+                    raise Ignore()
 
     else:
 
@@ -873,8 +886,6 @@ def watch_order_books(self, exid):
 
     exchange = Exchange.objects.get(exid=exid)
     accounts = exchange.get_trading_accounts()
-
-    from trading import tasks
 
     async def symbol_loop(client, symbol, ccxt_type_options):
 

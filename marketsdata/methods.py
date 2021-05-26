@@ -149,12 +149,15 @@ def get_derivative_type(exid, values):
                 return None
 
     elif exid == 'bybit':
-        if values['type'] == 'future' and values['future']:
-            # Return future if symbol contains a number else perpetual
-            if any(char.isdigit() for char in values['symbol']):
-                return 'future'
-            else:
-                return 'perpetual'
+
+        if values['type'] == 'swap':
+            return 'perpetual'
+
+        if values['type'] == 'future':
+            return 'future'
+
+        if values['type'] == 'spot':
+            return 'spot'
 
     elif exid == 'ftx':
         if values['type'] == 'future' and '-PERP' in values['symbol']:
@@ -193,9 +196,9 @@ def get_derivative_margined(exid, values):
         return Currency.objects.get(code=values['info']['marginAsset'])
 
     elif exid == 'bybit':
-        if values['future'] and values['inverse']:
+        if values['inverse']:
             return Currency.objects.get(code=values['base'])
-        elif values['future'] and not values['inverse']:
+        elif not values['inverse']:
             return Currency.objects.get(code=values['quote'])
 
     elif exid == 'ftx':
@@ -249,8 +252,8 @@ def get_derivative_contract_value(exid, values):
 
             elif values['info']['isQuanto']:
                 # Contract value in XBT = multiplier (in satoschi) * Quanto contract price
-                multiplier = values['info']['multiplier'] / 100000000
-                return multiplier * values['info']['lastPrice']
+                multiplier = float(values['info']['multiplier']) / 100000000
+                return multiplier * float(values['info']['lastPrice'])
 
             elif not values['info']['isQuanto'] and not values['info']['isInverse']:
                 # 1 contract = 1 base relationship
@@ -284,11 +287,11 @@ def get_derivative_contract_value_currency(exid, values):
 
     elif exid == 'bybit':
 
-        if values['future'] and values['inverse']:
+        if values['inverse']:
             # COIN-Margined perp
             return Currency.objects.get(code=values['quote'])
 
-        elif values['future'] and not values['inverse']:
+        elif not values['inverse']:
             # USDT-margined perp
             return Currency.objects.get(code=values['base'])
 
@@ -328,7 +331,7 @@ def get_derivative_delivery_date(exid, values):
             return timezone.make_aware(datetime.strptime(values['info']['delivery'], '%Y-%m-%dT%H:%M:%S.000Z'))
 
     elif exid == 'binance':
-        return timezone.make_aware(datetime.fromtimestamp(values['info']['deliveryDate'] / 1000))
+        return timezone.make_aware(datetime.fromtimestamp(float(values['info']['deliveryDate']) / 1000))
 
     elif exid == 'bybit':
         return None
@@ -363,7 +366,7 @@ def get_derivative_listing_date(exid, values):
             return timezone.make_aware(datetime.strptime(values['info']['listing'], '%Y-%m-%dT%H:%M:%S.000Z'))
 
     elif exid == 'binance':
-        return timezone.make_aware(datetime.fromtimestamp(values['info']['onboardDate'] / 1000))
+        return timezone.make_aware(datetime.fromtimestamp(float(values['info']['onboardDate']) / 1000))
 
     elif exid == 'bybit':
         return None

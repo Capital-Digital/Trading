@@ -73,13 +73,15 @@ class Account(models.Model):
         df_account = pd.DataFrame()
 
         # Loop through funds
-        for i in ['total', 'free']:
-            for default_type, dic1 in funds.total.items():
+        for i in ['total', 'free', 'used']:
+            for default_type, dic1 in getattr(funds, i).items():
 
                 for code, dic2 in dic1.items():
                     for field, value in dic2.items():
+
                         # Create multilevel columns
-                        columns = pd.MultiIndex.from_product([['wallet'], [i + '_' + field]])
+                        columns = pd.MultiIndex.from_product([['wallet'], [i + '_' + field]],
+                                                             names=['level_1', 'level_2'])
                         indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
 
                         # Construct dataframe and normalize rows
@@ -91,13 +93,9 @@ class Account(models.Model):
 
         if not positions.empty:
 
-            # If multiple position on a same code raise exception
-            if len(list(positions.index.get_level_values(0))) > 2:
-                raise Exception('There are more than one open position for the same underlying asset, '
-                                'please normalize size before creating a dataframe')
-
             # Sum quantity and value of positions with the same code and default_type
             for index, position in positions.groupby(level=[0, 2]).sum().iterrows():
+
                 # Add position size and position value
                 df_account.loc[(index[0], index[1]), ('position', 'quantity')] = position['amount']
                 df_account.loc[(index[0], index[1]), ('position', 'value')] = position['value']
@@ -108,13 +106,14 @@ class Account(models.Model):
                 df_account.loc[index, ('position', 'quantity')] = np.nan
                 df_account.loc[index, ('position', 'value')] = np.nan
 
-        # Select columns with total wallet quantity/value and position quantity/value
-        qty = df_account.droplevel(axis=1, level=0)[['total_quantity', 'quantity']]
-        val = df_account.droplevel(axis=1, level=0)[['total_value', 'value']]
+        # Sum wallet and position to get total exposure per wallet en per coin
+        d = df_account.loc[:, df_account.columns.get_level_values(0).isin({"position", "wallet"})]
+        qty = d.loc[:, d.columns.get_level_values(1).isin({"quantity", "total_quantity"})].sum(axis=1)
+        val = d.loc[:, d.columns.get_level_values(1).isin({"value", "total_value"})].sum(axis=1)
 
-        # Create exposure columns (exposure=account+positions)
-        df_account[('exposure', 'quantity')] = qty.sum(axis=1)
-        df_account[('exposure', 'value')] = val.sum(axis=1)
+        # Create exposure columns
+        df_account[('exposure', 'quantity')] = qty
+        df_account[('exposure', 'value')] = val
 
         # Create a column for instruction weight
         for default_type, dic1 in funds.total.items():
@@ -146,10 +145,15 @@ class Account(models.Model):
 
         # Finally calculate delta
         for code, row in df_account.groupby(level=0):
-            exposure = df_account.loc[code, ('exposure', 'quantity')].sum()  # sum all default_type qty of the same coin
+            exposure = df_account.loc[code, ('exposure', 'quantity')].sum()  # sum exposure of the coin in all wallets
             delta = exposure - df_account[('target', 'quantity')]
             df_account.loc[code, ('delta', 'quantity')] = delta
             df_account.loc[code, ('delta', 'value')] = delta * df_account.loc[code, 'price'].mean()
+
+        # Group rows by code and sum total exposure
+        val_total = df_account.groupby(['code']).sum()['exposure']['value']
+        for i, r in df_account.iterrows():
+            df_account.loc[i, ('exposure', 'value_total')] = val_total[list(i)[0]]
 
         # Sort dataframe
         df_account.sort_index(axis=1, inplace=True)
@@ -172,9 +176,9 @@ class Account(models.Model):
                 margined = position.market.margined.code
                 symbol = position.market.symbol
                 code = position.market.base.code
-                size = float(position.size) if position.side == 'buy' else -float(position.size)
-                amount = methods.contract_to_amount(position.market, size) # Convert position size to currency amount
-                value = float(position.value_usd) if position.side == 'buy' else -float(position.value_usd)
+                size = float(position.size)
+                amount = methods.contract_to_amount(position.market, size)  # Convert position size to currency amount
+                value = position.value_usd
                 # Create multilevel columns
                 indexes = pd.MultiIndex.from_tuples([(code,
                                                       position.market.quote.code,
@@ -196,80 +200,23 @@ class Account(models.Model):
                                  columns=['side', 'size', 'amount', 'value']
                                  )
                 df = pd.concat([df, d], axis=0)
-
-            return df
+        return df
 
     # Create a new order object
-    def create_order(self, market, route_type, action, amount):
+    def create_order(self, market, instruction, amount):
 
         from trading import methods
 
-        # Format decimal
-        amount = methods.format_decimal(counting_mode=self.exchange.precision_mode,
-                                        precision=market.precision['amount'],
-                                        n=amount
-                                        )
-
-        # Check amount limits min & max conditions
-        amount = methods.limit_amount(market, float(amount))
-
-        if not amount:
-            return
-
-        if action in ['open_long', 'close_short', 'buy']:
-            side = 'buy'
-        elif action in ['open_short', 'close_long', 'sell']:
-            side = 'sell'
-
         defaults = dict(
             account=self,
-            action=action,
+            action=instruction,
             market=market,
-            route_type=route_type,
             type='limit' if self.limit_order else 'market',
             side=side,
             amount=str(amount),
             status='created'
         )
 
-        # Limit price order
-        if self.limit_order:
-            if self.exchange.has['createLimitOrder']:
-
-                price = market.get_candle_price_last()
-
-                # Add or remove tolerance
-                if side == 'buy':
-                    price = price + price * float(self.limit_price_tolerance)
-                elif side == 'sell':
-                    price = price - price * float(self.limit_price_tolerance)
-
-                # Check price limits and format decimal
-                if methods.limit_price(market, price):
-                    price = methods.format_decimal(counting_mode=self.exchange.precision_mode,
-                                                   precision=market.precision['price'],
-                                                   n=price
-                                                   )
-                    defaults['price'] = str(price)
-                else:
-                    raise Exception('Price limits conditions error')
-            else:
-                raise Exception('Limit order not supported')
-
-        # Market order
-        else:
-            if self.exchange.has['createMarketOrder']:
-
-                # Set price to check cost limit conditions
-                price = market.get_candle_price_last()
-
-            else:
-                raise Exception('Market order not supported')
-
-        # Check cost only if action is open or buy
-        if ('open' or 'buy') in action:
-            if not methods.limit_cost(market, float(amount), float(price)):
-                return
 
         order = Order.objects.create(**defaults)
         log.info('Object created with id {0}'.format(order.id))
@@ -420,6 +367,7 @@ class Order(models.Model):
     action = models.CharField(max_length=20, null=True)
     average, price, price_strategy = [models.FloatField(null=True, blank=True) for i in range(3)]
     fee = JSONField(null=True)
+    options = JSONField(null=True)
     response = JSONField(null=True)
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
@@ -445,6 +393,7 @@ class Position(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='positions', null=True)
     last, liquidation_price = [models.FloatField(null=True) for i in range(2)]
     size = models.CharField(max_length=100, null=True)
+    size_cont = models.CharField(max_length=100, null=True)
     entry_price = models.FloatField(null=True)
     max_qty = models.FloatField(null=True)
     margin, margin_maint_ratio, margin_ratio = [models.FloatField(null=True) for i in range(3)]

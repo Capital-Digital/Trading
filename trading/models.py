@@ -62,14 +62,14 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Construct a dataframe with wallet balances and instructions
+    # Construct a dataframe with wallet balances and allocations
     # Wallets specify a list of wallet's funds need to be updated
     def create_df_account(self):
 
         log.info('Create account dataframe', account=self.name)
 
         funds = self.get_fund_latest()
-        instructions = self.strategy.get_instructions()
+        allocations = self.strategy.get_allocations()
         df_account = pd.DataFrame()
 
         # Loop through funds
@@ -78,7 +78,6 @@ class Account(models.Model):
 
                 for code, dic2 in dic1.items():
                     for field, value in dic2.items():
-
                         # Create multilevel columns
                         columns = pd.MultiIndex.from_product([['wallet'], [i + '_' + field]],
                                                              names=['level_1', 'level_2'])
@@ -93,18 +92,18 @@ class Account(models.Model):
 
         if not positions.empty:
 
-            # Sum quantity and value of positions with the same code and default_type
+            # Sum quantity and dollar_value of positions with same code and wallet
             for index, position in positions.groupby(level=[0, 2]).sum().iterrows():
-
                 # Add position size and position value
-                df_account.loc[(index[0], index[1]), ('position', 'quantity')] = position['amount']
-                df_account.loc[(index[0], index[1]), ('position', 'value')] = position['value']
+                df_account.loc[(index[0], index[1]), ('position', 'quantity')] = position['quantity']
+                df_account.loc[(index[0], index[1]), ('position', 'value')] = position['total_value']
 
         else:
             # No position open
             for index, position in df_account.iterrows():
                 df_account.loc[index, ('position', 'quantity')] = np.nan
                 df_account.loc[index, ('position', 'value')] = np.nan
+                df_account.loc[index, ('wallet', 'position_value')] = np.nan
 
         # Sum wallet and position to get total exposure per wallet en per coin
         d = df_account.loc[:, df_account.columns.get_level_values(0).isin({"position", "wallet"})]
@@ -115,9 +114,9 @@ class Account(models.Model):
         df_account[('exposure', 'quantity')] = qty
         df_account[('exposure', 'value')] = val
 
-        # Create a column for instruction weight
+        # Create a column for allocations weight
         for default_type, dic1 in funds.total.items():
-            for k, v in instructions.items():
+            for k, v in allocations.items():
                 inst_codes = list(v.keys())
                 for code in inst_codes:
                     df_account.loc[(code, default_type), ('target', 'percent')] = v[code]['weight']
@@ -135,17 +134,18 @@ class Account(models.Model):
                     df_account.loc[(code, default_type), 'price'] = price
 
         # Create a column with target value
-        account_value = df_account[('wallet', 'total_value')].sum()
-        log.info('Account value is {0}'.format(account_value))
+        total = df_account[('wallet', 'total_value')]
+        df_account['target', 'value'] = df_account[('target', 'percent')] * total.sum() * float(self.leverage)
 
-        df_account['target', 'value'] = df_account[('target', 'percent')] * account_value * float(self.leverage)
+        log.info('Account value is {0}'.format(round(total.sum(), 2)))
 
         # Create a column with target quantity (quantity=value/price)
         df_account[('target', 'quantity')] = df_account[('target', 'value')] / df_account['price']
+        df_account[('target', 'quantity')] = df_account[('target', 'quantity')].fillna(0)
 
-        # Finally calculate delta
+        # Calculate delta
         for code, row in df_account.groupby(level=0):
-            exposure = df_account.loc[code, ('exposure', 'quantity')].sum()  # sum exposure of the coin in all wallets
+            exposure = df_account.loc[code, ('exposure', 'quantity')].sum()  # sum exposure of a coin in all wallets
             delta = exposure - df_account[('target', 'quantity')]
             df_account.loc[code, ('delta', 'quantity')] = delta
             df_account.loc[code, ('delta', 'value')] = delta * df_account.loc[code, 'price'].mean()
@@ -167,6 +167,8 @@ class Account(models.Model):
         from trading import methods
         df = pd.DataFrame()
         positions = self.get_positions()
+        cash = self.get_value_stablecoins()
+        coins = self.get_coins()
 
         if positions:
             for position in positions:
@@ -177,8 +179,14 @@ class Account(models.Model):
                 symbol = position.market.symbol
                 code = position.market.base.code
                 size = float(position.size)
-                amount = methods.contract_to_amount(position.market, size)  # Convert position size to currency amount
-                value = position.value_usd
+                quantity = methods.contract_to_amount(position.market, size)  # Convert position size to currency
+                dollar_value = position.value_usd
+                asset = position.asset.code if position.asset else 'Cont'
+                side = position.side
+                leverage = position.leverage
+                settlement = position.settlement.code
+                initial_margin = position.initial_margin
+                pnl = position.unrealized_pnl
                 # Create multilevel columns
                 indexes = pd.MultiIndex.from_tuples([(code,
                                                       position.market.quote.code,
@@ -189,41 +197,88 @@ class Account(models.Model):
                                                       margined
                                                       )], names=['code',
                                                                  'quote',
-                                                                 'default_type',
+                                                                 'wallet',
                                                                  'symbol',
                                                                  'type',
                                                                  'derivative',
                                                                  'margined'])
                 # Construct dataframe and normalize rows
-                d = pd.DataFrame([[position.side, amount, size, value]],
+                d = pd.DataFrame([[side, size, asset, quantity, settlement, dollar_value, initial_margin, leverage,
+                                   pnl]],
                                  index=indexes,
-                                 columns=['side', 'size', 'amount', 'value']
+                                 columns=['side', 'size', 'asset', 'quantity', 'settlement', 'total_value',
+                                          'initial_margin', 'leverage', 'PnL']
                                  )
+
+                # Check if position is potentially a hedge
+                if d['side'][0] == 'sell':
+                    if code in coins:
+                        d['hedge'] = True
+                    else:
+                        d['hedge'] = False
+
                 df = pd.concat([df, d], axis=0)
+
+        # Iterate through coins in account and positions
+        for coin in coins:
+            balance_value = self.get_value_coin(coin)
+            for index, row in df.loc[:, :].iterrows():
+                if index[0] == coin:
+
+                    df.sort_index(axis=0, inplace=True)
+                    df.loc[index, 'balance_value'] = balance_value
+
+                    # Determine synthetic cash of every short position
+                    if row['hedge']:
+
+                        value = abs(row['total_value'])
+                        synthetic_cash = min(value, balance_value)
+                        df.loc[index, 'synthetic_cash'] = synthetic_cash
+                        balance_value -= synthetic_cash
+
+                        # Determine USD value of initial margin
+                        if index[6] in self.exchange.get_stablecoins():
+                            position = Position.objects.get(account=self,
+                                                            market__symbol=index[3],
+                                                            market__default_type=index[2]
+                                                            )
+                            df.loc[index, 'hedge_margin_value'] = synthetic_cash / position.leverage
+
         return df
 
     # Create a new order object
-    def create_order(self, market, instruction, amount):
+    def create_order(self, market, instruction, side, amount, price, params=None):
 
-        from trading import methods
+        if self.limit_order:
+            order_type = 'limit'
+        else:
+            order_type = 'market'
+            price = None
 
         defaults = dict(
             account=self,
             action=instruction,
             market=market,
-            type='limit' if self.limit_order else 'market',
+            price=price,
+            type=order_type,
             side=side,
             amount=str(amount),
             status='created'
         )
 
+        # Set parameters
+        if params:
+            defaults['params'] = params
 
         order = Order.objects.create(**defaults)
-        log.info('Object created with id {0}'.format(order.id))
 
-        pprint(defaults)
+        if order:
+            log.info('Object created with id {0}'.format(order.id))
+            return order.id
 
-        return order.id
+        else:
+            pprint(defaults)
+            raise Exception('Error while creating order object')
 
     # Check crendentials and update field
     def update_credentials(self):
@@ -247,6 +302,44 @@ class Account(models.Model):
         finally:
             self.save()
 
+    # Return coins
+    def get_coins(self):
+
+        funds = self.get_fund_latest()
+        coins = []
+
+        for wallet in funds.total.keys():
+            coins.extend(list(funds.total[wallet].keys()))
+
+        return coins
+
+    # Return value of stablecoins
+    def get_value_stablecoins(self):
+
+        funds = self.get_fund_latest()
+        stablecoins = [c.code for c in Currency.objects.filter(exchange=self.exchange, stable_coin=True)]
+        cash = []
+
+        for wallet, coins in funds.total.items():
+            for code, values in coins.items():
+                if code in stablecoins:
+                    cash.append(values['value'])
+
+        return sum(cash)
+
+    # Return coin value
+    def get_value_coin(self, code):
+
+        funds = self.get_fund_latest()
+        values = []
+
+        for wallet, coins in funds.total.items():
+            for key, value in coins.items():
+                if key == code:
+                    values.append(value['value'])
+
+        return sum(values)
+
     # Return a list with orderid of open orders
     def get_pending_order_ids(self):
 
@@ -263,7 +356,6 @@ class Account(models.Model):
             return self.funds.latest('dt')
 
         else:
-
             from trading.tasks import create_fund
             create_fund(self.id)
             return self.funds.latest('dt')
@@ -280,55 +372,13 @@ class Account(models.Model):
         else:
             return []
 
-    # Return long positions
-    def get_positions_long(self):
-
-        positions = self.positions.all().filter(side='buy')
-        if positions.exists():
-            lst = []
-            for p in positions:
-                lst.append(p)
-            return lst
-        else:
-            return []
-
-    # Return short positions
-    def get_positions_short(self):
-
-        positions = self.positions.all().filter(side='sell')
-        if positions.exists():
-            lst = []
-            for p in positions:
-                lst.append(p)
-            return lst
-        else:
-            return []
-
-    # return datetime of latest order
-    def get_order_latest_dt(self, market):
-
-        orders = Order.objects.filter(account=self, market=market)
-        if orders.exists():
-            return orders.latest('dt_create').dt
-
-    # Transfer funds between accounts
-    def transfer_fund(self):
-
-        if self.exchange.exid == 'okex':
-            from . import okex
-            okex.transfer_funds(self)
-
     # Return True if fund object is stamped at 0
     def is_fund_updated(self):
-        if self.funds.latest('dt_create').dt == get_datetime(minute=0):
+        dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+        if self.funds.latest('dt_create').dt == dt:
             return True
         else:
             return False
-
-    # Return True if position has been updated recently
-    def is_positions_updated(self):
-
-        return True if all([position.is_updated() for position in self.position.all()]) else False
 
 
 class Fund(models.Model):
@@ -337,7 +387,7 @@ class Fund(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    balance, total, free, used, derivative = [JSONField(null=True) for i in range(5)]
+    balance, total, free, used, margin_assets = [JSONField(null=True) for i in range(5)]
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -359,16 +409,13 @@ class Order(models.Model):
     market = models.ForeignKey(Market, on_delete=models.SET_NULL, related_name='order', null=True)
     orderid = models.CharField(max_length=150, null=True)  # order exchange's ID
     status, type = [models.CharField(max_length=150, null=True) for i in range(2)]
-    amount, filled, remaining, max_qty = [models.CharField(max_length=10, null=True) for i in range(4)]
+    amount, filled, remaining, max_qty = [models.FloatField(max_length=10, null=True) for i in range(4)]
     side = models.CharField(max_length=10, null=True, choices=(('buy', 'buy'), ('sell', 'sell')))
     cost = models.FloatField(null=True)
-    trades = models.CharField(max_length=10, null=True)
     route_type = models.CharField(max_length=10, null=True)
     action = models.CharField(max_length=20, null=True)
     average, price, price_strategy = [models.FloatField(null=True, blank=True) for i in range(3)]
-    fee = JSONField(null=True)
-    options = JSONField(null=True)
-    response = JSONField(null=True)
+    fee, trades, params, response = [JSONField(null=True) for i in range(4)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
@@ -391,18 +438,21 @@ class Position(models.Model):
     market = models.ForeignKey(Market, on_delete=models.SET_NULL, related_name='positions', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='positions', null=True)
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='positions', null=True)
+    settlement = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='positions', null=True)
     last, liquidation_price = [models.FloatField(null=True) for i in range(2)]
     size = models.CharField(max_length=100, null=True)
-    size_cont = models.CharField(max_length=100, null=True)
+    asset = models.ForeignKey(Currency, on_delete=models.SET_NULL, related_name='position_asset', null=True)
+    hedge = models.FloatField(null=True)
     entry_price = models.FloatField(null=True)
     max_qty = models.FloatField(null=True)
-    margin, margin_maint_ratio, margin_ratio = [models.FloatField(null=True) for i in range(3)]
+    notional_value, initial_margin, maint_margin, order_initial_margin = [models.FloatField(null=True) for i in
+                                                                          range(4)]
     realized_pnl, unrealized_pnl, value_usd = [models.FloatField(null=True) for i in range(3)]
     instrument_id, side = [models.CharField(max_length=150, null=True) for i in range(2)]
     margin_mode = models.CharField(max_length=10, null=True, choices=(('isolated', 'isolated'),
                                                                       ('crossed', 'crossed')))
-    leverage = models.DecimalField(null=True, max_digits=5, decimal_places=2)
-    leverage_max = models.DecimalField(null=True, max_digits=5, decimal_places=2)
+    # leverage = models.DecimalField(null=True, max_digits=5, decimal_places=2)
+    leverage = models.IntegerField(null=True)
     created_at = models.DateTimeField(null=True)
     response = JSONField(null=True)
     dt_update = models.DateTimeField(auto_now=True)

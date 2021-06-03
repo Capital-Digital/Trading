@@ -15,9 +15,9 @@ def get_datetime(hour=None, minute=None, delta=None, string=False, timestamp=Fal
 
     # Create datetime object and set minute or hour
     if hour:
-        dt = timezone.now().replace(hour=hour, minute=0, microsecond=0)
+        dt = timezone.now().replace(hour=hour, minute=0, second=0, microsecond=0)
     elif minute:
-        dt = timezone.now().replace(minute=minute, microsecond=0)
+        dt = timezone.now().replace(minute=minute, second=0, microsecond=0)
     else:
         dt = timezone.now()
 

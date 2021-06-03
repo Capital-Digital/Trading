@@ -150,6 +150,10 @@ class Exchange(models.Model):
         from trading.models import Account
         return Account.objects.filter(exchange=self, trading=True)
 
+    # Return a list of stablecoins
+    def get_stablecoins(self):
+        return [c.code for c in Currency.objects.filter(exchange=self, stable_coin=True)]
+
     # Return True if there is available credit
     def has_credit(self, default_type=None):
 

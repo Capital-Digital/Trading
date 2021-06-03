@@ -227,20 +227,19 @@ def get_derivative_contract_value(exid, values):
             return values['info']['contract_val']
 
     elif exid == 'binance':
-
         # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
         if values['info']['marginAsset'] == values['base']:
             return values['info']['contractSize']  # Select USD value of 1 contract
 
         # USDT-margined see https://www.binance.com/en/futures/trading-rules
         elif values['info']['marginAsset'] == values['quote']:
-            return 1
+            return
 
     elif exid == 'bybit':
-        return 1
+        return
 
     elif exid == 'ftx':
-        return 1
+        return
 
     elif exid == 'bitmex':
 
@@ -248,7 +247,7 @@ def get_derivative_contract_value(exid, values):
 
             if values['info']['isInverse']:
                 # 1 contract = 1 USD relationship is valid for inverse contracts
-                return 1
+                return
 
             elif values['info']['isQuanto']:
                 # Contract value in XBT = multiplier (in satoschi) * Quanto contract price
@@ -257,10 +256,10 @@ def get_derivative_contract_value(exid, values):
 
             elif not values['info']['isQuanto'] and not values['info']['isInverse']:
                 # 1 contract = 1 base relationship
-                return 1
+                return
 
     elif exid == 'bitfinex2':
-        return 1
+        return
 
     pprint(values)
     log.error('No rule contract value for {1} at {0}'.format(exid, values['symbol']))
@@ -281,7 +280,7 @@ def get_derivative_contract_value_currency(exid, values):
     elif exid == 'binance':
         # base asset are used as contract value currency for USDT-margined and COIN-margined
         if values['info']['marginAsset'] == 'USDT':
-            return Currency.objects.get(code=values['base'])
+            return
         else:
             return Currency.objects.get(code=values['quote'])
 
@@ -293,10 +292,10 @@ def get_derivative_contract_value_currency(exid, values):
 
         elif not values['inverse']:
             # USDT-margined perp
-            return Currency.objects.get(code=values['base'])
+            return
 
     elif exid == 'ftx':
-        return Currency.objects.get(code=values['base'])
+        return
 
     elif exid == 'bitmex':
 

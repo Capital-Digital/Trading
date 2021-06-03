@@ -1,8 +1,7 @@
-import marketsdata.models as m
-import strategy.models as s
-from trading.models import Position, Fund, Order, Account
+from capital.methods import *
+from trading.models import Order
 from trading.error import *
-from marketsdata.models import Market, Currency
+from marketsdata.models import Market
 from django.utils import timezone
 import structlog
 from datetime import timedelta, datetime
@@ -20,43 +19,69 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 # Create/update an order object with response returned by exchange
 def order_create_update(account, response):
 
-    order = Order.objects.get(orderid=response['id'])
+    try:
+        # Select order object with client order ID
+        order = Order.objects.get(id=float(response['clientOrderId']))
 
-    # Create dictionary
-    defaults = dict(
-        amount=response['amount'],
-        average=response['average'],
-        cost=response['cost'],
-        datetime=response['datetime'],
-        fee=response['fee'],
-        filled=float(response['filled']),
-        response=response,
-        last_trade_timestamp=response['lastTradeTimestamp'],
-        price=response['price'],
-        remaining=response['remaining'],
-        side=response['side'],
-        status=response['status'],
-        timestamp=response['timestamp'],
-        trades=response['trades'],
-        type=response['type']
-    )
+    except ObjectDoesNotExist:
+        log.warning('Order object not created')
 
-    # Create filter and create / update
-    args = dict(account=account, orderid=response['id'])
-    obj, created = Order.objects.update_or_create(**args, defaults=defaults)
+    finally:
 
-    if created:
-        pass
-    else:
+        # pprint(response)
 
-        # Return order if when a trade is detected
-        if obj.filled > float(order.filled):
-            return obj.id
+        # Create filter
+        args = dict(account=account, id=response['clientOrderId'])
+
+        # Select Binance datetime
+        if account.exchange.exid == 'binance':
+            if not response['timestamp']:
+                if 'transactTime' in response['info']:
+                    response['timestamp'] = float(response['info']['transactTime'])
+                elif 'updateTime' in response['info']:
+                    response['timestamp'] = float(response['info']['updateTime'])
+
+        # Convert datetime
+        datetime = convert_timestamp_to_datetime(response['timestamp'] / 1000, datetime_directive_binance_order)
+
+        # Create dictionary
+        defaults = dict(
+            orderid=response['id'],
+            amount=response['amount'],
+            average=response['average'],
+            cost=response['cost'],
+            datetime=datetime,
+            fee=response['fee'],
+            filled=float(response['filled']),
+            response=response,
+            last_trade_timestamp=response['lastTradeTimestamp'],
+            price=response['price'],
+            remaining=response['remaining'],
+            side=response['side'],
+            status=response['status'],
+            timestamp=int(response['timestamp']),
+            trades=response['trades'],
+            type=response['type']
+        )
+        # pprint(defaults)
+        obj, created = Order.objects.update_or_create(**args, defaults=defaults)
+
+        # Creation
+        if created:
+            return
+
+        else:
+            # An order with trade is updated
+            if order.filled:
+                if obj.filled > order.filled:
+                    return obj.orderid
+            # An order with no trade is updated
+            elif obj.filled:
+                return obj.orderid
 
 
 # Format decimal
 def format_decimal(counting_mode, precision, n):
-
     # Rounding mode
     TRUNCATE = 0  # will round the last decimal digits to precision
     ROUND = 1  # will cut off the digits after certain precision
@@ -75,17 +100,16 @@ def format_decimal(counting_mode, precision, n):
     NO_PADDING = 5  # default for most cases
     PAD_WITH_ZERO = 6  # appends zero characters up to precision
 
-    return ccxt.decimal_to_precision(n,
-                                     rounding_mode=0,
-                                     precision=precision,
-                                     counting_mode=counting_mode,
-                                     padding_mode=5
-                                     )
+    return float(ccxt.decimal_to_precision(n,
+                                           rounding_mode=0,
+                                           precision=precision,
+                                           counting_mode=counting_mode,
+                                           padding_mode=5
+                                           ))
 
 
 # Return amount limit min or amount limit max if condition is not satisfy
 def limit_amount(market, amount):
-
     # Check amount limits
     if market.limits['amount']['min']:
         if amount < market.limits['amount']['min']:
@@ -104,7 +128,6 @@ def limit_amount(market, amount):
 
 # Return True if price limit conditions are satisfy otherwise False
 def limit_price(market, price):
-
     # Check price limits
     if market.limits['price']['min']:
         if price < market.limits['price']['min']:
@@ -138,7 +161,6 @@ def limit_cost(market, amount, price):
 
 # Convert currency amount to derivative contract quantity
 def amount_to_contract(market, amount):
-
     if market.exchange.exid == 'binance':
         if market.type == 'derivative':
 
@@ -156,7 +178,6 @@ def amount_to_contract(market, amount):
 
 # Convert contract quantity to currency amount
 def contract_to_amount(market, contract):
-
     if market.exchange.exid == 'binance':
         if market.type == 'derivative':
 
@@ -186,7 +207,8 @@ def get_spot_balance_usd(account):
 # return USD value of future account
 def get_future_balance_usd(account):
     try:
-        balance = sum([convert_to_usd(f.total, f.currency.code, f.type, f.exchange) for f in account.get_funds('future')])
+        balance = sum(
+            [convert_to_usd(f.total, f.currency.code, f.type, f.exchange) for f in account.get_funds('future')])
     except Exception as e:
         print(e)
         raise TradingError('Unable to get balance of future account in USD for {0}'.format(account.name))
@@ -252,6 +274,7 @@ def get_spot_balance_used(account, base):
         if f.currency == base:
             return f.used
 
+
 # Return future account balance
 ###############################
 
@@ -291,7 +314,6 @@ def get_position_size(account, base):
 def calculate_target_quantity(account, exchange, base):
     for allocation in account.bases_alloc_no_margin() + account.bases_alloc_margin():
         if base == allocation.market.base:
-
             # calculate USD value from weight (%)
             balance_total = get_spot_balance_usd(account) + get_future_balance_usd(account)
             usd = allocation.weight * balance_total
@@ -300,4 +322,3 @@ def calculate_target_quantity(account, exchange, base):
             quantity = convert_to_base(usd, base, exchange)
 
             return quantity
-

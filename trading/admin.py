@@ -64,7 +64,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('dt', 'account', 'exchange', 'balance', )
-    readonly_fields = ('account', 'exchange', 'balance', 'dt_create', 'dt', 'total', 'free', 'used', 'derivative')
+    readonly_fields = ('account', 'exchange', 'balance', 'dt_create', 'dt', 'total', 'free', 'used', 'margin_assets')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
@@ -81,7 +81,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('id', 'orderid', 'account', 'market', 'action', 'status', 'side', 'amount', 'cost', 'trades',
                     'type', 'price', 'price_strategy', 'filled',  'dt_create', 'dt_update')
 
-    readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'options',
+    readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'params',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
                        'last_trade_timestamp', 'price', 'price_strategy', 'fee', 'datetime', 'response')
     actions = ['place_order', 'refresh', 'cancel_order']
@@ -129,16 +129,20 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Position)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'exchange', 'market', 'get_side', 'get_size', 'size_cont', 'get_contract_value',
-                    'get_contract_value_curr', 'value_usd', 'margin_ratio', 'get_liquidation_price', 'last',
-                    'entry_price', 'get_margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
-                    'leverage_max', 'dt_update',)
-    readonly_fields = ('account', 'exchange', 'market', 'side', 'size',  'size_cont', 'value_usd', 'entry_price',
-                       'last',
-                       'liquidation_price',
-                       'margin', 'margin_maint_ratio', 'realized_pnl', 'unrealized_pnl',
-                       'margin_mode', 'leverage', 'leverage_max', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
-                       'margin_ratio', 'response', 'max_qty')
+    list_display = ('account', 'exchange', 'market', 'get_side', 'size', 'get_asset','get_notional_value',
+                    'settlement',
+                    'get_value_usd', 'get_initial_margin', 'leverage', 'get_contract_value',
+                    'get_contract_value_curr', 'get_liquidation_price',
+                    'last',
+                    'entry_price', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
+                    'dt_update',)
+    readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'asset', 'value_usd', 'settlement',
+                       'notional_value',
+                       'entry_price', 'initial_margin', 'maint_margin', 'order_initial_margin', 'user',
+                       'last', 'hedge', 'liquidation_price',
+                       'realized_pnl', 'unrealized_pnl',
+                       'margin_mode', 'leverage', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
+                       'response', 'max_qty')
     actions = ['refresh_position', 'close_position']
     list_filter = (
         ('exchange', admin.RelatedOnlyFieldListFilter),
@@ -151,21 +155,34 @@ class CustomerAdmin(admin.ModelAdmin):
     get_side.boolean = True
     get_side.short_description = 'Side'
 
-    def get_size(self, obj):
-        return round(float(obj.size), 4)
-    get_size.short_description = 'Size'
+    def get_asset(self, obj):
+        if obj.size:
+            return obj.asset if obj.asset else 'Cont'
+    get_asset.short_description = 'Asset'
 
-    def get_margin(self, obj):
-        if obj.margin:
-            return round(obj.margin, 4)
-    get_margin.short_description = 'Margin'
+    def get_notional_value(self, obj):
+        if obj.notional_value:
+            return round(obj.notional_value, 2)
+    get_notional_value.short_description = 'Notional Value'
+
+    def get_initial_margin(self, obj):
+        if obj.initial_margin:
+            return round(obj.initial_margin, 2)
+    get_initial_margin.short_description = 'Initial Margin'
+
+    def get_value_usd(self, obj):
+        if obj.value_usd:
+            return round(obj.value_usd, 2)
+    get_value_usd.short_description = 'Dollar Value'
 
     def get_contract_value(self, obj):
-        return obj.market.contract_value
+        if obj.market:
+            return obj.market.contract_value
     get_contract_value.short_description = 'Contract value'
 
     def get_contract_value_curr(self, obj):
-        return obj.market.contract_value_currency.code
+        if obj.market:
+            return obj.market.contract_value_currency
     get_contract_value_curr.short_description = 'Contract currency'
 
     def get_liquidation_price(self, obj):

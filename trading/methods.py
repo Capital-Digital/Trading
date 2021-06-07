@@ -113,8 +113,6 @@ def limit_amount(market, amount):
     # Check amount limits
     if market.limits['amount']['min']:
         if amount < market.limits['amount']['min']:
-            log.warning('Amount < limit min', market=market.symbol, type=market.type,
-                        amount=amount, limit=market.limits['amount']['min'])
             return
 
     if market.limits['amount']['max']:
@@ -148,7 +146,6 @@ def limit_cost(market, amount, price):
     # Check cost limits
     if market.limits['cost']['min']:
         if amount * price < market.limits['cost']['min']:
-            log.warning('Cost < limit min', cost=amount * price, limit=market.limits['cost']['min'])
             return False
 
     if market.limits['cost']['max']:

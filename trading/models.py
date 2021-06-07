@@ -247,28 +247,34 @@ class Account(models.Model):
         return df
 
     # Create a new order object
-    def create_order(self, market, instruction, side, amount, price, params=None):
+    def create_order(self, route):
+
+        market = Market.objects.get(exchange=self.exchange,
+                                    symbol=route['trade']['symbol'],
+                                    default_type=route['trade']['wallet']
+                                    )
 
         if self.limit_order:
             order_type = 'limit'
+            price = route['trade']['price']
         else:
             order_type = 'market'
             price = None
 
         defaults = dict(
             account=self,
-            action=instruction,
+            action=route['trade']['action'],
             market=market,
             price=price,
             type=order_type,
-            side=side,
-            amount=str(amount),
+            side=route['trade']['side'],
+            amount=route['trade']['quantity'],
             status='created'
         )
 
         # Set parameters
-        if params:
-            defaults['params'] = params
+        if not pd.isna(route['trade']['params']):
+            defaults['params'] = route['trade']['params']
 
         order = Order.objects.create(**defaults)
 
@@ -387,7 +393,7 @@ class Fund(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    balance, total, free, used, margin_assets = [JSONField(null=True) for i in range(5)]
+    balance, total, free, used, margin_assets, positions = [JSONField(null=True) for i in range(6)]
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -519,3 +525,30 @@ class Position(models.Model):
 
         type_order = 'close_long' if self.side == 'long' else 'close_short'
         self.account.create_order(self.market, self.size, type_order)
+
+
+class Transfer(models.Model):
+    objects = models.Manager()
+    exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='transfer', null=True)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transfer', null=True)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='transfer', null=True)
+    amount = models.FloatField(null=True)
+    response = JSONField(null=True)
+    dt_create = models.DateTimeField(default=timezone.now, editable=False)
+    from_wallet, to_wallet = [models.CharField(max_length=50, null=True) for i in range(2)]
+    transferid = models.BigIntegerField(null=True)
+    status = models.BooleanField(default=None, null=True)
+    datetime = models.DateTimeField(null=True)
+    timestamp = models.FloatField(null=True)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True
+    )
+
+    class Meta:
+        verbose_name_plural = "Transfers"
+
+    def __str__(self):
+        return str(self.transferid)

@@ -246,7 +246,6 @@ structlog.configure(
 )
 
 
-
 @receiver(bind_extra_request_metadata)
 def clean_metadata(request, logger, **kwargs):
     # logger.bind(user_email=getattr(request.user, 'email', ''))

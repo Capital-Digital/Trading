@@ -1,6 +1,6 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
-from trading.models import Account, Fund, Position, Order
+from trading.models import Account, Fund, Position, Order, Transfer
 from trading import tasks
 import structlog
 from django.contrib.admin import SimpleListFilter
@@ -78,7 +78,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'orderid', 'account', 'market', 'action', 'status', 'side', 'amount', 'cost', 'trades',
+    list_display = ('id', 'orderid', 'account', 'market', 'action', 'status', 'side', 'amount', 'cost',
                     'type', 'price', 'price_strategy', 'filled',  'dt_create', 'dt_update')
 
     readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'params',
@@ -204,3 +204,16 @@ class CustomerAdmin(admin.ModelAdmin):
             account.refresh_positions()
 
     refresh_position.short_description = 'Refresh position'
+
+
+@admin.register(Transfer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('transferid', 'account', 'exchange', 'currency', 'amount', 'from_wallet', 'to_wallet', 'status')
+    readonly_fields = ('transferid', 'account', 'exchange', 'currency', 'amount', 'from_wallet', 'to_wallet', 'status',
+                       'response', 'datetime', 'timestamp', 'user')
+
+    list_filter = (
+        ('exchange', admin.RelatedOnlyFieldListFilter),
+        ('account', admin.RelatedOnlyFieldListFilter),
+        ('currency', admin.RelatedOnlyFieldListFilter)
+    )

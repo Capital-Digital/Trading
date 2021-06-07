@@ -9,4 +9,3 @@ class TradingConfig(AppConfig):
 
     def ready(self):
         from . import signals
-        print('Hello world')

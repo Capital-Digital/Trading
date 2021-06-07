@@ -153,7 +153,7 @@ def get_derivative_type(exid, values):
         if values['type'] == 'swap':
             return 'perpetual'
 
-        if values['type'] == 'future':
+        if values['type'] in ['future', 'futures']:
             return 'future'
 
         if values['type'] == 'spot':

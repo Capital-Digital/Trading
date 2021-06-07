@@ -280,7 +280,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
 
 # Save exchange properties
 @shared_task(bind=True, base=BaseTaskWithRetry)
-def update_exchange_properties(self, exid):
+def update_properties(self, exid):
     log.debug('Save exchange properties', exchange=exid)
 
     from marketsdata.models import Exchange
@@ -314,10 +314,10 @@ def update_information(self):
     exchanges = [e.exid for e in Exchange.objects.all()]
 
     # must use si() signatures
-    chains = [chain(update_exchange_status.si(exid),
-                    update_exchange_properties.si(exid),
-                    update_exchange_currencies.si(exid),
-                    update_exchange_markets.si(exid)
+    chains = [chain(update_status.si(exid),
+                    update_properties.si(exid),
+                    update_currencies.si(exid),
+                    update_markets.si(exid)
                     ) for exid in exchanges]
 
     res = group(*chains)()
@@ -353,7 +353,11 @@ def update_markets_prices_execute_strategies(self):
     if exchanges_w_strat:
 
         # Create a list of chains
-        chains = [chain(update_market_prices.s(exid), tasks.run_strategies.si(exid)) for exid in exchanges_w_strat]
+        chains = [chain(
+            update_market_prices.s(exid),
+            tasks.run_strategies.si(exid)
+        ) for exid in exchanges_w_strat]
+
         result = group(*chains).delay()
 
         # start by updating exchanges with a strategy
@@ -386,7 +390,7 @@ def update_markets_prices_execute_strategies(self):
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
-def update_exchange_status(self, exid):
+def update_status(self, exid):
     """"
     Save exchange status
 
@@ -410,8 +414,15 @@ def update_exchange_status(self, exid):
     exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
 
 
+    if response['status'] is not None:
+        if response['status'] != 'ok':
+            log.error('Exchange {0} is {1}'.format(exid, exchange.status))
+        else:
+            log.info('Exchange {0} is OK'.format(exid, exchange.status))
+
+
 @shared_task(bind=True, base=BaseTaskWithRetry)
-def update_exchange_currencies(self, exid):
+def update_currencies(self, exid):
     """
     Create/update currency information from load_markets().currencies
 
@@ -511,7 +522,7 @@ def update_exchange_currencies(self, exid):
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
-def update_exchange_markets(self, exid):
+def update_markets(self, exid):
     """"
     Create/update markets information from load_markets().markets
 
@@ -563,6 +574,9 @@ def update_exchange_markets(self, exid):
             if 'futures' in values:
                 if values['futures']:
                     ccxt_type_response = 'futures'
+            if 'delivery' in values:
+                if values['delivery']:
+                    ccxt_type_response = 'delivery'
             if 'option' in values:
                 if values['option']:
                     return
@@ -570,6 +584,10 @@ def update_exchange_markets(self, exid):
         # Prevent insertion of all unlisted BitMEX contract
         if exid == 'bitmex' and not values['active']:
             return
+
+        if 'ccxt_type_response' not in locals():
+            pprint(values)
+            raise Exception('Can not find market type')
 
         # Set derivative type and margined coin
         if ccxt_type_response in ['swap', 'future', 'futures', 'delivery']:
@@ -832,11 +850,9 @@ def update_market_prices(self, exid):
     if exchange.default_types:
 
         for default_type in exchange.get_default_types():
-
             client.options['defaultType'] = default_type
 
             if exchange.has_credit(default_type):
-
                 try:
                     client.load_markets(True)
                     exchange.update_credit('load_markets', default_type)
@@ -871,133 +887,3 @@ def update_market_prices(self, exid):
                     update(response, market)
 
     log.info('Update prices complete')
-
-
-# @shared_task(bind=True, name='fetch_order_book', base=BaseTaskWithRetry)
-def watch_order_books(self, exid):
-    #
-    # Fetch order book every x seconds
-    ##################################
-
-    log.info('Fetch book for {0}'.format(exid))
-    ob = OrderBook.objects.get(name='orderbook')
-    ob.data = {}
-    ob.save()
-
-    exchange = Exchange.objects.get(exid=exid)
-    accounts = exchange.get_trading_accounts()
-
-    async def symbol_loop(client, symbol, ccxt_type_options):
-
-        while True:
-            try:
-                orderbook = await client.watch_order_book(symbol)
-                now = client.milliseconds()
-                # print(now, tp, symbol, exid, orderbook['asks'][0])
-                ob = OrderBook.objects.get(name='orderbook')
-                data = ob.data
-                if tp is None:
-                    tp = 'null'
-
-                if exid in data:
-                    if tp in data[exid]:
-                        data[exid][tp][symbol] = dict(asks=orderbook['asks'][0],
-                                                      bids=orderbook['bids'][0],
-                                                      datetime=str(now))
-                    else:
-                        # print(exid, 'add tp', tp)
-                        data[exid][tp] = {symbol: dict(asks=orderbook['asks'][0],
-                                                       bids=orderbook['bids'][0],
-                                                       datetime=str(now))}
-                else:
-                    # print(exid, 'add')
-                    data[exid] = {tp: {symbol: dict(asks=orderbook['asks'][0],
-                                                    bids=orderbook['bids'][0],
-                                                    datetime=str(now))}}
-                ob.data = data
-                ob.save()
-                await client.sleep(5000)
-
-            except Exception as e:
-                print(str(e))
-                # raise e  # uncomment to break all loops in case of an error in any one of them
-                break  # you can break just this one loop if it fails
-
-    async def exchange_loop(asyncio_loop, exid, ccxt_type_options=None):
-
-        if accounts.exists():
-            # select bases actually in accounts
-            ac_spot = [a.get_bases_spot() for a in accounts]
-            ac_marg = [a.get_bases_margin() for a in accounts]
-
-            # select new bases to trade
-            al_spot = [a.get_allocations_spot() for a in accounts]
-            al_marg_long = [a.get_allocations_margin_long() for a in accounts]
-            al_marg_shor = [a.get_allocations_margin_short() for a in accounts]
-
-            # remove None
-            ac_spot = [a for a in ac_spot if a]
-            ac_marg = [a for a in ac_marg if a]
-            al_spot = [a for a in al_spot if a]
-            al_marg_long = [a for a in al_marg_long if a]
-            al_marg_shor = [a for a in al_marg_shor if a]
-
-            # Remove duplicate
-            bases = [*ac_spot, *ac_marg, *al_spot, *al_marg_long, *al_marg_shor]
-            from itertools import chain
-            bases = set(list(chain(*bases)))
-
-            # Select all markets to watch (various quotes)
-            markets = Market.objects.filter(exchange__exid=exid, base__in=bases)
-
-        def get_symbols(exid, ccxt_type_options=None):
-
-            exid = 'bitfinex2' if exid == 'bitfinex' else exid
-
-            markets = Market.objects.filter(exchange=exchange,
-                                            ccxt_type_options=ccxt_type_options,
-                                            candle__dt__gte=timezone.now() - timedelta(hours=6),
-                                            active=True)
-
-            markets = markets.annotate(candle_vol=models.Sum('candle__vo_avg')).order_by('-candle_vol')[:10]
-            symbols = list(markets.values_list('symbol', flat=True))
-            return symbols
-
-        # Initialize and configure client
-        client = exchange.get_ccxt_client_pro()
-        client.enableRateLimit = True
-        client.asyncio_loop = asyncio_loop
-
-        if ccxt_type_options:
-            client.options['defaultType'] = ccxt_type_options
-
-        loops = [symbol_loop(client, symbol, ccxt_type_options)
-                 for symbol in get_symbols(exid, ccxt_type_options=ccxt_type_options)]
-
-        await asyncio.gather(*loops)
-        await client.close()
-
-    async def main(asyncio_loop):
-
-        # select available defaultType
-        defaultTypes = exchange.get_market_ccxt_type_options()
-
-        if defaultTypes:
-            loops = [exchange_loop(asyncio_loop, exid, ccxt_type_options) for ccxt_type_options in defaultTypes]
-        else:
-            loops = [exchange_loop(asyncio_loop, exid)]
-
-        await asyncio.gather(*loops)
-
-    asyncio_loop = asyncio.get_event_loop()  # new_event_loop
-    asyncio_loop.run_until_complete(main(asyncio_loop))
-
-
-# Fetch order book every x seconds
-# @shared_task(bind=True, name='update_book')
-def update_book(self):
-    group([watch_order_books.s(exid) for exid in ['ftx',
-                                                  'huobipro',
-                                                  'binance',
-                                                  'okex'
-                                                  ]])()

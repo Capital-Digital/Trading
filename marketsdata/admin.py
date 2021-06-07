@@ -3,14 +3,9 @@ from datetime import timedelta
 from .models import Exchange, Market, Candle, Currency, CurrencyType, OrderBook
 import structlog
 import locale
-from celery import chain, group, shared_task
+from celery import group
 from marketsdata import tasks
 import time
-from django.contrib.postgres.fields import JSONField
-from prettyjson import PrettyJSONWidget
-import json
-from pygments import highlight, formatters, lexers
-from django.utils.safestring import mark_safe
 
 locale.setlocale(locale.LC_ALL, '')
 log = structlog.get_logger(__name__)
@@ -55,7 +50,6 @@ class CustomerAdmin(admin.ModelAdmin):
         not_upd = [m.symbol for m in Market.objects.filter(exchange=obj)
                    if (m.active and m.is_populated() and not m.excluded
                        and (not m.is_updated() and not m.derivative == 'future'))]
-        print(not_upd, '\n')
         return len(not_upd)
 
     get_markets_not_updated.short_description = "Not updated"
@@ -63,7 +57,6 @@ class CustomerAdmin(admin.ModelAdmin):
     def get_markets_not_populated(self, obj):
         not_upd = [m.symbol for m in Market.objects.filter(exchange=obj) if m.active
                    and not m.is_populated() and not m.excluded]
-        print(not_upd, '\n')
         return len(not_upd)
 
     get_markets_not_populated.short_description = "Not populated"
@@ -112,7 +105,7 @@ class CustomerAdmin(admin.ModelAdmin):
         exchanges = [exchange.exid for exchange in queryset]
 
         # Create a groups and execute task
-        gp = group(tasks.update_exchange_currencies.s(exchange) for exchange in exchanges)
+        gp = group(tasks.update_currencies.s(exchange) for exchange in exchanges)
         result = gp.delay()
 
     update_exchange_currencies.short_description = "Update currencies"
@@ -121,7 +114,7 @@ class CustomerAdmin(admin.ModelAdmin):
         exchanges = [exchange.exid for exchange in queryset]
 
         # Create a groups and execute task
-        res = group(tasks.update_exchange_markets.s(exchange) for exchange in exchanges)()
+        res = group(tasks.update_markets.s(exchange) for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
@@ -155,7 +148,7 @@ class CustomerAdmin(admin.ModelAdmin):
         exchanges = [exchange.exid for exchange in queryset]
 
         # Create a groups and execute task
-        gp = group(tasks.update_exchange_status.s(exchange) for exchange in exchanges)
+        gp = group(tasks.update_status.s(exchange) for exchange in exchanges)
         result = gp.delay()
 
     update_exchange_status.short_description = "Update status"
@@ -206,7 +199,8 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
                     'margined', 'contract_value', 'contract_value_currency', 'default_type')
-    readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'default_type', 'derivative', 'active', 'quote',
+    readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'default_type', 'derivative', 'active',
+                       'quote',
                        'base', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',

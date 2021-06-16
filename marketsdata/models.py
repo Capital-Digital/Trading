@@ -451,6 +451,7 @@ class Market(models.Model):
     config = JSONField(null=True, blank=True)
     excluded = models.BooleanField(null=True, default=False)
     funding_rate = JSONField(null=True, blank=True)
+    top = models.BooleanField(null=True, default=None)
     objects = models.Manager()
 
     class Meta:

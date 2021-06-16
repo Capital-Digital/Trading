@@ -198,10 +198,11 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
-                    'margined', 'contract_value', 'contract_value_currency', 'default_type')
-    readonly_fields = ('symbol', 'exchange', 'type', 'ccxt_type_response', 'default_type', 'derivative', 'active',
+                    'margined', 'contract_value', 'contract_value_currency', 'top',)
+    readonly_fields = ('symbol', 'exchange', 'excluded', 'type', 'ccxt_type_response', 'default_type', 'derivative',
+                       'active',
                        'quote',
-                       'base', 'margined',
+                       'base', 'funding_rate', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',

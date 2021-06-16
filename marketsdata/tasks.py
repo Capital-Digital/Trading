@@ -23,7 +23,7 @@ from capital.methods import *
 from marketsdata.error import *
 from marketsdata.methods import *
 from marketsdata.models import Exchange, Candle, Market, OrderBook
-from strategy import tasks
+import strategy.tasks as strategies
 
 log = structlog.get_logger(__name__)
 
@@ -317,7 +317,8 @@ def update_information(self):
     chains = [chain(update_status.si(exid),
                     update_properties.si(exid),
                     update_currencies.si(exid),
-                    update_markets.si(exid)
+                    update_markets.si(exid),
+                    update_funding.si(exid)
                     ) for exid in exchanges]
 
     res = group(*chains)()
@@ -336,7 +337,7 @@ def update_information(self):
 
 @celery.app.task(bind=True)
 @shared_task(bind=True, name='Markets_____Update market prices and execute strategies')
-def update_markets_prices_execute_strategies(self):
+def update(self):
     """"
     Hourly task to update prices and execute strategies
 
@@ -354,14 +355,15 @@ def update_markets_prices_execute_strategies(self):
 
         # Create a list of chains
         chains = [chain(
-            update_market_prices.s(exid),
-            tasks.run_strategies.si(exid)
+            update_prices.s(exid),
+            update_top_markets.si(exid),
+            strategies.update.si(exid)
         ) for exid in exchanges_w_strat]
 
         result = group(*chains).delay()
 
         # start by updating exchanges with a strategy
-        # gp1 = group(update_market_prices.s(exid) for exid in exchanges_w_strat).delay()
+        # gp1 = group(update_prices.s(exid) for exid in exchanges_w_strat).delay()
 
         while not result.ready():
             time.sleep(0.5)
@@ -370,7 +372,7 @@ def update_markets_prices_execute_strategies(self):
             log.info('Markets and strategies update complete')
 
             # Then update the rest of our exchanges
-            result = group([update_market_prices.s(exid) for exid in exchanges_wo_strat]).delay()
+            result = group([update_prices.s(exid) for exid in exchanges_wo_strat]).delay()
 
             while not result.ready():
                 time.sleep(0.5)
@@ -386,7 +388,7 @@ def update_markets_prices_execute_strategies(self):
 
     else:
         log.info('There is no strategy in production. Update prices')
-        group(update_market_prices.s(exid) for exid in exchanges)()
+        group(update_prices.s(exid) for exid in exchanges)()
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
@@ -527,23 +529,6 @@ def update_markets(self, exid):
     Create/update markets information from load_markets().markets
 
     """
-    log.bind(exchange=exid)
-    log.info('Update markets')
-
-    from marketsdata.models import Exchange, Market, Currency
-    exchange = Exchange.objects.get(exid=exid)
-
-    if not exchange.is_active():
-        return
-
-    quotes = Currency.objects.filter(exchange=exchange, type__type='quote')
-    bases = Currency.objects.filter(exchange=exchange, type__type='base')
-
-    if not quotes.exists():
-        raise ConfigurationError('No quote currency attached to exchange {0}, update currencies first'.format(exid))
-
-    if not bases.exists():
-        raise ConfigurationError('No base currency attached to exchange {0}, update currencies first'.format(exid))
 
     def update(values, default_type=None):
 
@@ -597,11 +582,17 @@ def update_markets(self, exid):
             margined = get_derivative_margined(exid, values)
             delivery_date = get_derivative_delivery_date(exid, values)
             listing_date = get_derivative_listing_date(exid, values)
-            contract_value_currency = get_derivative_contract_value_currency(exid, values)
+            contract_value_currency = get_derivative_contract_value_currency(exid, default_type, values)
             contract_value = get_derivative_contract_value(exid, values)
 
             # Abort if one of these field is None
-            if not derivative or not margined or not contract_value or not contract_value_currency:
+            if not derivative or not margined:
+                if exid == 'binance':
+                    if default_type == 'future':
+                        if 'BUSD' in values['quote']:
+                            print(derivative)
+                            print(margined)
+                            pprint(values)
                 return
 
         elif ccxt_type_response == 'spot':
@@ -684,23 +675,37 @@ def update_markets(self, exid):
         if created:
             log.info('Creation of new {1} market {0}'.format(values['symbol'], type))
 
-    # Load markets
+    log.bind(exchange=exid)
+    log.info('Update markets')
+
+    from marketsdata.models import Exchange, Market, Currency
+    exchange = Exchange.objects.get(exid=exid)
+    quotes = Currency.objects.filter(exchange=exchange, type__type='quote')
+    bases = Currency.objects.filter(exchange=exchange, type__type='base')
     client = exchange.get_ccxt_client()
+
+    # Pre-check
+    if not exchange.is_active():
+        return
+    if not quotes.exists():
+        raise ConfigurationError('No quote currency attached to exchange {0}, update currencies first'.format(exid))
+    if not bases.exists():
+        raise ConfigurationError('No base currency attached to exchange {0}, update currencies first'.format(exid))
 
     # Iterate through supported market types. Skip OKEx because it returns
     # all markets characteristics in a single call ccxt.okex.markets
 
     if exchange.default_types and exid != 'okex':
 
-        for default_type in exchange.get_default_types():
+        for wallet in exchange.get_default_types():
 
-            client.options['defaultType'] = default_type
-            if exchange.has_credit(default_type):
+            client.options['defaultType'] = wallet
+            if exchange.has_credit(wallet):
                 client.load_markets(True)
-                exchange.update_credit('load_markets', default_type)
+                exchange.update_credit('load_markets', wallet)
 
             for market, values in client.markets.items():
-                update(values, default_type=default_type)
+                update(values, default_type=wallet)
 
     else:
         if exchange.has_credit():
@@ -714,34 +719,13 @@ def update_markets(self, exid):
     log.info('Update market complete')
 
 
-@shared_task(bind=True, name='Markets_____Update funding rate')
-def update_funding_rate(self):
-    log.info('Update funding rate')
-
-    from marketsdata.models import Exchange
-    exchanges = [e.exid for e in Exchange.objects.all()]
-
-    # must use si() signatures
-    lst = [funding_rate.s(exid) for exid in exchanges]
-    res = group(*lst)()
-
-    while not res.ready():
-        # print(res.completed_count())
-        time.sleep(0.5)
-
-    if res.successful():
-        log.info('Update funding rate complete on {0} exchange'.format(res.completed_count()))
-
-    elif res.failed():
-        res.forget()
-        log.error('Update funding rate failed')
-
-
 @shared_task(bind=True, base=BaseTaskWithRetry)
-def funding_rate(self, exid):
+def update_funding(self, exid):
     log.bind(exchange=exid)
 
     if exid == 'binance':
+
+        log.info('Update funding')
 
         from marketsdata.models import Exchange, Market, Candle
         exchange = Exchange.objects.get(exid=exid)
@@ -755,22 +739,23 @@ def funding_rate(self, exid):
 
         # Fetch funding rates for USDT-margined contracts
         response = client.fapiPublic_get_premiumindex()
-        markets_usdt_margined = Market.objects.filter(exchange=exchange, derivative='perpetual', margined__code='USDT')
+        markets_usdt_margined = Market.objects.filter(exchange=exchange, derivative='perpetual', default_type='future')
 
         for market in markets_usdt_margined:
             update(response, market)
 
         # Fetch funding rates for COIN-margined contracts
         response = client.dapiPublic_get_premiumindex()
-        markets_coin_margined = Market.objects.filter(exchange=exchange, derivative='perpetual')
-        markets_coin_margined = markets_coin_margined.filter(~Q(margined__code='USDT'))
+        markets_coin_margined = Market.objects.filter(exchange=exchange, derivative='perpetual', default_type='delivery')
 
         for market in markets_coin_margined:
             update(response, market)
 
+        log.info('Update funding complete')
+
 
 @shared_task(bind=True, base=BaseTaskWithRetry)
-def update_market_prices(self, exid):
+def update_prices(self, exid):
     """
     Update market prices and volume every hour at 00:00
 
@@ -887,3 +872,30 @@ def update_market_prices(self, exid):
                     update(response, market)
 
     log.info('Update prices complete')
+
+
+@shared_task(bind=True, base=BaseTaskWithRetry)
+def update_top_markets(self, exid):
+
+    import operator
+    exchange = Exchange.objects.get(exid=exid)
+
+    if exid == 'binance':
+
+        for wallet in exchange.get_default_types():
+
+            log.info('Flag top markets')
+            markets = Market.objects.filter(exchange__exid=exid,
+                                            quote__code='USDT',
+                                            default_type=wallet,
+                                            active=True)
+
+            v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets]
+            top = sorted(v, key=operator.itemgetter(0))[-20:]
+
+            for pk in [pk for pk in [t[1] for t in top]]:
+                market = Candle.objects.get(pk=pk).market
+                market.top = True
+                market.save()
+
+            log.info('Flag top markets OK')

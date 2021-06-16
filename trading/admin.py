@@ -15,9 +15,9 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'trading', 'valid_credentials', 'strategy', 'type', 'derivative',
-                    'margined', 'get_limit_price_tolerance', 'limit_order','updated_at',)
-    readonly_fields = ('valid_credentials', 'position_mode')
+    list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy',
+                    'get_limit_price_tolerance', 'limit_order','updated_at',)
+    readonly_fields = ('valid_credentials', 'user')
     actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all']
     save_as = True
     save_on_top = True
@@ -83,7 +83,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
     readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'params',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
-                       'last_trade_timestamp', 'price', 'price_strategy', 'fee', 'datetime', 'response')
+                       'last_trade_timestamp', 'price', 'price_strategy', 'fee', 'datetime', 'response',
+                       'route', 'segments')
     actions = ['place_order', 'refresh', 'cancel_order']
 
     list_filter = (

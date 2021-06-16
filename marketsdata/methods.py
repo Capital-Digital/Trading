@@ -266,7 +266,7 @@ def get_derivative_contract_value(exid, values):
     return False
 
 
-def get_derivative_contract_value_currency(exid, values):
+def get_derivative_contract_value_currency(exid, default_type, values):
     #
     # Determine the currency of the contract value for a derivative (update_markets())
     #
@@ -279,9 +279,9 @@ def get_derivative_contract_value_currency(exid, values):
 
     elif exid == 'binance':
         # base asset are used as contract value currency for USDT-margined and COIN-margined
-        if values['info']['marginAsset'] == 'USDT':
+        if default_type == 'future':
             return
-        else:
+        elif default_type == 'delivery':
             return Currency.objects.get(code=values['quote'])
 
     elif exid == 'bybit':

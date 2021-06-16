@@ -166,7 +166,16 @@ def amount_to_contract(market, amount):
             # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
             if market.response['info']['marginAsset'] == market.response['base']:
                 contract_value = float(market.response['info']['contractSize'])  # Select USD value of 1 contract
-                return amount * last / contract_value
+
+                try:
+                    cont = amount * last / contract_value
+
+                except Exception as e:
+                    print(market, amount, last, contract_value)
+                    log.exception('Unknown error', e=e)
+
+                else:
+                    return cont
 
             # USDT-margined see https://www.binance.com/en/futures/trading-rules
             elif market.response['info']['marginAsset'] == market.response['quote']:

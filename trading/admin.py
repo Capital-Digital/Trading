@@ -143,7 +143,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'last', 'hedge', 'liquidation_price',
                        'realized_pnl', 'unrealized_pnl',
                        'margin_mode', 'leverage', 'dt_update', 'dt_create', 'instrument_id', 'created_at',
-                       'response', 'max_qty')
+                       'response', 'response_2', 'max_qty')
     actions = ['refresh_position', 'close_position']
     list_filter = (
         ('exchange', admin.RelatedOnlyFieldListFilter),

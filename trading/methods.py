@@ -17,7 +17,10 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 
 # Create/update an order object with response returned by exchange
-def order_create_update(account, response):
+def order_create_update(id, response):
+
+    from trading.models import Account
+    account = Account.objects.get(id=id)
 
     try:
         # Select order object with client order ID

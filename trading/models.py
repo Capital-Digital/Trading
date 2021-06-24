@@ -10,12 +10,14 @@ from capital.methods import *
 from strategy.models import Strategy, Allocation
 from marketsdata.models import Exchange, Market, Currency
 from trading.error import *
+from trading.methods import *
 import structlog
 from datetime import timedelta, datetime
 from pprint import pprint
 from decimal import Decimal
 import numpy as np
 import pandas as pd
+from timeit import default_timer as timer
 
 import json
 
@@ -59,161 +61,157 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Construct a dataframe with wallet balances and allocations
-    # Wallets specify a list of wallet's funds need to be updated
-    def create_df_account(self, prices):
+    # Construct a dataframe with wallets balance, positions, exposure and delta
+    def create_dataframes(self, prices=None):
 
-        # Get an asset price
-        def get_price_candle(code):
+        start = timer()
 
-            # Select latest price
-            if code not in self.exchange.get_stablecoins():
-                return Market.objects.get(base__code=code,
-                                          quote__code=self.exchange.dollar_currency,
-                                          exchange=self.exchange,
-                                          default_type__in=['spot', None]
-                                          ).get_candle_price_last()
+        # Get last spot price
+        def get_price_last(code):
+            if code != self.exchange.dollar_currency:
+                if prices is None:
+                    log.warning('Construct account dataframe with hourly prices not WS')
+                    return get_price_hourly(self.exchange, code)
+                else:
+                    return float(prices['spot'][code]['ask'])
             else:
                 return 1
-
-        # Get an asset price from WS streams
-        def get_price_ws(code):
-            if code not in self.exchange.get_stablecoins():
-                return float(prices['spot'][code]['ask'])
-            else:
-                return 1
-
-        log.info('Create dataframe account')
 
         funds = self.get_fund_latest()
         allocations = self.strategy.get_allocations()
-        df_account = pd.DataFrame()
+        df = pd.DataFrame()
 
-        # Loop through funds
+        # Insert wallets balances
         for i in ['total', 'free', 'used']:
             for default_type, dic1 in getattr(funds, i).items():
-
                 for code, dic2 in dic1.items():
                     for field, value in dic2.items():
-                        # Create multilevel columns
-                        columns = pd.MultiIndex.from_product([['wallet'], [i + '_' + field]],
-                                                             names=['level_1', 'level_2'])
-                        indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
 
-                        # Construct dataframe and normalize rows
-                        df = pd.DataFrame(value, index=indexes, columns=columns)
-                        df_account = pd.concat([df, df_account], axis=0).groupby(level=[0, 1]).mean()
+                        # Create columns for total, free and used quantities
+                        if field == 'quantity':
 
-                # Select margin_assets for the wallet and add max_withdrawal
-                margin_assets = funds.margin_assets[default_type]
-                if margin_assets:
-                    for asset in margin_assets:
-                        coin = asset['asset']
-                        withdrawal = float(asset['maxWithdrawAmount'])
-                        df_account.sort_index(axis=0, inplace=True)
-                        df_account.loc[(coin, default_type), ('withdrawal', 'max_quantity')] = withdrawal
-                        df_account.loc[(coin, default_type), ('withdrawal', 'max_value')] = withdrawal * get_price_candle(coin)
+                            cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
+                                                                                                      'level_2'])
+                            indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
+                            wallet = pd.DataFrame(value, index=indexes, columns=cols)
+                            df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()
 
-        # Get a dataframe with positions
-        positions = self.create_df_positions()
+        # Insert dollar value of open positions (sum USDT and BUSD margined)
+        positions = self.create_positions_df(prices)
+        for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
+            df.loc[(index[0], index[1]), ('position', 'value')] = position.dollar_value + position.PnL
+            df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
 
-        if not positions.empty:
+        # Insert allocations weights
+        for value in allocations.values():
+            for code in list(value.keys()):
+                df.loc[code, ('target', 'percent')] = value[code]['weight']
 
-            # Sum quantity and dollar_value of positions with same code and wallet
-            for index, position in positions.groupby(level=[0, 2]).sum().iterrows():
-                # Add position size and position value
-                df_account.loc[(index[0], index[1]), ('position', 'quantity')] = position['quantity']
-                df_account.loc[(index[0], index[1]), ('position', 'value')] = position['value']
+        # Insert prices
+        for code in df.index.get_level_values(0):
+            hourly = get_price_hourly(self.exchange, code)
+            last = get_price_last(code)
+            df.loc[code, ('price', 'ws')] = last
+            df.loc[code, ('price', 'hourly')] = hourly
 
-        else:
-            # No position open
-            for index, position in df_account.iterrows():
-                df_account.loc[index, ('position', 'quantity')] = np.nan
-                df_account.loc[index, ('position', 'value')] = np.nan
-                df_account.loc[index, ('wallet', 'position_value')] = np.nan
+        # Insert wallets balances in dollar
+        for index, row in df.iterrows():
+            last = row.price.ws
+            hourly = row.price.hourly
+            df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * hourly
+            df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * hourly
+            df.loc[index, ('wallet', 'used_value')] = row.wallet.used_quantity * hourly
 
-        # Sum wallet and position to get total exposure per wallet en per coin
-        d = df_account.loc[:, df_account.columns.get_level_values(0).isin({"position", "wallet"})]
-        qty = d.loc[:, d.columns.get_level_values(1).isin({"quantity", "total_quantity"})].sum(axis=1)
-        val = d.loc[:, d.columns.get_level_values(1).isin({"value", "total_value"})].sum(axis=1)
+        # Insert exposure value (balance + positions) and total
+        df[('exposure', 'value')] = pd.concat([df.position.value, df.wallet.total_value], axis=1).sum(axis=1)
+        df[('exposure', 'quantity')] = pd.concat([df.position.quantity, df.wallet.total_quantity], axis=1).sum(axis=1)
+        df[('exposure', 'total_value')] = df.exposure.value.groupby('code').transform('sum')
+        df[('exposure', 'total_quantity')] = df.exposure.quantity.groupby('code').transform('sum')
 
-        # Create exposure columns
-        df_account[('exposure', 'quantity')] = qty
-        df_account[('exposure', 'value')] = val
+        # Insert max_withdrawal
+        for wallet in funds.total.keys():
+            margin_assets = funds.margin_assets[wallet]
+            if margin_assets:
+                for asset in margin_assets:
+                    coin = asset['asset']
+                    withdrawal = float(asset['maxWithdrawAmount'])
+                    df.sort_index(axis=0, inplace=True)
+                    df.loc[(coin, wallet), ('withdrawal', 'quantity')] = withdrawal
 
-        # Create a column for allocations weight
-        for default_type, dic1 in funds.total.items():
-            for k, v in allocations.items():
-                inst_codes = list(v.keys())
-                for code in inst_codes:
-                    df_account.loc[(code, default_type), ('target', 'percent')] = v[code]['weight']
+        # Insert account balance
+        balance = df.wallet.total_value.sum()
+        df['account', 'balance'] = balance
 
-                    # Select latest and hourly prices
-                    price = get_price_candle(code)
-                    price_ws = get_price_ws(code)
+        # Insert target
+        df['target', 'value'] = df.target.percent * balance * float(self.leverage)
+        df[('target', 'quantity')] = df.target.value / df.price.hourly
 
-                    df_account.loc[(code, default_type), ('price', 'hourly')] = price
-                    df_account.loc[(code, default_type), ('price', 'ask')] = price_ws
+        # Insert delta
+        df[('delta', 'value')] = df.exposure.total_value - df.target.value
+        df[('delta', 'quantity')] = df.exposure.total_quantity - df.target.quantity
 
-        # Create a column with target value
-        total = df_account[('wallet', 'total_value')]
-        df_account['target', 'value'] = df_account[('target', 'percent')] * total.sum() * float(self.leverage)
+        df.sort_index(axis=1, inplace=True)
+        df.sort_index(axis=0, inplace=True)
 
-        # Create a column with target quantity (quantity=value/price)
-        df_account[('target', 'quantity')] = df_account[('target', 'value')] / df_account[('price', 'ask')]
-        df_account[('target', 'quantity')] = df_account[('target', 'quantity')].fillna(0)
+        end = timer()
+        log.info('Account dataframe created in {0} sec'.format(round(end - start, 2)))
 
-        # Calculate delta
-        for code, row in df_account.groupby(level=0):
-            exposure = df_account.loc[code, ('exposure', 'quantity')].sum()  # sum exposure of a coin in all wallets
-            delta = exposure - df_account[('target', 'quantity')]
-            df_account.loc[code, ('delta', 'quantity')] = delta
-            df_account.loc[code, ('delta', 'value')] = delta * df_account.loc[code, ('price', 'ask')].mean()
+        return df, positions
 
-        # Group rows by code and sum total exposure
-        val_total = df_account.groupby(['code']).sum()['exposure']['value']
-        for i, r in df_account.iterrows():
-            df_account.loc[i, ('exposure', 'value_total')] = val_total[list(i)[0]]
+    # Construct a dataframe with open positions
+    def create_positions_df(self, prices=None):
 
-        # Sort dataframe
-        df_account.sort_index(axis=1, inplace=True)
-        df_account.sort_index(axis=0, inplace=True)
+        # Convert dollar to currency
+        def to_currency(amount):
 
-        log.info('Create dataframe account OK', value=round(total.sum(), 2))
+            if margined == position.exchange.dollar_currency:
+                price = get_price_spot(self.exchange, prices, code)
+                return amount / price
+            else:
+                return amount
 
-        return df_account
+        # Convert to dollar
+        def to_dollar(amount):
 
-    # Construct a dataframe is account open positions
-    def create_df_positions(self):
+            if margined != position.exchange.dollar_currency:
+                price = get_price_spot(self.exchange, prices, margined)
+                return amount * price
 
-        log.info('Create dataframe positions')
+            else:
+                return amount
 
         from trading import methods
         df = pd.DataFrame()
         positions = self.positions.all()
         codes = self.get_codes()
-        hedge_total = self.get_hedge_total()
+        hedge_total = self.get_hedge_total(prices)
 
         if positions:
             for position in positions:
+
+                # Select market
                 default_type = position.market.default_type
                 type = position.market.type
                 margined = position.market.margined.code
                 symbol = position.market.symbol
                 code = position.market.base.code
-                size = float(position.size)
-                quantity = methods.contract_to_amount(position.market, size)  # Convert position size to currency
-                value = position.value_usd
-                asset = position.asset.code if position.asset else 'Cont'
+
+                # Select position stats
                 side = position.side
+                notional_value = position.notional_value
+                size = float(position.size)
+                asset = position.asset.code if position.asset else 'Cont'
                 leverage = position.leverage
-                settlement = position.settlement.code
-                # initial_margin = position.initial_margin
                 pnl = position.unrealized_pnl
 
-                # Calculate initial_margin as value/leverage
-                # to prevent margin > value in some cases
+                # Convert notional value and PNL
+                quantity = to_currency(notional_value)
+                value = to_dollar(notional_value)
+                pnl = to_dollar(pnl)
+
+                # Calculate initial_margin and net value
                 initial_margin = value / leverage
+                value_net = abs(value) + pnl
 
                 # Create multilevel columns
                 indexes = pd.MultiIndex.from_tuples([(code,
@@ -231,54 +229,43 @@ class Account(models.Model):
                                                                  'derivative',
                                                                  'margined'])
                 # Construct dataframe and normalize rows
-                d = pd.DataFrame([[side, size, asset, quantity, settlement, value, initial_margin, leverage,
-                                   pnl]],
+                d = pd.DataFrame([[side, size, asset, quantity, notional_value, value, value_net, initial_margin, leverage, pnl]],
                                  index=indexes,
-                                 columns=['side', 'size', 'asset', 'quantity', 'settlement', 'value',
-                                          'initial_margin_value', 'leverage', 'PnL']
+                                 columns=['side', 'size', 'asset', 'quantity', 'notional_value', 'dollar_value',
+                                          'net_value', 'initial_margin', 'leverage', 'PnL']
                                  )
 
                 df = pd.concat([df, d], axis=0)
 
         # Iterate through coins in account and positions
         for code in codes:
-            balance = self.get_balance(code)
-            hedge = self.get_hedge(code)
+            hedge = self.get_hedge(prices, code)
+            balance = self.get_balance(prices, code)
+            hedge_ = hedge
+
+            # Sort dataframe with USDT-margined position at the top
+            df.sort_index(level='margined', ascending=False, axis=0, inplace=True)
 
             for index, row in df.loc[:, :].iterrows():
                 if code == index[0]:
-
-                    df.sort_index(axis=0, inplace=True)
-
                     if row['side'] == 'sell':
 
-                        # df.loc[index, 'hedge_ratio'] = hedge_ratio
+                        df.sort_index(axis=0, inplace=True)
                         df.loc[index, 'hedge_code'] = hedge
                         df.loc[index, 'hedge_total'] = hedge_total
                         df.loc[index, 'balance'] = balance
 
-                        # If position is USD margined determine margin allocated to hedge
-                        if index[6] in self.exchange.get_stablecoins():
+                        # Assign hedge to USDT-margined position first
+                        if hedge_:
+                            hedge_position = min(hedge_, row.net_value)
+                            hedge_ -= hedge_position
 
-                            # Position value
-                            short = abs(df.loc[index, 'value'])
-
-                            # Total shorted value
-                            shorts = self.get_shorts(code)
-
-                            # Determine ratio of hedge among shorts
-                            ratio = hedge / shorts
-
-                            # Determine value of a position allocated to hedge
-                            hedge_position = short * ratio
-
-                            # Determine margin allocated to hedge for that position
-                            margin = hedge_position / df.loc[index, 'leverage']
-
-                            df.loc[index, 'hedge_margin'] = margin
                             df.loc[index, 'hedge_position'] = hedge_position
+                            df.loc[index, 'hedge_position_ratio'] = hedge_position / row.net_value
 
-        log.info('Create dataframe positions OK')
+                            # If position is USD margined determine margin allocated to hedge
+                            if index[6] in self.exchange.get_stablecoins():
+                                df.loc[index, 'hedge_position_margin'] = hedge_position / row.leverage
 
         return df
 
@@ -302,7 +289,7 @@ class Account(models.Model):
         return list(set(position.market.base.code for position in self.positions.all()))
 
     # Return absolute value of a code or a list of codes
-    def get_balance(self, code):
+    def get_balance(self, prices, code):
 
         funds = self.get_fund_latest()
         values = []
@@ -311,15 +298,19 @@ class Account(models.Model):
             for key, value in coins.items():
                 if isinstance(code, list):
                     if key in code:
-                        values.append(value['value'])
+                        price = get_price_spot(self.exchange, prices, code)
+                        value = value['quantity'] * price
+                        values.append(value)
                 else:
                     if key == code:
-                        values.append(value['value'])
+                        price = get_price_spot(self.exchange, prices, code)
+                        value = value['quantity'] * price
+                        values.append(value)
 
         return sum(values)
 
     # Return absolute value of short positions opened for a code
-    def get_shorts(self, code):
+    def get_shorts(self, prices, code):
 
         positions = self.positions.all()
         shorts = []
@@ -327,51 +318,65 @@ class Account(models.Model):
         for position in positions:
             if position.side == 'sell':
                 if position.market.base.code == code:
-                    shorts.append(abs(position.value_usd))
+                    if position.market.margined == position.exchange.dollar_currency:
+                        value = abs(position.notional_value) + position.unrealized_pnl
+                    else:
+                        price = get_price_spot(self.exchange, prices, position.market.margined.code)
+                        value = (abs(position.notional_value) + position.unrealized_pnl) * price
+                    shorts.append(value)
 
         return sum(shorts)
 
     # Return hedge for a specific code
-    def get_hedge(self, code):
+    def get_hedge(self, prices, code):
 
-        balance = self.get_balance(code)
-        shorts = self.get_shorts(code)
+        balance = self.get_balance(prices, code)
+        shorts = self.get_shorts(prices, code)
         return min(balance, shorts)
 
     # Return hedge ratio for a specific code
-    def get_hedge_ratio(self, code):
+    def get_hedge_ratio(self, prices, code):
 
-        balance = self.get_balance(code)
-        shorts = self.get_shorts(code)
+        balance = self.get_balance(prices, code)
+        shorts = self.get_shorts(prices, code)
         return shorts / balance
 
     # Return hedge for all currencies
-    def get_hedge_total(self):
+    def get_hedge_total(self, prices):
 
         total = []
         for code in self.get_positions_codes():
-            total.append(self.get_hedge(code))
+            total.append(self.get_hedge(prices, code))
 
         return sum(total)
 
     # Return value above which a short position isn't a hedge but a short
-    def get_hedge_threshold(self, code):
-        return self.get_balance(code) - self.get_hedge(code)
+    def get_max_hedge(self, prices, code):
+        return self.get_balance(prices, code) - self.get_hedge(prices, code)
 
     # Create a new order object
     def create_order(self, route, segment):
 
+        segment = route[segment]
         market = Market.objects.get(exchange=self.exchange,
                                     symbol=segment.market.symbol,
                                     default_type=segment.market.wallet
                                     )
 
+        # Set order type and price
         if self.limit_order:
             order_type = 'limit'
             price = segment.trade.price
         else:
             order_type = 'market'
             price = None
+
+        # Select size
+        amount = segment.trade.order_size
+        if market.type == 'derivative':
+            if market.derivative == 'perpetual':
+                if market.margined == market.base:
+                    amount = segment.trade.cont
 
         defaults = dict(
             account=self,
@@ -380,14 +385,17 @@ class Account(models.Model):
             price=price,
             type=order_type,
             side=segment.trade.side,
-            amount=segment.trade.amount,
+            amount=amount,
             status='created',
             segments=route.to_json()
         )
 
         # Set parameters
         if not pd.isna(segment.trade.params):
-            defaults['params'] = eval(segment.trade.params)
+            params = eval(segment.trade.params)
+            if 'quoteOrderQty' in params:
+                defaults['amount'] = None
+            defaults['params'] = params
 
         order = Order.objects.create(**defaults)
 

@@ -37,6 +37,7 @@ class Exchange(models.Model):
     credit = JSONField(blank=True, null=True)
     credit_max = JSONField(blank=True, null=True)
     rate_limits = JSONField(blank=True, null=True)
+    funding_rate_freq = models.PositiveSmallIntegerField(null=True, blank=True, default=8)
 
     status = models.CharField(max_length=12, default='ok', null=True, blank=True,
                               choices=[('ok', 'ok'), ('maintenance', 'maintenance'),

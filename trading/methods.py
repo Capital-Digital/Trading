@@ -1,5 +1,4 @@
 from capital.methods import *
-from trading.models import Order
 from trading.error import *
 from marketsdata.models import Market
 from django.utils import timezone
@@ -18,8 +17,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 # Create/update an order object with response returned by exchange
 def order_create_update(id, response):
-
-    from trading.models import Account
+    from trading.models import Account, Order
     account = Account.objects.get(id=id)
 
     try:
@@ -144,45 +142,48 @@ def limit_price(market, price):
 
 
 # Return True if cost limit conditions are satisfy otherwise False
-def limit_cost(market, amount, price):
-
+def limit_cost(market, cost):
     # Check cost limits
     if market.limits['cost']['min']:
-        if amount * price < market.limits['cost']['min']:
+        if cost < market.limits['cost']['min']:
             return False
 
     if market.limits['cost']['max']:
-        if amount * price > market.limits['cost']['max']:
-            log.warning('Cost > limit max', cost=amount * price, limit=market.limits['cost']['max'])
+        if cost > market.limits['cost']['max']:
+            # log.warning('Cost > limit max', cost=amount * price, limit=market.limits['cost']['max'])
             return False
 
     return True
 
 
-# Convert currency amount to derivative contract quantity
-def amount_to_contract(market, amount):
-    if market.exchange.exid == 'binance':
-        if market.type == 'derivative':
+# Return last websocket spot price if available else last hourly price
+def get_price_spot(exchange, prices, code):
+    if prices is not None:
+        if code in prices['spot']:
+            return float(prices['spot'][code]['ask'])
+        else:
+            log.warning('{0} not found in prices dictionary'.format(code))
+            return get_price_hourly(exchange, code)
+    else:
+        # log.warning('Spot price from websocket not found for {0}'.format(code))
+        return get_price_hourly(exchange, code)
 
-            last = market.get_candle_price_last()
 
-            # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
-            if market.response['info']['marginAsset'] == market.response['base']:
-                contract_value = float(market.response['info']['contractSize'])  # Select USD value of 1 contract
-
-                try:
-                    cont = amount * last / contract_value
-
-                except Exception as e:
-                    print(market, amount, last, contract_value)
-                    log.exception('Unknown error', e=e)
-
-                else:
-                    return cont
-
-            # USDT-margined see https://www.binance.com/en/futures/trading-rules
-            elif market.response['info']['marginAsset'] == market.response['quote']:
-                return amount
+# Get hourly spot price
+def get_price_hourly(exchange, code):
+    if code == exchange.dollar_currency:
+        return 1
+    else:
+        try:
+            market = Market.objects.get(base__code=code,
+                                        quote__code=exchange.dollar_currency,
+                                        exchange=exchange,
+                                        type='spot'
+                                        )
+        except ObjectDoesNotExist:
+            raise Exception('Unable to found spot market {0}/{1}'.format(code, exchange.dollar_currency))
+        else:
+            return market.get_candle_price_last()
 
 
 # Convert contract quantity to currency amount

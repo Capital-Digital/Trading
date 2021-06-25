@@ -157,7 +157,7 @@ def limit_cost(market, cost):
 
 
 # Return last websocket spot price if available else last hourly price
-def get_price_spot(exchange, prices, code):
+def get_price_ws(exchange, code, prices):
     if prices is not None:
         if code in prices['spot']:
             return float(prices['spot'][code]['ask'])

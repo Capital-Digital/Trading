@@ -356,7 +356,7 @@ def update(self):
         # Create a list of chains
         chains = [chain(
             update_prices.s(exid),
-            update_top_markets.si(exid),
+            # update_top_markets.si(exid),
             strategies.update.si(exid)
         ) for exid in exchanges_w_strat]
 
@@ -716,7 +716,7 @@ def update_markets(self, exid):
                 update(values)
 
     log.unbind('base', 'quote', 'symbol')
-    log.info('Update market complete')
+    log.info('Update markets complete')
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)

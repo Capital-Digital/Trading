@@ -1655,7 +1655,7 @@ def update_accounts(id):
                 used = positions[id].loc[(positions[id].index.get_level_values('margined') == code) &
                                          (positions[id].index.get_level_values('wallet') == wallet)].sum().dollar_value
 
-                free = max(0, (total - used))
+                free = max(0, (total - abs(used)))
                 return free
 
             elif segment.type.label == 'spot':

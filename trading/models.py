@@ -65,18 +65,6 @@ class Account(models.Model):
     def create_dataframes(self, prices=None):
 
         start = timer()
-
-        # Get last spot price
-        def get_price_last(code):
-            if code != self.exchange.dollar_currency:
-                if prices is None:
-                    log.warning('Construct account dataframe with hourly prices not WS')
-                    return get_price_hourly(self.exchange, code)
-                else:
-                    return float(prices['spot'][code]['ask'])
-            else:
-                return 1
-
         funds = self.get_fund_latest()
         allocations = self.strategy.get_allocations()
         df = pd.DataFrame()
@@ -109,17 +97,14 @@ class Account(models.Model):
 
         # Insert prices
         for code in df.index.get_level_values(0):
-            hourly = get_price_hourly(self.exchange, code)
-            last = get_price_last(code)
-            df.loc[code, ('price', 'ws')] = last
-            df.loc[code, ('price', 'hourly')] = hourly
+            df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
+            df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange, code)
 
         # Insert wallets balances in dollar
         for index, row in df.iterrows():
-            hourly = row.price.hourly
-            df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * hourly
-            df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * hourly
-            df.loc[index, ('wallet', 'used_value')] = row.wallet.used_quantity * hourly
+            df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * row.price.hourly
+            df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * row.price.hourly
+            df.loc[index, ('wallet', 'used_value')] = row.wallet.used_quantity * row.price.hourly
 
         # Insert exposure value (balance + positions) and total
         df[('exposure', 'value')] = pd.concat([df.position.value, df.wallet.total_value], axis=1).sum(axis=1)
@@ -165,7 +150,8 @@ class Account(models.Model):
 
             # USDT-margined
             if margined != position.market.base.code:
-                price = get_price_spot(self.exchange, prices, code)
+                # price = get_price_ws(self.exchange, code, prices)
+                price = get_price_hourly(self.exchange, code)
                 return amount / price
             # COIN-margined
             else:
@@ -176,11 +162,12 @@ class Account(models.Model):
 
             # USD-margined
             if margined != position.market.base.code:
-                price = get_price_spot(self.exchange, prices, margined)
-                return amount * price
+                return amount
             # COIN-margined
             else:
-                return amount
+                # price = get_price_ws(self.exchange, prices, margined)
+                price = get_price_hourly(self.exchange, code)
+                return amount * price
 
         from trading import methods
         df = pd.DataFrame()
@@ -291,23 +278,18 @@ class Account(models.Model):
         return list(set(position.market.base.code for position in self.positions.all()))
 
     # Return absolute value of a code or a list of codes
-    def get_balance(self, prices, code):
+    def get_balance(self, code):
 
         funds = self.get_fund_latest()
         values = []
 
         for wallet, coins in funds.total.items():
             for key, value in coins.items():
-                if isinstance(code, list):
-                    if key in code:
-                        price = get_price_spot(self.exchange, prices, code)
-                        value = value['quantity'] * price
-                        values.append(value)
-                else:
-                    if key == code:
-                        price = get_price_spot(self.exchange, prices, code)
-                        value = value['quantity'] * price
-                        values.append(value)
+                if key == code:
+                    # price = get_price_ws(self.exchange, code, prices)
+                    price = get_price_hourly(self.exchange, code)
+                    value = value['quantity'] * price
+                    values.append(value)
 
         return sum(values)
 
@@ -323,7 +305,8 @@ class Account(models.Model):
                     if position.market.margined == position.exchange.dollar_currency:
                         value = abs(position.notional_value) + position.unrealized_pnl
                     else:
-                        price = get_price_spot(self.exchange, prices, position.market.margined.code)
+                        # price = get_price_ws(self.exchange, position.market.margined.code, prices)
+                        price = get_price_hourly(self.exchange, position.market.margined.code)
                         value = (abs(position.notional_value) + position.unrealized_pnl) * price
                     shorts.append(value)
 

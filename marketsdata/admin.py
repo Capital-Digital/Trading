@@ -131,7 +131,7 @@ class CustomerAdmin(admin.ModelAdmin):
         exchanges = [exchange.exid for exchange in queryset]
 
         # Create a groups and execute task
-        res = group(tasks.update_market_prices.s(exchange) for exchange in exchanges)()
+        res = group(tasks.update_prices.s(exchange) for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)

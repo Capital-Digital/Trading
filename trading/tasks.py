@@ -2970,6 +2970,7 @@ def update_accounts(id):
     # Configure websocket client for wallet
     async def wallet_loop(loop, i, wallet):
 
+        log.info('Start wallet loop')
         # EventLoopDelayMonitor(interval=1)
 
         client = getattr(ccxtpro, exchange.exid)({'enableRateLimit': True, 'asyncio_loop': loop, })
@@ -3027,6 +3028,7 @@ def update_accounts(id):
 
     # Run main asyncio loop
     async def main(loop):
+        log.info('Start main loop')
         wallet_loops = [wallet_loop(loop, i, wallet) for i, wallet in enumerate(exchange.get_default_types())]
         await asyncio.gather(*wallet_loops)
 

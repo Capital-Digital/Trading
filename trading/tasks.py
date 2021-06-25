@@ -2854,6 +2854,8 @@ def update_accounts(id):
     # Receive websocket streams of book depth
     async def watch_book(client, market, i, j):
 
+        log.info('Start market loop')
+
         wallet = market.default_type
         symbol = market.symbol
 
@@ -3023,6 +3025,7 @@ def update_accounts(id):
 
         ws_loops = [watch_book(client, market, i, j) for j, market in enumerate(mks)]
 
+        print(ws_loops)
         await asyncio.gather(*ws_loops)
         await client.close()
 
@@ -3030,6 +3033,7 @@ def update_accounts(id):
     async def main(loop):
         log.info('Start main loop')
         wallet_loops = [wallet_loop(loop, i, wallet) for i, wallet in enumerate(exchange.get_default_types())]
+        print(wallet_loops)
         await asyncio.gather(*wallet_loops)
 
     class EventLoopDelayMonitor:

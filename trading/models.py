@@ -116,7 +116,6 @@ class Account(models.Model):
 
         # Insert wallets balances in dollar
         for index, row in df.iterrows():
-            last = row.price.ws
             hourly = row.price.hourly
             df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * hourly
             df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * hourly
@@ -164,19 +163,22 @@ class Account(models.Model):
         # Convert dollar to currency
         def to_currency(amount):
 
-            if margined == position.exchange.dollar_currency:
+            # USDT-margined
+            if margined != position.market.base.code:
                 price = get_price_spot(self.exchange, prices, code)
                 return amount / price
+            # COIN-margined
             else:
                 return amount
 
         # Convert to dollar
         def to_dollar(amount):
 
-            if margined != position.exchange.dollar_currency:
+            # USD-margined
+            if margined != position.market.base.code:
                 price = get_price_spot(self.exchange, prices, margined)
                 return amount * price
-
+            # COIN-margined
             else:
                 return amount
 

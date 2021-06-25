@@ -4,12 +4,13 @@ import logging
 import structlog
 from celery import Celery
 from celery.signals import setup_logging
+from django_structlog.celery.steps import DjangoStructLogInitStep
+
 from kombu import Queue, Exchange
 from django_structlog.celery import signals
-from django_structlog.celery.steps import DjangoStructLogInitStep
 from django.dispatch import receiver
 
-log = structlog.get_logger(__name__)
+# log = structlog.get_logger(__name__)
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'capital.settings')
@@ -64,69 +65,69 @@ app.conf.task_default_routing_key = default_routing_key
 
 @setup_logging.connect
 def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):  # pragma: no cover
-    # log.config.dictConfig(
-    #     {
-    #         "version": 1,
-    #         "disable_existing_loggers": True,
-    #         "formatters": {
-    #             "json_formatter": {
-    #                 "()": structlog.stdlib.ProcessorFormatter,
-    #                 "processor": structlog.processors.JSONRenderer(sort_keys=False),
-    #             },
-    #             "plain_console": {
-    #                 "()": structlog.stdlib.ProcessorFormatter,
-    #                 "processor": structlog.dev.ConsoleRenderer(pad_event=43,
-    #                                                            colors=True,
-    #                                                            force_colors=True
-    #                                                            ),
-    #             },
-    #             "key_value": {
-    #                 "()": structlog.stdlib.ProcessorFormatter,
-    #                 "processor": structlog.processors.KeyValueRenderer(
-    #                     sort_keys=False,
-    #                     key_order=['timestamp', 'level', 'logger', 'event']),
-    #             },
-    #         },
-    #         "handlers": {
-    #             "console": {
-    #                 "class": "logging.StreamHandler",
-    #                 "formatter": "plain_console",
-    #             },
-    #             "json_file": {
-    #                 "class": "logging.handlers.WatchedFileHandler",
-    #                 "filename": "log/json.log",
-    #                 "formatter": "json_formatter",
-    #             },
-    #             "flat_line_file": {
-    #                 "class": "logging.handlers.WatchedFileHandler",
-    #                 "filename": "log/flat_line.log",
-    #                 "formatter": "key_value",
-    #             },
-    #         },
-    #         "loggers": {
-    #             '': {
-    #                 "handlers": ["console"], #, "flat_line_file", "json_file"],
-    #                 "level": "ERROR",
-    #                 'propagate': False,
-    #             },
-    #             'marketsdata': {
-    #                 "handlers": ["console"], #, "flat_line_file", "json_file"],
-    #                 "level": "INFO",
-    #                 'propagate': False,
-    #             },
-    #             'strategy': {
-    #                 "handlers": ["console"], #, "flat_line_file", "json_file"],
-    #                 "level": "INFO",
-    #                 'propagate': False,
-    #             },
-    #             'trading': {
-    #                 "handlers": ["console"], #, "flat_line_file", "json_file"],
-    #                 "level": "INFO",
-    #                 'propagate': False,
-    #             }
-    #         }
-    #     }
-    # )
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": True,
+            "formatters": {
+                "json_formatter": {
+                    "()": structlog.stdlib.ProcessorFormatter,
+                    "processor": structlog.processors.JSONRenderer(sort_keys=False),
+                },
+                "plain_console": {
+                    "()": structlog.stdlib.ProcessorFormatter,
+                    "processor": structlog.dev.ConsoleRenderer(pad_event=43,
+                                                               colors=True,
+                                                               force_colors=True
+                                                               ),
+                },
+                "key_value": {
+                    "()": structlog.stdlib.ProcessorFormatter,
+                    "processor": structlog.processors.KeyValueRenderer(
+                        sort_keys=False,
+                        key_order=['timestamp', 'level', 'logger', 'event']),
+                },
+            },
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "plain_console",
+                },
+                "json_file": {
+                    "class": "logging.handlers.WatchedFileHandler",
+                    "filename": "log/celery_json.log",
+                    "formatter": "json_formatter",
+                },
+                "flat_line_file": {
+                    "class": "logging.handlers.WatchedFileHandler",
+                    "filename": "log/celery_flat_line.log",
+                    "formatter": "key_value",
+                },
+            },
+            "loggers": {
+                '': {
+                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "level": "ERROR",
+                    'propagate': False,
+                },
+                'marketsdata': {
+                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "level": "INFO",
+                    'propagate': False,
+                },
+                'strategy': {
+                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "level": "INFO",
+                    'propagate': False,
+                },
+                'trading': {
+                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "level": "INFO",
+                    'propagate': False,
+                }
+            }
+        }
+    )
 
     structlog.configure(
         processors=[

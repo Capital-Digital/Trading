@@ -1695,10 +1695,9 @@ def update_accounts(id):
                 price = prices['spot'][code]['ask']
                 order_size = order_value / price
 
-                if not segment.type.transfer:
-                    # Limit order_size to available funds
-                    free = balances[id].loc[(code, segment.market.wallet)].wallet.free_quantity
-                    order_size = min(free, order_size)
+                # Limit order_size to available funds
+                free = balances[id].loc[(code, segment.market.wallet)].wallet.free_quantity
+                order_size = min(free, order_size)
 
                 return order_size, None
 
@@ -2706,6 +2705,19 @@ def update_accounts(id):
     # and update df_markets when an order is placed
     def trade(id):
 
+        def update_transfer():
+            if route[segment].type.id < route.length[0]:
+                next = 's' + str(route[segment].type.id + 1)
+                if route[next].type.transfer:
+                    if response['status'] == 'closed':
+                        if route[segment].type.action == 'buy_base':
+                            filled = response['filled']
+                        elif route[segment].type.action == 'sell_base':
+                            filled = response['filled'] * response['average']
+                        routes[id].iloc[0, (next, 'transfer', 'quantity')] = filled
+                        log.info('Update transfer with {0} {1}'.format(round(filled, 2),
+                                                                        route[next].transfer.asset))
+
         print('\n', balances[id].to_string(), '\n')
         print('\n', routes[id].to_string(), '\n')
         print('\n', positions[id].to_string(), '\n')
@@ -2746,7 +2758,7 @@ def update_accounts(id):
 
                         # Update order object
                         order_create_update(id, response)
-                        # insert_fees()
+                        update_transfer()
 
                     else:
                         log.warning('Order placement failed')

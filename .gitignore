@@ -1,4 +1,5 @@
-notebooks
+static/*
+**/notebooks/*
 strategy
 **/log/*
 *.pid

@@ -142,7 +142,10 @@ def get_derivative_type(exid, values):
         if 'contractType' in values['info']:
             if values['info']['contractType'] == 'PERPETUAL':
                 return 'perpetual'
-            elif values['info']['contractType'] in ['CURRENT_QUARTER', 'NEXT_QUARTER DELIVERING', 'NEXT_QUARTER']:
+            elif values['info']['contractType'] in ['CURRENT_QUARTER',
+                                                    'CURRENT_QUARTER DELIVERING',
+                                                    'NEXT_QUARTER DELIVERING',
+                                                    'NEXT_QUARTER']:
                 return 'future'
             # Return None so market is not created
             elif not values['info']['contractType'] and values['info']['status'] == 'PENDING_TRADING':

@@ -1699,11 +1699,13 @@ def update_accounts(id):
                 elif segment.market.type == 'derivative':
 
                     # Convert order value to currency
-                    price = prices['spot'][segment.market.base]['ask']
+                    price = get_price_hourly(exchange, segment.market.base)
+                    # prices['spot'][segment.market.base]['ask']
                     order_qty = order_value / price
 
                     # Convert margin value to currency
-                    price_m = prices['spot'][segment.market.margined]['ask']
+                    price_m = get_price_hourly(exchange, segment.market.margined)
+                    # prices['spot'][segment.market.margined]['ask']
                     margin_qty = margin_value / price_m
 
                     return order_qty, margin_qty
@@ -2752,7 +2754,7 @@ def update_accounts(id):
             # Update the asset quantity that should be transferred in segment n+1
             # after a trade is executed to buy a currency in segment n (bridge)
             if route[segment].type.id < route.length[0]:
-                next = 's' + str(route[segment].type.id + 1)
+                next = 's' + str(int(route[segment].type.id + 1))
                 if route[next].type.transfer:
 
                     if response['status'] == 'closed':

@@ -62,7 +62,7 @@ class Account(models.Model):
         return self.name
 
     # Construct a dataframe with wallets balance, positions, exposure and delta
-    def create_dataframes(self, prices=None):
+    def create_dataframes(self, prices=None, update=None):
 
         start = timer()
         funds = self.get_fund_latest()
@@ -87,7 +87,7 @@ class Account(models.Model):
         # Insert dollar value of open positions (sum USDT and BUSD margined)
         positions = self.create_positions_df(prices)
         for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
-            df.loc[(index[0], index[1]), ('position', 'value')] = position.dollar_value + position.PnL
+            df.loc[(index[0], index[1]), ('position', 'value')] = position.dollar_value
             df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
 
         # Insert allocations weights
@@ -195,12 +195,17 @@ class Account(models.Model):
 
                 # Convert notional value and PNL
                 quantity = to_currency(notional_value)
-                value = to_dollar(notional_value)
-                pnl = to_dollar(pnl)
+                quantity_pnl = to_currency(pnl)
 
-                # Calculate initial_margin and net value
-                initial_margin = value / leverage
-                value_net = abs(value) + pnl
+                dollar_value = to_dollar(notional_value)
+                value_pnl = to_dollar(pnl)
+
+                # Calculate initial_margin
+                initial_margin = dollar_value / leverage
+
+                # # Calculate net value and net quantity
+                # value_net = abs(value) + value_pnl
+                # quantity_net = abs(quantity) + quantity_pnl
 
                 # Create multilevel columns
                 indexes = pd.MultiIndex.from_tuples([(code,
@@ -218,10 +223,11 @@ class Account(models.Model):
                                                                  'derivative',
                                                                  'margined'])
                 # Construct dataframe and normalize rows
-                d = pd.DataFrame([[side, size, asset, quantity, notional_value, value, value_net, initial_margin, leverage, pnl]],
+                d = pd.DataFrame([[side, size, asset, quantity, notional_value, dollar_value,
+                                   initial_margin, leverage, value_pnl, quantity_pnl, abs(dollar_value)]],
                                  index=indexes,
                                  columns=['side', 'size', 'asset', 'quantity', 'notional_value', 'dollar_value',
-                                          'net_value', 'initial_margin', 'leverage', 'PnL']
+                                          'initial_margin', 'leverage', 'PnL_value', 'PnL_quantity', 'net_value']
                                  )
 
                 df = pd.concat([df, d], axis=0)
@@ -303,11 +309,11 @@ class Account(models.Model):
             if position.side == 'sell':
                 if position.market.base.code == code:
                     if position.market.margined == position.exchange.dollar_currency:
-                        value = abs(position.notional_value) + position.unrealized_pnl
+                        value = abs(position.notional_value)  # + position.unrealized_pnl
                     else:
                         # price = get_price_ws(self.exchange, position.market.margined.code, prices)
                         price = get_price_hourly(self.exchange, position.market.margined.code)
-                        value = (abs(position.notional_value) + position.unrealized_pnl) * price
+                        value = abs(position.notional_value) * price # + position.unrealized_pnl) * price
                     shorts.append(value)
 
         return sum(shorts)

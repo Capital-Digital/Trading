@@ -1734,8 +1734,10 @@ def update_accounts(id):
                         # Select quantity
                         if segment.market.type == 'spot':
                             quantity = order_qty
+                            print(segment, free, order_value, quantity)
                         elif segment.market.type == 'derivative':
                             quantity = margin_qty
+                            print(segment, free, order_value, margin_value, quantity)
 
                         ratio = min(free, quantity) / quantity
                         return ratio
@@ -2842,7 +2844,12 @@ def update_accounts(id):
 
     # Return True if dataframes are created
     def has_dataframes(id):
-        return all([id in dic for dic in [balances, positions, markets, synthetic_cash, routes]])
+        status = [id in dic for dic in [balances, positions, markets, synthetic_cash, routes]]
+        if all(status):
+            return True
+        else:
+            print([dic for dic in [balances, positions, markets, synthetic_cash, routes]])
+            return False
 
     # Return True if price of all markets are collected
     def has_prices():

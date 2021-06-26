@@ -1023,7 +1023,7 @@ def update_accounts(id):
                                     quote__code__in=codes,
                                     excluded=False,
                                     active=True
-                                    )
+                                    ).exclude(derivative='future')
 
         markets = pd.DataFrame()
 
@@ -2846,7 +2846,7 @@ def update_accounts(id):
                     if not any(np.isnan(routes[id].best.cost)):
                         return True
 
-        print(routes[id].to_string())
+        print(routes[id])
 
     # Return True if dataframes are created
     def has_dataframes(id):
@@ -3046,7 +3046,6 @@ def update_accounts(id):
         mks = Market.objects.filter(exchange=exchange,
                                     default_type=wallet,
                                     base__code__in=codes,
-                                    quote__code__in=codes,
                                     excluded=False,
                                     active=True
                                     ).exclude(derivative='future')

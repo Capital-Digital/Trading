@@ -3145,7 +3145,6 @@ def update_accounts(id):
                                                            margined__code__in=stablecoins
                                                            ).exclude(margined__code=exchange.dollar_currency
                                                                      ).values_list('margined__code', flat=True)))
-    print(codes_new, codes_old)
     codes += codes_margined_stable
 
     if codes:

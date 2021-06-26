@@ -1144,37 +1144,37 @@ def update_accounts(id):
         end = timer()
         log.info('Prepare buy and sell candidates in {0} sec'.format(round(end - start, 2)))
 
-        print('Currencies', codes)
-        print('Instructions buy', codes_buy)
-        print('Instructions sell', codes_sell)
-        print('Instructions sell spot', codes_sell_spot)
-        print('Wallet derivative', wallets_deri)
-        print('Wallet spot', wallets_spot)
-
-        for i in mk_close_long:
-            print('Market close long:', i[3], i[2])
-
-        for i in mk_close_short:
-            print('Market close short:', i[3], i[2])
-
-        if 'mk_close_hedge' in locals():
-            for i in mk_close_hedge:
-                print('Market close hedge:', i[3], i[2])
-
-        for i in mk_candidates:
-            print('Candidates:', i[3], i[2])
-
-        for i in mk_candidates_open_long:
-            print('Candidates open long:', i[3], i[2])
-
-        for i in mk_candidates_open_short:
-            print('Candidates open short:', i[3], i[2])
-
-        for i in mk_candidates_spot:
-            print('Candidates spot:', i[3], i[2])
-
-        for i in mk_spot:
-            print('Market spot:', i[3], i[2])
+        # print('Currencies', codes)
+        # print('Instructions buy', codes_buy)
+        # print('Instructions sell', codes_sell)
+        # print('Instructions sell spot', codes_sell_spot)
+        # print('Wallet derivative', wallets_deri)
+        # print('Wallet spot', wallets_spot)
+        #
+        # for i in mk_close_long:
+        #     print('Market close long:', i[3], i[2])
+        #
+        # for i in mk_close_short:
+        #     print('Market close short:', i[3], i[2])
+        #
+        # if 'mk_close_hedge' in locals():
+        #     for i in mk_close_hedge:
+        #         print('Market close hedge:', i[3], i[2])
+        #
+        # for i in mk_candidates:
+        #     print('Candidates:', i[3], i[2])
+        #
+        # for i in mk_candidates_open_long:
+        #     print('Candidates open long:', i[3], i[2])
+        #
+        # for i in mk_candidates_open_short:
+        #     print('Candidates open short:', i[3], i[2])
+        #
+        # for i in mk_candidates_spot:
+        #     print('Candidates spot:', i[3], i[2])
+        #
+        # for i in mk_spot:
+        #     print('Market spot:', i[3], i[2])
 
         # Create an empty dataframe
         def create_dataframe(segment):
@@ -1734,13 +1734,15 @@ def update_accounts(id):
                         # Select quantity
                         if segment.market.type == 'spot':
                             quantity = order_qty
-                            print(segment, free, order_value, quantity)
                         elif segment.market.type == 'derivative':
                             quantity = margin_qty
-                            print(segment, free, order_value, margin_value, quantity)
 
-                        ratio = min(free, quantity) / quantity
-                        return ratio
+                        # Qty can be 0 is get_free() return 0
+                        if not quantity:
+                            return 0
+                        else:
+                            ratio = min(free, quantity) / quantity
+                            return ratio
 
                     else:
                         return 1
@@ -2216,7 +2218,7 @@ def update_accounts(id):
         routes[id].sort_index(axis=1, inplace=True)
 
         end = timer()
-        log.info('Set values in {0} sec'.format(round(end - start, 2)))
+        log.info('Size orders and transfer in {0} sec'.format(round(end - start, 2)))
 
     # Limit short position to avoid lack of funds
     def limit_new_short(id):

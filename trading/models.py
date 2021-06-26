@@ -278,7 +278,7 @@ class Account(models.Model):
         return list(set(position.market.base.code for position in self.positions.all()))
 
     # Return absolute value of a code or a list of codes
-    def get_balance(self, code):
+    def get_balance(self, prices, code):
 
         funds = self.get_fund_latest()
         values = []
@@ -357,7 +357,7 @@ class Account(models.Model):
             price = None
 
         # Select size
-        amount = segment.trade.order_size
+        amount = segment.trade.order_qty
         if market.type == 'derivative':
             if market.derivative == 'perpetual':
                 if market.margined == market.base:

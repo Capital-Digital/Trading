@@ -1018,8 +1018,12 @@ def update_accounts(id):
         log.info('Create dataframe markets')
 
         # Select markets to build dataframe
-        mks = Market.objects.filter(exchange=exchange, base__code__in=codes, excluded=False, active=True)
-        mks = mks.exclude(derivative='future')
+        mks = Market.objects.filter(exchange=exchange,
+                                    base__code__in=codes,
+                                    quote__code__in=codes,
+                                    excluded=False,
+                                    active=True
+                                    )
 
         markets = pd.DataFrame()
 
@@ -2850,7 +2854,6 @@ def update_accounts(id):
         if all(status):
             return True
         else:
-            print([dic for dic in [balances, positions, markets, synthetic_cash, routes]])
             return False
 
     # Return True if price of all markets are collected
@@ -3043,6 +3046,7 @@ def update_accounts(id):
         mks = Market.objects.filter(exchange=exchange,
                                     default_type=wallet,
                                     base__code__in=codes,
+                                    quote__code__in=codes,
                                     excluded=False,
                                     active=True
                                     ).exclude(derivative='future')

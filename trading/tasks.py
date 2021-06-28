@@ -2934,7 +2934,7 @@ def update_accounts(id):
             # Create dataframes
             target = targets[id] if rebuild else None
             balances[id], positions[id] = account.create_dataframes(prices, target)
-            markets[id] = create_markets(id)
+            markets[id] = create_markets()
             update_synthetic_cash(id)
 
             # Save initial target value and quantity

@@ -2001,7 +2001,7 @@ def update_accounts(id):
                 # Get total margin needed for the hedge and total capacity used
                 margin = sum(margins)
                 capacity_used = hedge_added + margin
-                print(index, label, hedge_added + margin)
+                print(index, label, hedge_added, margin)
 
                 if capacity_used > synthetic_cash[id]['capacity']:
                     reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used

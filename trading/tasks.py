@@ -1815,6 +1815,8 @@ def update_accounts(id):
                 pass
 
             print(routes[id])
+            print((label, 'trade', 'order_value'))
+            print(order_value)
             routes[id].sort_index(axis=0, inplace=True)
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty

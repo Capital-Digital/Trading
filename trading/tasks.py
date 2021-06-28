@@ -1963,6 +1963,7 @@ def update_accounts(id):
 
             shorts = account.get_shorts(prices, code)
             balance = account.get_balance(prices, code)
+            capacity = synthetic_cash[id]['capacity']
 
             # Short positions are larger than coin balance
             if shorts > balance:
@@ -2005,8 +2006,8 @@ def update_accounts(id):
                 print(index, label, 'hedge added', hedge_added, 'margin', margin)
                 print('capa', synthetic_cash[id]['capacity'])
 
-                if capacity_used > synthetic_cash[id]['capacity']:
-                    reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used
+                if capacity_used > abs(capacity):
+                    reduction_ratio = abs(capacity) / capacity_used
                     routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
                     log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
                                                                                                    round(reduction_ratio, 2),

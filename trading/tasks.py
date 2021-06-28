@@ -542,8 +542,6 @@ def update_positions(id, orderids=None):
     account = Account.objects.get(id=id)
     client = account.exchange.get_ccxt_client(account)
 
-    log.info('Update positions for {0}'.format(account.name))
-
     if orderids:
         # Create a list of derivative markets open orders belong to
         markets = list(set([order.market for order in Order.objects.filter(orderid__in=orderids) if
@@ -559,9 +557,11 @@ def update_positions(id, orderids=None):
                                                          )
 
         if created:
-            log.info('Create new positions {0}'.format(market.symbol))
+            pass
+            # log.info('Create new positions {0}'.format(market.symbol))
         else:
-            log.info('Update positions {0}'.format(market.symbol))
+            pass
+            # log.info('Update positions {0}'.format(market.symbol))
 
     # Delete object of a closed position
     def delete(position):
@@ -576,7 +576,7 @@ def update_positions(id, orderids=None):
 
         else:
             obj.delete()
-            log.info('Update positions {0}'.format(position['symbol']), action='delete')
+            # log.info('Update positions {0}'.format(position['symbol']), action='delete')
 
     # OKEx
     ######
@@ -1016,9 +1016,7 @@ def update_accounts(id):
         return [[bids_p[i], cum_b[i]] for i, a in enumerate(bids)], [[asks_p[i], cum_a[i]] for i, a in enumerate(asks)]
 
     # Create a dataframes with markets
-    def create_markets(id):
-
-        log.info('Create dataframe markets')
+    def create_markets():
 
         # Select markets to build dataframe
         mks = Market.objects.filter(exchange=exchange,
@@ -1082,15 +1080,12 @@ def update_accounts(id):
         markets.sort_index(axis=0, inplace=True)
         markets.sort_index(axis=1, inplace=True)
 
-        log.info('Create dataframe markets OK')
-
         return markets
 
     # Create a dataframe with available routes
     def create_routes(id):
 
         start = timer()
-        log.info('Prepare buy and sell candidates')
 
         account = Account.objects.get(id=id)
 
@@ -1542,9 +1537,6 @@ def update_accounts(id):
 
         if ratio < 0:
 
-            log.warning('Hedging capacity is too low {0}'.format(round(capacity, 2)))
-            log.info('Create routes to close some short')
-
             for market in mk_close_hedge:
                 segment = 's1'
                 s1 = create_dataframe(segment)
@@ -1622,11 +1614,6 @@ def update_accounts(id):
         cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()
         capacity = cash_target - (hedge + hedge_position_margin)
 
-        log.info('Hedge          {0}'.format(round(hedge, 2)))
-        log.info('Hedge margin   {0}'.format(round(hedge_position_margin, 2)))
-        log.info('Cash target    {0}'.format(round(cash_target, 2)))
-        log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
-
         # Create keys
         if id not in synthetic_cash:
             synthetic_cash[id] = {}
@@ -1635,6 +1622,17 @@ def update_accounts(id):
 
         synthetic_cash[id]['capacity'] = capacity
         synthetic_cash[id]['ratio'] = capacity / cash_target
+
+
+        log.info(' ')
+        log.info('Hedge          {0}'.format(round(hedge, 2)))
+        log.info('Hedge margin   {0}'.format(round(hedge_position_margin, 2)))
+        log.info('Cash target    {0}'.format(round(cash_target, 2)))
+        log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
+        if capacity < 0:
+            log.warning('Hedging capacity is low {0}'.format(round(capacity, 2)))
+
+        log.info(' ')
 
     # Determine order size and transfer informations
     def size_orders(id):
@@ -1815,11 +1813,6 @@ def update_accounts(id):
 
             if transfer_ratio < 1:
                 routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = transfer_ratio
-                log.info('Limit size to available funds by a ratio of {0} in route {1} segment {2}'.format(
-                    round(transfer_ratio, 2),
-                    index,
-                    label
-                ))
 
             # Compare order_size for close to open position and
             # lower amount to close to what is actually open
@@ -2137,8 +2130,6 @@ def update_accounts(id):
                 capacity += offset
                 capacity = abs(capacity)
 
-                log.info('Determine value to close short for {0}'.format(base1))
-
                 # Get position value
                 open = abs(positions[id].loc[(base1, quote1, wall1), 'stable_value'][0])
 
@@ -2148,15 +2139,11 @@ def update_accounts(id):
                 # Get hedge ratio (shorts / balance)
                 hedge_ratio = account.get_hedge_ratio(prices, base1)
 
-                log.info('Hedge ratio for {0} is {1}'.format(base1, round(hedge_ratio, 2)))
-
                 # Currency is fully hedged
                 if hedge_ratio > 1:
 
                     # Determine short that need to be closed before reaching the hedge
                     short = hedge * (hedge_ratio - 1)
-
-                    log.info('{0} USD of short sell to close first'.format(round(short, 2)))
 
                 else:
                     short = 0
@@ -2172,8 +2159,6 @@ def update_accounts(id):
 
                     # Determine value of hedge closed
                     close_hedge = close - short
-
-                    log.info('Additional hedge closed for {0}'.format(round(close_hedge, 2)))
 
                     if is_usd_margined(route.s1):
                         # Get position value allocated to hedge in the position
@@ -2193,8 +2178,6 @@ def update_accounts(id):
                         # Determine margin released
                         margin_release = hedge_position_margin * close_ratio
 
-                        log.info('Additional margin released for {0}'.format(round(margin_release, 2)))
-
                         # Determine hedge capacity released
                         total = close_hedge + margin_release
                         to_release = min(total, capacity)
@@ -2205,15 +2188,16 @@ def update_accounts(id):
                         ratio = margin / (to_release + margin)
                         close_hedge = to_release * ratio
 
-                        log.info('Final hedge value closed is {0}'.format(round(close_hedge, 2)))
-                        log.info('Final margin value released is {0}'.format(round(close_hedge / leverage1, 2)))
-                        log.info('Total capacity released is {0}'.format(round(to_release, 2)))
+                        log.info('Capacity released by route {0} is {1} ({2})'.format(index,
+                                                                                      round(to_release, 2),
+                                                                                      base1
+                                                                                      ))
 
                         # Finally determine total value to close_short (short + close_hedge)
                         close = short + close_hedge
 
                 else:
-                    log.info('No hedge will be reached by closing {0} {1}'.format(symb1, wall1))
+                    log.info('Capacity released by route {0} is zero ({1})'.format(index, base1))
 
                 margin_released = close / leverage1
 
@@ -2697,9 +2681,6 @@ def update_accounts(id):
                             routes[id].loc[index, (segment, 'market', 'rate')] = funding
                             routes[id].loc[index, ('best', 'return', '')] = ret
 
-        end = timer()
-        log.info('Calculate return in {0} sec'.format(round(end - start, 2)))
-
     # Sort routes by priority and cost
     def sort_routes(id):
 
@@ -2852,7 +2833,6 @@ def update_accounts(id):
         if not route.empty:
 
             start = timer()
-            log.info('Trade route {0}'.format(route.name))
 
             # Loop through all segments
             length = route.length[0]
@@ -2860,7 +2840,7 @@ def update_accounts(id):
 
             for i, segment in enumerate(segments):
 
-                log.info('Trade segment {0}/{1}'.format(i + 1, length))
+                log.info('Trade route {0} segment {1}/{2}'.format(route.name, i + 1, length))
 
                 # Transfer funds
                 if route[segment].type.transfer:
@@ -2871,8 +2851,6 @@ def update_accounts(id):
                 # Create an order object
                 orderid = Account.objects.get(id=id).create_order(route, segment)
                 if orderid:
-
-                    log.info('Order object created')
 
                     # Place order
                     response = place_order.run(id, orderid)
@@ -2895,7 +2873,7 @@ def update_accounts(id):
             end = timer()
             elapsed = end - start
             log.info(
-                '{0} trade(s) complete in {1} sec for route {2}'.format(length, round(elapsed, 2), int(route.name)))
+                '{0} trade(s) complete for route {1}'.format(length, int(route.name)))
 
             # Trades success
             return True
@@ -3030,7 +3008,6 @@ def update_accounts(id):
                             if has_dataframes(id):
 
                                 if not routes[id].empty:
-
                                     # Update costs and sort routes
                                     calculate_cost(id, market, bids, asks)
                                     sort_routes(id)
@@ -3084,7 +3061,7 @@ def update_accounts(id):
                                             print(routes[id].to_string())
                                             continue
                                     else:
-                                        log.info('Routes are not complete yet...')
+                                        log.info('...')
                                 else:
                                     log.info('Dataframe are not created yet...', market=market, account=account)
                     else:

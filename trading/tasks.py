@@ -2113,87 +2113,32 @@ def update_accounts(id):
 
             elif route.s1.type.source == 'close_hedge':
 
-                account = Account.objects.get(id=id)
                 quote1 = route.s1.market.quote
-                leverage1 = float(account.leverage)
 
                 # Select hedge capacity and reduce it by 5% to close hedge
-                # a bit than what is really necessary (prevent ping-pong)
-                capacity = synthetic_cash[id]['capacity']
+                # a bit more than what is really necessary (prevent ping-pong)
+                capacity = abs(synthetic_cash[id]['capacity'])
                 offset = capacity * 0.05
-                capacity += offset
-                capacity = abs(capacity)
+                to_release = capacity - offset
 
-                # Get position value
-                open = abs(positions[id].loc[(base1, quote1, wall1), 'stable_value'][0])
+                # Get capacity used by the position and leverage
+                position = positions[id].loc[route.s1.market.base, route.s1.market.quote, route.s1.market.wallet]
+                position_value = position.abs_value
+                hedge_capacity_used = position.hedge_capacity_used[0]
+                leverage = position.leverage[0]
 
-                # Get hedge level as min(balance, shorts)
-                hedge = account.get_hedge(prices, base1)
+                # If hedge ratio > 1 (.i.e shorts > balance) then it's
+                # better to sell the asset rather than close the short
+                if account.get_hedge_ratio(prices, base1) < 1:
 
-                # Get hedge ratio (shorts / balance)
-                hedge_ratio = account.get_hedge_ratio(prices, base1)
-
-                # Currency is fully hedged
-                if hedge_ratio > 1:
-
-                    # Determine short that need to be closed before reaching the hedge
-                    short = hedge * (hedge_ratio - 1)
+                    close = 0
+                    margin_released = 0
 
                 else:
-                    short = 0
-
-                # Determine total value that should be closed
-                total = short + capacity
-
-                # Determine what can be closed
-                close = min(open, total)
-
-                # If hedge is reached
-                if close > short:
-
-                    # Determine value of hedge closed
-                    close_hedge = close - short
-
-                    if is_usd_margined(route.s1):
-                        # Get position value allocated to hedge in the position
-                        routes[id].sort_index(axis=0, inplace=True)
-                        hedge_position = positions[id].loc[route.s1.market.base,
-                                                           route.s1.market.quote,
-                                                           route.s1.market.wallet].hedge_position[0]
-
-                        # Determine ratio of hedge closed in this position
-                        close_ratio = close_hedge / hedge_position
-
-                        # Get margin allocated to a hedge if position is usd-margined
-                        hedge_position_margin = positions[id].loc[route.s1.market.base,
-                                                                  route.s1.market.quote,
-                                                                  route.s1.market.wallet].hedge_position_margin[0]
-
-                        # Determine margin released
-                        margin_release = hedge_position_margin * close_ratio
-
-                        # Determine hedge capacity released
-                        total = close_hedge + margin_release
-                        to_release = min(total, capacity)
-
-                        # Determine close value from to_release so that
-                        # the value of closed short + margin = to_release
-                        margin = to_release / leverage1
-                        ratio = margin / (to_release + margin)
-                        close_hedge = to_release * ratio
-
-                        log.info('Capacity released by route {0} is {1} ({2})'.format(index,
-                                                                                      round(to_release, 2),
-                                                                                      base1
-                                                                                      ))
-
-                        # Finally determine total value to close_short (short + close_hedge)
-                        close = short + close_hedge
-
-                else:
-                    log.info('Capacity released by route {0} is zero ({1})'.format(index, base1))
-
-                margin_released = close / leverage1
+                    capacity_release = min(hedge_capacity_used, to_release)
+                    ratio = capacity_release / to_release
+                    close = position_value / ratio
+                    margin_released = close / leverage
 
                 # Update segment
                 update_row(index, 's1', close, margin_released)
@@ -3090,7 +3035,8 @@ def update_accounts(id):
             except Exception as e:
                 # print('exception', str(e))
                 traceback.print_exc()
-                log.info('{0}'.format(str(e)), symbol=market.symbol, wallet=market.default_type)  # raise e  # uncomment to break all loops in case of an error in any one of them
+                log.info('{0}'.format(str(e)), symbol=market.symbol,
+                         wallet=market.default_type)  # raise e  # uncomment to break all loops in case of an error in any one of them
                 # break  # you can break just this one loop if it fails
 
     # Configure websocket client for wallet

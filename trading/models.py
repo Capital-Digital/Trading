@@ -289,7 +289,13 @@ class Account(models.Model):
 
                             # If position is USD margined determine margin allocated to hedge
                             if index[6] in self.exchange.get_stablecoins():
-                                df.loc[index, 'hedge_position_margin'] = hedge_position / row.leverage
+                                hedge_position_margin = hedge_position / row.leverage
+                                df.loc[index, 'hedge_position_margin'] = hedge_position_margin
+                            else:
+                                hedge_position_margin = 0
+
+                            # Estimate capacity used by the position
+                            df.loc[index, 'hedge_capacity_used'] = hedge_position + hedge_position_margin
 
         df.sort_index(axis=0, inplace=True)
         # df.sort_index(axis=1, inplace=True)

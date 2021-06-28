@@ -2752,7 +2752,7 @@ def update_accounts(id):
 
                         log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
                             round(bought, 2),
-                            route[next].transfer.asset))
+                            route[segment].transfer.asset))
 
         account = Account.objects.get(id=id)
 
@@ -3014,7 +3014,10 @@ def update_accounts(id):
                                         else:
                                             log.warning('Rebalance failed')
                                             print(routes[id].to_string())
-                                            continue
+
+                                            # Construct new dataframes
+                                            dictionaries(id, rebuild=True)
+
                                     else:
                                         log.info('...')
                                 else:

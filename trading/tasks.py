@@ -2901,7 +2901,7 @@ def update_accounts(id):
             log.info('')
 
             log.info('Cash target    {0}'.format(round(synthetic_cash[id]['cash_target'], 2)))
-            log.info('hedge total          {0}'.format(round(synthetic_cash[id]['hedge_total'], 2)))
+            log.info('hedge total    {0}'.format(round(synthetic_cash[id]['hedge_total'], 2)))
             log.info('Hedge margin   {0}'.format(round(synthetic_cash[id]['hedge_position_margin'], 2)))
 
             capacity = synthetic_cash[id]['capacity']

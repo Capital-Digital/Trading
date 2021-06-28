@@ -2001,12 +2001,13 @@ def update_accounts(id):
                 # Get total margin needed for the hedge and total capacity used
                 margin = sum(margins)
                 capacity_used = hedge_added + margin
+                print(index, label, hedge_added + margin)
 
                 if capacity_used > synthetic_cash[id]['capacity']:
                     reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used
                     routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
                     log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
-                                                                                                   reduction_ratio,
+                                                                                                   round(reduction_ratio, 2),
                                                                                                    label,
                                                                                                    ))
 

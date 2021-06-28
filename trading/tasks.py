@@ -1814,9 +1814,8 @@ def update_accounts(id):
                 # by update_transfer() after the asset is bought (or margin released) in segment 1
                 pass
 
+            print(routes[id])
             routes[id].sort_index(axis=0, inplace=True)
-            print((label, 'trade', 'order_value'))
-            print(index)
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty
 

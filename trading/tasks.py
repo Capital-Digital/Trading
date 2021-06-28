@@ -1603,7 +1603,7 @@ def update_accounts(id):
         # Get value of margin allocated to hedge positions (USD margined)
         # Get value of target cash allocation in the portfolio
 
-        hedge = account.get_hedge_total(prices)
+        hedge_total = account.get_hedge_total(prices)
 
         if 'hedge_position_margin' in positions[id]:
             hedge_position_margin = positions[id]['hedge_position_margin'].sum()
@@ -1611,7 +1611,7 @@ def update_accounts(id):
             hedge_position_margin = 0
 
         cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()
-        capacity = cash_target - (hedge + hedge_position_margin)
+        capacity = cash_target - (hedge_total + hedge_position_margin)
 
         # Create keys
         if id not in synthetic_cash:
@@ -1621,14 +1621,8 @@ def update_accounts(id):
 
         synthetic_cash[id]['capacity'] = capacity
         synthetic_cash[id]['ratio'] = capacity / cash_target
-
-        log.info('Cash target    {0}'.format(round(cash_target, 2)))
-        log.info('Hedge          {0}'.format(round(hedge, 2)))
-        log.info('Hedge margin   {0}'.format(round(hedge_position_margin, 2)))
-        if capacity < 0:
-            log.warning('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
-        else:
-            log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
+        synthetic_cash[id]['hedge_total'] = hedge_total
+        synthetic_cash[id]['hedge_position_margin'] = hedge_position_margin
 
     # Determine order size and transfer informations
     def size_orders(id):
@@ -2544,8 +2538,8 @@ def update_accounts(id):
             if False in trades:
                 invalid.append(index)
 
-        # log.info('Dropped routes')
-        # print(routes[id].iloc[invalid].to_string())
+        log.info('Dropped routes')
+        print(routes[id].iloc[invalid].to_string())
 
         # Drop invalid routes
         routes[id] = routes[id].drop(invalid)
@@ -2888,7 +2882,7 @@ def update_accounts(id):
                     if not any(np.isnan(routes[id].best.cost)):
                         return True
 
-        # print(routes[id])
+        print(routes[id])
 
     # Return True if dataframes are created
     def has_dataframes(id):
@@ -2952,6 +2946,21 @@ def update_accounts(id):
             validate_orders(id)
             calculate_return(id)
             drop_routes(id)
+
+            log.info('')
+            log.info('*** Hedge ***')
+            log.info('')
+
+            log.info('Cash target    {0}'.format(round(synthetic_cash[id]['cash_target'], 2)))
+            log.info('hedge total          {0}'.format(round(synthetic_cash[id]['hedge_total'], 2)))
+            log.info('Hedge margin   {0}'.format(round(synthetic_cash[id]['hedge_position_margin'], 2)))
+
+            capacity = synthetic_cash[id]['capacity']
+
+            if capacity < 0:
+                log.warning('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
+            else:
+                log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
 
             end = timer()
             elapsed = end - start

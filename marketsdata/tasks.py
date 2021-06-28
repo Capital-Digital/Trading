@@ -356,7 +356,7 @@ def update(self):
         # Create a list of chains
         chains = [chain(
             update_prices.s(exid),
-            # update_top_markets.si(exid),
+            update_top_markets.si(exid),
             strategies.update.si(exid)
         ) for exid in exchanges_w_strat]
 

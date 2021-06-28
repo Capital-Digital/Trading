@@ -3019,14 +3019,8 @@ def update_accounts(id):
 
                     if accounts.exists():
 
-                        log.info('{0} account(s) have yet to be updated with {1}'.format(len(accounts),
-                                                                                         strategy.name
-                                                                                         ))
-
                         for account in accounts:
                             id = account.id
-
-                            log.info('Proceed with account {0}'.format(account.name))
 
                             # Store dataframes in dictionaries
                             if has_prices() and not has_dataframes(id):
@@ -3036,23 +3030,10 @@ def update_accounts(id):
                             if has_dataframes(id):
 
                                 if not routes[id].empty:
-                                    # Start timer
-                                    start = timer()
-
-                                    log.info('Update cost for {0} at {1}'.format(account.name,
-                                                                                 strategy.name))
 
                                     # Update costs and sort routes
                                     calculate_cost(id, market, bids, asks)
                                     sort_routes(id)
-
-                                    # End timer
-                                    log.info(
-                                        'Update cost for {0} at {1} complete in {2} sec'.format(account.name,
-                                                                                                strategy.name,
-                                                                                                round(
-                                                                                                    timer() - start,
-                                                                                                    2)))
 
                         if i == j == 0:
 

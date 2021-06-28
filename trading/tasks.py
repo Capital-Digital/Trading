@@ -3039,16 +3039,13 @@ def update_accounts(id):
 
                             accounts = get_accounts(updated=False)
 
-                            log.info('Trade cycle')
-                            log.info('{0} account(s) need to trade in {1}'.format(len(accounts), strategy.name))
-
                             for account in accounts:
-
-                                log.info('Strat with account {0}'.format(account.name))
 
                                 id = account.id
                                 if has_dataframes(id):
                                     if has_routes(id):
+
+                                        log.info('Start with account {0}'.format(account.name))
 
                                         # Trade the best route
                                         res = trade(id)

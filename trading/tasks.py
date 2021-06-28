@@ -1145,37 +1145,37 @@ def update_accounts(id):
         end = timer()
         log.info('Prepare buy and sell candidates in {0} sec'.format(round(end - start, 2)))
 
-        # print('Currencies', codes)
-        # print('Instructions buy', codes_buy)
-        # print('Instructions sell', codes_sell)
-        # print('Instructions sell spot', codes_sell_spot)
-        # print('Wallet derivative', wallets_deri)
-        # print('Wallet spot', wallets_spot)
-        #
-        # for i in mk_close_long:
-        #     print('Market close long:', i[3], i[2])
-        #
-        # for i in mk_close_short:
-        #     print('Market close short:', i[3], i[2])
-        #
-        # if 'mk_close_hedge' in locals():
-        #     for i in mk_close_hedge:
-        #         print('Market close hedge:', i[3], i[2])
-        #
-        # for i in mk_candidates:
-        #     print('Candidates:', i[3], i[2])
-        #
-        # for i in mk_candidates_open_long:
-        #     print('Candidates open long:', i[3], i[2])
-        #
-        # for i in mk_candidates_open_short:
-        #     print('Candidates open short:', i[3], i[2])
-        #
-        # for i in mk_candidates_spot:
-        #     print('Candidates spot:', i[3], i[2])
-        #
-        # for i in mk_spot:
-        #     print('Market spot:', i[3], i[2])
+        print('Currencies', codes)
+        print('Instructions buy', codes_buy)
+        print('Instructions sell', codes_sell)
+        print('Instructions sell spot', codes_sell_spot)
+        print('Wallet derivative', wallets_deri)
+        print('Wallet spot', wallets_spot)
+
+        for i in mk_close_long:
+            print('Market close long:', i[3], i[2])
+
+        for i in mk_close_short:
+            print('Market close short:', i[3], i[2])
+
+        if 'mk_close_hedge' in locals():
+            for i in mk_close_hedge:
+                print('Market close hedge:', i[3], i[2])
+
+        for i in mk_candidates:
+            print('Candidates:', i[3], i[2])
+
+        for i in mk_candidates_open_long:
+            print('Candidates open long:', i[3], i[2])
+
+        for i in mk_candidates_open_short:
+            print('Candidates open short:', i[3], i[2])
+
+        for i in mk_candidates_spot:
+            print('Candidates spot:', i[3], i[2])
+
+        for i in mk_spot:
+            print('Market spot:', i[3], i[2])
 
         # Create an empty dataframe
         def create_dataframe(segment):

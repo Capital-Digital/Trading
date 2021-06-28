@@ -1618,9 +1618,13 @@ def update_accounts(id):
             synthetic_cash[id] = {}
             synthetic_cash[id]['capacity'] = {}
             synthetic_cash[id]['ratio'] = {}
+            synthetic_cash[id]['cash_target'] = {}
+            synthetic_cash[id]['hedge_total'] = {}
+            synthetic_cash[id]['hedge_position_margin'] = {}
 
         synthetic_cash[id]['capacity'] = capacity
         synthetic_cash[id]['ratio'] = capacity / cash_target
+        synthetic_cash[id]['cash_target'] = cash_target
         synthetic_cash[id]['hedge_total'] = hedge_total
         synthetic_cash[id]['hedge_position_margin'] = hedge_position_margin
 

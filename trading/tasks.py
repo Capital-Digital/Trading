@@ -1726,37 +1726,33 @@ def update_accounts(id):
                 else:
                     return segment.market.margined
 
-            # Return reduction ratio to lower transfer amount
-            def get_transfer_ratio():
+            # Return reduction ratio to lower order_size
+            def get_ratio():
 
                 # Limit funds that should be sold or allocated to a position
                 # to the asset quantity held in the wallet (spot, margin)
                 if segment.type.id == 1:
-                    if segment.type.source in ['spot', 'margin']:
 
-                        code = get_code()
+                    code = get_code()
 
-                        # Select available funds
-                        if segment.type.transfer:
-                            free = balances[id].loc[(code, segment.funds.wallet)].wallet.free_quantity
-                        else:
-                            free = balances[id].loc[(code, segment.market.wallet)].wallet.free_quantity
-
-                        # Select quantity
-                        if segment.market.type == 'spot':
-                            quantity = order_qty
-                        elif segment.market.type == 'derivative':
-                            quantity = margin_qty
-
-                        # Qty can be 0 is get_free() return 0
-                        if not quantity:
-                            return 0
-                        else:
-                            ratio = min(free, quantity) / quantity
-                            return ratio
-
+                    # Select available funds
+                    if segment.type.transfer:
+                        free = balances[id].loc[(code, segment.funds.wallet)].wallet.free_quantity
                     else:
-                        return 1
+                        free = balances[id].loc[(code, segment.market.wallet)].wallet.free_quantity
+
+                    # Select quantity
+                    if segment.market.type == 'spot':
+                        quantity = order_qty
+                    elif segment.market.type == 'derivative':
+                        quantity = margin_qty
+
+                    # Qty can be 0 is get_free() return 0
+                    if not quantity:
+                        return 0
+                    else:
+                        ratio = min(free, quantity) / quantity
+                        return ratio
                 else:
                     # For next segments transfer quantity and trade quantity are updated
                     # by update_transfer() after the asset is bought (or margin released) in segment 1
@@ -1799,30 +1795,35 @@ def update_accounts(id):
             # Convert values in dollar to currency quantity
             order_qty, margin_qty = to_quantity()
 
-            # Compare quantity to available funds or open positions
-            # and return the reduction ratio to avoid order rejection
-            transfer_ratio = get_transfer_ratio()
-            order_value *= transfer_ratio
-            order_qty *= transfer_ratio
+            if segment.type.label in ['spot', 'margin']:
 
-            if transfer_ratio < 1:
-                routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = transfer_ratio
+                # Compare quantity to available funds or open positions
+                # and return the reduction ratio to avoid order rejection
+                ratio = get_ratio()
 
-            # Compare order_size for close to open position and
-            # lower amount to close to what is actually open
-            close_ratio = get_close_position_ratio()
-            order_value *= close_ratio
-            order_qty *= close_ratio
+                order_value *= ratio
+                order_qty *= ratio
+
+                if ratio < 1:
+                    routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = ratio
+
+            elif segment.type.label == 'close_position':
+
+                # Compare order_size for close_long and close_short
+                # to open position and lower the amount to position size
+                close_ratio = get_close_position_ratio()
+
+                order_value *= close_ratio
+                order_qty *= close_ratio
+                margin_value *= close_ratio
+                margin_qty *= close_ratio
 
             routes[id].sort_index(axis=0, inplace=True)
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty
 
-            # Enter margin and contract
+            # Add margin and contract if derivative
             if segment.market.type == 'derivative':
-
-                margin_value = margin_value * transfer_ratio * close_ratio
-                margin_qty = margin_qty * transfer_ratio * close_ratio
 
                 routes[id].sort_index(axis=0, inplace=True)
                 routes[id].loc[index, (label, 'trade', 'margin_value')] = margin_value

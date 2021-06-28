@@ -135,8 +135,8 @@ class Account(models.Model):
             # Restore previously saved target value and quantity to avoid instability
             # at the end of the rebalancing with a lot of orders with small amount
 
-            df[('target', 'value')] = target.loc[df.index, 'value']
-            df[('target', 'quantity')] = target.loc[df.index, 'quantity']
+            df[('target', 'value')] = target.loc[df.index].value
+            df[('target', 'quantity')] = target.loc[df.index].quantity
         else:
             # Calculate target
             df.loc[:, ('target', 'value')] = df.target.percent * balance * float(self.leverage)

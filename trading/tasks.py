@@ -2003,9 +2003,6 @@ def update_accounts(id):
                 margin = sum(margins)
                 capacity_used = hedge_added + margin
 
-                print(index, label, 'hedge added', hedge_added, 'margin', margin)
-                print('capa', synthetic_cash[id]['capacity'])
-
                 if capacity_used > abs(capacity):
                     reduction_ratio = abs(capacity) / capacity_used
                     routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio

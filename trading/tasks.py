@@ -2004,7 +2004,7 @@ def update_accounts(id):
 
                 if capacity_used > synthetic_cash[id]['capacity']:
                     reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used
-                    routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = ratio
+                    routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
                     log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
                                                                                                    reduction_ratio,
                                                                                                    label,

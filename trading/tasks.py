@@ -1814,9 +1814,6 @@ def update_accounts(id):
                 # by update_transfer() after the asset is bought (or margin released) in segment 1
                 pass
 
-            print(routes[id])
-            print((label, 'trade', 'order_value'))
-            print(order_value)
             routes[id].sort_index(axis=0, inplace=True)
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty
@@ -2123,7 +2120,7 @@ def update_accounts(id):
 
                 # Get capacity used by the position and leverage
                 position = positions[id].loc[route.s1.market.base, route.s1.market.quote, route.s1.market.wallet]
-                position_value = position.abs_value
+                position_value = position.abs_value[0]
                 hedge_capacity_used = position.hedge_capacity_used[0]
                 leverage = position.leverage[0]
 

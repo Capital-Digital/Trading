@@ -150,7 +150,7 @@ class Account(models.Model):
         df.sort_index(axis=0, inplace=True)
 
         end = timer()
-        log.info('Account dataframe created in {0} sec'.format(round(end - start, 2)))
+        log.info('Create dataframe in {0} sec'.format(round(end - start, 2)))
 
         return df, positions
 

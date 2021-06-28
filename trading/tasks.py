@@ -272,7 +272,6 @@ def create_fund(account_id):
     """
 
     start = timer()
-    log.info('Fund object')
 
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
@@ -2924,8 +2923,7 @@ def update_accounts(id):
             # Select account
             account = Account.objects.get(id=id)
 
-            log.info('Create dic for {0} strategy {1}'.format(account.name,
-                                                              strategy.name))
+            log.info('*** Fill dictionaries ***')
 
             # Update objects
             create_fund.run(id)
@@ -2954,9 +2952,9 @@ def update_accounts(id):
             end = timer()
             elapsed = end - start
 
-            log.info('Create dic for {0} strategy {1} complete in {2} sec'.format(account.name,
-                                                                                  strategy.name,
-                                                                                  round(elapsed, 2)))
+            # log.info('Create dic for {0} strategy {1} complete in {2} sec'.format(account.name,
+            #                                                                       strategy.name,
+            #                                                                       round(elapsed, 2)))
 
             # Signal dataframes are created
             return True

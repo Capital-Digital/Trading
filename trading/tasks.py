@@ -2004,12 +2004,10 @@ def update_accounts(id):
 
                 if capacity_used > synthetic_cash[id]['capacity']:
                     reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used
-
-                    segment = 's' + str(int(row.type.id))
-                    routes[id].loc[index, (segment, 'trade', 'reduction_ratio')] = ratio
+                    routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = ratio
                     log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
                                                                                                    reduction_ratio,
-                                                                                                   segment,
+                                                                                                   label,
                                                                                                    ))
 
                     buy *= reduction_ratio
@@ -2033,14 +2031,17 @@ def update_accounts(id):
                 quote1 = route.s1.market.quote
                 wall1 = route.s1.market.wallet
                 symb1 = route.s1.market.symbol
+                label = 's1'
 
             if 's2' in route:
                 base2 = route.s2.market.base
                 quote2 = route.s2.market.quote
+                label = 's2'
 
             if 's3' in route:
                 base3 = route.s3.market.base
                 quote3 = route.s3.market.quote
+                label = 's3'
 
             # Determine trades quantity
             ###########################

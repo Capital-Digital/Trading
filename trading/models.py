@@ -134,9 +134,10 @@ class Account(models.Model):
         if target is not None:
             # Restore previously saved target value and quantity to avoid instability
             # at the end of the rebalancing with a lot of orders with small amount
-
+            print('index\n', df.index)
+            print(target)
+            print(df)
             print('Target\n', target.loc[df.index, 'value'])
-            print('DF\n', df[('target', 'value')])
 
             df[('target', 'value')] = target.loc[df.index, 'value']
             df[('target', 'quantity')] = target.loc[df.index, 'quantity']

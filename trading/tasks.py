@@ -1777,7 +1777,10 @@ def update_accounts(id):
                                                  segment.market.quote,
                                                  segment.market.wallet].quantity[0])
                     if order_qty:
-                        return open / order_qty
+                        if order_qty > open:
+                            return open / order_qty
+                        else:
+                            return 1
                     else:
                         return 0
                 else:

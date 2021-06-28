@@ -110,6 +110,23 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_exchange_currencies.short_description = "Update currencies"
 
+    def update_prices(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+
+        # Create a groups and execute task
+        res = group(tasks.update_prices.s(exchange) for exchange in exchanges)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Update prices complete')
+
+        else:
+            log.error('Update prices failed :(')
+
+    update_prices.short_description = "Update prices"
+
     def update_exchange_markets(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
 

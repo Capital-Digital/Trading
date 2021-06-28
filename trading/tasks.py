@@ -1959,7 +1959,7 @@ def update_accounts(id):
                 return open_comp, margin_comp
 
         # Limit spot buying if a new hedge is added with a buy and capacity is reached
-        def limit_buy(code, buy, close=None):
+        def limit_buy(index, label, code, buy, close=None):
 
             shorts = account.get_shorts(prices, code)
             balance = account.get_balance(prices, code)
@@ -1979,8 +1979,8 @@ def update_accounts(id):
                 # so that USDT-margined positions with hedge are at the top
                 pos = positions[id].loc[positions[id].side == 'sell'].loc[code, :]
                 pos.sort_index(level='margined', ascending=False, axis=0, inplace=True)
-                for index, row in pos.iterrows():
-                    if Currency.objects.get(code=index[5]).stable_coin:
+                for idx, row in pos.iterrows():
+                    if Currency.objects.get(code=idx[5]).stable_coin:
                         if row.hedge_position_ratio < 1:
 
                             # Determine position value not allocated to hedge
@@ -2004,6 +2004,7 @@ def update_accounts(id):
 
                 if capacity_used > synthetic_cash[id]['capacity']:
                     reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used
+                    print(index)
                     routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
                     log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
                                                                                                    reduction_ratio,
@@ -2066,7 +2067,7 @@ def update_accounts(id):
 
                         # Select currency to buy in spot and test hedge capacity
                         code = base2 if route.s2.type.action == 'buy_base' else quote2
-                        margin_released, close = limit_buy(code, margin_released, close)
+                        margin_released, close = limit_buy(index, label, code, margin_released, close)
 
                         update_row(index, 's1', close, margin_released)
                         update_row(index, 's2', margin_released, None)
@@ -2097,7 +2098,7 @@ def update_accounts(id):
 
                         # Select currency to buy in spot and test hedge capacity
                         code = base3 if route.s3.type.action == 'buy_base' else quote3
-                        margin_released, close = limit_buy(code, margin_released, close)
+                        margin_released, close = limit_buy(index, label, code, margin_released, close)
 
                         update_row(index, 's1', close, margin_released)
                         update_row(index, 's2', margin_released, None)  # Gateway
@@ -2229,7 +2230,7 @@ def update_accounts(id):
                         used = min(free, delta1)
                         # Select currency to buy in spot and test hedge capacity
                         code = base1 if route.s1.type.action == 'buy_base' else quote1
-                        used = limit_buy(code, used)
+                        used = limit_buy(index, label, code, used)
 
                         update_row(index, 's1', used, None)
 
@@ -2256,7 +2257,7 @@ def update_accounts(id):
 
                         # Select currency to buy in spot and test hedge capacity
                         code = base2 if route.s2.type.action == 'buy_base' else quote2
-                        used = limit_buy(code, used)
+                        used = limit_buy(index, label, code, used)
 
                         update_row(index, 's1', used, None)  # Gateway
                         update_row(index, 's2', used, None)

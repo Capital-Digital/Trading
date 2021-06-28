@@ -2768,9 +2768,11 @@ def update_accounts(id):
         print('\n', routes[id].to_string(), '\n')
         print('\n', positions[id].to_string(), '\n')
 
-        # Select the best route
-        route = routes[id].iloc[0]
-        if not route.empty:
+        # Test routes
+        if not routes[id].empty:
+
+            # Select the best route
+            route = routes[id].iloc[0]
 
             start = timer()
 
@@ -2817,10 +2819,6 @@ def update_accounts(id):
 
             # Trades success
             return True
-
-        else:
-            # Rebalance complete
-            return False
 
     # Test if routes are ready to trade
     def has_routes(id):
@@ -2967,7 +2965,17 @@ def update_accounts(id):
                             # Dataframes are already created
                             if has_dataframes(id):
 
-                                if not routes[id].empty:
+                                if routes[id].empty:
+
+                                    log.info('No route left, rebalance terminated')
+                                    print(balances[id].to_string())
+                                    log.info('Set updated = True')
+
+                                    account.updated = True
+                                    account.save()
+                                    continue
+
+                                else:
                                     # Update costs and sort routes
                                     calculate_cost(id, market, bids, asks)
                                     sort_routes(id)
@@ -3005,15 +3013,6 @@ def update_accounts(id):
                                                 # Update the latest fund object and df_account
                                                 update_fund_object(id, orderids)
 
-                                        elif res is False:
-
-                                            account.updated = True
-                                            account.save()
-
-                                            log.info('*** Rebalance OK for {0} at {1} ***'.format(account.name,
-                                                                                                  strategy.name
-                                                                                                  ))
-                                            continue
                                         else:
                                             log.warning('Rebalance failed')
                                             print(routes[id].to_string())

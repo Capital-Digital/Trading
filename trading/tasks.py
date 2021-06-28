@@ -1806,11 +1806,10 @@ def update_accounts(id):
             # Compare quantity to available funds or open positions
             # and return the reduction ratio to avoid order rejection
             transfer_ratio = get_transfer_ratio()
+            order_value *= transfer_ratio
+            order_qty *= transfer_ratio
 
             if transfer_ratio < 1:
-                order_value *= transfer_ratio
-                order_qty *= transfer_ratio
-
                 routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = transfer_ratio
                 log.info('Limit size to available funds by a ratio of {0} in route {1} segment {2}'.format(
                     round(transfer_ratio, 2),
@@ -1818,13 +1817,17 @@ def update_accounts(id):
                     label
                 ))
 
+            # Compare order_size for close to open position and
+            # lower amount to close to what is actually open
+            close_ratio = get_close_position_ratio()
+            order_value *= close_ratio
+            order_qty *= close_ratio
+
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty
 
             # Enter margin and contract
             if segment.market.type == 'derivative':
-
-                close_ratio = get_close_position_ratio()
 
                 margin_value = margin_value * transfer_ratio * close_ratio
                 margin_qty = margin_qty * transfer_ratio * close_ratio

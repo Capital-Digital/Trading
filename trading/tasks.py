@@ -2376,9 +2376,6 @@ def update_accounts(id):
             end = timer()
             log.info('Limit new shorts in {0} sec'.format(round(end - start, 2)))
 
-        else:
-            log.info('Limit to open short not applied because capacity is negative')
-
     # Validate orders of our routes
     def validate_orders(id):
 
@@ -2923,11 +2920,15 @@ def update_accounts(id):
             # Select account
             account = Account.objects.get(id=id)
 
-            log.info('*** Fill dictionaries ***')
+            log.info('')
+            log.info('*** Update objects ***')
 
             # Update objects
             create_fund.run(id)
             update_positions.run(id)
+
+            log.info('')
+            log.info('*** Update dictionaries ***')
 
             # Create dataframes
             target = targets[id] if rebuild else None
@@ -3020,8 +3021,6 @@ def update_accounts(id):
                                 if has_dataframes(id):
                                     if has_routes(id):
 
-                                        log.info('Start with account {0}'.format(account.name))
-
                                         # Trade the best route
                                         res = trade(id)
                                         if res:
@@ -3061,7 +3060,7 @@ def update_accounts(id):
                                     else:
                                         log.info('...')
                                 else:
-                                    log.info('Dataframe are not created yet...', market=market, account=account)
+                                    log.info('Wait dataframes')
                     else:
                         log.info('No more account left, closing stream {0}'.format(symbol))
                         break

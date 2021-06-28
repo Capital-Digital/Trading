@@ -884,13 +884,15 @@ def update_top_markets(self, exid):
 
         for wallet in exchange.get_default_types():
 
-            log.info('Flag top markets')
+            log.info('Flag top markets for Binance')
             markets = Market.objects.filter(exchange__exid=exid,
-                                            quote__code='USDT',
+                                            quote__code=exchange.dollar_currency,
                                             default_type=wallet,
                                             active=True)
 
             v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets]
+            print(v)
+            print(len(v))
             top = sorted(v, key=operator.itemgetter(0))[-20:]
 
             for pk in [pk for pk in [t[1] for t in top]]:
@@ -898,4 +900,4 @@ def update_top_markets(self, exid):
                 market.top = True
                 market.save()
 
-            log.info('Flag top markets OK')
+            log.info('Flag top markets for Binance complete')

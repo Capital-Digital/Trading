@@ -384,7 +384,7 @@ def create_fund(account_id):
                         for i in response['info']['positions']]
 
     # Create a dictionary of position
-    def update_positions(response, default_type):
+    def update_pos(response, default_type):
 
         if account.exchange.exid == 'binance':
             if default_type in ['future', 'delivery']:
@@ -407,6 +407,7 @@ def create_fund(account_id):
                                                     )
 
                         obj, created = Position.objects.update_or_create(exchange=account.exchange,
+                                                                         account=account,
                                                                          market=market,
                                                                          defaults=defaults)
                         if created:
@@ -443,7 +444,7 @@ def create_fund(account_id):
                 margin_assets[default_type] = get_margin_assets(response, default_type)
                 positions[default_type] = get_positions_leverage(response, default_type)
 
-                update_positions(response, default_type)
+                update_pos(response, default_type)
 
         create_fund_object(total, free, used, margin_assets, positions)
 
@@ -535,11 +536,13 @@ def update_order_id(account_id, orderid):
 
 # Create, update or delete objects
 @shared_task(name='Trading_____Update position', base=BaseTaskWithRetry)
-def update_positions(account_id, orderids=None):
+def update_positions(id, orderids=None):
     start = timer()
 
-    account = Account.objects.get(id=account_id)
+    account = Account.objects.get(id=id)
     client = account.exchange.get_ccxt_client(account)
+
+    log.info('Update positions for {0}'.format(account.name))
 
     if orderids:
         # Create a list of derivative markets open orders belong to
@@ -1576,8 +1579,9 @@ def update_accounts(id):
         # Drop duplicate routes and keep first
         # df = df.loc[~df.drop(['label', 'priority'], axis=1, level=2).duplicated(keep='last')]
 
-        # Increment index
+        # Increment and sort index
         df.index = (i for i in range(len(df)))
+        df.sort_index(axis=0, inplace=True)
 
         # Determine number of segment per route
         segments = df.columns.get_level_values(0).unique()
@@ -1610,16 +1614,16 @@ def update_accounts(id):
 
         hedge = account.get_hedge_total(prices)
 
-        if 'hedge_margin' in positions[id]:
-            hedge_margin = positions[id]['hedge_margin'].sum()
+        if 'hedge_position_margin' in positions[id]:
+            hedge_position_margin = positions[id]['hedge_position_margin'].sum()
         else:
-            hedge_margin = 0
+            hedge_position_margin = 0
 
         cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()
-        capacity = cash_target - (hedge + hedge_margin)
+        capacity = cash_target - (hedge + hedge_position_margin)
 
         log.info('Hedge          {0}'.format(round(hedge, 2)))
-        log.info('Hedge margin   {0}'.format(round(hedge_margin, 2)))
+        log.info('Hedge margin   {0}'.format(round(hedge_position_margin, 2)))
         log.info('Cash target    {0}'.format(round(cash_target, 2)))
         log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
 
@@ -1634,29 +1638,29 @@ def update_accounts(id):
 
     # Determine order size and transfer informations
     def size_orders(id):
-
-        # Get leverage of a derivative market
-        def get_leverage_position(symbol, wallet):
-
-            market = Market.objects.get(exchange=exchange, symbol=symbol, default_type=wallet)
-            instrument_id = market.response['id']
-            positions = account.get_fund_latest().positions
-            return float([p['leverage'] for p in positions[wallet] if p['instrument'] == instrument_id][0])
-
         # Return total absolute to buy/sell
         def get_delta(code):
             return abs(balances[id].loc[code, ('delta', 'value')].fillna(0)[0])
+            # delta_qty = abs(balances[id].loc[code, ('delta', 'quantity')].fillna(0)[0])
+            # return delta_qty * get_price_hourly(exchange, code)
 
         # Return value of available currency
         def get_free(segment, code, wallet):
 
+            # The free funds of a margin wallet is max(0, total - used) in order to maintain
+            # desired account leverage independently of the position leverage in the exchange
             if segment.type.source == 'margin':
 
-                # Keep available margin in the wallet to maintain desired leverage
                 total = balances[id].loc[(code, wallet), ('wallet', 'total_value')] * float(account.leverage)
-                used = positions[id].loc[(positions[id].index.get_level_values('margined') == code) &
-                                         (positions[id].index.get_level_values('wallet') == wallet)].sum().dollar_value
+                if not positions[id].empty:
 
+                    # Sum absolute value of positions with the same wallet and margined currency.
+                    # Absolute value is calculated as abs(stable value + PnL value)
+                    used = positions[id].loc[(positions[id].index.get_level_values('margined') == code)
+                                             & (positions[id].index.get_level_values('wallet') == wallet
+                                                )].sum().abs_value
+                else:
+                    used = 0
                 free = max(0, (total - abs(used)))
                 return free
 
@@ -1679,11 +1683,19 @@ def update_accounts(id):
             wallet = segment.market.wallet
 
             delta = abs(balances[id].loc[(base, wallet), ('delta', 'value')])
-            position = abs(positions[id].loc[base, quote, wallet].dollar_value[0])
+            position = abs(positions[id].loc[base, quote, wallet].net_value[0])
             return min(position, delta)
 
         # Update rows
         def update_row(index, label, order_value, margin_value):
+
+            # Get leverage of position in a derivative market
+            def get_position_leverage(symbol, wallet):
+
+                market = Market.objects.get(exchange=exchange, symbol=symbol, default_type=wallet)
+                instrument_id = market.response['id']
+                positions = account.get_fund_latest().positions
+                return float([p['leverage'] for p in positions[wallet] if p['instrument'] == instrument_id][0])
 
             # Convert dollar values in orders quantity
             def to_quantity():
@@ -1691,7 +1703,8 @@ def update_accounts(id):
                 if segment.market.type == 'spot':
                     code = get_code()
                     # Convert order value to currency
-                    price = prices['spot'][code]['ask']
+                    # price = prices['spot'][code]['ask']
+                    price = get_price_hourly(exchange, code)
                     order_qty = order_value / price
 
                     return order_qty, None
@@ -1724,7 +1737,7 @@ def update_accounts(id):
             # Return reduction ratio
             def get_reduction_ratio():
 
-                # Limit funds that should be sold or allocated as margin
+                # Limit funds that should be sold or allocated to a position
                 # to the asset quantity held in the wallet (spot, margin)
                 if segment.type.id == 1:
                     if segment.type.source in ['spot', 'margin']:
@@ -1781,8 +1794,17 @@ def update_accounts(id):
             # and return the reduction ratio
             ratio = get_reduction_ratio()
 
-            order_value *= ratio
-            order_qty *= ratio
+            if ratio < 1:
+                order_value *= ratio
+                order_qty *= ratio
+
+                routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = ratio
+                log.info('Limit size to available funds by a ratio of {0} in route {1} segment {2}'.format(
+                    round(ratio, 2),
+                    index,
+                    label
+                ))
+
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty
 
@@ -1809,8 +1831,11 @@ def update_accounts(id):
                         asset = segment.funds.code
                         from_wallet = segment.funds.wallet
 
+                        # Transfer the sold amount
                         if segment.market.type == 'spot':
-                            quantity = order_qty  # sold amount
+                            quantity = order_qty
+
+                        # Transfer the position value independently from the position leverage
                         elif segment.market.type == 'derivative':
                             quantity = margin_qty
 
@@ -1956,7 +1981,12 @@ def update_accounts(id):
                 if capacity_used > synthetic_cash[id]['capacity']:
                     reduction_ratio = synthetic_cash[id]['capacity'] / capacity_used
 
-                    log.warning('Limit spot buy for {0} by a ratio of {1}'.format(code, reduction_ratio))
+                    segment = 's' + str(int(row.id))
+                    routes[id].loc[index, (segment, 'trade', 'reduction_ratio')] = ratio
+                    log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
+                                                                                                   reduction_ratio,
+                                                                                                   segment,
+                                                                                                   ))
 
                     buy *= reduction_ratio
                     if close:
@@ -2080,13 +2110,13 @@ def update_accounts(id):
                 log.info('Determine value to close short for {0}'.format(base1))
 
                 # Get position value
-                open = abs(positions[id].loc[base1, quote1, wall1].value[0])
+                open = abs(positions[id].loc[(base1, quote1, wall1), 'stable_value'][0])
 
                 # Get hedge level as min(balance, shorts)
-                hedge = account.get_hedge(base1)
+                hedge = account.get_hedge(prices, base1)
 
                 # Get hedge ratio (shorts / balance)
-                hedge_ratio = account.get_hedge_ratio(base1)
+                hedge_ratio = account.get_hedge_ratio(prices, base1)
 
                 log.info('Hedge ratio for {0} is {1}'.format(base1, round(hedge_ratio, 2)))
 
@@ -2125,12 +2155,12 @@ def update_accounts(id):
                         close_ratio = close_hedge / hedge_position
 
                         # Get margin allocated to a hedge if position is usd-margined
-                        hedge_margin = positions[id].loc[route.s1.market.base,
+                        hedge_position_margin = positions[id].loc[route.s1.market.base,
                                                          route.s1.market.quote,
-                                                         route.s1.market.wallet].hedge_margin[0]
+                                                         route.s1.market.wallet].hedge_position_margin[0]
 
                         # Determine margin released
-                        margin_release = hedge_margin * close_ratio
+                        margin_release = hedge_position_margin * close_ratio
 
                         log.info('Additional margin released for {0}'.format(round(margin_release, 2)))
 
@@ -2420,6 +2450,7 @@ def update_accounts(id):
                 symbol = route[s].market.symbol
                 wallet = route[s].market.wallet
                 order_qty = route[s].trade.order_qty
+                order_value = route[s].trade.order_value
                 amount = order_qty
                 quote_order_qty = False
 
@@ -2476,7 +2507,6 @@ def update_accounts(id):
                                 if market.margined == market.base:
                                     routes[id].loc[index, (s, 'trade', 'cont')] = amount
                                     routes[id].loc[index, (s, 'trade', 'order_qty')] = order_qty
-
                     else:
                         routes[id].loc[index, (s, 'trade', 'valid')] = False
                         routes[id].loc[index, (s, 'trade', 'error')] = 'min_notional'
@@ -2766,7 +2796,7 @@ def update_accounts(id):
                             bought = response['filled'] * response['average']
 
                         # Update transfer quantity
-                        routes[id].iloc[0, (next, 'transfer', 'quantity')] = bought
+                        routes[id].iloc[0][(next, 'transfer', 'quantity')] = bought
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
@@ -2777,6 +2807,10 @@ def update_accounts(id):
                         log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
                             round(bought, 2),
                             route[next].transfer.asset))
+
+        account = Account.objects.get(id=id)
+        log.info('Trade account {0}'.format(account.name))
+        log.bind(account=account.name)
 
         print('\n', balances[id].to_string(), '\n')
         print('\n', routes[id].to_string(), '\n')
@@ -2848,7 +2882,7 @@ def update_accounts(id):
                     if not any(np.isnan(routes[id].best.cost)):
                         return True
 
-        print(routes[id])
+        # print(routes[id])
 
     # Return True if dataframes are created
     def has_dataframes(id):
@@ -2867,13 +2901,19 @@ def update_accounts(id):
 
         return True
 
+    # Save target value and quantity
+    def save_target(id):
+        targets[id] = balances[id]['target']
+
     # Create dictionaries
     def dictionaries(id, rebuild=None):
+
+        account = Account.objects.get(id=id)
 
         # Create dataframes if they are not in dictionaries for account id
         if has_prices() and (rebuild or not has_dataframes(id)):
             start = timer()
-            log.info('Dictionaries creation')
+            log.info('Dictionaries creation for {0}'.format(account.name))
 
             # Select account
             account = Account.objects.get(id=id)
@@ -2883,9 +2923,14 @@ def update_accounts(id):
             update_positions.run(id)
 
             # Create dataframes
-            balances[id], positions[id] = account.create_dataframes(prices)
+            target = targets[id] if rebuild else None
+            balances[id], positions[id] = account.create_dataframes(prices, target)
             markets[id] = create_markets(id)
             update_synthetic_cash(id)
+
+            # Save initial target value and quantity
+            if not rebuild:
+                save_target(id)
 
             # Create routes dataframe for the account
             create_routes(id)
@@ -2918,7 +2963,7 @@ def update_accounts(id):
     # Receive websocket streams of book depth
     async def watch_book(client, market, i, j):
 
-        log.info('Start market loop')
+        log.info('Start market loop for {0} {1}'.format(market.default_type, market.symbol))
 
         wallet = market.default_type
         symbol = market.symbol
@@ -2942,7 +2987,7 @@ def update_accounts(id):
                         for account in accounts:
                             id = account.id
 
-                            # Create dictionaries when prices are collected
+                            # Store dataframes in dictionaries
                             if has_prices() and not has_dataframes(id):
                                 dictionaries(id)
 
@@ -2963,7 +3008,7 @@ def update_accounts(id):
 
                                 else:
 
-                                    log.info('Route not found for account {0}'.format(id))
+                                    log.info('Route not found for {0}, rebalance complete'.format(account.name))
 
                                     print(balances[id].to_string())
                                     account.updated = True
@@ -3030,7 +3075,7 @@ def update_accounts(id):
             except Exception as e:
                 # print('exception', str(e))
                 traceback.print_exc()
-                raise e  # uncomment to break all loops in case of an error in any one of them
+                print(str(e)) # raise e  # uncomment to break all loops in case of an error in any one of them
                 # break  # you can break just this one loop if it fails
 
     # Configure websocket client for wallet
@@ -3165,7 +3210,7 @@ def update_accounts(id):
             if accounts:
 
                 # Create empty dictionaries
-                balances, positions, routes, markets, synthetic_cash, prices = [dict() for i in range(6)]
+                balances, positions, routes, markets, synthetic_cash, prices, targets = [dict() for i in range(7)]
 
                 log.info('Create asyncio loops')
 

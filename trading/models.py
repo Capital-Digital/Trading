@@ -62,7 +62,7 @@ class Account(models.Model):
         return self.name
 
     # Construct a dataframe with wallets balance, positions, exposure and delta
-    def create_dataframes(self, prices=None, update=None):
+    def create_dataframes(self, prices=None, target=None):
 
         start = timer()
         funds = self.get_fund_latest()
@@ -86,9 +86,14 @@ class Account(models.Model):
 
         # Insert dollar value of open positions (sum USDT and BUSD margined)
         positions = self.create_positions_df(prices)
-        for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
-            df.loc[(index[0], index[1]), ('position', 'value')] = position.dollar_value
-            df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
+        if not positions.empty:
+            for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
+                price = get_price_hourly(self.exchange, index[0])
+                df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
+                df.loc[(index[0], index[1]), ('position', 'value')] = position.quantity * price
+        else:
+            df[('position', 'value')] = np.nan
+            df[('position', 'quantity')] = np.nan
 
         # Insert allocations weights
         for value in allocations.values():
@@ -126,9 +131,15 @@ class Account(models.Model):
         balance = df.wallet.total_value.sum()
         df['account', 'balance'] = balance
 
-        # Insert target
-        df['target', 'value'] = df.target.percent * balance * float(self.leverage)
-        df[('target', 'quantity')] = df.target.value / df.price.hourly
+        if target is not None:
+            # Restore previously saved target value and quantity to avoid instability
+            # at the end of the rebalancing with a lot of orders with small amount
+            df[('target', 'value')] = target.loc[df.index, 'value']
+            df[('target', 'quantity')] = target.loc[df.index, 'quantity']
+        else:
+            # Calculate target
+            df['target', 'value'] = df.target.percent * balance * float(self.leverage)
+            df[('target', 'quantity')] = df.target.value / df.price.hourly
 
         # Insert delta
         df[('delta', 'value')] = df.exposure.total_value - df.target.value
@@ -146,24 +157,29 @@ class Account(models.Model):
     def create_positions_df(self, prices=None):
 
         # Convert dollar to currency
-        def to_currency(amount):
+        def size_to_currency(size):
 
-            # USDT-margined
+            # price = get_price_ws(self.exchange, code, prices)
+            # price = get_price_hourly(self.exchange, code)
+
             if margined != position.market.base.code:
-                # price = get_price_ws(self.exchange, code, prices)
-                price = get_price_hourly(self.exchange, code)
-                return amount / price
-            # COIN-margined
+                return size
             else:
-                return amount
+                return notional_value  # already in currency if coin-margined
+
+        # Convert PnL to currency
+        def pnl_to_currency(pnl):
+
+            if margined != position.market.base.code:
+                return pnl / get_price_hourly(self.exchange, code)
+            else:
+                return pnl  # already in currency if coin-margined
 
         # Convert to dollar
         def to_dollar(amount):
 
-            # USD-margined
             if margined != position.market.base.code:
                 return amount
-            # COIN-margined
             else:
                 # price = get_price_ws(self.exchange, prices, margined)
                 price = get_price_hourly(self.exchange, code)
@@ -193,18 +209,23 @@ class Account(models.Model):
                 leverage = position.leverage
                 pnl = position.unrealized_pnl
 
-                # Convert notional value and PNL
-                quantity = to_currency(notional_value)
-                quantity_pnl = to_currency(pnl)
+                # Convert to currency
+                quantity = size_to_currency(size)
+                pnl_qty = pnl_to_currency(pnl)
+                net_qty = quantity + pnl_qty
+                abs_qty = abs(net_qty)
 
-                dollar_value = to_dollar(notional_value)
-                value_pnl = to_dollar(pnl)
+                # Convert to stable
+                stable_value = to_dollar(notional_value)
+                pnl_value = to_dollar(pnl)
+                net_value = stable_value + pnl_value
+                abs_value = abs(net_value)
 
                 # Calculate initial_margin
-                initial_margin = dollar_value / leverage
+                initial_margin = stable_value / leverage
 
                 # # Calculate net value and net quantity
-                # value_net = abs(value) + value_pnl
+                # value_net = abs(value) + pnl_value
                 # quantity_net = abs(quantity) + quantity_pnl
 
                 # Create multilevel columns
@@ -223,14 +244,21 @@ class Account(models.Model):
                                                                  'derivative',
                                                                  'margined'])
                 # Construct dataframe and normalize rows
-                d = pd.DataFrame([[side, size, asset, quantity, notional_value, dollar_value,
-                                   initial_margin, leverage, value_pnl, quantity_pnl, abs(dollar_value)]],
+                d = pd.DataFrame([[side, size, asset, quantity, notional_value, initial_margin,
+                                   leverage,
+                                   stable_value, pnl_value, net_value, abs_value,
+                                   pnl_qty, net_qty, abs_qty]],
                                  index=indexes,
-                                 columns=['side', 'size', 'asset', 'quantity', 'notional_value', 'dollar_value',
-                                          'initial_margin', 'leverage', 'PnL_value', 'PnL_quantity', 'net_value']
+                                 columns=['side', 'size', 'asset', 'quantity', 'notional_value', 'initial_margin',
+                                          'leverage',
+                                          'stable_value', 'pnl_value', 'net_value', 'abs_value',
+                                          'pnl_qty', 'net_qty', 'abs_qty']
                                  )
 
                 df = pd.concat([df, d], axis=0)
+        else:
+            log.info('No position found')
+            return pd.DataFrame()
 
         # Iterate through coins in account and positions
         for code in codes:
@@ -309,11 +337,11 @@ class Account(models.Model):
             if position.side == 'sell':
                 if position.market.base.code == code:
                     if position.market.margined == position.exchange.dollar_currency:
-                        value = abs(position.notional_value)  # + position.unrealized_pnl
+                        value = abs(position.notional_value + position.unrealized_pnl)
                     else:
                         # price = get_price_ws(self.exchange, position.market.margined.code, prices)
                         price = get_price_hourly(self.exchange, position.market.margined.code)
-                        value = abs(position.notional_value) * price # + position.unrealized_pnl) * price
+                        value = abs(position.notional_value + position.unrealized_pnl) * price
                     shorts.append(value)
 
         return sum(shorts)

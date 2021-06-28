@@ -280,11 +280,11 @@ class Account(models.Model):
 
                         # Assign hedge to USDT-margined position first
                         if hedge_:
-                            hedge_position = min(hedge_, row.net_value)
+                            hedge_position = min(hedge_, row.abs_value)
                             hedge_ -= hedge_position
 
                             df.loc[index, 'hedge_position'] = hedge_position
-                            df.loc[index, 'hedge_position_ratio'] = hedge_position / row.net_value
+                            df.loc[index, 'hedge_position_ratio'] = hedge_position / row.abs_value
 
                             # If position is USD margined determine margin allocated to hedge
                             if index[6] in self.exchange.get_stablecoins():

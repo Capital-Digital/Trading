@@ -1985,7 +1985,7 @@ def update_accounts(id):
                         if row.hedge_position_ratio < 1:
 
                             # Determine position value not allocated to hedge
-                            pos_capacity = row.net_value * (1 - row.hedge_position_ratio)
+                            pos_capacity = row.abs_value * (1 - row.hedge_position_ratio)
 
                             if hedge_added < pos_capacity:
                                 margin = hedge_added / row.leverage

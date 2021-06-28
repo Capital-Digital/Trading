@@ -1780,6 +1780,8 @@ def update_accounts(id):
                         return open / order_qty
                     else:
                         return 0
+                else:
+                    return 1
 
             # Convert order_qty to contract
             def to_contract():

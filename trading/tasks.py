@@ -2349,7 +2349,8 @@ def update_accounts(id):
             else:
                 if exchange.has['createMarketOrder']:
                     # Select spot price to validate MIN_NOTIONAL
-                    return prices['spot'][market.base.code]['ask']
+                    # return prices['spot'][market.base.code]['ask']
+                    return get_price_hourly(exchange, market.base.code)
                 else:
                     raise Exception('Market order not supported')
 

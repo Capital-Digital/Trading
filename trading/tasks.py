@@ -1795,7 +1795,7 @@ def update_accounts(id):
             # Convert values in dollar to currency quantity
             order_qty, margin_qty = to_quantity()
 
-            if segment.type.label in ['spot', 'margin']:
+            if segment.type.source in ['spot', 'margin']:
 
                 # Compare quantity to available funds or open positions
                 # and return the reduction ratio to avoid order rejection
@@ -1807,7 +1807,7 @@ def update_accounts(id):
                 if ratio < 1:
                     routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = ratio
 
-            elif segment.type.label == 'close_position':
+            elif segment.type.source == 'close_position':
 
                 # Compare order_size for close_long and close_short
                 # to open position and lower the amount to position size

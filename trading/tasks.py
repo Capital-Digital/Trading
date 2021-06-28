@@ -1682,7 +1682,6 @@ def update_accounts(id):
             quote = segment.market.quote
             wallet = segment.market.wallet
 
-            routes[id].sort_index(axis=0, inplace=True)
             delta = abs(balances[id].loc[(base, wallet), ('delta', 'value')])
             position = abs(positions[id].loc[base, quote, wallet].net_value[0])
             return min(position, delta)
@@ -1774,6 +1773,7 @@ def update_accounts(id):
             # Return reduction ratio to lower order size
             def get_close_position_ratio():
                 if segment.type.action in ['close_long', 'close_short']:
+
                     open = abs(positions[id].loc[segment.market.base,
                                                  segment.market.quote,
                                                  segment.market.wallet].quantity[0])
@@ -1803,7 +1803,6 @@ def update_accounts(id):
                 return int(cont)
 
             segment = routes[id].loc[index, label]
-            routes[id].sort_index(axis=0, inplace=True)
 
             # Convert values in dollar to currency quantity
             order_qty, margin_qty = to_quantity()
@@ -1828,6 +1827,7 @@ def update_accounts(id):
             order_value *= close_ratio
             order_qty *= close_ratio
 
+            routes[id].sort_index(axis=0, inplace=True)
             routes[id].loc[index, (label, 'trade', 'order_value')] = order_value
             routes[id].loc[index, (label, 'trade', 'order_qty')] = order_qty
 
@@ -1837,10 +1837,12 @@ def update_accounts(id):
                 margin_value = margin_value * transfer_ratio * close_ratio
                 margin_qty = margin_qty * transfer_ratio * close_ratio
 
+                routes[id].sort_index(axis=0, inplace=True)
                 routes[id].loc[index, (label, 'trade', 'margin_value')] = margin_value
                 routes[id].loc[index, (label, 'trade', 'margin_qty')] = margin_qty
 
                 if segment.market.margined == segment.market.base:
+                    routes[id].sort_index(axis=0, inplace=True)
                     routes[id].loc[index, (label, 'trade', 'cont')] = to_contract()
 
             # Enter transfer informations
@@ -2007,7 +2009,9 @@ def update_accounts(id):
                     reduction_ratio = abs(capacity) / capacity_used
                     routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
                     log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
-                                                                                                   round(reduction_ratio, 2),
+                                                                                                   round(
+                                                                                                       reduction_ratio,
+                                                                                                       2),
                                                                                                    label,
                                                                                                    ))
 
@@ -2173,6 +2177,7 @@ def update_accounts(id):
 
                     if is_usd_margined(route.s1):
                         # Get position value allocated to hedge in the position
+                        routes[id].sort_index(axis=0, inplace=True)
                         hedge_position = positions[id].loc[route.s1.market.base,
                                                            route.s1.market.quote,
                                                            route.s1.market.wallet].hedge_position[0]
@@ -2182,8 +2187,8 @@ def update_accounts(id):
 
                         # Get margin allocated to a hedge if position is usd-margined
                         hedge_position_margin = positions[id].loc[route.s1.market.base,
-                                                         route.s1.market.quote,
-                                                         route.s1.market.wallet].hedge_position_margin[0]
+                                                                  route.s1.market.quote,
+                                                                  route.s1.market.wallet].hedge_position_margin[0]
 
                         # Determine margin released
                         margin_release = hedge_position_margin * close_ratio
@@ -2826,9 +2831,9 @@ def update_accounts(id):
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
-                            routes[id].iloc[0, (next, 'trade', 'margin_qty')] = bought
+                            routes[id].iloc[0][(next, 'trade', 'margin_qty')] = bought
                         else:
-                            routes[id].iloc[0, (next, 'trade', 'order_qty')] = bought
+                            routes[id].iloc[0][(next, 'trade', 'order_qty')] = bought
 
                         log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
                             round(bought, 2),
@@ -2934,15 +2939,15 @@ def update_accounts(id):
     # Create dictionaries
     def dictionaries(id, rebuild=None):
 
-        account = Account.objects.get(id=id)
-
         # Create dataframes if they are not in dictionaries for account id
         if has_prices() and (rebuild or not has_dataframes(id)):
             start = timer()
-            log.info('Dictionaries creation for {0}'.format(account.name))
 
             # Select account
             account = Account.objects.get(id=id)
+
+            log.info('Create dic for {0} strategy {1}'.format(account.name,
+                                                              strategy.name))
 
             # Update objects
             create_fund.run(id)
@@ -2970,7 +2975,10 @@ def update_accounts(id):
 
             end = timer()
             elapsed = end - start
-            log.info('Dictionaries created in {0} sec'.format(round(elapsed, 2)))
+
+            log.info('Create dic for {0} strategy {1} complete in {2} sec'.format(account.name,
+                                                                                  strategy.name,
+                                                                                  round(elapsed, 2)))
 
             # Signal dataframes are created
             return True
@@ -2989,7 +2997,7 @@ def update_accounts(id):
     # Receive websocket streams of book depth
     async def watch_book(client, market, i, j):
 
-        log.info('Start market loop for {0} {1}'.format(market.default_type, market.symbol))
+        log.info('Start loop for {0} {1}'.format(market.default_type, market.symbol))
 
         wallet = market.default_type
         symbol = market.symbol
@@ -3008,42 +3016,54 @@ def update_accounts(id):
 
                     # Get accounts that need an update
                     accounts = get_accounts(updated=False)
+
                     if accounts.exists():
+
+                        log.info('{0} account(s) have yet to be updated with {1}'.format(len(accounts),
+                                                                                         strategy.name
+                                                                                         ))
 
                         for account in accounts:
                             id = account.id
+
+                            log.info('Proceed with account {0}'.format(account.name))
 
                             # Store dataframes in dictionaries
                             if has_prices() and not has_dataframes(id):
                                 dictionaries(id)
 
-                            # Dataframes are created
-                            elif has_dataframes(id):
+                            # Dataframes are already created
+                            if has_dataframes(id):
 
                                 if not routes[id].empty:
-
                                     # Start timer
                                     start = timer()
+
+                                    log.info('Update cost for {0} at {1}'.format(account.name,
+                                                                                 strategy.name))
 
                                     # Update costs and sort routes
                                     calculate_cost(id, market, bids, asks)
                                     sort_routes(id)
 
                                     # End timer
-                                    # print(wallet, symbol, round(timer() - start, 2), 'sec')
-
-                                else:
-
-                                    log.info('Route not found for {0}, rebalance complete'.format(account.name))
-
-                                    print(balances[id].to_string())
-                                    account.updated = True
-                                    account.save()
-                                    continue
+                                    log.info(
+                                        'Update cost for {0} at {1} complete in {2} sec'.format(account.name,
+                                                                                                strategy.name,
+                                                                                                round(
+                                                                                                    timer() - start,
+                                                                                                    2)))
 
                         if i == j == 0:
 
-                            for account in get_accounts(updated=False):
+                            accounts = get_accounts(updated=False)
+
+                            log.info('Trade cycle')
+                            log.info('{0} account(s) need to trade in {1}'.format(len(accounts), strategy.name))
+
+                            for account in accounts:
+
+                                log.info('Strat with account {0}'.format(account.name))
 
                                 id = account.id
                                 if has_dataframes(id):
@@ -3077,7 +3097,9 @@ def update_accounts(id):
                                             account.updated = True
                                             account.save()
 
-                                            log.info('Rebalance OK for account {0}'.format(id))
+                                            log.info('*** Rebalance OK for {0} at {1} ***'.format(account.name,
+                                                                                                  strategy.name
+                                                                                                  ))
                                             continue
                                         else:
                                             log.warning('Rebalance failed')
@@ -3088,8 +3110,7 @@ def update_accounts(id):
                                 else:
                                     log.info('Dataframe are not created yet...', market=market, account=account)
                     else:
-
-                        log.info('Closing stream {0}'.format(symbol))
+                        log.info('No more account left, closing stream {0}'.format(symbol))
                         break
                 else:
                     print('NO order_book\t', symbol, wallet)
@@ -3101,7 +3122,7 @@ def update_accounts(id):
             except Exception as e:
                 # print('exception', str(e))
                 traceback.print_exc()
-                print(str(e)) # raise e  # uncomment to break all loops in case of an error in any one of them
+                print(str(e))  # raise e  # uncomment to break all loops in case of an error in any one of them
                 # break  # you can break just this one loop if it fails
 
     # Configure websocket client for wallet
@@ -3201,6 +3222,7 @@ def update_accounts(id):
     ################
 
     strategy = Strategy.objects.get(id=id)
+    log.bind(strategy=strategy.name)
     exchange = strategy.exchange
     exid = exchange.exid
 
@@ -3232,8 +3254,12 @@ def update_accounts(id):
 
         if accounts:
 
+            log.info('Found {0} account(s) attached to strategy {1}'.format(len(accounts), strategy.name))
+
             accounts = accounts.filter(updated=False)
             if accounts:
+
+                log.info('Found {0} account(s) not updated'.format(len(accounts)))
 
                 # Create empty dictionaries
                 balances, positions, routes, markets, synthetic_cash, prices, targets = [dict() for i in range(7)]

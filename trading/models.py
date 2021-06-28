@@ -134,10 +134,6 @@ class Account(models.Model):
         if target is not None:
             # Restore previously saved target value and quantity to avoid instability
             # at the end of the rebalancing with a lot of orders with small amount
-            print('index\n', df.index)
-            print(target)
-            print(df)
-            print('Target\n', target.loc[df.index, 'value'])
 
             df[('target', 'value')] = target.loc[df.index, 'value']
             df[('target', 'quantity')] = target.loc[df.index, 'quantity']
@@ -294,6 +290,9 @@ class Account(models.Model):
                             # If position is USD margined determine margin allocated to hedge
                             if index[6] in self.exchange.get_stablecoins():
                                 df.loc[index, 'hedge_position_margin'] = hedge_position / row.leverage
+
+        df.sort_index(axis=0, inplace=True)
+        # df.sort_index(axis=1, inplace=True)
 
         return df
 

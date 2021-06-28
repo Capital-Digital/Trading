@@ -144,6 +144,7 @@ class Account(models.Model):
 
         # Insert delta
         df[('delta', 'value')] = df.exposure.total_value - df.target.value
+        df[('delta', 'value')] = df[('delta', 'value')].round(2)
         df[('delta', 'quantity')] = df.exposure.total_quantity - df.target.quantity
 
         df.sort_index(axis=1, inplace=True)

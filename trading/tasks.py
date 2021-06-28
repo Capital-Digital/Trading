@@ -1682,6 +1682,7 @@ def update_accounts(id):
             quote = segment.market.quote
             wallet = segment.market.wallet
 
+            routes[id].sort_index(axis=0, inplace=True)
             delta = abs(balances[id].loc[(base, wallet), ('delta', 'value')])
             position = abs(positions[id].loc[base, quote, wallet].net_value[0])
             return min(position, delta)
@@ -1802,6 +1803,7 @@ def update_accounts(id):
                 return int(cont)
 
             segment = routes[id].loc[index, label]
+            routes[id].sort_index(axis=0, inplace=True)
 
             # Convert values in dollar to currency quantity
             order_qty, margin_qty = to_quantity()

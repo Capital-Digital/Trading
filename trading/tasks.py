@@ -1734,8 +1734,8 @@ def update_accounts(id):
                 else:
                     return segment.market.margined
 
-            # Return reduction ratio
-            def get_reduction_ratio():
+            # Return reduction ratio to lower transfer amount
+            def get_transfer_ratio():
 
                 # Limit funds that should be sold or allocated to a position
                 # to the asset quantity held in the wallet (spot, margin)
@@ -1770,6 +1770,17 @@ def update_accounts(id):
                     # by update_transfer() after the asset is bought (or margin released) in segment 1
                     return 1
 
+            # Return reduction ratio to lower order size
+            def get_close_position_ratio():
+                if segment.type.action in ['close_long', 'close_short']:
+                    open = abs(positions[id].loc[segment.market.base,
+                                                 segment.market.quote,
+                                                 segment.market.wallet].quantity[0])
+                    if order_qty:
+                        return open / order_qty
+                    else:
+                        return 0
+
             # Convert order_qty to contract
             def to_contract():
 
@@ -1790,17 +1801,17 @@ def update_accounts(id):
             # Convert values in dollar to currency quantity
             order_qty, margin_qty = to_quantity()
 
-            # Compare quantity to available funds
-            # and return the reduction ratio
-            ratio = get_reduction_ratio()
+            # Compare quantity to available funds or open positions
+            # and return the reduction ratio to avoid order rejection
+            transfer_ratio = get_transfer_ratio()
 
-            if ratio < 1:
-                order_value *= ratio
-                order_qty *= ratio
+            if transfer_ratio < 1:
+                order_value *= transfer_ratio
+                order_qty *= transfer_ratio
 
-                routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = ratio
+                routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = transfer_ratio
                 log.info('Limit size to available funds by a ratio of {0} in route {1} segment {2}'.format(
-                    round(ratio, 2),
+                    round(transfer_ratio, 2),
                     index,
                     label
                 ))
@@ -1811,8 +1822,11 @@ def update_accounts(id):
             # Enter margin and contract
             if segment.market.type == 'derivative':
 
-                margin_value *= ratio
-                margin_qty *= ratio
+                close_ratio = get_close_position_ratio()
+
+                margin_value = margin_value * transfer_ratio * close_ratio
+                margin_qty = margin_qty * transfer_ratio * close_ratio
+
                 routes[id].loc[index, (label, 'trade', 'margin_value')] = margin_value
                 routes[id].loc[index, (label, 'trade', 'margin_qty')] = margin_qty
 

@@ -1622,7 +1622,6 @@ def update_accounts(id):
         synthetic_cash[id]['capacity'] = capacity
         synthetic_cash[id]['ratio'] = capacity / cash_target
 
-        log.info(' ')
         log.info('Cash target    {0}'.format(round(cash_target, 2)))
         log.info('Hedge          {0}'.format(round(hedge, 2)))
         log.info('Hedge margin   {0}'.format(round(hedge_position_margin, 2)))
@@ -1630,8 +1629,6 @@ def update_accounts(id):
             log.warning('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
         else:
             log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
-
-        log.info(' ')
 
     # Determine order size and transfer informations
     def size_orders(id):
@@ -2817,7 +2814,7 @@ def update_accounts(id):
                             route[next].transfer.asset))
 
         account = Account.objects.get(id=id)
-        
+
         log.info('')
         log.info('*** Trade {0} ***'.format(account.name))
         log.info('')
@@ -3075,12 +3072,12 @@ def update_accounts(id):
                     print('wait')
 
                 # print('wait\t', symbol, wallet)
-                await client.sleep(1000)
+                await client.sleep(3000)
 
             except Exception as e:
                 # print('exception', str(e))
                 # traceback.print_exc()
-                print(str(e))  # raise e  # uncomment to break all loops in case of an error in any one of them
+                log.info('{0}'.format(str(e)), symbol=market.symbol, wallet=market.default_type)  # raise e  # uncomment to break all loops in case of an error in any one of them
                 # break  # you can break just this one loop if it fails
 
     # Configure websocket client for wallet

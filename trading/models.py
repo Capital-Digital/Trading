@@ -100,6 +100,9 @@ class Account(models.Model):
             for code in list(value.keys()):
                 df.loc[code, ('target', 'percent')] = value[code]['weight']
 
+        # Fill nan percents with 0
+        df[('target', 'percent')] = df.target.percent.fillna(0)
+
         # Insert prices
         for code in df.index.get_level_values(0):
             df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)

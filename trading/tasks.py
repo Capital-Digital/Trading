@@ -2817,7 +2817,11 @@ def update_accounts(id):
                             route[next].transfer.asset))
 
         account = Account.objects.get(id=id)
-        log.info('Trade account {0}'.format(account.name))
+        
+        log.info('')
+        log.info('*** Trade {0} ***'.format(account.name))
+        log.info('')
+
         log.bind(account=account.name)
 
         print('\n', balances[id].to_string(), '\n')
@@ -2922,6 +2926,7 @@ def update_accounts(id):
 
             log.info('')
             log.info('*** Update objects ***')
+            log.info('')
 
             # Update objects
             create_fund.run(id)
@@ -2929,6 +2934,7 @@ def update_accounts(id):
 
             log.info('')
             log.info('*** Update dictionaries ***')
+            log.info('')
 
             # Create dataframes
             target = targets[id] if rebuild else None
@@ -3074,7 +3080,7 @@ def update_accounts(id):
             except Exception as e:
                 # print('exception', str(e))
                 # traceback.print_exc()
-                print('Exception happens', str(e))  # raise e  # uncomment to break all loops in case of an error in any one of them
+                print(str(e))  # raise e  # uncomment to break all loops in case of an error in any one of them
                 # break  # you can break just this one loop if it fails
 
     # Configure websocket client for wallet

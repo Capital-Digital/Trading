@@ -22,7 +22,8 @@ class CustomerAdmin(admin.ModelAdmin):
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
-               'update_exchange_markets', 'update_market_price', 'update_exchange_status', 'update_prices']
+               'update_exchange_markets', 'update_market_price', 'update_exchange_status', 'update_prices',
+               'update_top_markets']
     save_as = True
     save_on_top = True
 
@@ -126,6 +127,23 @@ class CustomerAdmin(admin.ModelAdmin):
             log.error('Update prices failed :(')
 
     update_prices.short_description = "Update prices"
+
+    def update_top_markets(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+
+        # Create a groups and execute task
+        res = group(tasks.update_top_markets.s(exchange) for exchange in exchanges)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Update top markets complete')
+
+        else:
+            log.error('Update top markets failed :(')
+
+    update_top_markets.short_description = "Update top markets"
 
     def update_exchange_markets(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]

@@ -22,7 +22,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
-               'update_exchange_markets', 'update_market_price', 'update_exchange_status']
+               'update_exchange_markets', 'update_market_price', 'update_exchange_status', 'update_prices']
     save_as = True
     save_on_top = True
 

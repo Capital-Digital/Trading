@@ -890,9 +890,8 @@ def update_top_markets(self, exid):
                                             default_type=wallet,
                                             active=True)
 
-            v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets]
-            print(v)
-            print(len(v))
+            v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets if m.candle.first().volume_avg]
+
             top = sorted(v, key=operator.itemgetter(0))[-20:]
 
             for pk in [pk for pk in [t[1] for t in top]]:

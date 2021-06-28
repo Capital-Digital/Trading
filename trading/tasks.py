@@ -1795,6 +1795,8 @@ def update_accounts(id):
             # Convert values in dollar to currency quantity
             order_qty, margin_qty = to_quantity()
 
+            print(segment)
+            
             if segment.type.source in ['spot', 'margin']:
 
                 # Compare quantity to available funds or open positions

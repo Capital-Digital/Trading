@@ -1038,6 +1038,7 @@ def rebalance(strategy_id, accounts_id):
                         return -funding * 7
                     elif action == 'close_short':
                         return funding * 7
+            return 0
 
         def get_fees():
             if route[segment].market.type == 'spot':

@@ -3034,7 +3034,7 @@ def update_accounts(id):
                     print('wait')
 
                 # print('wait\t', symbol, wallet)
-                await client.sleep(1000)
+                await client.sleep(500)
 
             except Exception as e:
                 # print('exception', str(e))

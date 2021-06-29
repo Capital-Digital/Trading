@@ -2973,7 +2973,7 @@ def rebalance(strategy_id, accounts_id):
         return True
 
     # Receive websocket streams of book depth
-    async def watch_book(client, market, i, j):
+    async def watch_book(account, client, market, i, j):
 
         log.info('Start loop {0} {1}'.format(market.default_type, market.symbol))
 
@@ -3054,7 +3054,7 @@ def rebalance(strategy_id, accounts_id):
                 # break  # you can break just this one loop if it fails
 
     # Configure websocket client for wallet
-    async def wallet_loop(loop, i, wallet):
+    async def wallet_loop(account, loop, i, wallet):
 
         # EventLoopDelayMonitor(interval=1)
 
@@ -3110,14 +3110,14 @@ def rebalance(strategy_id, accounts_id):
         #         prices[wallet][symbol] = {}
         #         prices[wallet][symbol]['ask'] = {}
 
-        ws_loops = [watch_book(client, market, i, j) for j, market in enumerate(markets_monitor)]
+        ws_loops = [watch_book(account, client, market, i, j) for j, market in enumerate(markets_monitor)]
 
         await asyncio.gather(*ws_loops)
         await client.close()
 
     # Run main asyncio loop
-    async def main(loop, wallets):
-        wallet_loops = [wallet_loop(loop, i, wallet) for i, wallet in enumerate(wallets)]
+    async def main(account, loop, wallets):
+        wallet_loops = [wallet_loop(account, loop, i, wallet) for i, wallet in enumerate(wallets)]
         await asyncio.gather(*wallet_loops)
 
     class EventLoopDelayMonitor:
@@ -3223,7 +3223,7 @@ def rebalance(strategy_id, accounts_id):
 
                 # loop.set_debug(True)
                 loop = asyncio.get_event_loop()
-                gp = asyncio.wait([main(loop, wallets)])
+                gp = asyncio.wait([main(account, loop, wallets)])
                 loop.run_until_complete(gp)
 
             else:

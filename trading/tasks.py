@@ -2742,13 +2742,13 @@ def update_accounts(id):
                             bought = response['filled'] * response['average']
 
                         # Update transfer quantity
-                        routes[id].iloc[0][(next, 'transfer', 'quantity')] = bought
+                        routes[id].loc[routes[id].iloc[0].index, (next, 'transfer', 'quantity')] = bought
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
-                            routes[id].iloc[0][(next, 'trade', 'margin_qty')] = bought
+                            routes[id].loc[routes[id].iloc[0].index, (next, 'trade', 'margin_qty')] = bought
                         else:
-                            routes[id].iloc[0][(next, 'trade', 'order_qty')] = bought
+                            routes[id].loc[routes[id].iloc[0].index, (next, 'trade', 'order_qty')] = bought
 
                         log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
                             round(bought, 2),

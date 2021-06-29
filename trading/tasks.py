@@ -3160,7 +3160,7 @@ def rebalance(strategy_id, accounts_id):
                 log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
                 log.info('Monitor {0} codes for account'.format(len(codes_account)))
 
-                codes_monitor = codes_strategy + codes_margined + codes_account
+                codes_monitor = list(set(codes_strategy + codes_margined + codes_account))
 
                 # Create empty dictionaries
                 balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]

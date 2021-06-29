@@ -3133,7 +3133,7 @@ def rebalance(strategy_id, accounts_id):
     if codes_strategy:
 
         if not isinstance(accounts_id, list):
-            accounts = [accounts_id]
+            accounts_id = [accounts_id]
 
         log.info('Rebalance {0} account(s) with strategy {1}'.format(len(accounts_id), strategy.name))
 

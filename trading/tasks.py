@@ -2904,7 +2904,6 @@ def update_accounts(id):
         #                                                                       strategy.name,
         #                                                                       round(elapsed, 2)))
 
-        # Signal dataframes are created
         return True
 
     # Receive websocket streams of book depth
@@ -2934,15 +2933,14 @@ def update_accounts(id):
                     else:
 
                         if routes.empty:
+                            print('Route empty')
+                            # log.info('No route left, rebalance terminated')
+                            # log.info('Set updated = True')
 
-                            log.info('No route left, rebalance terminated')
-                            log.info('Set updated = True')
+                            # print(balances.to_string())
 
-                            print(balances.to_string())
-
-                            account.updated = True
-                            account.save()
-                            continue
+                            # account.updated = True
+                            # account.save()
 
                         else:
                             # Update costs and sort routes
@@ -2990,7 +2988,7 @@ def update_accounts(id):
                 else:
                     print('wait')
 
-                await client.sleep(1000)
+                await client.sleep(3000)
 
             except Exception as e:
                 # print('exception', str(e))

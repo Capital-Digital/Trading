@@ -2842,6 +2842,7 @@ def update_accounts(id):
         for k, v in prices.items():
             for m in v.keys():
                 if not prices[k][m]['ask']:
+                    print('Waiting price', m)
                     return
 
         return True

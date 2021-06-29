@@ -2849,7 +2849,7 @@ def rebalance(strategy_id, accounts_id):
             else:
                 hedge_position_margin = 0
 
-            cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()[0]
+            cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()
             capacity = cash_target - (hedge_total + hedge_position_margin)
 
             # Create keys
@@ -2862,6 +2862,7 @@ def rebalance(strategy_id, accounts_id):
                 synthetic_cash[id]['hedge_position_margin'] = {}
 
             synthetic_cash[id]['capacity'] = capacity
+            print('cash_target', cash_target)
             synthetic_cash[id]['ratio'] = capacity / cash_target
             synthetic_cash[id]['cash_target'] = cash_target
             synthetic_cash[id]['hedge_total'] = hedge_total

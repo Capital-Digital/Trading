@@ -134,15 +134,23 @@ class Account(models.Model):
         balance = df.wallet.total_value.sum()
         df['account', 'balance'] = balance
 
-        if target is not None:
-            # Restore previously saved target value and quantity to avoid instability
-            # at the end of the rebalancing with a lot of orders with small amount
-            df[('target', 'value')] = target.value
-            df[('target', 'quantity')] = target.quantity
-        else:
-            # Calculate target
-            df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
-            df[('target', 'quantity')] = df.target.value / df.price.hourly
+        # if target is not None:
+        #     # Restore previously saved target value and quantity to avoid instability
+        #     # at the end of the rebalancing with a lot of orders with small amount
+        #
+        #     print('target.value\n')
+        #     print(target.value)
+        #
+        #     print('df\n')
+        #     print(df)
+        #
+        #     df[('target', 'value')] = target.value
+        #     df[('target', 'quantity')] = target.quantity
+        # else:
+
+        # Calculate target
+        df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
+        df[('target', 'quantity')] = df.target.value / df.price.hourly
 
         # Insert delta
         df[('delta', 'value')] = df.exposure.total_value - df.target.value

@@ -62,7 +62,7 @@ class Account(models.Model):
         return self.name
 
     # Construct a dataframe with wallets balance, positions, exposure and delta
-    def create_dataframes(self, prices=None, target=None):
+    def create_dataframes(self, target=None):
 
         start = timer()
         funds = self.get_fund_latest()
@@ -85,7 +85,7 @@ class Account(models.Model):
                             df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()
 
         # Insert dollar value of open positions (sum USDT and BUSD margined)
-        positions = self.create_positions_df(prices)
+        positions = self.create_positions_df()
         if not positions.empty:
             for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
                 price = get_price_hourly(self.exchange, index[0])
@@ -105,7 +105,7 @@ class Account(models.Model):
 
         # Insert prices
         for code in df.index.get_level_values(0):
-            df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
+            # df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
             df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange, code)
 
         # Insert wallets balances in dollar
@@ -158,7 +158,7 @@ class Account(models.Model):
         return df, positions
 
     # Construct a dataframe with open positions
-    def create_positions_df(self, prices=None):
+    def create_positions_df(self):
 
         # Convert dollar to currency
         def size_to_currency(size):
@@ -193,7 +193,7 @@ class Account(models.Model):
         df = pd.DataFrame()
         positions = self.positions.all()
         codes = self.get_codes()
-        hedge_total = self.get_hedge_total(prices)
+        hedge_total = self.get_hedge_total()
 
         if positions:
             for position in positions:
@@ -266,8 +266,8 @@ class Account(models.Model):
 
         # Iterate through coins in account and positions
         for code in codes:
-            hedge = self.get_hedge(prices, code)
-            balance = self.get_balance(prices, code)
+            hedge = self.get_hedge(code)
+            balance = self.get_balance(code)
             hedge_ = hedge
 
             # Sort dataframe with USDT-margined position at the top
@@ -325,7 +325,7 @@ class Account(models.Model):
         return list(set(position.market.base.code for position in self.positions.all()))
 
     # Return absolute value of a code or a list of codes
-    def get_balance(self, prices, code):
+    def get_balance(self, code):
 
         funds = self.get_fund_latest()
         values = []
@@ -341,7 +341,7 @@ class Account(models.Model):
         return sum(values)
 
     # Return absolute value of short positions opened for a code
-    def get_shorts(self, prices, code):
+    def get_shorts(self, code):
 
         positions = self.positions.all()
         shorts = []
@@ -360,31 +360,31 @@ class Account(models.Model):
         return sum(shorts)
 
     # Return hedge for a specific code
-    def get_hedge(self, prices, code):
+    def get_hedge(self, code):
 
-        balance = self.get_balance(prices, code)
-        shorts = self.get_shorts(prices, code)
+        balance = self.get_balance(code)
+        shorts = self.get_shorts(code)
         return min(balance, shorts)
 
     # Return hedge ratio for a specific code
-    def get_hedge_ratio(self, prices, code):
+    def get_hedge_ratio(self, code):
 
-        balance = self.get_balance(prices, code)
-        shorts = self.get_shorts(prices, code)
+        balance = self.get_balance(code)
+        shorts = self.get_shorts(code)
         return shorts / balance
 
     # Return hedge for all currencies
-    def get_hedge_total(self, prices):
+    def get_hedge_total(self):
 
         total = []
         for code in self.get_positions_codes():
-            total.append(self.get_hedge(prices, code))
+            total.append(self.get_hedge(code))
 
         return sum(total)
 
     # Return value above which a short position isn't a hedge but a short
-    def get_max_hedge(self, prices, code):
-        return self.get_balance(prices, code) - self.get_hedge(prices, code)
+    def get_max_hedge(self, code):
+        return self.get_balance(code) - self.get_hedge(code)
 
     # Create a new order object
     def create_order(self, route, segment):

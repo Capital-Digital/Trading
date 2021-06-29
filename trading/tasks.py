@@ -2855,7 +2855,7 @@ def update_accounts(id):
     def dictionaries(id, rebuild=None):
 
         # Create dataframes if they are not in dictionaries for account id
-        if has_prices() and (rebuild or not has_dataframes(id)):
+        if rebuild or not has_dataframes(id):
             start = timer()
 
             # Select account
@@ -2875,7 +2875,7 @@ def update_accounts(id):
 
             # Create dataframes
             target = targets[id] if rebuild else None
-            balances[id], positions[id] = account.create_dataframes(prices, target)
+            balances[id], positions[id] = account.create_dataframes(target)
             markets[id] = create_markets()
             update_synthetic_cash(id)
 
@@ -2950,7 +2950,7 @@ def update_accounts(id):
                     # print(datetime.now(), i, j, market.default_type[:4], market.symbol, bids[0][0])
 
                     # Collect prices
-                    collect_prices(prices, market, bids, asks)
+                    # collect_prices(prices, market, bids, asks)
 
                     # Get accounts that need an update
                     accounts = get_accounts(updated=False)
@@ -2961,7 +2961,7 @@ def update_accounts(id):
                             id = account.id
 
                             # Store dataframes in dictionaries
-                            if has_prices() and not has_dataframes(id):
+                            if not has_dataframes(id):
                                 dictionaries(id)
 
                             # Dataframes are already created
@@ -3034,7 +3034,7 @@ def update_accounts(id):
                     print('wait')
 
                 # print('wait\t', symbol, wallet)
-                await client.sleep(500)
+                await client.sleep(3000)
 
             except Exception as e:
                 # print('exception', str(e))

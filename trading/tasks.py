@@ -1038,7 +1038,6 @@ def rebalance(strategy_id, accounts_id):
                         return -funding * 7
                     elif action == 'close_short':
                         return funding * 7
-            return 0
 
         def get_fees():
             if route[segment].market.type == 'spot':
@@ -1116,13 +1115,15 @@ def rebalance(strategy_id, accounts_id):
                         spread = get_spread()
                         fees = get_fees()
                         funding = get_funding()
+                        
+                        total = spread + distance + fees + funding if not pd.isna(funding) else 0
 
                         # Set costs
                         routes[id].loc[index, (segment, 'cost', 'spread')] = spread
                         routes[id].loc[index, (segment, 'cost', 'distance')] = distance
                         routes[id].loc[index, (segment, 'cost', 'fees')] = fees
                         routes[id].loc[index, (segment, 'cost', 'funding')] = funding
-                        routes[id].loc[index, (segment, 'cost', 'total')] = spread + distance + fees + funding
+                        routes[id].loc[index, (segment, 'cost', 'total')] = total
 
             # Set total cost of the route
             if all(['cost' in route[s] for s in segments]):

@@ -1017,18 +1017,53 @@ def rebalance(strategy_id, accounts_id):
 
         start = timer()
 
-        # Get bids or asks
-        def get_depth(df):
+        def get_funding():
 
-            if df.type.action in ['sell_base', 'close_long', 'open_short']:
+            if route[segment].market.type == 'derivative':
+                if route[segment].market.derivative == 'perpetual':
+
+                    market = Market.objects.get(exchange=exchange,
+                                                symbol=route[segment].market.symbol,
+                                                default_type=route[segment].market.wallet
+                                                )
+                    funding = float(market.funding_rate['lastFundingRate'])
+                    action = route[segment].type.action
+
+                    if action == 'open_long':
+                        return funding * 7
+                    elif action == 'open_short':
+                        return -funding * 7
+
+                    elif action == 'close_long':
+                        return -funding * 7
+                    elif action == 'close_short':
+                        return funding * 7
+
+        def get_fees():
+            if route[segment].market.type == 'spot':
+                if route[segment].market.quote == 'BUSD':
+                    return 0
+                else:
+                    return 0.1 /100  # taker
+            elif route[segment].market.type == 'derivative':
+                if route[segment].market.base == route[segment].market.margined:
+                    return 0.05 / 100  # taker
+                else:
+                    return 0.04 / 100 # taker
+
+        # Get bids or asks
+        def get_depth():
+
+            if route[segment].type.action in ['sell_base', 'close_long', 'open_short']:
                 return bids
-            elif df.type.action in ['buy_base', 'open_long', 'close_short']:
+            elif route[segment].type.action in ['buy_base', 'open_long', 'close_short']:
                 return asks
 
         # Get average price distance from best bid (ask)
-        def get_distance(depth, quantity):
+        def get_distance():
 
             book = depth
+            quantity = route[segment].trade.order_qty
 
             if not pd.isna(quantity):
                 # Iterate through depth until desired amount is available
@@ -1074,14 +1109,19 @@ def rebalance(strategy_id, accounts_id):
                 # If market of the segment is the market of the asyncio loop
                 if route[segment].market.symbol == market.symbol:
                     if route[segment].market.wallet == market.default_type:
-                        depth = get_depth(route[segment])
-                        distance = get_distance(depth, route[segment].trade.order_qty)
+
+                        depth = get_depth()
+                        distance = get_distance()
                         spread = get_spread()
+                        fees = get_fees()
+                        funding = get_funding()
 
                         # Set costs
                         routes[id].loc[index, (segment, 'cost', 'spread')] = spread
                         routes[id].loc[index, (segment, 'cost', 'distance')] = distance
-                        routes[id].loc[index, (segment, 'cost', 'total')] = spread + distance
+                        routes[id].loc[index, (segment, 'cost', 'fees')] = fees
+                        routes[id].loc[index, (segment, 'cost', 'funding')] = funding
+                        routes[id].loc[index, (segment, 'cost', 'total')] = spread + distance + fees + funding
 
             # Set total cost of the route
             if all(['cost' in route[s] for s in segments]):

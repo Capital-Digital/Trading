@@ -141,8 +141,8 @@ class Account(models.Model):
             df[('target', 'quantity')] = target.quantity
         else:
             # Calculate target
-            df.loc[:, ('target', 'value')] = df.target.percent * balance * float(self.leverage)
-            df.loc[:, ('target', 'quantity')] = df.target.value / df.price.hourly
+            df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
+            df[('target', 'quantity')] = df.target.value / df.price.hourly
 
         # Insert delta
         df[('delta', 'value')] = df.exposure.total_value - df.target.value

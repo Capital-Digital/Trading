@@ -1446,9 +1446,11 @@ def rebalance(strategy_id, accounts_id):
             # Create a list of currencies to buy and sell
             codes_sell = list(balances[id][(balances[id][('delta', 'value')] > 0)
                               ].index.get_level_values('code').unique())
+
             codes_sell_spot = [code for code in codes_free_spot if code in codes_sell]
-            codes_buy = list(
-                balances[id][(balances[id][('delta', 'value')] < 0)].index.get_level_values('code').unique())
+
+            codes_buy = list(balances[id][(balances[id][('delta', 'value')] < 0)
+                             ].index.get_level_values('code').unique())
 
             # codes_buy = [c for c in codes_buy if c not in stablecoins]
 
@@ -2847,7 +2849,7 @@ def rebalance(strategy_id, accounts_id):
             else:
                 hedge_position_margin = 0
 
-            cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()
+            cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()[0]
             capacity = cash_target - (hedge_total + hedge_position_margin)
 
             # Create keys

@@ -3144,37 +3144,43 @@ def rebalance(strategy_id, accounts_id):
             log.info('Rebalance account {0}'.format(account.name))
             log.bind(account=account.name)
 
-            codes_account = account.get_codes()
-            codes_account = [c for c in codes_account if c not in codes_strategy]
+            fund = account.get_fund_latest()
+            if fund.balance > 100:
 
-            log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
-            log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
-            log.info('Monitor {0} codes for account'.format(len(codes_account)))
+                codes_account = account.get_codes()
+                codes_account = [c for c in codes_account if c not in codes_strategy]
 
-            codes_monitor = codes_strategy + codes_margined + codes_account
+                log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
+                log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
+                log.info('Monitor {0} codes for account'.format(len(codes_account)))
 
-            # Create empty dictionaries
-            balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
+                codes_monitor = codes_strategy + codes_margined + codes_account
 
-            create_dataframes(account.id)
+                # Create empty dictionaries
+                balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
 
-            print('all pairs', strategy.all_pairs)
+                create_dataframes(account.id)
 
-            if strategy.all_pairs:
-                wallets = ['spot']
-                # list(set(Market.objects.filter(exchange=exchange, type='spot').values_list('default_type', flat=True)))
+                print('all pairs', strategy.all_pairs)
+
+                if strategy.all_pairs:
+                    wallets = ['spot']
+                    # list(set(Market.objects.filter(exchange=exchange, type='spot').values_list('default_type', flat=True)))
+                else:
+                    wallets = exchange.get_default_types()
+
+                print(wallets)
+
+                log.info('Create asyncio loops')
+
+                # loop.set_debug(True)
+                loop = asyncio.get_event_loop()
+                gp = asyncio.wait([main(loop, wallets)])
+                loop.run_until_complete(gp)
+
             else:
-                wallets = exchange.get_default_types()
-
-            print(wallets)
-
-            log.info('Create asyncio loops')
-
-            # loop.set_debug(True)
-            loop = asyncio.get_event_loop()
-            gp = asyncio.wait([main(loop, wallets)])
-            loop.run_until_complete(gp)
-
+                log.info('Account is no credited')
+                continue
 
 @shared_task(name='Update account', base=BaseTaskWithRetry)
 def update_account(id, account):

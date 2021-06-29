@@ -98,6 +98,7 @@ class Account(models.Model):
         # Insert allocations weights
         for value in allocations.values():
             for code in list(value.keys()):
+                print(df)
                 df.loc[code, ('target', 'percent')] = value[code]['weight']
 
         # Fill nan percents with 0

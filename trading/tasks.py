@@ -1082,11 +1082,9 @@ def update_accounts(id):
         return markets
 
     # Create a dataframe with available routes
-    def create_routes(id):
+    def create_routes():
 
         start = timer()
-
-        account = Account.objects.get(id=id)
 
         # Currencies
         ############
@@ -1595,9 +1593,7 @@ def update_accounts(id):
         log.info('Build routes in {0} sec'.format(round(end - start, 2)))
 
     # Update hedging capacity (USD margined)
-    def update_synthetic_cash(id):
-
-        account = Account.objects.get(id=id)
+    def update_synthetic_cash():
 
         # Get value of hedge for all currencies
         # Get value of margin allocated to hedge positions (USD margined)
@@ -1629,7 +1625,7 @@ def update_accounts(id):
         synthetic_cash[id]['hedge_position_margin'] = hedge_position_margin
 
     # Determine order size and transfer informations
-    def size_orders(id):
+    def size_orders():
         # Return total absolute to buy/sell
         def get_delta(code):
             return abs(balances[id].loc[code, ('delta', 'value')].fillna(0)[0])
@@ -2009,7 +2005,6 @@ def update_accounts(id):
                 return buy
 
         start = timer()
-        account = Account.objects.get(id=id)
         routes[id].sort_index(axis=0, inplace=True)
 
         # Iterate through routes and set trade quantity
@@ -2208,11 +2203,10 @@ def update_accounts(id):
         log.info('Size orders and transfer in {0} sec'.format(round(end - start, 2)))
 
     # Limit short position to avoid lack of funds
-    def limit_new_short(id):
+    def limit_new_short():
 
         start = timer()
 
-        account = Account.objects.get(id=id)
         capacity = synthetic_cash[id]['capacity']
 
         if capacity > 0:
@@ -2314,11 +2308,9 @@ def update_accounts(id):
             log.info('Limit new shorts in {0} sec'.format(round(end - start, 2)))
 
     # Validate orders of our routes
-    def validate_orders(id):
+    def validate_orders():
 
         start = timer()
-
-        account = Account.objects.get(id=id)
 
         # Get side of a trade
         def get_side():
@@ -2469,10 +2461,10 @@ def update_accounts(id):
         log.info('Validate trades in {0} sec'.format(round(end - start, 2)))
 
     # Drop routes with invalid trade
-    def drop_routes(id):
+    def drop_routes():
 
         invalid = []
-        for index, route in routes[id].iterrows():
+        for index, route in routes.iterrows():
 
             # Determine number of segments
             instructions = [route[s].type.action for s in ['s1', 's2', 's3']]
@@ -2489,16 +2481,16 @@ def update_accounts(id):
         # print(routes[id].iloc[invalid].to_string())
 
         # Drop invalid routes
-        routes[id] = routes[id].drop(invalid)
+        routes = routes.drop(invalid)
 
         # log.info('Valid routes')
         # print(routes[id].to_string())
 
         # Drop unused columns
-        routes[id].drop('valid', axis=1, level=2, inplace=True)
-        routes[id].drop('error', axis=1, level=2, inplace=True)
+        routes.drop('valid', axis=1, level=2, inplace=True)
+        routes.drop('error', axis=1, level=2, inplace=True)
 
-        routes[id].sort_index(axis=1, inplace=True)
+        routes.sort_index(axis=1, inplace=True)
 
     # Calculate routes cost
     def calculate_cost(id, market, bids, asks):
@@ -2581,11 +2573,11 @@ def update_accounts(id):
         routes[id].sort_index(axis=1, inplace=True)
 
     # Calculate daily return
-    def calculate_return(id):
+    def calculate_return():
 
         start = timer()
 
-        for index, route in routes[id].iterrows():
+        for index, route in routes.iterrows():
 
             # Determine number of segments
             segments = ['s' + str(i) for i in range(1, route.length[0] + 1)]
@@ -2612,8 +2604,8 @@ def update_accounts(id):
                             # Calculate return over the next 7 days
                             ret *= 24 / float(exchange.funding_rate_freq) * 7
 
-                            routes[id].loc[index, (segment, 'market', 'rate')] = funding
-                            routes[id].loc[index, ('best', 'return', '')] = ret
+                            routes.loc[index, (segment, 'market', 'rate')] = funding
+                            routes.loc[index, ('best', 'return', '')] = ret
 
     # Sort routes by priority and cost
     def sort_routes(id):
@@ -2705,6 +2697,17 @@ def update_accounts(id):
 
             else:
                 log.error('Open orders update failed')
+
+    # Return objects of accounts to be updated
+    def get_accounts(updated=None):
+        accounts = Account.objects.filter(strategy=strategy,
+                                          exchange=exchange,
+                                          trading=True
+                                          )
+        if updated is not None:
+            accounts = accounts.filter(updated=updated)
+
+        return accounts
 
     # Collect latest prices
     def collect_prices(prices, market, bids, asks):
@@ -2818,124 +2821,102 @@ def update_accounts(id):
             # Trades success
             return True
 
-    # Test if routes are ready to trade
-    def has_routes(id):
+    # Return True dataframes are created
+    def have_dataframes_ready():
+        return all([balances.empty, positions.empty, markets.empty, synthetic_cash.empty, routes.empty])
 
-        if has_dataframes(id):
-            if 'best' in routes[id]:
-                if 'cost' in routes[id].best:
-                    if not any(np.isnan(routes[id].best.cost)):
+    # Return True if routes costs
+    def have_routes_costs():
+
+        if have_dataframes_ready():
+            if 'best' in routes:
+                if 'cost' in routes.best:
+                    if not any(np.isnan(routes.best.cost)):
                         return True
 
-        print(routes[id])
-
-    # Return True if dataframes are created
-    def has_dataframes(id):
-        status = [id in dic for dic in [balances, positions, markets, synthetic_cash, routes]]
-        if all(status):
-            return True
-        else:
-            return False
-
-    # Return True if price of all markets are collected
-    def has_prices():
-        for k, v in prices.items():
-            for m in v.keys():
-                if not prices[k][m]['ask']:
-                    print('Waiting price', m)
-                    return
-
-        return True
+    # # Return True if price of all markets are collected
+    # def has_prices():
+    #     for k, v in prices.items():
+    #         for m in v.keys():
+    #             if not prices[k][m]['ask']:
+    #                 print('Waiting price', m)
+    #                 return
+    #
+    #     return True
 
     # Save target value and quantity
-    def save_target(id):
-        targets[id] = balances[id]['target']
+    def save_target():
+        targets = balances['target']
 
-    # Create dictionaries
-    def dictionaries(id, rebuild=None):
+    # Build our dataframes
+    def create_dataframes(update=False):
 
-        # Create dataframes if they are not in dictionaries for account id
-        if rebuild or not has_dataframes(id):
-            start = timer()
+        start = timer()
 
-            # Select account
-            account = Account.objects.get(id=id)
+        log.info('')
+        log.info('*** Update objects ***')
+        log.info('')
 
-            log.info('')
-            log.info('*** Update objects ***')
-            log.info('')
+        # Update objects
+        create_fund.run(id)
+        update_positions.run(id)
 
-            # Update objects
-            create_fund.run(id)
-            update_positions.run(id)
+        log.info('')
+        log.info('*** Create dataframes ***')
+        log.info('')
 
-            log.info('')
-            log.info('*** Update dictionaries ***')
-            log.info('')
+        # Create dataframes
+        target = targets if update else None
+        balances, positions = account.create_dataframes(target=target)
+        markets = create_markets()
+        update_synthetic_cash()
 
-            # Create dataframes
-            target = targets[id] if rebuild else None
-            balances[id], positions[id] = account.create_dataframes(target)
-            markets[id] = create_markets()
-            update_synthetic_cash(id)
+        # Save initial target value and quantity
+        if not update:
+            save_target()
 
-            # Save initial target value and quantity
-            if not rebuild:
-                save_target(id)
+        create_routes()
+        size_orders()
+        limit_new_short()
+        validate_orders()
+        calculate_return()
+        drop_routes()
 
-            # Create routes dataframe for the account
-            create_routes(id)
+        log.info('')
+        log.info('*** Hedge ***')
+        log.info('')
 
-            # Build dataframe
-            size_orders(id)
-            limit_new_short(id)
-            validate_orders(id)
-            calculate_return(id)
-            drop_routes(id)
+        log.info('Cash target    {0}'.format(round(synthetic_cash['cash_target'], 2)))
+        log.info('hedge total    {0}'.format(round(synthetic_cash['hedge_total'], 2)))
+        log.info('Hedge margin   {0}'.format(round(synthetic_cash['hedge_position_margin'], 2)))
 
-            log.info('')
-            log.info('*** Hedge ***')
-            log.info('')
+        capacity = synthetic_cash['capacity']
 
-            log.info('Cash target    {0}'.format(round(synthetic_cash[id]['cash_target'], 2)))
-            log.info('hedge total    {0}'.format(round(synthetic_cash[id]['hedge_total'], 2)))
-            log.info('Hedge margin   {0}'.format(round(synthetic_cash[id]['hedge_position_margin'], 2)))
+        if capacity < 0:
+            log.warning('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
+        else:
+            log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
 
-            capacity = synthetic_cash[id]['capacity']
+        end = timer()
+        elapsed = end - start
 
-            if capacity < 0:
-                log.warning('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
-            else:
-                log.info('Hedge capacity {0} sUSD'.format(round(capacity, 2)))
+        # log.info('Create dic for {0} strategy {1} complete in {2} sec'.format(account.name,
+        #                                                                       strategy.name,
+        #                                                                       round(elapsed, 2)))
 
-            end = timer()
-            elapsed = end - start
-
-            # log.info('Create dic for {0} strategy {1} complete in {2} sec'.format(account.name,
-            #                                                                       strategy.name,
-            #                                                                       round(elapsed, 2)))
-
-            # Signal dataframes are created
-            return True
-
-    # Return objects of accounts to be updated
-    def get_accounts(updated=None):
-        accounts = Account.objects.filter(strategy=strategy,
-                                          exchange=exchange,
-                                          trading=True
-                                          )
-        if updated is not None:
-            accounts = accounts.filter(updated=updated)
-
-        return accounts
+        # Signal dataframes are created
+        return True
 
     # Receive websocket streams of book depth
     async def watch_book(client, market, i, j):
 
         log.info('Start loop for {0} {1}'.format(market.default_type, market.symbol))
 
+        id = account.id
         wallet = market.default_type
         symbol = market.symbol
+        have_dataframes = have_dataframes_ready()
+        have_routes = have_routes_costs()
 
         while True:
             try:
@@ -2944,93 +2925,71 @@ def update_accounts(id):
 
                     # Capture current depth
                     bids, asks = cumulative_book(ob)
-                    # print(datetime.now(), i, j, market.default_type[:4], market.symbol, bids[0][0])
 
-                    # Collect prices
-                    # collect_prices(prices, market, bids, asks)
+                    # Build our dataframes
+                    if not have_dataframes:
+                        create_dataframes()
+                        dataframes = True
 
-                    # Get accounts that need an update
-                    accounts = get_accounts(updated=False)
+                    else:
 
-                    if accounts.exists():
+                        if routes.empty:
 
-                        for account in accounts:
-                            id = account.id
+                            log.info('No route left, rebalance terminated')
+                            log.info('Set updated = True')
 
-                            # Store dataframes in dictionaries
-                            if not has_dataframes(id):
-                                dictionaries(id)
+                            print(balances.to_string())
 
-                            # Dataframes are already created
-                            if has_dataframes(id):
+                            account.updated = True
+                            account.save()
+                            continue
 
-                                if routes[id].empty:
+                        else:
+                            # Update costs and sort routes
+                            calculate_cost(id, market, bids, asks)
+                            sort_routes(id)
 
-                                    log.info('No route left, rebalance terminated')
-                                    print(balances[id].to_string())
-                                    log.info('Set updated = True')
+                    if i == j == 0:
+                        if have_routes:
 
-                                    account.updated = True
-                                    account.save()
-                                    continue
+                            # Trade the best route
+                            res = trade()
+                            if res:
 
-                                else:
-                                    # Update costs and sort routes
-                                    calculate_cost(id, market, bids, asks)
-                                    sort_routes(id)
+                                # Construct new dataframes
+                                create_dataframes(update=True)
 
-                        if i == j == 0:
+                                # Update objects of open orders and return a list if trade detected
+                                orderids = update_orders()
 
-                            accounts = get_accounts(updated=False)
+                                if orderids:
+                                    log.info('Trades detected')
+                                    print(orderids)
 
-                            for account in accounts:
+                                    # Update df_markets
+                                    [update_markets_df(orderid) for orderid in orderids]
 
-                                id = account.id
-                                if has_dataframes(id):
-                                    if has_routes(id):
+                                    # Update df_positions if a trade occurred on a derivative market
+                                    update_positions.run(orderids)
 
-                                        # Trade the best route
-                                        res = trade(id)
-                                        if res:
+                                    # Update the latest fund object and df_account
+                                    update_fund_object(orderids)
 
-                                            # Construct new dataframes
-                                            dictionaries(id, rebuild=True)
+                            else:
+                                log.warning('Rebalance failed')
+                                print(routes.to_string())
 
-                                            # Update objects of open orders and return a list if trade detected
-                                            orderids = update_orders(id)
+                                # Construct new dataframes
+                                create_dataframes(update=True)
 
-                                            if orderids:
-                                                log.info('Trades detected')
-                                                print(orderids)
-
-                                                # Update df_markets
-                                                [update_markets_df(id, orderid) for orderid in orderids]
-
-                                                # Update df_positions if a trade occurred on a derivative market
-                                                update_positions.run(id, orderids)
-
-                                                # Update the latest fund object and df_account
-                                                update_fund_object(id, orderids)
-
-                                        else:
-                                            log.warning('Rebalance failed')
-                                            print(routes[id].to_string())
-
-                                            # Construct new dataframes
-                                            dictionaries(id, rebuild=True)
-
-                                    else:
-                                        log.info('...')
-                                else:
-                                    log.info('Wait dataframes')
+                        else:
+                            log.info('...')
                     else:
                         log.info('No more account left, closing stream {0}'.format(symbol))
                         break
                 else:
-                    print('NO order_book\t', symbol, wallet)
                     print('wait')
 
-                # print('wait\t', symbol, wallet)
                 await client.sleep(1000)
 
             except Exception as e:
@@ -3044,7 +3003,6 @@ def update_accounts(id):
     # Configure websocket client for wallet
     async def wallet_loop(loop, i, wallet):
 
-        log.info('Start wallet loop')
         # EventLoopDelayMonitor(interval=1)
 
         client = getattr(ccxtpro, exchange.exid)({'enableRateLimit': True, 'asyncio_loop': loop, })
@@ -3052,57 +3010,57 @@ def update_accounts(id):
         if exchange.default_types:
             client.options['defaultType'] = wallet
 
-        # Filter markets to monitor
-        mks = Market.objects.filter(exchange=exchange,
-                                    default_type=wallet,
-                                    base__code__in=codes,
-                                    excluded=False,
-                                    active=True
-                                    ).exclude(derivative='future')
+        # Select markets to monitor
+        markets_monitor = Market.objects.filter(exchange=exchange,
+                                                default_type=wallet,
+                                                base__code__in=codes_monitor,
+                                                excluded=False,
+                                                active=True
+                                                ).exclude(derivative='future')
 
-        # Filter updated markets
-        mks = [m for m in mks if m.is_updated()]
+        # Select updated markets
+        for market in markets_monitor:
+            if not market.is_updated():
+                markets_monitor.exclude(symbol=market.symbol)
+                log.error('Market {0} {1} is not updated')
 
-        log.info('Found {0} markets'.format(len(mks)), wallet=wallet)
+        log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 
-        # Create dictionary structure for spot prices in (usd)
-        for market in mks:
+        # # Create dictionary structure for spot prices in (usd)
+        # for market in mks:
+        #
+        #     wallet = market.default_type
+        #     base = market.base.code
+        #     symbol = market.symbol
+        #
+        #     # Create a key for spot
+        #     if 'spot' not in prices:
+        #         prices['spot'] = {}
+        #         prices['spot'][exchange.dollar_currency] = {}
+        #         prices['spot'][exchange.dollar_currency]['ask'] = 1
+        #
+        #     # Create nested dictionaries for codes
+        #     if market.type == 'spot':
+        #         if base not in prices[wallet]:
+        #             prices[wallet][base] = {}
+        #             prices[wallet][base]['ask'] = {}
+        #
+        #     # Create a key wallets
+        #     if wallet not in prices:
+        #         prices[wallet] = {}
+        #
+        #     # Create nested dictionaries for symbols
+        #     if symbol not in prices[wallet]:
+        #         prices[wallet][symbol] = {}
+        #         prices[wallet][symbol]['ask'] = {}
 
-            wallet = market.default_type
-            base = market.base.code
-            symbol = market.symbol
-
-            # Create a key for spot
-            if 'spot' not in prices:
-                prices['spot'] = {}
-                prices['spot'][exchange.dollar_currency] = {}
-                prices['spot'][exchange.dollar_currency]['ask'] = 1
-
-            # Create nested dictionaries for codes
-            if market.type == 'spot':
-                if base not in prices[wallet]:
-                    prices[wallet][base] = {}
-                    prices[wallet][base]['ask'] = {}
-
-            # Create a key wallets
-            if wallet not in prices:
-                prices[wallet] = {}
-
-            # Create nested dictionaries for symbols
-            if symbol not in prices[wallet]:
-                prices[wallet][symbol] = {}
-                prices[wallet][symbol]['ask'] = {}
-
-        # [print(m.default_type, m.symbol) for m in markets]
-
-        ws_loops = [watch_book(client, market, i, j) for j, market in enumerate(mks)]
+        ws_loops = [watch_book(client, market, i, j) for j, market in enumerate(markets_monitor)]
 
         await asyncio.gather(*ws_loops)
         await client.close()
 
     # Run main asyncio loop
     async def main(loop):
-        log.info('Start main loop')
         wallet_loops = [wallet_loop(loop, i, wallet) for i, wallet in enumerate(exchange.get_default_types())]
         await asyncio.gather(*wallet_loops)
 
@@ -3147,57 +3105,57 @@ def update_accounts(id):
         return
 
     # Get instructions
-    allocations_new = [strategy.get_allocations()]
-    allocations_old = [strategy.get_allocations(n=strategy.get_offset())]
+    allocations_now = [strategy.get_allocations()]
+    allocations_prev = [strategy.get_allocations(n=strategy.get_offset())]
 
-    # Select codes for strategy assets
-    codes_new = sum([list(l[list(l.keys())[0]].keys()) for l in allocations_new], [])
-    codes_old = sum([list(l[list(l.keys())[0]].keys()) for l in allocations_old], [])
-    codes = list(set(codes_old + codes_new))
+    # Select strategy codes
+    codes_prev = sum([list(l[list(l.keys())[0]].keys()) for l in allocations_prev], [])
+    codes_now = sum([list(l[list(l.keys())[0]].keys()) for l in allocations_now], [])
+    codes_strategy = list(set(codes_prev + codes_now))
 
-    # Add margin stablecoins
+    # Select codes for margined stablecoins
     stablecoins = exchange.get_stablecoins()
-    codes_margined_stable = list(set(Market.objects.filter(exchange=exchange,
-                                                           margined__code__in=stablecoins
-                                                           ).exclude(margined__code=exchange.dollar_currency
-                                                                     ).values_list('margined__code', flat=True)))
-    codes += codes_margined_stable
+    codes_margined = list(set(Market.objects.filter(exchange=exchange,
+                                                    margined__code__in=stablecoins
+                                                    ).exclude(margined__code=exchange.dollar_currency
+                                                              ).values_list('margined__code', flat=True)))
 
-    if codes:
+    codes_margined = [c for c in codes_margined if c not in codes_strategy]
 
-        log.info('Strategy {1} has {0} codes'.format(len(codes), strategy.id), codes=codes)
-        accounts = get_accounts()
+    if codes_strategy:
 
+        accounts = get_accounts(updated=False)
         if accounts:
 
             log.info('Found {0} account(s) attached to strategy {1}'.format(len(accounts), strategy.name))
 
-            accounts = accounts.filter(updated=False)
-            if accounts:
+            for account in accounts:
+                log.bind(account=account.name)
 
-                log.info('Found {0} account(s) not updated'.format(len(accounts)))
+                codes_account = account.get_codes()
+                codes_account = [c for c in codes_account if c not in codes_strategy]
 
-                # Create empty dictionaries
-                balances, positions, routes, markets, synthetic_cash, prices, targets = [dict() for i in range(7)]
+                log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
+                log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
+                log.info('Monitor {0} codes for account'.format(len(codes_account)))
+
+                codes_monitor = codes_strategy + codes_margined + codes_account
+
+                # Create empty dataframes
+                balances, positions, markets, synthetic_cash, routes, targets = [pd.DataFrame() for _ in range(6)]
 
                 log.info('Create asyncio loops')
 
-                # Run asyncio loops
-                loop = asyncio.get_event_loop()
                 # loop.set_debug(True)
+                loop = asyncio.get_event_loop()
                 gp = asyncio.wait([main(loop)])
-
-                log.info('Establish WS connection')
                 loop.run_until_complete(gp)
 
-            else:
-                log.info("Strategy {0}'s accounts are updated".format(strategy.id))
-                return
         else:
             log.info('Strategy {0} has no valid account'.format(strategy.id))
             return
     else:
-        log.warning('Strategy {0} has no code to monitor'.format(strategy.id))
+        log.warning('No code to monitor for strategy {0} '.format(strategy.id))
         return
 
 

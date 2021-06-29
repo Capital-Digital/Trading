@@ -1110,7 +1110,7 @@ def update_accounts(id):
         # codes_buy = [c for c in codes_buy if c not in stablecoins]
 
         # Give the opportunity to sell stablecoin if hedge
-        if account.get_hedge_total(prices) > 0:
+        if account.get_hedge_total() > 0:
             codes_sell_spot = list(set(codes_sell_spot + codes_free_spot_stable))
 
         # Markets
@@ -1603,7 +1603,7 @@ def update_accounts(id):
         # Get value of margin allocated to hedge positions (USD margined)
         # Get value of target cash allocation in the portfolio
 
-        hedge_total = account.get_hedge_total(prices)
+        hedge_total = account.get_hedge_total()
 
         if 'hedge_position_margin' in positions[id]:
             hedge_position_margin = positions[id]['hedge_position_margin'].sum()
@@ -1947,8 +1947,8 @@ def update_accounts(id):
         # Limit spot buying if a new hedge is added with a buy and capacity is reached
         def limit_buy(code, buy, close=None):
 
-            shorts = account.get_shorts(prices, code)
-            balance = account.get_balance(prices, code)
+            shorts = account.get_shorts(code)
+            balance = account.get_balance(code)
             capacity = synthetic_cash[id]['capacity']
 
             # Short positions are larger than coin balance
@@ -2126,7 +2126,7 @@ def update_accounts(id):
 
                 # If hedge ratio > 1 (.i.e shorts > balance) then it's
                 # better to sell the asset rather than close the short
-                if account.get_hedge_ratio(prices, base1) < 1:
+                if account.get_hedge_ratio(base1) < 1:
 
                     close = 0
                     margin_released = 0
@@ -2230,7 +2230,7 @@ def update_accounts(id):
 
                         # Determine threshold above which a short position isn't a hedge but a short sell.
                         # Threshold represent the maximum hedging value of a currency
-                        max_hedge = account.get_max_hedge(prices, base)
+                        max_hedge = account.get_max_hedge(base)
 
                         # If more hedge can be added to the currency then determine ratio of the new short that
                         # becomes a hedge and test if the hedge (+ it's margin if USD margined) bypass capacity
@@ -2918,9 +2918,6 @@ def update_accounts(id):
             # Signal dataframes are created
             return True
 
-        else:
-            print('Collecting prices')
-
     # Return objects of accounts to be updated
     def get_accounts(updated=None):
         accounts = Account.objects.filter(strategy=strategy,
@@ -3034,7 +3031,7 @@ def update_accounts(id):
                     print('wait')
 
                 # print('wait\t', symbol, wallet)
-                await client.sleep(3000)
+                await client.sleep(1000)
 
             except Exception as e:
                 # print('exception', str(e))

@@ -2092,7 +2092,10 @@ def rebalance(strategy_id, accounts_id):
 
             # Return total absolute to buy/sell
             def get_delta(code):
-                return abs(balances[id].loc[code, ('delta', 'value')].fillna(0)[0])
+                if code in balances[id].index.get_level_values('code'):
+                    return abs(balances[id].loc[code, ('delta', 'value')].fillna(0)[0])
+                else:
+                    return 0
                 # delta_qty = abs(balances[id].loc[code, ('delta', 'quantity')].fillna(0)[0])
                 # return delta_qty * get_price_hourly(exchange, code)
 

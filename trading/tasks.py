@@ -3005,7 +3005,7 @@ def rebalance(strategy_id, accounts_id):
 
             except Exception as e:
                 # print('exception', str(e))
-                traceback.print_exc()
+                # traceback.print_exc()
                 log.info('{0}'.format(str(e)), symbol=market.symbol,
                          wallet=market.default_type)
                 # raise e  # uncomment to break all loops in case of an error in any one of them

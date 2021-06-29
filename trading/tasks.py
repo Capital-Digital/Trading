@@ -2981,10 +2981,8 @@ def update_accounts(id):
                                 create_dataframes(update=True)
 
                         else:
-                            log.info('...')
-                    else:
-                        log.info('No more account left, closing stream {0}'.format(symbol))
-                        break
+                            log.info('No more account left, closing stream {0}'.format(symbol))
+                            break
                 else:
                     print('wait')
 

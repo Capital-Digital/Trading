@@ -145,7 +145,7 @@ class Account(models.Model):
 
             log.info('New dataframe')
             print(df)
-        
+
         #     df[('target', 'value')] = target.value
         #     df[('target', 'quantity')] = target.quantity
         # else:

@@ -138,12 +138,14 @@ class Account(models.Model):
         #     # Restore previously saved target value and quantity to avoid instability
         #     # at the end of the rebalancing with a lot of orders with small amount
         #
-        #     print('target.value\n')
-        #     print(target.value)
-        #
-        #     print('df\n')
-        #     print(df)
-        #
+
+        if target is not None:
+            log.info('Saved target')
+            print(target)
+
+            log.info('New dataframe')
+            print(df)
+        
         #     df[('target', 'value')] = target.value
         #     df[('target', 'quantity')] = target.quantity
         # else:

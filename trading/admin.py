@@ -3,6 +3,7 @@ from django.contrib import admin
 from trading.models import Account, Fund, Position, Order, Transfer
 from trading import tasks
 import structlog
+from celery import chain, group
 from django.contrib.admin import SimpleListFilter
 from django.contrib.postgres.fields import JSONField
 from prettyjson import PrettyJSONWidget
@@ -18,7 +19,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy',
                     'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'user')
-    actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all']
+    actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all', 'rebalance']
     save_as = True
     save_on_top = True
 
@@ -35,6 +36,20 @@ class CustomerAdmin(admin.ModelAdmin):
     get_fund.short_description = "Total"
 
     # Actions
+
+    def rebalance(self, request, queryset):
+
+        chains = [chain(
+            tasks.rebalance.s(account.strategy.id, account.id).set(queue='slow')
+        ) for account in queryset]
+
+        result = group(*chains).delay()
+
+        # for account in queryset:
+        #     strategy = account.strategy
+        #     tasks.rebalance.run(strategy.id, account)
+
+    rebalance.short_description = "Rebalance"
 
     def update_credentials(self, request, queryset):
         for account in queryset:

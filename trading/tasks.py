@@ -2485,8 +2485,8 @@ def update_accounts(id):
             if False in trades:
                 invalid.append(index)
 
-        log.info('Dropped routes')
-        print(routes[id].iloc[invalid].to_string())
+        # log.info('Dropped routes')
+        # print(routes[id].iloc[invalid].to_string())
 
         # Drop invalid routes
         routes[id] = routes[id].drop(invalid)
@@ -2917,6 +2917,9 @@ def update_accounts(id):
             # Signal dataframes are created
             return True
 
+        else:
+            print('Collecting prices')
+
     # Return objects of accounts to be updated
     def get_accounts(updated=None):
         accounts = Account.objects.filter(strategy=strategy,
@@ -3192,11 +3195,9 @@ def update_accounts(id):
             else:
                 log.info("Strategy {0}'s accounts are updated".format(strategy.id))
                 return
-
         else:
             log.info('Strategy {0} has no valid account'.format(strategy.id))
             return
-
     else:
         log.warning('Strategy {0} has no code to monitor'.format(strategy.id))
         return

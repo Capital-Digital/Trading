@@ -2825,6 +2825,20 @@ def update_accounts(id):
     def have_dataframes_ready():
         return all([balances.empty, positions.empty, markets.empty, synthetic_cash.empty, routes.empty])
 
+    # Return True if dictionaries are created
+    def have_dictionaries_ready():
+        ready = []
+        for d in balances, positions, markets, synthetic_cash, routes:
+            if d[id]:
+                ready.append(True)
+            else:
+                ready.append(False)
+
+        if all(ready):
+            return True
+        else:
+            return False
+
     # Return True if routes costs
     def have_routes_costs():
 
@@ -2867,8 +2881,8 @@ def update_accounts(id):
 
         # Create dataframes
         target = targets if update else None
-        balances, positions = account.create_dataframes(target=target)
-        markets = create_markets()
+        balances[id], positions[id] = account.create_dataframes(target=target)
+        markets[id] = create_markets()
         update_synthetic_cash()
 
         # Save initial target value and quantity
@@ -2926,13 +2940,14 @@ def update_accounts(id):
                     bids, asks = cumulative_book(ob)
 
                     # Build our dataframes
-                    if not have_dataframes:
+                    if not have_dictionaries_ready():
                         create_dataframes()
-                        dataframes = True
 
                     else:
 
-                        if routes.empty:
+                        print('Balances', balances[id])
+
+                        if routes[id].empty:
                             print('Route empty')
                             # log.info('No route left, rebalance terminated')
                             # log.info('Set updated = True')
@@ -3137,8 +3152,8 @@ def update_accounts(id):
 
                 codes_monitor = codes_strategy + codes_margined + codes_account
 
-                # Create empty dataframes
-                balances, positions, markets, synthetic_cash, routes, targets = [pd.DataFrame() for _ in range(6)]
+                # Create empty dictionaries
+                balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
 
                 log.info('Create asyncio loops')
 

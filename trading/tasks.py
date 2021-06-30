@@ -3049,19 +3049,6 @@ def rebalance(strategy_id, account_id=None):
 
                 await client.sleep(1000)
 
-            except KeyError as e:
-                # Some loop might not be closed properly, causing KeyError exception when
-                # accessing key account.id in our routes dictionary
-                log.error('Lost stream {0} {1}'.format(market.default_type, market.symbol),
-                          exception=type(e).__name__, message=str(e), id=id, ask=asks[0], bid=bids[0])
-
-                print(routes)
-
-                if not account.updated:
-                    account.updated = True
-                    account.save()
-                break
-
             except Exception as e:
                 traceback.print_exc()
                 log.error('{0} {1}'.format(type(e).__name__, str(e)), symbol=market.symbol, wallet=market.default_type)
@@ -3249,11 +3236,10 @@ def rebalance(strategy_id, account_id=None):
                     log.info('Create asyncio loops for account {0}'.format(account.id))
 
                     # loop.set_debug(True)
-                    # asyncio.set_event_loop(asyncio.new_event_loop())
                     loop = asyncio.get_event_loop()
 
                     if loop.is_closed():
-                        log.info('Loop is closed')
+                        log.info('Create a new loop')
                         loop = asyncio.new_event_loop()
 
                     gp = asyncio.wait([main(account, loop, wallets)])

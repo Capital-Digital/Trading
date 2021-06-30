@@ -2909,7 +2909,6 @@ def rebalance(strategy_id, accounts_id):
                 synthetic_cash[id]['hedge_position_margin'] = {}
 
             synthetic_cash[id]['capacity'] = capacity
-            print('cash_target', cash_target)
             synthetic_cash[id]['ratio'] = capacity / cash_target
             synthetic_cash[id]['cash_target'] = cash_target
             synthetic_cash[id]['hedge_total'] = hedge_total
@@ -2983,7 +2982,6 @@ def rebalance(strategy_id, accounts_id):
         log.info('Start loop {0} {1} for account {2}'.format(market.default_type, market.symbol,
                                                              account.id))
 
-        id = account.id
         symbol = market.symbol
 
         while True:
@@ -2994,7 +2992,6 @@ def rebalance(strategy_id, accounts_id):
                     bids, asks = cumulative_book(ob)
 
                     # Update costs and sort routes
-                    print('account.id', account.id)
                     if len(routes[account.id].index) > 0:
                         calculate_cost(account.id, market, bids, asks)
                         sort_routes(account.id)
@@ -3004,48 +3001,46 @@ def rebalance(strategy_id, accounts_id):
                         log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
                         account.updated = True
                         account.save()
-                        print(balances[id])
-                        print(markets[id])
                         break
 
                     if i == 0 and j == 0:
 
-                        if have_costs(id):
+                        if have_costs(account.id):
 
                             log.info('Costs are ready !')
 
                             # Trade the best route
-                            res = trade(id)
+                            res = trade(account.id)
                             if res:
 
                                 # Construct new dataframes
-                                create_dataframes(id, update=True)
+                                create_dataframes(account.id, update=True)
 
                                 # Update objects of open orders and return a list if trade detected
-                                orderids = update_orders(id)
+                                orderids = update_orders(account.id)
 
                                 if orderids:
                                     log.info('Trades detected')
                                     print(orderids)
 
                                     # Update df_markets
-                                    [update_markets_df(id, orderid) for orderid in orderids]
+                                    [update_markets_df(account.id, orderid) for orderid in orderids]
 
                                     # Update df_positions if a trade occurred on a derivative market
                                     update_positions.run(orderids)
 
                                     # Update the latest fund object and df_account
-                                    update_fund_object(id, orderids)
+                                    update_fund_object(account.id, orderids)
 
                             else:
                                 log.warning('Rebalance failed')
-                                print(routes[id].to_string())
+                                print(routes[account.id].to_string())
 
                                 # Construct new dataframes
-                                create_dataframes(id, update=True)
+                                create_dataframes(account.id, update=True)
 
                         else:
-                            print(routes[id].to_string())  # .loc[:, routes[id].columns.drop([('s1', 'hedge')])].to_string())
+                            print(routes[account.id].to_string())  # .loc[:, routes[id].columns.drop([('s1', 'hedge')])].to_string())
                 else:
                     print('wait')
 
@@ -3073,20 +3068,31 @@ def rebalance(strategy_id, accounts_id):
         markets_monitor = Market.objects.filter(exchange=exchange,
                                                 default_type=wallet,
                                                 base__code__in=codes_monitor,
-                                                excluded=False,
-                                                active=True
+                                                quote__code__in=codes_monitor,
                                                 ).exclude(derivative='future')
 
         # Select updated markets
         for market in markets_monitor:
             if not market.is_updated():
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.error('Market {0} {1} is not updated')
+                log.warning('Market {0} {1} is not updated')
+
+        # Select updated markets
+        for market in markets_monitor:
+            if not market.active:
+                markets_monitor = markets_monitor.exclude(symbol=market.symbol)
+                log.warning('Market {0} {1} is not active')
+
+        # Select updated markets
+        for market in markets_monitor:
+            if market.excluded:
+                markets_monitor = markets_monitor.exclude(symbol=market.symbol)
+                log.warning('Market {0} {1} is excluded')
 
         log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 
         for m in markets_monitor:
-            print(m.default_type, m.symbol)
+            print('Monitor stream', m.default_type, m.symbol)
 
         # # Create dictionary structure for spot prices in (usd)
         # for market in mks:
@@ -3208,11 +3214,11 @@ def rebalance(strategy_id, accounts_id):
                 log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
                 log.info('Monitor {0} codes for account'.format(len(codes_account)))
 
-                codes_monitor = list(set(codes_strategy + codes_margined))  # + codes_account))
+                codes_monitor = codes_strategy + codes_margined  # + codes_account
+                [print('Monitor code', c) for c in codes_monitor]
 
                 # Create empty dictionaries
                 balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
-
                 create_dataframes(account.id)
 
                 if strategy.all_pairs:

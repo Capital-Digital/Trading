@@ -911,7 +911,7 @@ def update_top_markets(self, exid):
 
         for wallet in exchange.get_default_types():
 
-            log.info('Flag top markets for Binance')
+            log.info('Set top = True')
             markets = Market.objects.filter(exchange__exid=exid,
                                             quote__code=exchange.dollar_currency,
                                             default_type=wallet,
@@ -926,4 +926,3 @@ def update_top_markets(self, exid):
                 market.top = True
                 market.save()
 
-            log.info('Flag top markets for Binance complete')

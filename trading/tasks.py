@@ -999,8 +999,7 @@ def transfer(id, segment):
 
 
 @shared_task()
-def rebalance(strategy_id, accounts_id):
-
+def rebalance(strategy_id, account_id=None):
     # Return cumulative orderbook
     def cumulative_book(ob):
 
@@ -1044,12 +1043,12 @@ def rebalance(strategy_id, accounts_id):
                 if route[segment].market.quote == 'BUSD':
                     return 0
                 else:
-                    return 0.1 /100  # taker
+                    return 0.1 / 100  # taker
             elif route[segment].market.type == 'derivative':
                 if route[segment].market.base == route[segment].market.margined:
                     return 0.05 / 100  # taker
                 else:
-                    return 0.04 / 100 # taker
+                    return 0.04 / 100  # taker
 
         # Get bids or asks
         def get_depth():
@@ -1109,7 +1108,6 @@ def rebalance(strategy_id, accounts_id):
                 # If market of the segment is the market of the asyncio loop
                 if route[segment].market.symbol == market.symbol:
                     if route[segment].market.wallet == market.default_type:
-
                         depth = get_depth()
                         distance = get_distance()
                         spread = get_spread()
@@ -1229,17 +1227,6 @@ def rebalance(strategy_id, accounts_id):
 
             else:
                 log.error('Open orders update failed')
-
-    # Return objects of accounts to be updated
-    def get_accounts(updated=None):
-        accounts = Account.objects.filter(strategy=strategy,
-                                          exchange=exchange,
-                                          trading=True
-                                          )
-        if updated is not None:
-            accounts = accounts.filter(updated=updated)
-
-        return accounts
 
     # Collect latest prices
     def collect_prices(prices, market, bids, asks):
@@ -3005,12 +2992,14 @@ def rebalance(strategy_id, accounts_id):
 
                     else:
 
-                        log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
                         if not account.updated:
-                            print(balances[account.id].to_string())
-                            print(positions[account.id].to_string())
+                            log.info('No route left for account {0}'.format(account.name))
+                            print('\n', balances[account.id].to_string())
+                            print('\n', positions[account.id].to_string(), '\n')
                             account.updated = True
                             account.save()
+
+                        log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
                         break
 
                     if i == 0 and j == 0:
@@ -3050,7 +3039,8 @@ def rebalance(strategy_id, accounts_id):
                                 create_dataframes(account.id, update=True)
 
                         else:
-                            print(routes[account.id].to_string())  # .loc[:, routes[id].columns.drop([('s1', 'hedge')])].to_string())
+                            print(routes[
+                                      account.id].to_string())  # .loc[:, routes[id].columns.drop([('s1', 'hedge')])].to_string())
                 else:
                     print('wait')
 
@@ -3207,10 +3197,18 @@ def rebalance(strategy_id, accounts_id):
 
     if codes_strategy:
 
-        if not isinstance(accounts_id, list):
-            accounts_id = [accounts_id]
+        # Select accounts
+        if account_id is None:
+            accounts = list(Account.objects.filter(strategy__id=id,
+                                                   exchange=exchange,
+                                                   updated=False,
+                                                   trading=True
+                                                   ).values_list('id', flat=True))
 
-        log.info('Rebalance {0} account(s) with strategy {1}'.format(len(accounts_id), strategy.name))
+        else:
+            accounts_id = [account_id]
+
+        log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts), strategy.name))
 
         for id in accounts_id:
 
@@ -3222,12 +3220,12 @@ def rebalance(strategy_id, accounts_id):
             fund = account.get_fund_latest()
             if fund.balance > 100:
 
-                codes_account = account.get_codes(greater_than=0)
+                codes_account = account.get_codes(greater_than=50)
                 codes_account = [c for c in codes_account if c not in codes_strategy + codes_margined]
 
                 log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
                 log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
-                log.info('Monitor {0} codes for account'.format(len(codes_account)))
+                log.info('Monitor {0} codes for account (>$50)'.format(len(codes_account)))
 
                 codes_monitor = codes_strategy + codes_margined + codes_account
                 [print('Monitor code', c) for c in codes_monitor]
@@ -3266,5 +3264,3 @@ def update_account(id, account):
     account = Account.objects.get(id=id)
     strategy = account.strategy
     rebalance.run(strategy.id, account)
-
-

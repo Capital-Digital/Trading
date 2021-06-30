@@ -45,10 +45,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
         result = group(*chains).delay()
 
-        # for account in queryset:
-        #     strategy = account.strategy
-        #     tasks.rebalance.run(strategy.id, account)
-
     rebalance.short_description = "Rebalance"
 
     def update_credentials(self, request, queryset):

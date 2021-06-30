@@ -2976,8 +2976,8 @@ def rebalance(strategy_id, account_id=None):
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
-        log.info('Start loop {0} {1} for account {2}'.format(market.default_type, market.symbol,
-                                                             account.id))
+        id = account.id
+        log.info('Start loop {0} {1} for account {2}'.format(market.default_type, market.symbol, id))
 
         symbol = market.symbol
 
@@ -2989,16 +2989,16 @@ def rebalance(strategy_id, account_id=None):
                     bids, asks = cumulative_book(ob)
 
                     # Update costs and sort routes
-                    if len(routes[account.id].index) > 0:
-                        calculate_cost(account.id, market, bids, asks)
-                        sort_routes(account.id)
+                    if len(routes[id].index) > 0:
+                        calculate_cost(id, market, bids, asks)
+                        sort_routes(id)
 
                     else:
 
                         if not account.updated:
                             log.info('No route left for account {0}'.format(account.name))
-                            print('\n', balances[account.id].to_string())
-                            print('\n', positions[account.id].to_string(), '\n')
+                            print('\n', balances[id].to_string())
+                            print('\n', positions[id].to_string(), '\n')
                             account.updated = True
                             account.save()
 
@@ -3053,7 +3053,7 @@ def rebalance(strategy_id, account_id=None):
                 # Some loop might not be closed properly, causing KeyError exception when
                 # accessing key account.id in our routes dictionary
                 log.error('Lost stream {0} {1}'.format(market.default_type, market.symbol),
-                          exception=type(e).__name__, message=str(e), id=account.id, ask=asks[0], bid=bids[0])
+                          exception=type(e).__name__, message=str(e), id=id, ask=asks[0], bid=bids[0])
 
                 print(routes)
 
@@ -3216,15 +3216,13 @@ def rebalance(strategy_id, account_id=None):
 
         log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts_id), strategy.name))
 
-        print(accounts_id)
-
         if len(accounts_id) > 0:
             for id in accounts_id:
 
                 account = Account.objects.get(id=id)
+                log.bind(account=account.name)
 
                 log.info('Rebalance account {0}'.format(account.name))
-                log.bind(account=account.name)
 
                 fund = account.get_fund_latest()
                 if fund.balance > 100:
@@ -3254,6 +3252,7 @@ def rebalance(strategy_id, account_id=None):
                     loop = asyncio.get_event_loop()
                     gp = asyncio.wait([main(account, loop, wallets)])
                     loop.run_until_complete(gp)
+                    loop.close()
 
                 else:
                     log.info('Account is no credited')

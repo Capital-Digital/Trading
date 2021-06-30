@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import logging
 import structlog
+from structlog.processors import format_exc_info
 from celery import chain, group, shared_task, Task
 from django.core.exceptions import ObjectDoesNotExist
 from timeit import default_timer as timer
@@ -2981,6 +2982,7 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
+                raise Exception('Error !')
                 ob = await client.watch_order_book(market.symbol)  # , limit=account.exchange.orderbook_limit)
                 if ob:
                     # Capture current depth
@@ -3040,8 +3042,8 @@ def rebalance(strategy_id, account_id=None):
                                 create_dataframes(account.id, update=True)
 
                         else:
-                            print(routes[
-                                      account.id].to_string())  # .loc[:, routes[id].columns.drop([('s1', 'hedge')])].to_string())
+                            # print(routes[account.id].to_string())
+                            log.info('Calculate routes cost')
                 else:
                     print('wait')
 
@@ -3049,6 +3051,7 @@ def rebalance(strategy_id, account_id=None):
 
             except Exception as e:
                 traceback.print_exc()
+                # format_exc_info(None, None, {"exc_info": True})
                 log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
                               symbol=market.symbol,
                               wallet=market.default_type

@@ -39,7 +39,6 @@ class BaseTaskWithRetry(Task):
     autoretry_for = (ccxt.DDoSProtection,
                      ccxt.RateLimitExceeded,
                      ccxt.RequestTimeout,
-                     ccxt.ExchangeNotAvailable,
                      ccxt.NetworkError,
                      urllib3.exceptions.ReadTimeoutError,
                      requests.exceptions.ReadTimeout)

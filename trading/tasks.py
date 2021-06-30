@@ -1265,7 +1265,7 @@ def rebalance(strategy_id, accounts_id):
             # Update the asset quantity that should be transferred in segment n+1
             # after a trade is executed to buy a currency in segment n (bridge)
             if route[segment].type.id < route.length[0]:
-                next = 's' + str(int(route[segment].type.id + 1))
+                next = segments[i + 1]
                 if route[next].type.transfer:
 
                     if response['status'] == 'closed':
@@ -1277,13 +1277,13 @@ def rebalance(strategy_id, accounts_id):
                             bought = response['filled'] * response['average']
 
                         # Update transfer quantity
-                        routes[id].loc[routes[id].iloc[0].index, (next, 'transfer', 'quantity')] = bought
+                        routes[id].loc[route.index, (next, 'transfer', 'quantity')] = bought
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
-                            routes[id].loc[routes[id].iloc[0].index, (next, 'trade', 'margin_qty')] = bought
+                            routes[id].loc[route.index, (next, 'trade', 'margin_qty')] = bought
                         else:
-                            routes[id].loc[routes[id].iloc[0].index, (next, 'trade', 'order_qty')] = bought
+                            routes[id].loc[route.index, (next, 'trade', 'order_qty')] = bought
 
                         log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
                             round(bought, 2),

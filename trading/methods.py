@@ -172,6 +172,10 @@ def get_price_ws(exchange, code, prices):
 
 # Get hourly spot price
 def get_price_hourly(exchange, base, quote):
+
+    if base == exchange.dollar_currency:
+        if quote == exchange.dollar_currency:
+            return 1
     try:
         market = Market.objects.get(base__code=base,
                                     quote__code=quote,

@@ -3198,20 +3198,19 @@ def rebalance(strategy_id, account_id=None):
     if codes_strategy:
 
         # Select accounts
-        if account_id is None:
-            accounts_id = list(Account.objects.filter(strategy__id=strategy.id,
+        if account_id:
+            accounts_id = [account_id]
+        else:
+            accounts_id = Account.objects.filter(strategy=strategy,
                                                       exchange=exchange,
                                                       updated=False,
                                                       trading=True
-                                                      ).values_list('id', flat=True))
-
-        else:
-            accounts_id = [account_id]
+                                                      ).values_list('id', flat=True)
 
         log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts_id), strategy.name))
 
         print(accounts_id)
-        
+
         if len(accounts_id) > 0:
             for id in accounts_id:
 

@@ -139,20 +139,16 @@ class Account(models.Model):
         #     # at the end of the rebalancing with a lot of orders with small amount
         #
 
-        if target is not None:
-            log.info('Saved target')
-            print(target)
+        if not target:
+            # Calculate target
+            df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
+            df[('target', 'quantity')] = df.target.value / df.price.hourly
 
-            log.info('New dataframe')
-            print(df)
-
-        #     df[('target', 'value')] = target.value
-        #     df[('target', 'quantity')] = target.quantity
-        # else:
-
-        # Calculate target
-        df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
-        df[('target', 'quantity')] = df.target.value / df.price.hourly
+        else:
+            # Else restore previously saved target value and balance (avoid ping-pong orders)
+            inter = df.index.intersection(target.index)
+            df.loc[inter, ('target', 'value')] = target.loc[inter, 'value']
+            df.loc[inter, ('target', 'quantity')] = target.loc[inter, 'quantity']
 
         # Insert delta
         df[('delta', 'value')] = df.exposure.total_value - df.target.value

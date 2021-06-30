@@ -90,7 +90,7 @@ class Account(models.Model):
             positions = self.create_positions_df()
             if not positions.empty:
                 for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
-                    price = get_price_hourly(self.exchange, index[0])
+                    price = get_price_hourly(self.exchange, index[0], self.strategy.exchange.dollar_currency)
                     df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
                     df.loc[(index[0], index[1]), ('position', 'value')] = position.quantity * price
             else:
@@ -108,7 +108,9 @@ class Account(models.Model):
             # Insert prices
             for code in df.index.get_level_values(0):
                 # df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
-                df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange, code)
+                df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange,
+                                                                     code,
+                                                                     self.strategy.exchange.dollar_currency)
 
             # Insert wallets balances in dollar
             for index, row in df.iterrows():
@@ -185,7 +187,7 @@ class Account(models.Model):
         def pnl_to_currency(pnl):
 
             if margined != position.market.base.code:
-                return pnl / get_price_hourly(self.exchange, code)
+                return pnl / get_price_hourly(self.exchange, code, self.strategy.exchange.dollar_currency)
             else:
                 return pnl  # already in currency if coin-margined
 
@@ -196,7 +198,7 @@ class Account(models.Model):
                 return amount
             else:
                 # price = get_price_ws(self.exchange, prices, margined)
-                price = get_price_hourly(self.exchange, code)
+                price = get_price_hourly(self.exchange, code, self.strategy.exchange.dollar_currency)
                 return amount * price
 
         from trading import methods
@@ -350,7 +352,7 @@ class Account(models.Model):
             for key, value in coins.items():
                 if key == code:
                     # price = get_price_ws(self.exchange, code, prices)
-                    price = get_price_hourly(self.exchange, code)
+                    price = get_price_hourly(self.exchange, code, self.strategy.exchange.dollar_currency)
                     value = value['quantity'] * price
                     values.append(value)
 
@@ -369,7 +371,10 @@ class Account(models.Model):
                         value = abs(position.notional_value + position.unrealized_pnl)
                     else:
                         # price = get_price_ws(self.exchange, position.market.margined.code, prices)
-                        price = get_price_hourly(self.exchange, position.market.margined.code)
+                        price = get_price_hourly(self.exchange,
+                                                 position.market.margined.code,
+                                                 self.strategy.exchange.dollar_currency
+                                                 )
                         value = abs(position.notional_value + position.unrealized_pnl) * price
                     shorts.append(value)
 

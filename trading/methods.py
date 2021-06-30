@@ -16,7 +16,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 
 # Create/update an order object with response returned by exchange
-def order_create_update(id, response):
+def order_create_update(id, response, price_hourly):
     from trading.models import Account, Order
     account = Account.objects.get(id=id)
 
@@ -45,9 +45,6 @@ def order_create_update(id, response):
         # Convert datetime
         datetime = convert_timestamp_to_datetime(response['timestamp'] / 1000, datetime_directive_binance_order)
 
-        # Strategy price
-
-
         # Create dictionary
         defaults = dict(
             orderid=response['id'],
@@ -60,6 +57,7 @@ def order_create_update(id, response):
             response=response,
             last_trade_timestamp=response['lastTradeTimestamp'],
             price=response['price'],
+            price_strategy=price_hourly,
             remaining=response['remaining'],
             side=response['side'],
             status=response['status'],
@@ -166,27 +164,24 @@ def get_price_ws(exchange, code, prices):
             return float(prices['spot'][code]['ask'])
         else:
             log.warning('{0} not found in prices dictionary'.format(code))
-            return get_price_hourly(exchange, code)
+            return get_price_hourly(exchange, code, exchange.dollar_currency)
     else:
         # log.warning('Spot price from websocket not found for {0}'.format(code))
-        return get_price_hourly(exchange, code)
+        return get_price_hourly(exchange, code, exchange.dollar_currency)
 
 
 # Get hourly spot price
-def get_price_hourly(exchange, code):
-    if code == exchange.dollar_currency:
-        return 1
+def get_price_hourly(exchange, base, quote):
+    try:
+        market = Market.objects.get(base__code=base,
+                                    quote__code=quote,
+                                    exchange=exchange,
+                                    type='spot'
+                                    )
+    except ObjectDoesNotExist:
+        raise Exception('Unable to found spot market {0}/{1}'.format(base, quote))
     else:
-        try:
-            market = Market.objects.get(base__code=code,
-                                        quote__code=exchange.dollar_currency,
-                                        exchange=exchange,
-                                        type='spot'
-                                        )
-        except ObjectDoesNotExist:
-            raise Exception('Unable to found spot market {0}/{1}'.format(code, exchange.dollar_currency))
-        else:
-            return market.get_candle_price_last()
+        return market.get_candle_price_last()
 
 
 # Convert contract quantity to currency amount

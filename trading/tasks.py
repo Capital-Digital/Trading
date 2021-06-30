@@ -1329,7 +1329,11 @@ def rebalance(strategy_id, account_id=None):
                             print(route[segment])
 
                             # Update order object
-                            order_create_update(id, response)
+                            price_hourly = get_price_hourly(exchange,
+                                                            route[segment].market.base,
+                                                            route[segment].market.quote
+                                                            )
+                            order_create_update(id, response, price_hourly)
                             update_next_segment()
 
                         else:
@@ -2213,7 +2217,7 @@ def rebalance(strategy_id, account_id=None):
                         code = get_code()
                         # Convert order value to currency
                         # price = prices['spot'][code]['ask']
-                        price = get_price_hourly(exchange, code)
+                        price = get_price_hourly(exchange, code, exchange.dollar_currency)
                         order_qty = order_value / price
 
                         return order_qty, None
@@ -2221,12 +2225,12 @@ def rebalance(strategy_id, account_id=None):
                     elif segment.market.type == 'derivative':
 
                         # Convert order value to currency
-                        price = get_price_hourly(exchange, segment.market.base)
+                        price = get_price_hourly(exchange, segment.market.base, exchange.dollar_currency)
                         # prices['spot'][segment.market.base]['ask']
                         order_qty = order_value / price
 
                         # Convert margin value to currency
-                        price_m = get_price_hourly(exchange, segment.market.margined)
+                        price_m = get_price_hourly(exchange, segment.market.margined, exchange.dollar_currency)
                         # prices['spot'][segment.market.margined]['ask']
                         margin_qty = margin_value / price_m
 
@@ -2772,7 +2776,7 @@ def rebalance(strategy_id, account_id=None):
                     if exchange.has['createMarketOrder']:
                         # Select spot price to validate MIN_NOTIONAL
                         # return prices['spot'][market.base.code]['ask']
-                        return get_price_hourly(exchange, market.base.code)
+                        return get_price_hourly(exchange, market.base.code, exchange.dollar_currency)
                     else:
                         raise Exception('Market order not supported')
 

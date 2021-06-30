@@ -1634,7 +1634,7 @@ def rebalance(strategy_id, accounts_id):
                             del instruction_gw
                             return gw
 
-                    log.warning('No gateway between {0} and {1}'.format(code, code_needed))
+                    log.warning('No bridge found between {0} and {1}'.format(code, code_needed))
 
                 # Return True if a gateway market is necessary to trade the candidate market
                 def need_gateway(code, wallet, instruction, candidate):
@@ -2019,8 +2019,10 @@ def rebalance(strategy_id, accounts_id):
             # print(routes[id].to_string())
 
             # Drop unused columns
-            routes[id].drop('valid', axis=1, level=2, inplace=True)
-            routes[id].drop('error', axis=1, level=2, inplace=True)
+            if 'valid' in routes[id].columns.get_level_values(2):
+                routes[id].drop('valid', axis=1, level=2, inplace=True)
+            if 'error' in routes[id].columns.get_level_values(2):
+                routes[id].drop('error', axis=1, level=2, inplace=True)
 
             # routes[id].sort_index(axis=1, inplace=True)
 

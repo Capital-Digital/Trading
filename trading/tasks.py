@@ -3210,6 +3210,8 @@ def rebalance(strategy_id, account_id=None):
 
         log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts_id), strategy.name))
 
+        print(accounts_id)
+        
         if len(accounts_id) > 0:
             for id in accounts_id:
 

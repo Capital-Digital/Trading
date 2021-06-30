@@ -70,6 +70,10 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
     """
     exchange = Exchange.objects.get(exid=exid)
 
+    if not exchange.is_active():
+        log.error('Exchange {0} is inactive'.format(exid))
+        return
+
     if start is None:
         # Set start date to exchange launch date
         if exchange.start_date:
@@ -448,6 +452,10 @@ def update_currencies(self, exid):
     from marketsdata.models import Exchange, Currency, CurrencyType
     exchange = Exchange.objects.get(exid=exid)
 
+    if not exchange.is_active():
+        log.error('Exchange {0} is inactive'.format(exid))
+        return
+
     client = exchange.get_ccxt_client()
 
     def update(value):
@@ -692,6 +700,11 @@ def update_markets(self, exid):
 
     from marketsdata.models import Exchange, Market, Currency
     exchange = Exchange.objects.get(exid=exid)
+
+    if not exchange.is_active():
+        log.error('Exchange {0} is inactive'.format(exid))
+        return
+
     quotes = Currency.objects.filter(exchange=exchange, type__type='quote')
     bases = Currency.objects.filter(exchange=exchange, type__type='base')
     client = exchange.get_ccxt_client()

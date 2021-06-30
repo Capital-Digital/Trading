@@ -3222,6 +3222,9 @@ def rebalance(strategy_id, accounts_id):
 
                 codes_monitor = codes_strategy + codes_margined + codes_account
                 [print('Monitor code', c) for c in codes_monitor]
+                [print('\ncodes_strategy', c) for c in codes_strategy]
+                [print('\ncodes_margined', c) for c in codes_margined]
+                [print('\ncodes_account', c) for c in codes_account]
 
                 # Create empty dictionaries
                 balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]

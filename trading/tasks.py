@@ -3214,7 +3214,7 @@ def rebalance(strategy_id, accounts_id):
             if fund.balance > 100:
 
                 codes_account = account.get_codes(greater_than=0)
-                codes_account = [c for c in codes_account if c not in codes_strategy]
+                codes_account = [c for c in codes_account if c not in codes_strategy + codes_margined]
 
                 log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
                 log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
@@ -3222,9 +3222,6 @@ def rebalance(strategy_id, accounts_id):
 
                 codes_monitor = codes_strategy + codes_margined + codes_account
                 [print('Monitor code', c) for c in codes_monitor]
-                [print('\ncodes_strategy', c) for c in codes_strategy]
-                [print('\ncodes_margined', c) for c in codes_margined]
-                [print('\ncodes_account', c) for c in codes_account]
 
                 # Create empty dictionaries
                 balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]

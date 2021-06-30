@@ -1401,6 +1401,8 @@ def rebalance(strategy_id, accounts_id):
         # Create a dataframes with markets
         def create_markets():
 
+            log.info('Create markets for account {0}'.format(account.id))
+
             # Select markets to build dataframe
             mks = Market.objects.filter(exchange=exchange,
                                         base__code__in=codes_monitor,
@@ -1471,6 +1473,7 @@ def rebalance(strategy_id, accounts_id):
         # Create a dataframe with available routes
         def create_routes():
 
+            log.info('Create routes for account {0}'.format(account.id))
             start = timer()
 
             # Currencies
@@ -1987,7 +1990,7 @@ def rebalance(strategy_id, accounts_id):
             end = timer()
             log.info('Build routes in {0} sec'.format(round(end - start, 2)))
 
-            routes[id] = df
+            return df
 
         # Drop routes with invalid trade
         def drop_routes():
@@ -2936,7 +2939,7 @@ def rebalance(strategy_id, accounts_id):
         if not update:
             save_target()
 
-        create_routes()
+        routes[id] = create_routes()
         size_orders()
 
         if not strategy.all_pairs:
@@ -2975,7 +2978,8 @@ def rebalance(strategy_id, accounts_id):
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
-        log.info('Start loop {0} {1}'.format(market.default_type, market.symbol))
+        log.info('Start loop {0} {1} for account {2}'.format(market.default_type, market.symbol,
+                                                             account.id))
 
         id = account.id
         symbol = market.symbol
@@ -3001,7 +3005,6 @@ def rebalance(strategy_id, accounts_id):
                         print(markets[id])
                         break
 
-                    # if market.default_type == 'future' and market.symbol == 'BTC/USDT':
                     if i == 0 and j == 0:
 
                         if have_costs(id):
@@ -3209,11 +3212,8 @@ def rebalance(strategy_id, accounts_id):
 
                 create_dataframes(account.id)
 
-                print('all pairs', strategy.all_pairs)
-
                 if strategy.all_pairs:
                     wallets = ['spot']
-                    # list(set(Market.objects.filter(exchange=exchange, type='spot').values_list('default_type', flat=True)))
                 else:
                     wallets = exchange.get_default_types()
 

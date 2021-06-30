@@ -2999,8 +2999,9 @@ def rebalance(strategy_id, accounts_id):
                     else:
 
                         log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
-                        account.updated = True
-                        account.save()
+                        if not account.updated:
+                            account.updated = True
+                            account.save()
                         break
 
                     if i == 0 and j == 0:
@@ -3050,6 +3051,9 @@ def rebalance(strategy_id, accounts_id):
                 # Some loop might not be closed properly, causing KeyError exception when
                 # accessing key account.id in our routes dictionary
                 log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
+                if not account.updated:
+                    account.updated = True
+                    account.save()
                 break
 
             except Exception as e:
@@ -3077,19 +3081,19 @@ def rebalance(strategy_id, accounts_id):
         for market in markets_monitor:
             if not market.is_updated():
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is not updated')
+                log.warning('Market {0} {1} is not updated'.format(market.symbol, market.default_type))
 
         # Select updated markets
         for market in markets_monitor:
             if not market.active:
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is not active')
+                log.warning('Market {0} {1} is not active'.format(market.symbol, market.default_type))
 
         # Select updated markets
         for market in markets_monitor:
             if market.excluded:
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is excluded')
+                log.warning('Market {0} {1} is excluded'.format(market.symbol, market.default_type))
 
         log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 

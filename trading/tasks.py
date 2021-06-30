@@ -2982,7 +2982,7 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
-                raise Exception('Error !')
+                raise Exception('Error')
                 ob = await client.watch_order_book(market.symbol)  # , limit=account.exchange.orderbook_limit)
                 if ob:
                     # Capture current depth
@@ -3254,8 +3254,8 @@ def rebalance(strategy_id, account_id=None):
                     log.info('Account is no credited')
                     continue
 
-            else:
-                log.info('No account found for rebalancing')
+        else:
+            log.info('No account found for rebalancing')
 
 
 @shared_task(name='Update account', base=BaseTaskWithRetry)

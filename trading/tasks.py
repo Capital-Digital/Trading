@@ -2982,7 +2982,7 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
-                raise Exception('Error !')
+                # raise Exception('Error !')
                 ob = await client.watch_order_book(market.symbol)  # , limit=account.exchange.orderbook_limit)
                 if ob:
                     # Capture current depth

@@ -2982,7 +2982,7 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
-                # raise Exception('Error !')
+                raise Exception('Error !')
                 ob = await client.watch_order_book(market.symbol)  # , limit=account.exchange.orderbook_limit)
                 if ob:
                     # Capture current depth
@@ -3053,7 +3053,8 @@ def rebalance(strategy_id, account_id=None):
                 # traceback.print_exc()
                 log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
                               symbol=market.symbol,
-                              wallet=market.default_type
+                              wallet=market.default_type,
+                              exc_info=traceback.format_exc()
                               )
 
     # Configure websocket client for wallet

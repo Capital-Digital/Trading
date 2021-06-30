@@ -3199,57 +3199,60 @@ def rebalance(strategy_id, account_id=None):
 
         # Select accounts
         if account_id is None:
-            accounts_id = list(Account.objects.filter(strategy__id=id,
-                                                   exchange=exchange,
-                                                   updated=False,
-                                                   trading=True
-                                                   ).values_list('id', flat=True))
+            accounts_id = list(Account.objects.filter(strategy__id=strategy.id,
+                                                      exchange=exchange,
+                                                      updated=False,
+                                                      trading=True
+                                                      ).values_list('id', flat=True))
 
         else:
             accounts_id = [account_id]
 
         log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts_id), strategy.name))
 
-        for id in accounts_id:
+        if len(accounts_id) > 0:
+            for id in accounts_id:
 
-            account = Account.objects.get(id=id)
+                account = Account.objects.get(id=id)
 
-            log.info('Rebalance account {0}'.format(account.name))
-            log.bind(account=account.name)
+                log.info('Rebalance account {0}'.format(account.name))
+                log.bind(account=account.name)
 
-            fund = account.get_fund_latest()
-            if fund.balance > 100:
+                fund = account.get_fund_latest()
+                if fund.balance > 100:
 
-                codes_account = account.get_codes(greater_than=50)
-                codes_account = [c for c in codes_account if c not in codes_strategy + codes_margined]
+                    codes_account = account.get_codes(greater_than=50)
+                    codes_account = [c for c in codes_account if c not in codes_strategy + codes_margined]
 
-                log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
-                log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
-                log.info('Monitor {0} codes for account (>$50)'.format(len(codes_account)))
+                    log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
+                    log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
+                    log.info('Monitor {0} codes for account (>$50)'.format(len(codes_account)))
 
-                codes_monitor = codes_strategy + codes_margined + codes_account
-                [print('Monitor code', c) for c in codes_monitor]
+                    codes_monitor = codes_strategy + codes_margined + codes_account
+                    [print('Monitor code', c) for c in codes_monitor]
 
-                # Create empty dictionaries
-                balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
-                create_dataframes(account.id)
+                    # Create empty dictionaries
+                    balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
+                    create_dataframes(account.id)
 
-                if strategy.all_pairs:
-                    wallets = ['spot']
+                    if strategy.all_pairs:
+                        wallets = ['spot']
+                    else:
+                        wallets = exchange.get_default_types()
+
+                    log.info('Create asyncio loops for account {0}'.format(account.id))
+
+                    # loop.set_debug(True)
+                    loop = asyncio.get_event_loop()
+                    gp = asyncio.wait([main(account, loop, wallets)])
+                    loop.run_until_complete(gp)
+
                 else:
-                    wallets = exchange.get_default_types()
-
-                log.info('Create asyncio loops for account {0}'.format(account.id))
-
-                # loop.set_debug(True)
-                loop = asyncio.get_event_loop()
-                gp = asyncio.wait([main(account, loop, wallets)])
-                loop.run_until_complete(gp)
+                    log.info('Account is no credited')
+                    continue
 
             else:
-                log.info('Account is no credited')
-                continue
-
+                log.info('No account found for rebalancing')
 
 @shared_task(name='Update account', base=BaseTaskWithRetry)
 def update_account(id, account):

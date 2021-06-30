@@ -402,25 +402,36 @@ def update_status(self, exid):
 
     from marketsdata.models import Exchange
     exchange = Exchange.objects.get(exid=exid)
-    response = exchange.get_ccxt_client().fetchStatus()
 
-    if response['status'] is not None:
-        exchange.status = response['status']
-    if response['updated'] is not None:
-        exchange.status_at = timezone.make_aware(datetime.fromtimestamp(response['updated'] / 1e3))
-    if response['eta'] is not None:
-        exchange.eta = datetime.fromtimestamp(response['eta'] / 1e3)
-    if response['url'] is not None:
-        exchange.url = response['url']
+    try:
+        response = exchange.get_ccxt_client().fetchStatus()
 
-    exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
+    except ccxt.ExchangeNotAvailable:
 
+        exchange.status = 'nok'
+        exchange.status_at = timezone.now()
+        log.error('Exchange {0} is {1}'.format(exid, exchange.status))
 
-    if response['status'] is not None:
-        if response['status'] != 'ok':
-            log.error('Exchange {0} is {1}'.format(exid, exchange.status))
-        else:
-            log.info('Exchange {0} is OK'.format(exid, exchange.status))
+    else:
+
+        if response['status'] is not None:
+            exchange.status = response['status']
+
+            if response['status'] != 'ok':
+                log.error('Exchange {0} is {1}'.format(exid, exchange.status))
+            else:
+                log.info('Exchange {0} is OK'.format(exid, exchange.status))
+
+        if response['updated'] is not None:
+            exchange.status_at = timezone.make_aware(datetime.fromtimestamp(response['updated'] / 1e3))
+        if response['eta'] is not None:
+            exchange.eta = datetime.fromtimestamp(response['eta'] / 1e3)
+        if response['url'] is not None:
+            exchange.url = response['url']
+
+    finally:
+
+        exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)

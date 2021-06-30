@@ -3249,6 +3249,7 @@ def rebalance(strategy_id, account_id=None):
                     log.info('Create asyncio loops for account {0}'.format(account.id))
 
                     # loop.set_debug(True)
+                    asyncio.set_event_loop(asyncio.new_event_loop())
                     loop = asyncio.get_event_loop()
                     gp = asyncio.wait([main(account, loop, wallets)])
                     loop.run_until_complete(gp)

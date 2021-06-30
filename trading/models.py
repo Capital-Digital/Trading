@@ -64,104 +64,108 @@ class Account(models.Model):
     # Construct a dataframe with wallets balance, positions, exposure and delta
     def create_dataframes(self, target=None):
 
-        start = timer()
-        funds = self.get_fund_latest()
-        allocations = self.strategy.get_allocations()
-        df = pd.DataFrame()
+        try:
 
-        # Insert wallets balances
-        for i in ['total', 'free', 'used']:
-            for default_type, dic1 in getattr(funds, i).items():
-                for code, dic2 in dic1.items():
-                    for field, value in dic2.items():
+            start = timer()
+            funds = self.get_fund_latest()
+            allocations = self.strategy.get_allocations()
+            df = pd.DataFrame()
 
-                        # Create columns for total, free and used quantities
-                        if field == 'quantity':
+            # Insert wallets balances
+            for i in ['total', 'free', 'used']:
+                for default_type, dic1 in getattr(funds, i).items():
+                    for code, dic2 in dic1.items():
+                        for field, value in dic2.items():
 
-                            cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
-                                                                                                      'level_2'])
-                            indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
-                            wallet = pd.DataFrame(value, index=indexes, columns=cols)
-                            df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()
+                            # Create columns for total, free and used quantities
+                            if field == 'quantity':
 
-        # Insert dollar value of open positions (sum USDT and BUSD margined)
-        positions = self.create_positions_df()
-        if not positions.empty:
-            for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
-                price = get_price_hourly(self.exchange, index[0])
-                df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
-                df.loc[(index[0], index[1]), ('position', 'value')] = position.quantity * price
+                                cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
+                                                                                                          'level_2'])
+                                indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
+                                wallet = pd.DataFrame(value, index=indexes, columns=cols)
+                                df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()
+
+            # Insert dollar value of open positions (sum USDT and BUSD margined)
+            positions = self.create_positions_df()
+            if not positions.empty:
+                for index, position in positions.groupby(['code', 'wallet']).sum().iterrows():
+                    price = get_price_hourly(self.exchange, index[0])
+                    df.loc[(index[0], index[1]), ('position', 'quantity')] = position.quantity
+                    df.loc[(index[0], index[1]), ('position', 'value')] = position.quantity * price
+            else:
+                df[('position', 'value')] = np.nan
+                df[('position', 'quantity')] = np.nan
+
+            # Insert allocations weights
+            for value in allocations.values():
+                for code in list(value.keys()):
+                    df.loc[code, ('target', 'percent')] = value[code]['weight']
+
+            # Fill nan percents with 0
+            df[('target', 'percent')] = df.target.percent.fillna(0)
+
+            # Insert prices
+            for code in df.index.get_level_values(0):
+                # df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
+                df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange, code)
+
+            # Insert wallets balances in dollar
+            for index, row in df.iterrows():
+                df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * row.price.hourly
+                df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * row.price.hourly
+                df.loc[index, ('wallet', 'used_value')] = row.wallet.used_quantity * row.price.hourly
+
+            # Insert exposure value (balance + positions) and total
+            df[('exposure', 'value')] = pd.concat([df.position.value, df.wallet.total_value], axis=1).sum(axis=1)
+            df[('exposure', 'quantity')] = pd.concat([df.position.quantity, df.wallet.total_quantity], axis=1).sum(axis=1)
+            df[('exposure', 'total_value')] = df.exposure.value.groupby('code').transform('sum')
+            df[('exposure', 'total_quantity')] = df.exposure.quantity.groupby('code').transform('sum')
+
+            # Insert max_withdrawal
+            for wallet in funds.total.keys():
+                margin_assets = funds.margin_assets[wallet]
+                if margin_assets:
+                    for asset in margin_assets:
+                        coin = asset['asset']
+                        withdrawal = float(asset['maxWithdrawAmount'])
+                        df.sort_index(axis=0, inplace=True)
+                        df.loc[(coin, wallet), ('withdrawal', 'quantity')] = withdrawal
+
+            # Insert account balance
+            balance = df.wallet.total_value.sum()
+            df['account', 'balance'] = balance
+
+            # Restore previously saved target value and quantity to avoid instability
+            # at the end of the rebalancing with a lot of orders with small amount
+            if target is None:
+                # Calculate target
+                df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
+                df[('target', 'quantity')] = df.target.value / df.price.hourly
+
+            else:
+                # Else restore previously saved target value and balance (avoid ping-pong orders)
+                inter = df.index.intersection(target.index)
+                df.loc[inter, ('target', 'value')] = target.loc[inter, 'value']
+                df.loc[inter, ('target', 'quantity')] = target.loc[inter, 'quantity']
+
+            # Insert delta
+            df[('delta', 'value')] = df.exposure.total_value - df.target.value
+            df[('delta', 'value')] = df[('delta', 'value')].round(2)
+            df[('delta', 'quantity')] = df.exposure.total_quantity - df.target.quantity
+
+            df.sort_index(axis=1, inplace=True)
+            df.sort_index(axis=0, inplace=True)
+
+            end = timer()
+            log.info('Create dataframe in {0} sec'.format(round(end - start, 2)))
+
+        except Exception as e:
+            log.exception('create_dataframes() failed: {0} {1}'.format(type(e).__name__, str(e)))
+
         else:
-            df[('position', 'value')] = np.nan
-            df[('position', 'quantity')] = np.nan
 
-        # Insert allocations weights
-        for value in allocations.values():
-            for code in list(value.keys()):
-                df.loc[code, ('target', 'percent')] = value[code]['weight']
-
-        # Fill nan percents with 0
-        df[('target', 'percent')] = df.target.percent.fillna(0)
-
-        # Insert prices
-        for code in df.index.get_level_values(0):
-            # df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
-            df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange, code)
-
-        # Insert wallets balances in dollar
-        for index, row in df.iterrows():
-            df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * row.price.hourly
-            df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * row.price.hourly
-            df.loc[index, ('wallet', 'used_value')] = row.wallet.used_quantity * row.price.hourly
-
-        # Insert exposure value (balance + positions) and total
-        df[('exposure', 'value')] = pd.concat([df.position.value, df.wallet.total_value], axis=1).sum(axis=1)
-        df[('exposure', 'quantity')] = pd.concat([df.position.quantity, df.wallet.total_quantity], axis=1).sum(axis=1)
-        df[('exposure', 'total_value')] = df.exposure.value.groupby('code').transform('sum')
-        df[('exposure', 'total_quantity')] = df.exposure.quantity.groupby('code').transform('sum')
-
-        # Insert max_withdrawal
-        for wallet in funds.total.keys():
-            margin_assets = funds.margin_assets[wallet]
-            if margin_assets:
-                for asset in margin_assets:
-                    coin = asset['asset']
-                    withdrawal = float(asset['maxWithdrawAmount'])
-                    df.sort_index(axis=0, inplace=True)
-                    df.loc[(coin, wallet), ('withdrawal', 'quantity')] = withdrawal
-
-        # Insert account balance
-        balance = df.wallet.total_value.sum()
-        df['account', 'balance'] = balance
-
-        # if target is not None:
-        #     # Restore previously saved target value and quantity to avoid instability
-        #     # at the end of the rebalancing with a lot of orders with small amount
-        #
-
-        if target is None:
-            # Calculate target
-            df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
-            df[('target', 'quantity')] = df.target.value / df.price.hourly
-
-        else:
-            # Else restore previously saved target value and balance (avoid ping-pong orders)
-            inter = df.index.intersection(target.index)
-            df.loc[inter, ('target', 'value')] = target.loc[inter, 'value']
-            df.loc[inter, ('target', 'quantity')] = target.loc[inter, 'quantity']
-
-        # Insert delta
-        df[('delta', 'value')] = df.exposure.total_value - df.target.value
-        df[('delta', 'value')] = df[('delta', 'value')].round(2)
-        df[('delta', 'quantity')] = df.exposure.total_quantity - df.target.quantity
-
-        df.sort_index(axis=1, inplace=True)
-        df.sort_index(axis=0, inplace=True)
-
-        end = timer()
-        log.info('Create dataframe in {0} sec'.format(round(end - start, 2)))
-
-        return df, positions
+            return df, positions
 
     # Construct a dataframe with open positions
     def create_positions_df(self):

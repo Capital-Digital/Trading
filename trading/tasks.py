@@ -1281,65 +1281,71 @@ def rebalance(strategy_id, account_id=None):
 
                     log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4), asset))
 
-        log.info('')
-        log.info('*** Trade {0} ***'.format(account.name))
-        log.info('')
+        try:
 
-        log.bind(account=account.name)
+            log.info('')
+            log.info('*** Trade {0} ***'.format(account.name))
+            log.info('')
 
-        print('\n', balances[id].to_string(), '\n')
-        print('\n', routes[id].to_string(), '\n')
-        print('\n', positions[id].to_string(), '\n')
+            # log.bind(account=account.name)
 
-        # Test routes
-        if not routes[id].empty:
+            print('\n', balances[id].to_string(), '\n')
+            print('\n', routes[id].to_string(), '\n')
+            print('\n', positions[id].to_string(), '\n')
 
-            # Select the best route
-            route = routes[id].iloc[0]
+            # Test routes
+            if not routes[id].empty:
 
-            start = timer()
+                # Select the best route
+                route = routes[id].iloc[0]
 
-            # Loop through all segments
-            length = route.length[0]
-            segments = ['s' + str(i) for i in range(1, length + 1)]
+                start = timer()
 
-            for i, segment in enumerate(segments):
+                # Loop through all segments
+                length = route.length[0]
+                segments = ['s' + str(i) for i in range(1, length + 1)]
 
-                log.info('Trade route {0} segment {1}/{2}'.format(route.name, i + 1, length))
+                for i, segment in enumerate(segments):
 
-                # Transfer funds
-                if route[segment].type.transfer:
-                    res = transfer(id, route[segment])
-                    if not res:
-                        return
+                    log.info('Trade route {0} segment {1}/{2}'.format(route.name, i + 1, length))
 
-                # Create an order object
-                orderid = Account.objects.get(id=id).create_order(route, segment)
-                if orderid:
+                    # Transfer funds
+                    if route[segment].type.transfer:
+                        res = transfer(id, route[segment])
+                        if not res:
+                            return
 
-                    # Place order
-                    response = place_order.run(id, orderid)
-                    if response:
+                    # Create an order object
+                    orderid = Account.objects.get(id=id).create_order(route, segment)
+                    if orderid:
 
-                        log.info('Order placed')
-                        print(route[segment])
+                        # Place order
+                        response = place_order.run(id, orderid)
+                        if response:
 
-                        # Update order object
-                        order_create_update(id, response)
-                        update_next_segment()
+                            log.info('Order placed')
+                            print(route[segment])
 
+                            # Update order object
+                            order_create_update(id, response)
+                            update_next_segment()
+
+                        else:
+                            log.warning('Order placement failed')
+                            return
                     else:
-                        log.warning('Order placement failed')
+                        log.warning('Order object creation failed')
                         return
-                else:
-                    log.warning('Order object creation failed')
-                    return
 
-            end = timer()
-            elapsed = end - start
-            log.info(
-                '{0} trade(s) complete for route {1}'.format(length, int(route.name)))
+                end = timer()
+                elapsed = end - start
+                log.info(
+                    '{0} trade(s) complete for route {1}'.format(length, int(route.name)))
 
+        except Exception as e:
+            log.exception('trade() failed: {0} {1}'.format(type(e).__name__, str(e)))
+
+        else:
             # Trades success
             return True
 
@@ -2967,23 +2973,15 @@ def rebalance(strategy_id, account_id=None):
         end = timer()
         elapsed = end - start
 
-        # log.info('Create dic for {0} strategy {1} complete in {2} sec'.format(account.name,
-        #                                                                       strategy.name,
-        #                                                                       round(elapsed, 2)))
-
-        return True
-
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
         id = account.id
         log.info('Start loop {0} {1} for account {2}'.format(market.default_type, market.symbol, id))
 
-        symbol = market.symbol
-
         while True:
             try:
-                ob = await client.watch_order_book(symbol)  # , limit=account.exchange.orderbook_limit)
+                ob = await client.watch_order_book(market.symbol)  # , limit=account.exchange.orderbook_limit)
                 if ob:
                     # Capture current depth
                     bids, asks = cumulative_book(ob)
@@ -3051,7 +3049,10 @@ def rebalance(strategy_id, account_id=None):
 
             except Exception as e:
                 traceback.print_exc()
-                log.error('{0} {1}'.format(type(e).__name__, str(e)), symbol=market.symbol, wallet=market.default_type)
+                log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
+                              symbol=market.symbol,
+                              wallet=market.default_type
+                              )
 
     # Configure websocket client for wallet
     async def wallet_loop(account, loop, i, wallet):

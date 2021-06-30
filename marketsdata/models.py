@@ -61,7 +61,6 @@ class Exchange(models.Model):
         if self.status == 'ok':
             return True
         else:
-            log.error('Exchange status is not OK', status=self.status, status_at=self.status_at, eta=self.eta)
             return False
 
     # Return exchange class (ccxt)

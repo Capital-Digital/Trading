@@ -781,9 +781,11 @@ def update_prices(self, exid):
     # Fire exceptions if needed
     if not exchange.is_active():
         log.error('Exchange {0} is inactive'.format(exid))
+        return
 
     if not exchange.has['fetchTickers']:
         log.error('Exchange {0} does not support FetchTickers()'.format(exid))
+        return
 
     def update(response, market):
         """"

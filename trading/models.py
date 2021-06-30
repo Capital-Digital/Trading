@@ -543,7 +543,7 @@ class Order(models.Model):
     cost = models.FloatField(null=True)
     route_type = models.CharField(max_length=10, null=True)
     action = models.CharField(max_length=20, null=True)
-    average, price, price_strategy = [models.FloatField(null=True, blank=True) for i in range(3)]
+    average, price, price_strategy, distance = [models.FloatField(null=True, blank=True) for i in range(4)]
     fee, trades, params, response, route, segments = [JSONField(null=True) for i in range(6)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)

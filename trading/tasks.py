@@ -3062,7 +3062,7 @@ def rebalance(strategy_id, accounts_id):
                 break
 
             except Exception as e:
-                # traceback.print_exc()
+                traceback.print_exc()
                 log.error('{0} {1}'.format(type(e).__name__, str(e)), symbol=market.symbol, wallet=market.default_type)
 
     # Configure websocket client for wallet

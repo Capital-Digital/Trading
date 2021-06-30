@@ -3051,7 +3051,6 @@ def rebalance(strategy_id, account_id=None):
 
             except Exception as e:
                 # traceback.print_exc()
-                format_exc_info(None, None, {"exc_info": True})
                 log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
                               symbol=market.symbol,
                               wallet=market.default_type

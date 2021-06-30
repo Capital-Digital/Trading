@@ -3050,7 +3050,7 @@ def rebalance(strategy_id, account_id=None):
                 await client.sleep(1000)
 
             except Exception as e:
-                traceback.print_exc()
+                # traceback.print_exc()
                 # format_exc_info(None, None, {"exc_info": True})
                 log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
                               symbol=market.symbol,

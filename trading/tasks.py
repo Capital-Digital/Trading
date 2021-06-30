@@ -3209,7 +3209,7 @@ def rebalance(strategy_id, accounts_id):
             fund = account.get_fund_latest()
             if fund.balance > 100:
 
-                codes_account = account.get_codes(greater_than=50)
+                codes_account = account.get_codes(greater_than=0)
                 codes_account = [c for c in codes_account if c not in codes_strategy]
 
                 log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))

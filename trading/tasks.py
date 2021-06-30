@@ -3054,8 +3054,7 @@ def rebalance(strategy_id, account_id=None):
                 log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
                               symbol=market.symbol,
                               wallet=market.default_type,
-                              id=id,
-                              excinfo=traceback.print_exc()
+                              excinfo=sys.exc_info()
                               )
 
     # Configure websocket client for wallet

@@ -2461,64 +2461,67 @@ def rebalance(strategy_id, account_id=None):
                 else:
                     return open_comp, margin_comp
 
-            # Limit spot buying if a new hedge is added with a buy and capacity is reached
+            # Limit order_size if there is a risk that buy_base or sell_base
+            # increase the hedge capacity of the account (when short position)
             def limit_buy(code, buy, close=None):
 
                 shorts = account.get_shorts(code)
                 balance = account.get_balance(code)
                 capacity = synthetic_cash[id]['capacity']
 
-                # Short positions are larger than coin balance
-                if shorts > balance:
+                if balance:
 
-                    # Determine hedge added by the buy
-                    max_added = shorts - balance
-                    hedge_added = min(buy, max_added)
+                    # Short positions are larger than coin balance
+                    if shorts > balance:
 
-                    # Determine margin added to account capacity
-                    # if hedge is allocated to USD-margined position
-                    margins = []
+                        # Determine hedge added by the buy
+                        max_added = shorts - balance
+                        hedge_added = min(buy, max_added)
 
-                    # Select short position opened for the code and sort dataframe
-                    # so that USDT-margined positions with hedge are at the top
-                    pos = positions[id].loc[positions[id].side == 'sell'].loc[code, :]
-                    pos.sort_index(level='margined', ascending=False, axis=0, inplace=True)
-                    for idx, row in pos.iterrows():
-                        if Currency.objects.get(code=idx[5]).stable_coin:
-                            if row.hedge_position_ratio < 1:
+                        # Determine margin added to account capacity
+                        # if hedge is allocated to USD-margined position
+                        margins = []
 
-                                # Determine position value not allocated to hedge
-                                pos_capacity = row.abs_value * (1 - row.hedge_position_ratio)
+                        # Select short position opened for the code and sort dataframe
+                        # so that USDT-margined positions with hedge are at the top
+                        pos = positions[id].loc[positions[id].side == 'sell'].loc[code, :]
+                        pos.sort_index(level='margined', ascending=False, axis=0, inplace=True)
+                        for idx, row in pos.iterrows():
+                            if Currency.objects.get(code=idx[5]).stable_coin:
+                                if row.hedge_position_ratio < 1:
 
-                                if hedge_added < pos_capacity:
-                                    margin = hedge_added / row.leverage
-                                    margins.append(margin)
-                                    break
+                                    # Determine position value not allocated to hedge
+                                    pos_capacity = row.abs_value * (1 - row.hedge_position_ratio)
 
-                                else:
-                                    # If the new hedge is larger than hedge capacity
-                                    # of the position then keep the margin and loop
-                                    # to the next position
-                                    margin = pos_capacity / row.leverage
-                                    margins.append(margin)
+                                    if hedge_added < pos_capacity:
+                                        margin = hedge_added / row.leverage
+                                        margins.append(margin)
+                                        break
 
-                    # Get total margin needed for the hedge and total capacity used
-                    margin = sum(margins)
-                    capacity_used = hedge_added + margin
+                                    else:
+                                        # If the new hedge is larger than hedge capacity
+                                        # of the position then keep the margin and loop
+                                        # to the next position
+                                        margin = pos_capacity / row.leverage
+                                        margins.append(margin)
 
-                    if capacity_used > abs(capacity):
-                        reduction_ratio = abs(capacity) / capacity_used
-                        routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
-                        log.warning('Limit spot buy by a ratio of {1} in route {0} segment {2}'.format(index,
-                                                                                                       round(
-                                                                                                           reduction_ratio,
-                                                                                                           2),
-                                                                                                       label,
-                                                                                                       ))
+                        # Get total margin needed for the hedge and total capacity used
+                        margin = sum(margins)
+                        capacity_used = hedge_added + margin
 
-                        buy *= reduction_ratio
-                        if close:
-                            close *= reduction_ratio
+                        if capacity_used > abs(capacity):
+                            reduction_ratio = abs(capacity) / capacity_used
+                            routes[id].loc[index, (label, 'trade', 'reduction_ratio')] = reduction_ratio
+                            log.warning('Limit spot buy of {1} in route {0} segment {2}'.format(index,
+                                                                                                round(
+                                                                                                    reduction_ratio,
+                                                                                                    2),
+                                                                                                label,
+                                                                                                ))
+
+                            buy *= reduction_ratio
+                            if close:
+                                close *= reduction_ratio
 
                 if close is not None:
                     return buy, close

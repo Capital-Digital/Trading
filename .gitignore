@@ -12,8 +12,8 @@ __pycache__
 backup.db
 
 # Django migrations
-# */migrations/*
-# !*/migrations/__init__.py
+*/migrations/*
+!*/migrations/__init__.py
 
 # Django Environ
 .env

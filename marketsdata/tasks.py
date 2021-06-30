@@ -75,7 +75,7 @@ def insert_candle_history(self, exid, type=None, derivative=None, symbol=None, s
         if exchange.start_date:
             start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
         else:
-            raise Exception('Exchange {0} has no start_date'.format(exid))
+            log.error('Exchange {0} has no start_date'.format(exid))
     else:
         # Convert start to datetime object (celery converted it to string)
         start = timezone.make_aware(datetime.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
@@ -412,7 +412,7 @@ def update_status(self, exid):
         exchange.save()
 
         log.error('Exchange {0} is {1}'.format(exid, exchange.status))
-        
+
     else:
 
         if response['status'] is not None:
@@ -780,10 +780,10 @@ def update_prices(self, exid):
 
     # Fire exceptions if needed
     if not exchange.is_active():
-        raise InactiveExchange('Exchange {0} is inactive'.format(exid))
+        log.error('Exchange {0} is inactive'.format(exid))
 
     if not exchange.has['fetchTickers']:
-        raise MethodNotSupported('Exchange {0} does not support fetch_tickers()'.format(exid))
+        log.error('Exchange {0} does not support FetchTickers()'.format(exid))
 
     def update(response, market):
         """"

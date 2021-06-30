@@ -139,7 +139,7 @@ class Account(models.Model):
         #     # at the end of the rebalancing with a lot of orders with small amount
         #
 
-        if not target:
+        if target is None:
             # Calculate target
             df[('target', 'value')] = df.target.percent * balance * float(self.leverage)
             df[('target', 'quantity')] = df.target.value / df.price.hourly

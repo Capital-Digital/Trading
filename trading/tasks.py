@@ -1298,7 +1298,6 @@ def rebalance(strategy_id, accounts_id):
         print('\n', balances[id].to_string(), '\n')
         print('\n', routes[id].to_string(), '\n')
         print('\n', positions[id].to_string(), '\n')
-        print('\n', markets[id].to_string(), '\n')
 
         # Test routes
         if not routes[id].empty:
@@ -1558,21 +1557,21 @@ def rebalance(strategy_id, accounts_id):
             # if 'mk_close_hedge' in locals():
             #     for i in mk_close_hedge:
             #         print('Market close hedge:', i[3], i[2])
-
-            for i in mk_candidates:
-                print('Candidates:', i[3], i[2])
-
-            for i in mk_candidates_open_long:
-                print('Candidates open long:', i[3], i[2])
-
-            for i in mk_candidates_open_short:
-                print('Candidates open short:', i[3], i[2])
-
-            for i in mk_candidates_spot:
-                print('Candidates spot:', i[3], i[2])
-
-            for i in mk_spot:
-                print('Market spot:', i[3], i[2])
+            #
+            # for i in mk_candidates:
+            #     print('Candidates:', i[3], i[2])
+            #
+            # for i in mk_candidates_open_long:
+            #     print('Candidates open long:', i[3], i[2])
+            #
+            # for i in mk_candidates_open_short:
+            #     print('Candidates open short:', i[3], i[2])
+            #
+            # for i in mk_candidates_spot:
+            #     print('Candidates spot:', i[3], i[2])
+            #
+            # for i in mk_spot:
+            #     print('Market spot:', i[3], i[2])
 
             # Create an empty dataframe
             def create_segment(label):
@@ -1627,7 +1626,7 @@ def rebalance(strategy_id, accounts_id):
                             gw.loc[0, (label, 'market', 'derivative')] = gateway[5]
                             gw.loc[0, (label, 'market', 'margined')] = gateway[6]
 
-                            gw.loc[0, (label, 'type', 'priority')] = 2
+                            gw.loc[0, (label, 'type', 'priority')] = priority
                             gw.loc[0, (label, 'type', 'transfer')] = need_transfer(wallet, gateway[2])
                             gw.loc[0, (label, 'type', 'action')] = instruction_gw
 
@@ -1708,12 +1707,14 @@ def rebalance(strategy_id, accounts_id):
                             if candidate[0] == code:
                                 if candidate[1] in stablecoins:
                                     instruction = 'sell_base'
+                                    priority = 3
 
                         # Give the opportunity to sell undesired currency as quote
                         if code in codes_sell:
                             if candidate[1] == code:
                                 if candidate[0] in codes_buy:
                                     instruction = 'buy_base'
+                                    priority = 3
 
                     elif candidate[4] == 'derivative':
 
@@ -1724,6 +1725,10 @@ def rebalance(strategy_id, accounts_id):
                             instruction = 'open_short'
 
                     if 'instruction' in locals():
+
+                        # Set default route priority
+                        if not 'priority' in locals():
+                            priority = 2
 
                         if source == 'close_position':
 
@@ -1755,7 +1760,7 @@ def rebalance(strategy_id, accounts_id):
                                     s3.loc[0, (label, 'market', 'derivative')] = candidate[5]
                                     s3.loc[0, (label, 'market', 'margined')] = candidate[6]
 
-                                    s3.loc[0, (label, 'type', 'priority')] = 2
+                                    s3.loc[0, (label, 'type', 'priority')] = priority
                                     s3.loc[0, (label, 'type', 'id')] = 3
                                     s3.loc[0, (label, 'type', 'action')] = instruction
                                     s3.loc[0, (label, 'type', 'transfer')] = need_transfer(
@@ -1784,7 +1789,7 @@ def rebalance(strategy_id, accounts_id):
                                 s2.loc[0, (label, 'market', 'derivative')] = candidate[5]
                                 s2.loc[0, (label, 'market', 'margined')] = candidate[6]
 
-                                s2.loc[0, (label, 'type', 'priority')] = 2
+                                s2.loc[0, (label, 'type', 'priority')] = priority
                                 s2.loc[0, (label, 'type', 'id')] = 2
                                 s2.loc[0, (label, 'type', 'action')] = instruction
                                 s2.loc[0, (label, 'type', 'transfer')] = need_transfer(wallet, candidate[2])
@@ -1827,7 +1832,7 @@ def rebalance(strategy_id, accounts_id):
                                     s2.loc[0, (label, 'market', 'derivative')] = candidate[5]
                                     s2.loc[0, (label, 'market', 'margined')] = candidate[6]
 
-                                    s2.loc[0, (label, 'type', 'priority')] = 2
+                                    s2.loc[0, (label, 'type', 'priority')] = priority
                                     s2.loc[0, (label, 'type', 'id')] = 2
                                     s2.loc[0, (label, 'type', 'action')] = instruction
                                     s2.loc[0, (label, 'type', 'transfer')] = need_transfer(
@@ -1861,7 +1866,7 @@ def rebalance(strategy_id, accounts_id):
 
                                 s1.loc[0, (label, 'type', 'source')] = source
                                 s1.loc[0, (label, 'type', 'id')] = 1
-                                s1.loc[0, (label, 'type', 'priority')] = 2
+                                s1.loc[0, (label, 'type', 'priority')] = priority
                                 s1.loc[0, (label, 'type', 'transfer')] = need_transfer(wallet, candidate[2])
                                 s1.loc[0, (label, 'type', 'action')] = instruction
 

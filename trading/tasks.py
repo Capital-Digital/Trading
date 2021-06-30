@@ -1252,7 +1252,7 @@ def rebalance(strategy_id, account_id=None):
             # Update the asset quantity that should be transferred in segment n+1
             # after a trade is executed to buy a currency in segment n (bridge)
             if route[segment].type.id < route.length[0]:
-                next = segments[i + 2]
+                next = 's' + str(int(route[segment].type.id + 1))
                 if route[next].type.transfer:
 
                     if response['status'] == 'closed':

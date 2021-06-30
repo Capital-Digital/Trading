@@ -45,6 +45,9 @@ def order_create_update(id, response):
         # Convert datetime
         datetime = convert_timestamp_to_datetime(response['timestamp'] / 1000, datetime_directive_binance_order)
 
+        # Strategy price
+
+
         # Create dictionary
         defaults = dict(
             orderid=response['id'],

@@ -1247,36 +1247,36 @@ def rebalance(strategy_id, account_id=None):
 
         # Update transfer quantity and trade size in segment n
         # after an asset is bought or released in segment n-1.
-        def update_transfer():
+        def update_next_segment():
 
             # Update the asset quantity that should be transferred in segment n+1
             # after a trade is executed to buy a currency in segment n (bridge)
             if route[segment].type.id < route.length[0]:
                 next = 's' + str(int(route[segment].type.id + 1))
-                if route[next].type.transfer:
 
-                    if response['status'] == 'closed':
+                if response['status'] == 'closed':
 
-                        # Get the quantity we just bought
-                        if route[segment].type.action == 'buy_base':
-                            bought = response['filled']
-                        elif route[segment].type.action == 'sell_base':
-                            bought = response['filled'] * response['average']
+                    # Get the quantity we just bought
+                    if route[segment].type.action == 'buy_base':
+                        bought = response['filled']
+                    elif route[segment].type.action == 'sell_base':
+                        bought = response['filled'] * response['average']
 
-                        print(route.name)
-
-                        # Update transfer quantity
+                    # Update transfer quantity
+                    if route[next].type.transfer:
                         routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
 
-                        # Update trade quantity
-                        if route[next].market.type == 'derivative':
-                            routes[id].loc[route.name, (next, 'trade', 'margin_qty')] = bought
-                        else:
-                            routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
+                        log.info('Update transfer details in next segment'.format(round(bought, 2),
+                                                                                  route[segment].transfer.asset))
 
-                        log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
-                            round(bought, 2),
-                            route[segment].transfer.asset))
+                    # Update trade quantity
+                    if route[next].market.type == 'derivative':
+                        routes[id].loc[route.name, (next, 'trade', 'margin_qty')] = bought
+                    else:
+                        routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
+
+                    log.info('Update trade details in next segment'.format(round(bought, 2),
+                                                                           route[segment].transfer.asset))
 
         log.info('')
         log.info('*** Trade {0} ***'.format(account.name))

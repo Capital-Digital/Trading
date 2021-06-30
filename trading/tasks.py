@@ -2994,10 +2994,10 @@ def rebalance(strategy_id, accounts_id):
                     bids, asks = cumulative_book(ob)
 
                     # Update costs and sort routes
-                    print(id)
-                    if len(routes[id].index) > 0:
-                        calculate_cost(id, market, bids, asks)
-                        sort_routes(id)
+                    print('account.id', account.id)
+                    if len(routes[account.id].index) > 0:
+                        calculate_cost(account.id, market, bids, asks)
+                        sort_routes(account.id)
 
                     else:
 

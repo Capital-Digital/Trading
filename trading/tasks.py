@@ -1323,7 +1323,7 @@ def rebalance(strategy_id, account_id=None):
 
                         # Update order object
                         order_create_update(id, response)
-                        update_transfer()
+                        update_next_segment()
 
                     else:
                         log.warning('Order placement failed')
@@ -2317,7 +2317,7 @@ def rebalance(strategy_id, account_id=None):
                         margin_qty *= close_ratio
                 else:
                     # For next segments transfer quantity and trade quantity are updated
-                    # by update_transfer() after the asset is bought (or margin released) in segment 1
+                    # by update_next_segment() after the asset is bought (or margin released) in segment 1
                     pass
 
                 routes[id].sort_index(axis=0, inplace=True)
@@ -2360,7 +2360,7 @@ def rebalance(strategy_id, account_id=None):
                             routes[id].loc[index, (label, 'transfer', 'from_wallet')] = from_wallet
                             routes[id].loc[index, (label, 'transfer', 'to_wallet')] = segment.market.wallet
 
-                    # Transfer information is added by update_transfer()
+                    # Transfer information is added by update_next_segment()
                     # after the asset is bought (released) in segment n-1
                     else:
 
@@ -2387,7 +2387,7 @@ def rebalance(strategy_id, account_id=None):
                         else:
                             # If the asset that should be transferred was initially bought in spot
                             # in the previous segment then the quantity to be transferred is update
-                            # by update_transfer() after the trade is executed
+                            # by update_next_segment() after the trade is executed
                             pass
 
             # Return True if market is coin-margined.

@@ -409,8 +409,10 @@ def update_status(self, exid):
 
         exchange.status = 'nok'
         exchange.status_at = timezone.now()
-        log.error('Exchange {0} is {1}'.format(exid, exchange.status))
+        exchange.save()
 
+        log.error('Exchange {0} is {1}'.format(exid, exchange.status))
+        
     else:
 
         if response['status'] is not None:
@@ -428,9 +430,9 @@ def update_status(self, exid):
         if response['url'] is not None:
             exchange.url = response['url']
 
-    finally:
-
         exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
+
+
 
 
 @shared_task(bind=True, base=BaseTaskWithRetry)

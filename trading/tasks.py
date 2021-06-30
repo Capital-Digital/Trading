@@ -2994,6 +2994,7 @@ def rebalance(strategy_id, accounts_id):
                     bids, asks = cumulative_book(ob)
 
                     # Update costs and sort routes
+                    print(id)
                     if len(routes[id].index) > 0:
                         calculate_cost(id, market, bids, asks)
                         sort_routes(id)
@@ -3219,9 +3220,7 @@ def rebalance(strategy_id, accounts_id):
                 else:
                     wallets = exchange.get_default_types()
 
-                print(wallets)
-
-                log.info('Create asyncio loops')
+                log.info('Create asyncio loops for account {0}'.format(account.id))
 
                 # loop.set_debug(True)
                 loop = asyncio.get_event_loop()
@@ -3231,6 +3230,7 @@ def rebalance(strategy_id, accounts_id):
             else:
                 log.info('Account is no credited')
                 continue
+
 
 @shared_task(name='Update account', base=BaseTaskWithRetry)
 def update_account(id, account):

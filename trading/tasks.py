@@ -1277,13 +1277,13 @@ def rebalance(strategy_id, accounts_id):
                             bought = response['filled'] * response['average']
 
                         # Update transfer quantity
-                        routes[id].loc[route.index, (next, 'transfer', 'quantity')] = bought
+                        routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
-                            routes[id].loc[route.index, (next, 'trade', 'margin_qty')] = bought
+                            routes[id].loc[route.name, (next, 'trade', 'margin_qty')] = bought
                         else:
-                            routes[id].loc[route.index, (next, 'trade', 'order_qty')] = bought
+                            routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
 
                         log.info('Update transfer and trade quantity in segment n+1 with {0} {1}'.format(
                             round(bought, 2),

@@ -1114,7 +1114,7 @@ def rebalance(strategy_id, account_id=None):
                         fees = get_fees()
                         funding = get_funding()
 
-                        total = spread + distance + fees + funding if not pd.isna(funding) else 0
+                        total = spread + distance + fees + (funding if not pd.isna(funding) else 0)
 
                         # Set costs
                         routes[id].loc[index, (segment, 'cost', 'spread')] = spread
@@ -1259,24 +1259,27 @@ def rebalance(strategy_id, account_id=None):
                     # Get the quantity we just bought
                     if route[segment].type.action == 'buy_base':
                         bought = response['filled']
+                        asset = route[segment].market.base
                     elif route[segment].type.action == 'sell_base':
                         bought = response['filled'] * response['average']
+                        asset = route[segment].market.quote
+
+                    log.info('Order filled')
+                    pprint(response)
 
                     # Update transfer quantity
                     if route[next].type.transfer:
                         routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
 
-                        log.info('Update transfer details in next segment'.format(round(bought, 2),
-                                                                                  route[segment].transfer.asset))
+                        log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 
                     # Update trade quantity
                     if route[next].market.type == 'derivative':
                         routes[id].loc[route.name, (next, 'trade', 'margin_qty')] = bought
-                    else:
+                    elif route[next].market.type == 'spot':
                         routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
 
-                    log.info('Update trade details in next segment'.format(round(bought, 2),
-                                                                           route[segment].transfer.asset))
+                    log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4), asset))
 
         log.info('')
         log.info('*** Trade {0} ***'.format(account.name))
@@ -3202,10 +3205,10 @@ def rebalance(strategy_id, account_id=None):
             accounts_id = [account_id]
         else:
             accounts_id = Account.objects.filter(strategy=strategy,
-                                                      exchange=exchange,
-                                                      updated=False,
-                                                      trading=True
-                                                      ).values_list('id', flat=True)
+                                                 exchange=exchange,
+                                                 updated=False,
+                                                 trading=True
+                                                 ).values_list('id', flat=True)
 
         log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts_id), strategy.name))
 
@@ -3254,6 +3257,7 @@ def rebalance(strategy_id, account_id=None):
 
             else:
                 log.info('No account found for rebalancing')
+
 
 @shared_task(name='Update account', base=BaseTaskWithRetry)
 def update_account(id, account):

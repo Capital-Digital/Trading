@@ -3046,13 +3046,15 @@ def rebalance(strategy_id, accounts_id):
 
                 await client.sleep(1000)
 
+            except KeyError as e:
+                # Some loop might not be closed properly, causing KeyError exception when
+                # accessing key account.id in our routes dictionary
+                log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
+                break
+
             except Exception as e:
-                # print('exception', str(e))
                 traceback.print_exc()
-                log.info('{0}'.format(str(e)), symbol=market.symbol,
-                         wallet=market.default_type)
-                # raise e  # uncomment to break all loops in case of an error in any one of them
-                # break  # you can break just this one loop if it fails
+                log.info('{0} {1}'.format(type(e).__name__, str(e)), symbol=market.symbol, wallet=market.default_type)
 
     # Configure websocket client for wallet
     async def wallet_loop(account, loop, i, wallet):

@@ -316,19 +316,25 @@ class Account(models.Model):
         return df
 
     # Return a list of codes in all wallets
-    def get_codes(self):
+    def get_codes(self, greater_than=None):
 
         funds = self.get_fund_latest()
         codes = []
 
-        for wallet in funds.total.keys():
-            codes.extend(list(funds.total[wallet].keys()))
+        for wallet, dic in funds.total.items():
+            if greater_than is not None:
+                for code in dic.keys():
+                    if funds.total[wallet][code]['value'] > greater_than:
+                        codes.append(code)
+            else:
+                codes.extend(list(funds.total[wallet].keys()))
 
         return list(set(codes))
 
     # Return a list of stablecoins in all wallets
     def get_codes_stable(self):
-        return [code for code in self.get_codes() if Currency.objects.get(code=code).stable_coin]
+        codes = [code for code in self.get_codes() if Currency.objects.get(code=code).stable_coin]
+        return codes
 
     # Return a list of codes with opened positions
     def get_positions_codes(self):

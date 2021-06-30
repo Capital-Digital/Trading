@@ -1276,6 +1276,8 @@ def rebalance(strategy_id, accounts_id):
                         elif route[segment].type.action == 'sell_base':
                             bought = response['filled'] * response['average']
 
+                        print(route.name)
+
                         # Update transfer quantity
                         routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
 
@@ -3005,6 +3007,8 @@ def rebalance(strategy_id, accounts_id):
 
                         log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
                         if not account.updated:
+                            print(balances[account.id].to_string())
+                            print(positions[account.id].to_string())
                             account.updated = True
                             account.save()
                         break

@@ -3052,8 +3052,11 @@ def rebalance(strategy_id, account_id=None):
             except KeyError as e:
                 # Some loop might not be closed properly, causing KeyError exception when
                 # accessing key account.id in our routes dictionary
-                log.info('Lost stream {0} {1}'.format(market.default_type, market.symbol),
-                         exception=type(e).__name__, message=str(e))
+                log.error('Lost stream {0} {1}'.format(market.default_type, market.symbol),
+                          exception=type(e).__name__, message=str(e), ask=asks[0], bid=bids[0])
+
+                print(routes)
+
                 if not account.updated:
                     account.updated = True
                     account.save()

@@ -462,15 +462,38 @@ class Market(models.Model):
                                                                            ('derivative', 'derivative'),))
     ccxt_type_response = models.CharField(max_length=20, blank=True, null=True)
     default_type = models.CharField(max_length=20, blank=True, null=True)
-    derivative = models.CharField(max_length=20, blank=True, null=True, choices=(('perpetual', 'perpetual'),
-                                                                                 ('future', 'future'),))
-    delivery_date = models.DateTimeField(null=True, blank=True)
+
+    contract_type = models.CharField(max_length=20, blank=True, null=True, choices=((0, 'perpetual'),
+                                                                                    (1, 'current_month'),
+                                                                                    (2, 'next_month'),
+                                                                                    (3, 'current_quarter'),
+                                                                                    (4, 'next_quarter'),
+                                                                                    )
+                                     )
+    contract_status = models.CharField(max_length=20, blank=True, null=True, choices=((0, 'pending_trading'),
+                                                                                      (1, 'trading'),
+                                                                                      (2, 'pre_delivering'),
+                                                                                      (3, 'delivering'),
+                                                                                      (4, 'delivered'),
+                                                                                      (5, 'pre_settle'),
+                                                                                      (6, 'settling'),
+                                                                                      (7, 'close'),
+                                                                                      )
+                                       )
+
+    delivery_date = models.DateTimeField(null=True, blank=True) # 
+    onboard_date = models.DateTimeField(null=True, blank=True)
+
     margined = models.ForeignKey(Currency, on_delete=models.CASCADE,
                                  related_name='market_margined',
                                  null=True, blank=True)
-    contract_value_currency = models.ForeignKey(Currency, on_delete=models.CASCADE,
+
+    contract_value_currency = models.ForeignKey(Currency,
+                                                on_delete=models.CASCADE,
                                                 related_name='market_contract',
-                                                null=True, blank=True)
+                                                null=True,
+                                                blank=True
+                                                )
     contract_value = models.FloatField(null=True, blank=True)
     base = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='market_base', null=True)
     quote = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='market_quote', null=True)

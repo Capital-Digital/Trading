@@ -542,16 +542,16 @@ def update_currencies(self, exid):
                     update(value)
 
 
+# Create/update markets information from load_markets().markets
 @shared_task(bind=True, base=BaseTaskWithRetry)
 def update_markets(self, exid):
-    """"
-    Create/update markets information from load_markets().markets
-
-    """
 
     def update(values, default_type=None):
 
         log.bind(symbol=values['symbol'], base=values['base'], quote=values['quote'])
+
+        if default_type == 'future':
+            pprint(values)
 
         # Check is the base currency is in the database (reported by instance.currencies)
         if values['base'] not in [b.code for b in bases]:
@@ -697,9 +697,10 @@ def update_markets(self, exid):
     from marketsdata.models import Exchange, Market, Currency
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid)
-    log.info('Update markets')
 
     if exchange.is_active():
+
+        log.info('Update markets')
 
         quotes = Currency.objects.filter(exchange=exchange, type__type='quote')
         bases = Currency.objects.filter(exchange=exchange, type__type='base')

@@ -31,6 +31,8 @@ class Exchange(models.Model):
     start_date = models.DateField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    update_frequency = models.SmallIntegerField(null=True, default=60)
+    last_price_update_dt = models.DateTimeField(null=True, blank=True)
     verbose = models.BooleanField(default=False)
     enable_rate_limit = models.BooleanField(default=True)
     limit_ohlcv = models.PositiveIntegerField(null=True, blank=True)
@@ -61,6 +63,21 @@ class Exchange(models.Model):
         if self.status == 'ok':
             return True
         else:
+            return False
+
+    # Return True if it's time to update markets prices
+    def is_update_time(self):
+
+        last = self.last_price_update_dt
+        elapsed = (timezone.now() - last).seconds
+        hours, remainder = divmod(elapsed, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        if elapsed / 60 > self.update_frequency:
+            return True
+        else:
+            log.info('Time since last update is {0} hour(s) {1} minute(s) and {2} seconds'.format(int(hours),
+                                                                                                  int(minutes),
+                                                                                                  int(seconds)))
             return False
 
     # Return exchange class (ccxt)
@@ -449,7 +466,7 @@ class Market(models.Model):
     listing_date = models.DateTimeField(null=True, blank=True)
     order_book = JSONField(null=True, blank=True)
     config = JSONField(null=True, blank=True)
-    excluded = models.BooleanField(null=True, default=False)
+    updated, excluded = [models.BooleanField(null=True, default=False) for i in range(2)]
     funding_rate = JSONField(null=True, blank=True)
     top = models.BooleanField(null=True, default=None)
     objects = models.Manager()
@@ -465,21 +482,73 @@ class Market(models.Model):
         type = self.type[:4] if self.type == 'derivative' else 'spot'
         return ex + space + type + '__' + self.symbol
 
-    # Return True is a market has candles
+    def are_markets_updated(self):
+        markets = Market.objects.filter(exchange=self,
+                                        excluded=False,
+                                        updated=True
+                                        )
+        updated = True
+
+    # Return True if a market has candles
     def is_populated(self):
         if Candle.objects.filter(market=self).exists():
             return True
         else:
             return False
 
-    # Return True is a market is updated
+    # Return True if a market is updated
     def is_updated(self):
+
+        if self.updated:
+            return True
+
+        else:
+            log.bind(market=self.symbol, exchange=self.exchange, symbol=self.symbol)
+            log.error('Market is not updated')
+
+            if self.exchange.is_active():
+                if not self.excluded:
+
+                    # Try to update prices
+                    if self.exchange.is_update_time():
+
+                        from marketsdata.tasks import update_prices
+                        update_prices(self.exchange.exid)
+                        return True
+
+                    else:
+
+                        from marketsdata.tasks import insert_candle_history
+                        insert_candle_history(self.exchange.exid,
+                                              self.default_type,
+                                              self.symbol,
+                                              self.get_candle_datetime_last())
+                        return True
+                else:
+                    log.warning('Market is excluded')
+                    return False
+            else:
+                return False
+
+    # Return True if recent candles are missing
+    def has_gap(self):
         if self.is_populated():
             if self.is_future_expired():
-                return None
+                return False
             else:
-                dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-                if self.get_candle_datetime_last() == dt:
+                last = self.get_candle_datetime_last()
+                now = timezone.now()
+                gap = (now - last).seconds
+
+                # Multiply by 2 because datetime is at the close
+                # when price is collected at the close of the period
+                if gap > self.exchange.update_frequency * 60 * 2:
+
+                    log.warning('Gap detected in market',
+                                market=self.symbol,
+                                wallet=self.default_type,
+                                exchange=self.exchange.exid
+                                )
                     return True
                 else:
                     return False

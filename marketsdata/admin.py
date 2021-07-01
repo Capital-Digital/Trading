@@ -232,10 +232,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'is_updated', 'candles_number',
+    list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'updated', 'candles_number',
                     'margined', 'contract_value', 'contract_value_currency')
-    readonly_fields = ('symbol', 'exchange', 'top', 'excluded', 'type', 'ccxt_type_response', 'default_type',
-                       'derivative', 'active', 'quote', 'base', 'funding_rate', 'margined',
+    readonly_fields = ('symbol', 'exchange', 'top', 'active', 'updated', 'excluded', 'type', 'ccxt_type_response',
+                       'default_type',
+                       'derivative', 'quote', 'base', 'funding_rate', 'margined',
                        'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',
@@ -267,13 +268,6 @@ class CustomerAdmin(admin.ModelAdmin):
             return latest.strftime("%m/%d/%Y %H:%M:%S")
 
     latest.short_description = 'Last update UTC'
-
-    # Return True if the market is up to date
-    def is_updated(self, obj):
-        return obj.is_updated()
-
-    is_updated.boolean = True
-    is_updated.short_description = 'Updated'
 
     # Return Limit price min
     def get_limit_price_min(self, obj):

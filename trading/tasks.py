@@ -232,8 +232,6 @@ def place_order(account_id, pk):
 
             else:
 
-                raise ccxt.InsufficientFunds
-
                 # Update credit
                 account.exchange.update_credit('create_order', order.market.default_type)
 

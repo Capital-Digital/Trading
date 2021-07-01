@@ -150,7 +150,7 @@ def cancel_order_id(account, orderid):
         order = Order.objects.get(orderid=orderid)
 
     except ObjectDoesNotExist:
-        log.error('Unable to select order object')
+        log.exception('Unable to select order object')
 
     else:
         client = account.exchange.get_ccxt_client(account)
@@ -219,15 +219,20 @@ def place_order(account_id, pk):
                 response = client.create_order(**args)
 
             except ccxt.InvalidOrder as e:
-                log.error('Invalid order', e=e, pk=pk)
+                log.exception('Invalid order', exc_info=e, pk=pk)
+                return False
 
-            except ccxt.InsufficientFunds:
-                log.error('Insufficient funds to place order', pk=pk)
+            except ccxt.InsufficientFunds as e:
+                log.exception('Insufficient funds to place order', exc_info=e, pk=pk)
+                return False
 
             except Exception as e:
-                log.error('Unknown error when placing order', exction=e)
+                log.exception('Unknown error when placing order', exc_info=e)
+                return False
 
             else:
+
+                raise ccxt.InsufficientFunds
 
                 # Update credit
                 account.exchange.update_credit('create_order', order.market.default_type)
@@ -244,6 +249,7 @@ def place_order(account_id, pk):
                 else:
                     pprint(response)
                     raise Exception('Placing order {0} failed, missing id')
+
         else:
             raise Exception('Placing order {0} failed, no credit left')
 
@@ -497,7 +503,7 @@ def update_order_id(account_id, orderid):
         order = Order.objects.get(account=account, orderid=orderid)
 
     except ObjectDoesNotExist:
-        log.error('Unable to select order object')
+        log.exception('Unable to select order object')
 
     else:
 
@@ -605,7 +611,7 @@ def update_positions(id, orderids=None):
 
                         except ObjectDoesNotExist:
 
-                            log.error('Unable to select {0}'.format(position['instrument_id']))
+                            log.exception('Unable to select {0}'.format(position['instrument_id']))
                             continue
 
                         else:
@@ -682,7 +688,7 @@ def update_positions(id, orderids=None):
 
                 except ObjectDoesNotExist:
 
-                    log.error('Update position failed, unable to select object'.format(position['symbol']))
+                    log.exception('Update position failed, unable to select object'.format(position['symbol']))
                     continue
 
                 else:
@@ -740,7 +746,7 @@ def update_positions(id, orderids=None):
 
                 except ObjectDoesNotExist:
 
-                    log.error('Update position failed, unable to select object'.format(position['symbol']))
+                    log.exception('Update position failed, unable to select object'.format(position['symbol']))
                     continue
 
                 else:
@@ -817,7 +823,7 @@ def update_positions(id, orderids=None):
 
                 except ObjectDoesNotExist:
 
-                    log.error('Unable to select {0} and update position'.format(position['symbol']))
+                    log.exception('Unable to select {0} and update position'.format(position['symbol']))
                     continue
 
                 else:
@@ -873,7 +879,7 @@ def update_positions(id, orderids=None):
 
                 except ObjectDoesNotExist:
 
-                    log.error('Unable to select {0} and update position'.format(position['symbol']))
+                    log.exception('Unable to select {0} and update position'.format(position['symbol']))
                     continue
 
                 else:
@@ -945,7 +951,7 @@ def transfer(id, segment):
 
         except Exception as e:
 
-            log.error('Unable to transfer fund')
+            log.exception('Unable to transfer fund')
 
             pprint(dict(
                 code=code,
@@ -1322,8 +1328,8 @@ def rebalance(strategy_id, account_id=None):
                     if orderid:
 
                         # Place order
-                        response = place_order.run(id, orderid)
-                        if response:
+                        res = place_order.run(id, orderid)
+                        if res:
 
                             log.info('Order placed')
                             print(route[segment])
@@ -1333,11 +1339,10 @@ def rebalance(strategy_id, account_id=None):
                                                             route[segment].market.base,
                                                             route[segment].market.quote
                                                             )
-                            order_create_update(id, response, price_hourly)
+                            order_create_update(id, res, price_hourly)
                             update_next_segment()
 
-                        else:
-                            log.warning('Order placement failed')
+                        elif res is False:
                             return
                     else:
                         log.warning('Order object creation failed')

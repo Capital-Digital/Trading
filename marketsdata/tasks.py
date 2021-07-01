@@ -546,153 +546,170 @@ def update_currencies(self, exid):
 @shared_task(bind=True, base=BaseTaskWithRetry)
 def update_markets(self, exid):
 
+    # Return True if a currency is in the database, else False
+    def is_known_currency(code):
+        try:
+            Currency.objects.get(exchange=exchange, code=code)
+        except ObjectDoesNotExist:
+            log.warning('Unknown currency {0}'.format(code))
+            return False
+        else:
+            return True
+
     def update(values, default_type=None):
 
         log.bind(symbol=values['symbol'], base=values['base'], quote=values['quote'])
 
-        if default_type == 'future':
-            pprint(values)
+        if exid == 'binance':
+            if default_type == 'spot':
+                if market.symbol == 'BTC/USDT':
+                    pprint(values)
+            if default_type == 'future':
+                if market.symbol == 'BTC/USDT':
+                    pprint(values)
 
-        # Check is the base currency is in the database (reported by instance.currencies)
-        if values['base'] not in [b.code for b in bases]:
-            log.debug("Unknown base currency".format(values['base']))
-            return
+        base = values['base']
+        quote = values['quote']
 
-        # Check if the quote currency is supported CurrencyType
-        if values['quote'] not in [q.code for q in quotes]:
-            return
+        if is_known_currency(base):
+            if is_known_currency(quote):
 
-        # Set market type
-        if 'type' in values:
-            ccxt_type_response = values['type']
-        else:
-            if 'swap' in values:
-                if values['swap']:
-                    ccxt_type_response = 'swap'
-            if 'spot' in values:
-                if values['spot']:
-                    ccxt_type_response = 'spot'
-            if 'future' in values:
-                if values['future']:
-                    ccxt_type_response = 'future'
-            if 'futures' in values:
-                if values['futures']:
-                    ccxt_type_response = 'futures'
-            if 'delivery' in values:
-                if values['delivery']:
-                    ccxt_type_response = 'delivery'
-            if 'option' in values:
-                if values['option']:
+                # Set market type
+                if 'type' in values:
+                    ccxt_type_response = values['type']
+                else:
+                    if 'swap' in values:
+                        if values['swap']:
+                            ccxt_type_response = 'swap'
+                    if 'spot' in values:
+                        if values['spot']:
+                            ccxt_type_response = 'spot'
+                    if 'future' in values:
+                        if values['future']:
+                            ccxt_type_response = 'future'
+                    if 'futures' in values:
+                        if values['futures']:
+                            ccxt_type_response = 'futures'
+                    if 'delivery' in values:
+                        if values['delivery']:
+                            ccxt_type_response = 'delivery'
+                    if 'option' in values:
+                        if values['option']:
+                            return
+
+                # Prevent insertion of all unlisted BitMEX contract
+                if exid == 'bitmex' and not values['active']:
                     return
 
-        # Prevent insertion of all unlisted BitMEX contract
-        if exid == 'bitmex' and not values['active']:
-            return
+                if 'ccxt_type_response' not in locals():
+                    pprint(values)
+                    raise Exception('Can not find market type')
 
-        if 'ccxt_type_response' not in locals():
-            pprint(values)
-            raise Exception('Can not find market type')
+                # Set derivative type and margined coin
+                if ccxt_type_response in ['swap', 'future', 'futures', 'delivery']:
 
-        # Set derivative type and margined coin
-        if ccxt_type_response in ['swap', 'future', 'futures', 'delivery']:
+                    type = 'derivative'
+                    derivative = get_derivative_type(exid, values)  # perpetual or future
+                    margined = get_derivative_margined(exid, values)
+                    delivery_date = get_derivative_delivery_date(exid, values)
+                    listing_date = get_derivative_listing_date(exid, values)
+                    contract_value_currency = get_derivative_contract_value_currency(exid, default_type, values)
+                    contract_value = get_derivative_contract_value(exid, values)
 
-            type = 'derivative'
-            derivative = get_derivative_type(exid, values)  # perpetual or future
-            margined = get_derivative_margined(exid, values)
-            delivery_date = get_derivative_delivery_date(exid, values)
-            listing_date = get_derivative_listing_date(exid, values)
-            contract_value_currency = get_derivative_contract_value_currency(exid, default_type, values)
-            contract_value = get_derivative_contract_value(exid, values)
+                    # Abort if one of these field is None
+                    if not derivative or not margined:
+                        if exid == 'binance':
+                            if default_type == 'future':
+                                if 'BUSD' in values['quote']:
+                                    print(derivative)
+                                    print(margined)
+                                    pprint(values)
+                        return
 
-            # Abort if one of these field is None
-            if not derivative or not margined:
-                if exid == 'binance':
-                    if default_type == 'future':
-                        if 'BUSD' in values['quote']:
-                            print(derivative)
-                            print(margined)
-                            pprint(values)
+                elif ccxt_type_response == 'spot':
+                    type = ccxt_type_response
+                    derivative = None
+
+                elif ccxt_type_response == 'option':
+                    return
+
+                # Test market activity
+                if 'active' in values:
+                    active = values['active']
+
+                ######################
+                # Exchanges specific #
+                # ####################
+
+                # At this point OKEx ccxt_type_options = None, so we need to set the appropriate ccxt_type_options
+                # so we can filter markets and update price with fetch_tickers() later on
+
+                if exid == 'okex':
+                    if type == 'spot':
+                        default_type = 'spot'
+                    elif derivative == 'perpetual':
+                        default_type = 'swap'
+                    elif derivative == 'future':
+                        default_type = 'futures'
+
+                if exid == 'bybit':
+                    # log.warning('Bybit market activity unavailable')
+                    active = True
+
+                if exid == 'ftx' and 'MOVE' in values['symbol']:
+                    return
+
+                # set limits
+                amount_min = values['limits']['amount']['min'] if values['limits']['amount']['min'] else None
+                amount_max = values['limits']['amount']['max'] if values['limits']['amount']['max'] else None
+                price_min = values['limits']['price']['min'] if values['limits']['price']['min'] else None
+                price_max = values['limits']['price']['max'] if values['limits']['price']['max'] else None
+                cost_min = values['limits']['cost']['min'] if values['limits']['cost']['min'] else None
+                cost_max = values['limits']['cost']['max'] if values['limits']['cost']['max'] else None
+
+                # create dictionary
+                defaults = {
+                    'quote': Currency.objects.get(exchange=exchange, code=quote),
+                    'base': Currency.objects.get(exchange=exchange, code=base),
+                    'type': type,
+                    'ccxt_type_response': ccxt_type_response,
+                    'default_type': default_type,
+                    'active': active,
+                    'maker': values['maker'],
+                    'taker': values['taker'],
+                    'amount_min': amount_min,
+                    'amount_max': amount_max,
+                    'price_min': price_min,
+                    'price_max': price_max,
+                    'cost_min': cost_min,
+                    'cost_max': cost_max,
+                    'limits': values['limits'],
+                    'precision': values['precision'],
+                    'response': values
+                }
+
+                if type == 'derivative':
+                    defaults['derivative'] = derivative
+                    defaults['margined'] = margined
+                    defaults['delivery_date'] = delivery_date
+                    defaults['listing_date'] = listing_date
+                    defaults['contract_value_currency'] = contract_value_currency
+                    defaults['contract_value'] = contract_value
+
+                # create or update market object
+                obj, created = Market.objects.update_or_create(symbol=values['symbol'],
+                                                               exchange=exchange,
+                                                               type=type,
+                                                               derivative=derivative,
+                                                               defaults=defaults
+                                                               )
+                if created:
+                    log.info('Creation of new {1} market {0}'.format(values['symbol'], type))
+
+            else:
                 return
-
-        elif ccxt_type_response == 'spot':
-            type = ccxt_type_response
-            derivative = None
-
-        elif ccxt_type_response == 'option':
+        else:
             return
-
-        # Test market activity
-        if 'active' in values:
-            active = values['active']
-
-        ######################
-        # Exchanges specific #
-        # ####################
-
-        # At this point OKEx ccxt_type_options = None, so we need to set the appropriate ccxt_type_options
-        # so we can filter markets and update price with fetch_tickers() later on
-
-        if exid == 'okex':
-            if type == 'spot':
-                default_type = 'spot'
-            elif derivative == 'perpetual':
-                default_type = 'swap'
-            elif derivative == 'future':
-                default_type = 'futures'
-
-        if exid == 'bybit':
-            # log.warning('Bybit market activity unavailable')
-            active = True
-
-        if exid == 'ftx' and 'MOVE' in values['symbol']:
-            return
-
-        # set limits
-        amount_min = values['limits']['amount']['min'] if values['limits']['amount']['min'] else None
-        amount_max = values['limits']['amount']['max'] if values['limits']['amount']['max'] else None
-        price_min = values['limits']['price']['min'] if values['limits']['price']['min'] else None
-        price_max = values['limits']['price']['max'] if values['limits']['price']['max'] else None
-        cost_min = values['limits']['cost']['min'] if values['limits']['cost']['min'] else None
-        cost_max = values['limits']['cost']['max'] if values['limits']['cost']['max'] else None
-
-        # create dictionary
-        defaults = {
-            'quote': quotes.get(code=values['quote']),
-            'base': bases.get(code=values['base']),
-            'type': type,
-            'ccxt_type_response': ccxt_type_response,
-            'default_type': default_type,
-            'active': active,
-            'maker': values['maker'],
-            'taker': values['taker'],
-            'amount_min': amount_min,
-            'amount_max': amount_max,
-            'price_min': price_min,
-            'price_max': price_max,
-            'cost_min': cost_min,
-            'cost_max': cost_max,
-            'limits': values['limits'],
-            'precision': values['precision'],
-            'response': values
-        }
-
-        if type == 'derivative':
-            defaults['derivative'] = derivative
-            defaults['margined'] = margined
-            defaults['delivery_date'] = delivery_date
-            defaults['listing_date'] = listing_date
-            defaults['contract_value_currency'] = contract_value_currency
-            defaults['contract_value'] = contract_value
-
-        # create or update market object
-        obj, created = Market.objects.update_or_create(symbol=values['symbol'],
-                                                       exchange=exchange,
-                                                       type=type,
-                                                       derivative=derivative,
-                                                       defaults=defaults
-                                                       )
-        if created:
-            log.info('Creation of new {1} market {0}'.format(values['symbol'], type))
 
     from marketsdata.models import Exchange, Market, Currency
     exchange = Exchange.objects.get(exid=exid)
@@ -701,15 +718,7 @@ def update_markets(self, exid):
     if exchange.is_active():
 
         log.info('Update markets')
-
-        quotes = Currency.objects.filter(exchange=exchange, type__type='quote')
-        bases = Currency.objects.filter(exchange=exchange, type__type='base')
         client = exchange.get_ccxt_client()
-
-        if not quotes.exists():
-            raise ConfigurationError('No quote currency attached to exchange {0}, update currencies first'.format(exid))
-        if not bases.exists():
-            raise ConfigurationError('No base currency attached to exchange {0}, update currencies first'.format(exid))
 
         # Iterate through supported market types. Skip OKEx because it returns
         # all markets characteristics in a single call ccxt.okex.markets

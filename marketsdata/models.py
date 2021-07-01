@@ -481,7 +481,7 @@ class Market(models.Model):
                                                                                       )
                                        )
 
-    delivery_date = models.DateTimeField(null=True, blank=True) # 
+    delivery_date = models.DateTimeField(null=True, blank=True)
     onboard_date = models.DateTimeField(null=True, blank=True)
 
     margined = models.ForeignKey(Currency, on_delete=models.CASCADE,

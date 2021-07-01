@@ -15,6 +15,7 @@ log = structlog.get_logger(__name__)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'get_status', "timeout", "rate_limit", "updated_at",
                     'get_currencies', 'get_markets', 'get_markets_not_updated', 'get_markets_not_populated',
+                    'get_markets_excluded',
                     'precision_mode', 'start_date',
                     'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
@@ -48,19 +49,32 @@ class CustomerAdmin(admin.ModelAdmin):
     get_markets.short_description = "Markets"
 
     def get_markets_not_updated(self, obj):
-        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj)
-                   if (m.active and m.is_populated() and not m.excluded
-                       and (not m.is_updated() and not m.derivative == 'future'))]
+        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj,
+                                                           active=True,
+                                                           excluded=False,
+                                                           updated=False
+                                                           )]
         return len(not_upd)
 
     get_markets_not_updated.short_description = "Not updated"
 
     def get_markets_not_populated(self, obj):
-        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj) if m.active
-                   and not m.is_populated() and not m.excluded]
+        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj,
+                                                           active=True,
+                                                           excluded=False
+                                                           ) if not m.is_populated()]
         return len(not_upd)
 
     get_markets_not_populated.short_description = "Not populated"
+
+    def get_markets_excluded(self, obj):
+        excluded = [m.symbol for m in Market.objects.filter(exchange=obj,
+                                                            active=True,
+                                                            excluded=True
+                                                            )]
+        return len(excluded)
+
+    get_markets_excluded.short_description = "Excluded"
 
     ##########
     # Action #
@@ -296,10 +310,8 @@ class CustomerAdmin(admin.ModelAdmin):
         # Download all history since exchange launch
         #
         for market in queryset.order_by('symbol'):
-            # Create a Celery task that handle retransmissions and run it
             tasks.insert_candle_history.s(exid=market.exchange.exid,
-                                          type=market.type,
-                                          derivative=market.derivative,
+                                          wallet=market.default_type,
                                           symbol=market.symbol
                                           ).apply_async(queue='slow')
 
@@ -313,17 +325,12 @@ class CustomerAdmin(admin.ModelAdmin):
         # Download only the latest history since the last candle received
         #
         for market in queryset.order_by('symbol'):
-
-            if not market.is_populated():
-                continue
-
-            # Create a Celery task that handle retransmissions and run it
-            tasks.insert_candle_history.s(exid=market.exchange.exid,
-                                          type=market.type,
-                                          derivative=market.derivative,
-                                          symbol=market.symbol,
-                                          start=market.get_candle_datetime_last()
-                                          ).apply_async(queue='slow')
+            if market.is_populated():
+                tasks.insert_candle_history.s(exid=market.exchange.exid,
+                                              wallet=market.default_type,
+                                              symbol=market.symbol,
+                                              recent=True
+                                              ).apply_async(queue='slow')
 
     insert_candles_history_recent.short_description = "Insert candles history recent"
 

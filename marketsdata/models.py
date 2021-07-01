@@ -58,6 +58,19 @@ class Exchange(models.Model):
     def __str__(self):
         return self.name
 
+    # Return True if all markets are updated
+    def are_markets_updated(self):
+        markets = Market.objects.filter(exchange=self,
+                                        excluded=False,
+                                        updated=False
+                                        ).order_by('default_type', 'symbol')
+        if markets.exists:
+            log.warning('Markets are not updated')
+            [print(m.wallet, m.symbol) for m in markets]
+            return False
+        else:
+            return True
+
     # Return True is exchange status is OK
     def is_active(self):
         if self.status == 'ok':
@@ -68,10 +81,15 @@ class Exchange(models.Model):
     # Return True if it's time to update markets prices
     def is_update_time(self):
 
-        last = self.last_price_update_dt
+        if self.last_price_update_dt:
+            last = self.last_price_update_dt
+        else:
+            last = timezone.now()
+
         elapsed = (timezone.now() - last).seconds
         hours, remainder = divmod(elapsed, 3600)
         minutes, seconds = divmod(remainder, 60)
+
         if elapsed / 60 > self.update_frequency:
             return True
         else:
@@ -482,19 +500,25 @@ class Market(models.Model):
         type = self.type[:4] if self.type == 'derivative' else 'spot'
         return ex + space + type + '__' + self.symbol
 
-    def are_markets_updated(self):
-        markets = Market.objects.filter(exchange=self,
-                                        excluded=False,
-                                        updated=True
-                                        )
-        updated = True
-
     # Return True if a market has candles
     def is_populated(self):
         if Candle.objects.filter(market=self).exists():
             return True
         else:
-            return False
+            if not self.excluded:
+                log.info('Market not populated',
+                         wallet=self.default_type,
+                         symbol=self.symbol,
+                         exchange=self.exchange.exid
+                         )
+                return False
+            else:
+                log.info('Market not populated and excluded',
+                         wallet=self.default_type,
+                         symbol=self.symbol,
+                         exchange=self.exchange.exid
+                         )
+                return False
 
     # Return True if a market is updated
     def is_updated(self):
@@ -503,8 +527,11 @@ class Market(models.Model):
             return True
 
         else:
-            log.bind(market=self.symbol, exchange=self.exchange, symbol=self.symbol)
-            log.error('Market is not updated')
+            log.error('Market is not updated',
+                      exchange=self.exchange.exid,
+                      symbol=self.symbol,
+                      wallet=self.default_type
+                      )
 
             if self.exchange.is_active():
                 if not self.excluded:
@@ -522,10 +549,14 @@ class Market(models.Model):
                         insert_candle_history(self.exchange.exid,
                                               self.default_type,
                                               self.symbol,
-                                              self.get_candle_datetime_last())
+                                              recent=True)
                         return True
                 else:
-                    log.warning('Market is excluded')
+                    log.warning('Market is excluded',
+                                exchange=self.exchange.exid,
+                                symbol=self.symbol,
+                                wallet=self.default_type
+                                )
                     return False
             else:
                 return False

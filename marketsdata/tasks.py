@@ -57,14 +57,13 @@ def run(exid):
             continue
 
         # Create a Celery task that handle retransmissions and run it
-        insert_candle_history.s(exid=exid, type=market.type,
-                                derivative=market.derivative, symbol=market.symbol,
-                                start=market.get_candle_datetime_last()).apply_async(countdown=10)
+        insert_candle_history.s(exid=exid, wallet=market.default_type, symbol=market.symbol,
+                                recent=True).apply_async(countdown=10)
 
 
 # Insert OHLCV candles history
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
-def insert_candle_history(self, exid, wallet, symbol, start=None):
+def insert_candle_history(self, exid, wallet, symbol, recent=None):
 
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
@@ -120,10 +119,18 @@ def insert_candle_history(self, exid, wallet, symbol, start=None):
                             exchange.update_credit('fetchOHLCV', market.default_type)
 
                     except ccxt.BadSymbol as e:
-                        if not market.excluded:
-                            log.exception('Bad symbol')
-                            exclude(market)
-                        return
+
+                        log.exception('Bad symbol')
+
+                        if market.type == 'derivative':
+                            if market.derivative == 'future':
+                                log.info('Deactivate future market')
+                                market.active = False
+                        else:
+                            log.info('Exclude market')
+                            market.excluded = True
+
+                        market.save()
 
                     except ccxt.ExchangeError as e:
                         print(since_ts, limit)
@@ -232,31 +239,30 @@ def insert_candle_history(self, exid, wallet, symbol, start=None):
                                 else:
                                     break
 
-            # Market should be updated at this point. However some markets with low trading volume can return no candles
-            if market.active and not market.is_updated():
-                log.warning('Exclude market. No candle returned by exchange, maybe there is 0 volume ?')
-                exclude(market)
+        market = Market.objects.get(exchange=exchange, default_type=wallet, symbol=symbol)
 
         # Set start date
-        if start:
-            start = timezone.make_aware(datetime.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
+        if recent:
+            start = market.get_candle_datetime_last()
         else:
             start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
 
         try:
-            market = Market.objects.get(exchange=exchange,
-                                        default_type=wallet,
-                                        symbol=symbol
-                                        )
             insert(market)
 
         except Exception as e:
             log.exception('Unable to fetch OHLCV')
 
         else:
-            log.info('Insert complete')
-            market.updated = True
-            market.save()
+            if market.has_gap():
+                log.warning('Insert complete with gaps, exclude market')
+                market.updated = True
+                market.excluded = True
+
+            else:
+                log.info('Insert complete')
+                market.updated = True
+                market.save()
 
 
 # Save exchange properties
@@ -337,7 +343,7 @@ def update(self):
         # Create a list of chains
         chains = [chain(
             outtodate_markets.s(exid),
-            update_prices.s(exid),
+            update_prices.si(exid),
             update_top_markets.si(exid),
             strategies.update.si(exid)
         ) for exid in exchanges_w_strat]
@@ -874,7 +880,7 @@ def update_prices(self, exid):
                                         insert_candle_history(exid,
                                                               market.default_type,
                                                               market.symbol,
-                                                              market.get_candle_datetime_last())
+                                                              recent=True)
                                     else:
                                         # Else select price and volume from response
                                         update(response, market)
@@ -895,7 +901,7 @@ def update_prices(self, exid):
                                     insert_candle_history(exid,
                                                           market.default_type,
                                                           market.symbol,
-                                                          market.get_candle_datetime_last())
+                                                          recent=True)
                                 else:
                                     # Else select price and volume from response
                                     update(response, market)

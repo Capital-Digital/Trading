@@ -1404,7 +1404,6 @@ def rebalance(strategy_id, account_id=None):
             mks = Market.objects.filter(exchange=exchange,
                                         base__code__in=codes_monitor,
                                         quote__code__in=codes_monitor,
-                                        excluded=False,
                                         trading=True
                                         ).exclude(contract_type='current_quarter'
                                                   ).exclude(contract_type='next_quarter')
@@ -3087,12 +3086,6 @@ def rebalance(strategy_id, account_id=None):
             if not market.trading:
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
                 log.warning('Market {0} {1} is not trading'.format(market.symbol, market.wallet))
-
-        # Select updated markets
-        for market in markets_monitor:
-            if market.excluded:
-                markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is excluded'.format(market.symbol, market.wallet))
 
         log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 

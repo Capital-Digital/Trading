@@ -73,7 +73,7 @@ class Account(models.Model):
 
             # Insert wallets balances
             for i in ['total', 'free', 'used']:
-                for default_type, dic1 in getattr(funds, i).items():
+                for wallet, dic1 in getattr(funds, i).items():
                     for code, dic2 in dic1.items():
                         for field, value in dic2.items():
 
@@ -82,7 +82,7 @@ class Account(models.Model):
 
                                 cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
                                                                                                           'level_2'])
-                                indexes = pd.MultiIndex.from_tuples([(code, default_type)], names=['code', 'wallet'])
+                                indexes = pd.MultiIndex.from_tuples([(code, wallet)], names=['code', 'wallet'])
                                 wallet = pd.DataFrame(value, index=indexes, columns=cols)
                                 df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()
 
@@ -211,7 +211,7 @@ class Account(models.Model):
             for position in positions:
 
                 # Select market
-                default_type = position.market.default_type
+                wallet = position.market.wallet
                 type = position.market.type
                 margined = position.market.margined.code
                 symbol = position.market.symbol
@@ -247,7 +247,7 @@ class Account(models.Model):
                 # Create multilevel columns
                 indexes = pd.MultiIndex.from_tuples([(code,
                                                       position.market.quote.code,
-                                                      default_type,
+                                                      wallet,
                                                       symbol,
                                                       type,
                                                       position.market.derivative,
@@ -413,7 +413,7 @@ class Account(models.Model):
         segment = route[segment]
         market = Market.objects.get(exchange=self.exchange,
                                     symbol=segment.market.symbol,
-                                    default_type=segment.market.wallet
+                                    wallet=segment.market.wallet
                                     )
 
         # Set order type and price

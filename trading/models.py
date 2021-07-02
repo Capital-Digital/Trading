@@ -82,7 +82,6 @@ class Account(models.Model):
 
                                 cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
                                                                                                           'level_2'])
-                                print(code, wallet)
                                 indexes = pd.MultiIndex.from_tuples([(code, wallet)], names=['code', 'wallet'])
                                 tmp = pd.DataFrame(value, index=indexes, columns=cols)
                                 df = pd.concat([df, tmp], axis=0).groupby(level=[0, 1]).mean()
@@ -251,14 +250,14 @@ class Account(models.Model):
                                                       wallet,
                                                       symbol,
                                                       type,
-                                                      position.market.derivative,
+                                                      position.market.contract_type,
                                                       margined
                                                       )], names=['code',
                                                                  'quote',
                                                                  'wallet',
                                                                  'symbol',
                                                                  'type',
-                                                                 'derivative',
+                                                                 'contract_type',
                                                                  'margined'])
                 # Construct dataframe and normalize rows
                 d = pd.DataFrame([[side, size, asset, quantity, notional_value, initial_margin,
@@ -428,7 +427,7 @@ class Account(models.Model):
         # Select size
         amount = segment.trade.order_qty
         if market.type == 'derivative':
-            if market.derivative == 'perpetual':
+            if market.contract_type == 'perpetual':
                 if market.margined == market.base:
                     amount = segment.trade.cont
 

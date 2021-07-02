@@ -712,6 +712,9 @@ def prices(exid):
                     Candle.objects.get(market=market, exchange=exchange, dt=dt)
 
                 except Candle.DoesNotExist:
+
+                    log.info('Insert last price', dt=dt)
+
                     Candle.objects.create(market=market,
                                           exchange=exchange,
                                           dt=dt,

@@ -984,6 +984,8 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                                 else:
                                     break
 
+                return True
+            
         market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=symbol)
 
         if not market.updated or recent is None:
@@ -1003,19 +1005,20 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                     return
 
             try:
-                insert(market)
+                res = insert(market)
 
             except Exception as e:
                 log.exception('Unable to fetch OHLCV')
 
             else:
-                if market.has_gap():
-                    log.warning('Insert complete with gaps, blacklist market ?')
+                if res:
+                    if market.has_gap():
+                        log.warning('Insert complete with gaps, blacklist market ?')
 
-                else:
-                    log.info('Candles complete')
-                    market.updated = True
-                    market.save()
+                    else:
+                        log.info('Candles complete')
+                        market.updated = True
+                        market.save()
 
         else:
             log.info('Market is updated')

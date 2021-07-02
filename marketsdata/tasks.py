@@ -268,7 +268,7 @@ def currencies(exid):
                 log.info('Tag currency as stablecoin')
                 curr.stable_coin = True
                 curr.save()
-            else:
+            elif Currency.objects.get(code=code).stable_coin:
                 log.info('Untag currency as stablecoin')
                 curr.stable_coin = False
                 curr.save()
@@ -496,7 +496,6 @@ def markets(exid):
                     }
 
                     if market_type == 'derivative':
-                        print('set deriva')
                         defaults['contract_type'] = contract_type
                         defaults['margined'] = margined
                         defaults['delivery_date'] = delivery_date

@@ -333,6 +333,8 @@ def markets(exid):
                     market_status = response['info']['contractStatus'].lower()
             elif exid == 'bybit':
                 market_status = response['info']['status'].lower()
+            elif exid == 'ftx':
+                market_status = 'enabled' if response['info']['enabled'] else 'disabled'
             if 'market_status' in locals():
                 return market_status
             else:
@@ -419,6 +421,11 @@ def markets(exid):
         def is_halted():
             if exid == 'binance':
                 if status in ['close', 'break']:
+                    halt = True
+                else:
+                    halt = False
+            if exid == 'ftx':
+                if status == 'disabled':
                     halt = True
                 else:
                     halt = False
@@ -538,6 +545,14 @@ def markets(exid):
                 for market, response in client.markets.items():
                     update()
 
+                # Delete markets not reported by the exchange
+                unlisted = Market.objects.filter(exchange=exchange,
+                                                 wallet=wallet
+                                                 ).exclude(symbol__in=list(client.markets.keys()))
+                if unlisted:
+                    log.info('Delete {0} unlisted market(s)'.format(unlisted.count()))
+                    unlisted.delete()
+
                 log.unbind('wallet')
 
         else:
@@ -548,6 +563,12 @@ def markets(exid):
 
                 for market, response in client.markets.items():
                     update()
+
+                # Delete markets not reported by the exchange
+                unlisted = Market.objects.filter(exchange=exchange).exclude(symbol__in=list(client.markets.keys()))
+                if unlisted:
+                    log.info('Delete {0} unlisted market(s)'.format(unlisted.count()))
+                    unlisted.delete()
 
         # log.info('Update markets complete')
         log.unbind('exchange')

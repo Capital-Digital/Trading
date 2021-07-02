@@ -329,7 +329,8 @@ class Account(models.Model):
                     if funds.total[wallet][code]['value'] > greater_than:
                         codes.append(code)
             else:
-                codes.extend(list(funds.total[wallet].keys()))
+                lst = list(funds.total[wallet].keys())
+                codes.extend(lst)
 
         return list(set(codes))
 

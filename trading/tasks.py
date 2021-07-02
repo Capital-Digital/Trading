@@ -2905,7 +2905,7 @@ def rebalance(strategy_id, account_id=None):
             cash_target = balances[id].loc[account.get_codes_stable(), ('target', 'value')].mean()
             print('cash_target', cash_target)
             if pd.isna(cash_target):
-                print(balances[id].loc[account.get_codes_stable(), ('target', 'value')].to_string())
+                print(account.get_codes_stable())
                 print('balance', balances[id])
 
             capacity = cash_target - (hedge_total + hedge_position_margin)

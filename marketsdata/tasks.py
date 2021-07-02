@@ -265,9 +265,10 @@ def currencies(exid):
 
             # Add or remove stablecoin = True if needed
             if code in config['MARKETSDATA']['supported_stablecoins']:
-                log.info('Tag currency as stablecoin')
-                curr.stable_coin = True
-                curr.save()
+                if not Currency.objects.get(code=code).stable_coin:
+                    log.info('Tag currency as stablecoin')
+                    curr.stable_coin = True
+                    curr.save()
             elif Currency.objects.get(code=code).stable_coin:
                 log.info('Untag currency as stablecoin')
                 curr.stable_coin = False

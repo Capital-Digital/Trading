@@ -70,7 +70,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def insert_full_ohlcv(self, request, queryset):
         exids = [exchange.exid for exchange in queryset]
-        chains = [tasks.insert_ohlcv_bulk(exid) for exid in exids]
+        chains = [tasks.insert_ohlcv_bulk(exid, recent=None) for exid in exids]
         res = group(*chains).delay()
 
         while not res.ready():

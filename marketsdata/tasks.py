@@ -1015,8 +1015,9 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
             else:
                 if res:
                     if market.has_gap():
-                        log.warning('Insert complete with gaps, blacklist market ?')
-
+                        log.warning('Insert complete with gaps')
+                        log.info('Delete market')
+                        market.delete()
                     else:
                         log.info('Candles complete')
                         market.updated = True

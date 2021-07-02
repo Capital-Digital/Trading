@@ -1317,8 +1317,8 @@ def rebalance(strategy_id, account_id=None):
                     if orderid:
 
                         # Place order
-                        res = place_order.run(id, orderid)
-                        if res:
+                        response = place_order.run(id, orderid)
+                        if response:
 
                             log.info('Order placed')
                             print(route[segment])
@@ -1328,10 +1328,10 @@ def rebalance(strategy_id, account_id=None):
                                                             route[segment].market.base,
                                                             route[segment].market.quote
                                                             )
-                            order_create_update(id, res, price_hourly)
+                            order_create_update(id, response, price_hourly)
                             update_next_segment()
 
-                        elif res is False:
+                        elif response is False:
                             return
                     else:
                         log.warning('Order object creation failed')
@@ -1475,8 +1475,6 @@ def rebalance(strategy_id, account_id=None):
 
             # Currencies
             ############
-
-            print('markets[id]', markets[id])
 
             markets_index = markets[id].index.tolist()
             stablecoins = account.exchange.get_stablecoins()
@@ -3050,7 +3048,6 @@ def rebalance(strategy_id, account_id=None):
                                 create_dataframes(account.id, update=True)
 
                         else:
-                            print(routes[id].to_string())
                             log.info('Calculate routes cost')
                 else:
                     print('wait')

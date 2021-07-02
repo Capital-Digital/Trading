@@ -713,8 +713,6 @@ def prices(exid):
 
                 except Candle.DoesNotExist:
 
-                    log.info('Insert last price', dt=dt)
-
                     Candle.objects.create(market=market,
                                           exchange=exchange,
                                           dt=dt,
@@ -726,7 +724,7 @@ def prices(exid):
 
                 else:
                     pass
-                    log.warning('Candle exists', dt=dt)
+                    # log.warning('Candle exists', dt=dt)
 
                 finally:
                     log.unbind('wallet', 'symbol')
@@ -739,9 +737,6 @@ def prices(exid):
                                             quote__code__in=exchange.get_supported_quotes(),
                                             trading=True
                                             )
-
-            print('mk count', markets.count())
-            print(exchange.get_supported_quotes())
 
             if exchange.wallets:
 

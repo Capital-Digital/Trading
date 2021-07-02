@@ -358,7 +358,6 @@ def markets(exid):
                 pprint(response)
                 log.exception('Cannot find contract type')
             else:
-                print(contract_type)
                 return contract_type
 
         def get_margined():

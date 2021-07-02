@@ -84,8 +84,8 @@ class Account(models.Model):
                                                                                                           'level_2'])
                                 print(code, wallet)
                                 indexes = pd.MultiIndex.from_tuples([(code, wallet)], names=['code', 'wallet'])
-                                wallet = pd.DataFrame(value, index=indexes, columns=cols)
-                                df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()
+                                tmp = pd.DataFrame(value, index=indexes, columns=cols)
+                                df = pd.concat([df, tmp], axis=0).groupby(level=[0, 1]).mean()
 
             # Insert dollar value of open positions (sum USDT and BUSD margined)
             positions = self.create_positions_df()

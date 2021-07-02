@@ -82,6 +82,7 @@ class Account(models.Model):
 
                                 cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
                                                                                                           'level_2'])
+                                print(code, wallet)
                                 indexes = pd.MultiIndex.from_tuples([(code, wallet)], names=['code', 'wallet'])
                                 wallet = pd.DataFrame(value, index=indexes, columns=cols)
                                 df = pd.concat([df, wallet], axis=0).groupby(level=[0, 1]).mean()

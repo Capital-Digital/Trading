@@ -738,7 +738,7 @@ def prices(exid):
             markets = Market.objects.filter(exchange=exchange,
                                             quote__code__in=exchange.get_supported_quotes(),
                                             trading=True
-                                            ).order_by('symbol', 'wallet')
+                                            )
 
             print('mk count', markets.count())
             print(exchange.get_supported_quotes())

@@ -1016,7 +1016,7 @@ def rebalance(strategy_id, account_id=None):
         def get_funding():
 
             if route[segment].market.type == 'derivative':
-                if route[segment].market.derivative == 'perpetual':
+                if route[segment].market.contract_type == 'perpetual':
 
                     market = Market.objects.get(exchange=exchange,
                                                 symbol=route[segment].market.symbol,
@@ -1167,7 +1167,7 @@ def rebalance(strategy_id, account_id=None):
 
         if order.market.type == 'derivative':
             lst = list(idx)
-            lst.extend([order.market.derivative, order.market.margined.code])
+            lst.extend([order.market.contract_type, order.market.margined.code])
             idx = tuple(lst)
 
         # Add/update order informations
@@ -1372,7 +1372,7 @@ def rebalance(strategy_id, account_id=None):
 
                 for segment in segments:
                     if route[segment].market.type == 'derivative':
-                        if route[segment].market.derivative == 'perpetual':
+                        if route[segment].market.contract_type == 'perpetual':
 
                             market = Market.objects.get(exchange=exchange,
                                                         symbol=route[segment].market.symbol,
@@ -1428,7 +1428,7 @@ def rebalance(strategy_id, account_id=None):
                                                               market.wallet,
                                                               market.symbol,
                                                               market.type,
-                                                              market.derivative,
+                                                              market.contract_type,
                                                               margined
                                                               )],
                                                             names=['base',
@@ -1436,13 +1436,13 @@ def rebalance(strategy_id, account_id=None):
                                                                    'wallet',
                                                                    'symbol',
                                                                    'type',
-                                                                   'derivative',
+                                                                   'contract_type',
                                                                    'margined'
                                                                    ])
                         cols = pd.MultiIndex.from_product([['depth'], ['spread']], names=['first', 'second'])
 
                         # Select funding rate for perp
-                        if market.derivative == 'perpetual':
+                        if market.contract_type == 'perpetual':
                             funding = float(market.funding_rate['lastFundingRate'])
                         else:
                             funding = np.nan
@@ -2840,7 +2840,7 @@ def rebalance(strategy_id, account_id=None):
 
                     # Use contract size if coin-margined
                     if market.type == 'derivative':
-                        if market.derivative == 'perpetual':
+                        if market.contract_type == 'perpetual':
                             if market.margined == market.base:
                                 amount = route[s].trade.cont
 
@@ -2872,7 +2872,7 @@ def rebalance(strategy_id, account_id=None):
 
                             # Insert contract
                             if market.type == 'derivative':
-                                if market.derivative == 'perpetual':
+                                if market.contract_type == 'perpetual':
                                     if market.margined == market.base:
                                         routes[id].loc[index, (s, 'trade', 'cont')] = amount
                                         routes[id].loc[index, (s, 'trade', 'order_qty')] = order_qty

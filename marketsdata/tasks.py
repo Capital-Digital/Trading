@@ -681,8 +681,8 @@ def prices(exid):
                     response = response[market.symbol]
                 else:
                     log.warning('Symbol not in load_markets()')
-                    market.updated = False
-                    market.save()
+                    log.info('Delete market')
+                    market.delete()
                     return
 
                 # Select last price

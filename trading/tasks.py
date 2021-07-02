@@ -3255,6 +3255,8 @@ def rebalance(strategy_id, account_id=None):
 
                     else:
                         log.info('Rebalance impossible with 1 code to monitor', codes_monitor=codes_monitor)
+                        account.updated = True
+                        account.save()
                         continue
                 else:
                     log.info('Account is no credited')

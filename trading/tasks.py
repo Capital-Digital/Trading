@@ -3048,6 +3048,7 @@ def rebalance(strategy_id, account_id=None):
                                 create_dataframes(account.id, update=True)
 
                         else:
+                            print(routes[id].to_string())
                             log.info('Calculate routes cost')
                 else:
                     print('wait')

@@ -741,6 +741,7 @@ def prices(exid):
                                             ).order_by('symbol', 'wallet')
 
             print('mk count', markets.count())
+            print(exchange.get_supported_quotes())
 
             if exchange.wallets:
 
@@ -759,7 +760,6 @@ def prices(exid):
                             exchange.update_credit('fetch_tickers', wallet)
 
                             for market in markets.filter(wallet=wallet):
-                                print('symbol', market.symbol)
                                 update(response)
 
                                 # # Download OHLCV if gap detected

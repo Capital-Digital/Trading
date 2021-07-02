@@ -1011,35 +1011,37 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 
         market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=symbol)
 
-        # Set start date
-        if market.is_populated():
-            if recent:
-                start = market.get_candle_datetime_last()
-            else:
-                start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
-        else:
-            if market.quote == exchange.dollar_currency:
-                log.info('Download full OHLCV history')
-                start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
-            else:
-                log.info('Download only recent history')
-                return
+        if market.quote.code == market.exchange.dollar_currency:
 
-        try:
-            res = insert(market)
-
-        except ccxt.DDoSProtection as e:
-            log.error('DDoS protection')
-        except Exception as e:
-            log.error('Unable to fetch OHLCV: {0}'.format(e))
-
-        else:
-            if res:
-                if market.has_gap():
-                    log.warning('Insert complete with gaps')
-                    log.info('Delete market')
-                    market.delete()
+            # Set start date
+            if market.is_populated():
+                if recent:
+                    start = market.get_candle_datetime_last()
                 else:
-                    log.info('Candles complete')
-                    market.updated = True
-                    market.save()
+                    start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+            else:
+                if market.quote == exchange.dollar_currency:
+                    log.info('Download full OHLCV history')
+                    start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+                else:
+                    log.info('Download only recent history')
+                    return
+
+            try:
+                res = insert(market)
+
+            except ccxt.DDoSProtection as e:
+                log.error('DDoS protection')
+            except Exception as e:
+                log.error('Unable to fetch OHLCV: {0}'.format(e))
+
+            else:
+                if res:
+                    if market.has_gap():
+                        log.warning('Insert complete with gaps')
+                        log.info('Delete market')
+                        market.delete()
+                    else:
+                        log.info('Candles complete')
+                        market.updated = True
+                        market.save()

@@ -3251,7 +3251,7 @@ def rebalance(strategy_id, account_id=None):
 
                         gp = asyncio.wait([main(account, loop, wallets)])
                         loop.run_until_complete(gp)
-                        loop.close()
+                        # loop.close()
 
                     else:
                         log.info('Rebalance impossible with 1 code to monitor', codes_monitor=codes_monitor)

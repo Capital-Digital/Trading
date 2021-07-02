@@ -265,9 +265,11 @@ def currencies(exid):
 
             # Add or remove stablecoin = True if needed
             if code in exchange.get_supported_stablecoins():
+                log.info('Tag currency as stablecoin')
                 curr.stable_coin = True
                 curr.save()
             else:
+                log.info('Untag currency as stablecoin')
                 curr.stable_coin = False
                 curr.save()
 

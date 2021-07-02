@@ -19,7 +19,7 @@ log = structlog.get_logger(__name__)
 class Exchange(models.Model):
     objects = models.Manager()
     exid = models.CharField(max_length=12, blank=True, null=True)
-    default_types = models.CharField(max_length=50, blank=True, null=True)
+    wallets = models.CharField(max_length=50, blank=True, null=True)
     dollar_currency = models.CharField(max_length=4, blank=False, null=True)
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
     api, countries, urls, has, timeframes, credentials, options = [JSONField(blank=True, null=True) for i in range(7)]
@@ -33,6 +33,8 @@ class Exchange(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     update_frequency = models.SmallIntegerField(null=True, default=60)
     last_price_update_dt = models.DateTimeField(null=True, blank=True)
+    supported_quotes = models.CharField(max_length=50, blank=True, null=True)
+    supported_stablecoins = models.CharField(max_length=50, blank=True, null=True)
     verbose = models.BooleanField(default=False)
     enable_rate_limit = models.BooleanField(default=True)
     limit_ohlcv = models.PositiveIntegerField(null=True, blank=True)
@@ -61,9 +63,8 @@ class Exchange(models.Model):
     # Return True if all markets are updated
     def are_markets_updated(self):
         markets = Market.objects.filter(exchange=self,
-                                        excluded=False,
                                         updated=False
-                                        ).order_by('default_type', 'symbol')
+                                        ).order_by('wallet', 'symbol')
         if markets.exists:
             log.warning('Markets are not updated')
             [print(m.wallet, m.symbol) for m in markets]
@@ -71,8 +72,14 @@ class Exchange(models.Model):
         else:
             return True
 
+    def get_supported_quotes(self):
+        return str(self.supported_quotes).replace(' ', '').split(',')
+
+    def get_supported_stablecoins(self):
+        return str(self.supported_stablecoins).replace(' ', '').split(',')
+
     # Return True is exchange status is OK
-    def is_active(self):
+    def is_trading(self):
         if self.status == 'ok':
             return True
         else:
@@ -99,7 +106,7 @@ class Exchange(models.Model):
             return False
 
     # Return exchange class (ccxt)
-    def get_ccxt_client(self, account=None, ccxt_type_options=None):
+    def get_ccxt_client(self, account=None, wallet=None):
 
         client = getattr(ccxt, self.exid)
         client = client({
@@ -118,9 +125,9 @@ class Exchange(models.Model):
             if self.credentials['password']:
                 client.password = account.password
 
-        if ccxt_type_options:
+        if wallet:
             if 'defaultType' in client.options:
-                client.options['defaultType'] = ccxt_type_options
+                client.options['defaultType'] = wallet
 
         self.options = client.options
         self.save()
@@ -129,8 +136,8 @@ class Exchange(models.Model):
 
     def get_ccxt_client_pro(self, account=None, market=None):
 
-        if not self.is_active():
-            log.error('Exchange is inactive', exchange=self.exid)
+        if not self.is_trading():
+            log.error('Exchange is intrading', exchange=self.exid)
             return
 
         client = getattr(ccxtpro, self.exid)
@@ -163,14 +170,14 @@ class Exchange(models.Model):
 
         return client
 
-    # Convert default_types into a list of supported CCXT market types ('', spot, swap, futures, futures, delivery)
-    def get_default_types(self):
+    # Return exchange's wallets
+    def get_wallets(self):
 
         if 'defaultType' in self.get_ccxt_client().options:
 
             # Return a list of supported ccxt types
-            if self.default_types:
-                return str(self.default_types).replace(" ", "").split(',')
+            if self.wallets:
+                return str(self.wallets).replace(" ", "").split(',')
             else:
                 raise Exception('Exchange {0} requires a parameter defaultType'.format(self.exid))
         else:
@@ -190,7 +197,7 @@ class Exchange(models.Model):
         return [c.code for c in Currency.objects.filter(exchange=self, stable_coin=True)]
 
     # Return True if there is available credit
-    def has_credit(self, default_type=None):
+    def has_credit(self, wallet=None):
 
         credit = self.credit
 
@@ -200,10 +207,10 @@ class Exchange(models.Model):
         ts = get_datetime(timestamp=True)
 
         # Return True is new
-        if default_type not in credit:
+        if wallet not in credit:
             return True
 
-        credit = credit[default_type]
+        credit = credit[wallet]
 
         # Return a list with total number of weight and orders
         def count():
@@ -223,7 +230,7 @@ class Exchange(models.Model):
             order_count_1 = len([v['order'] for k, v in tensec.items() if v['order']])
 
             # Count orders for rule 2
-            if default_type in ['spot', 'future']:
+            if wallet in ['spot', 'future']:
 
                 day = dict(filter(
                     lambda elem: float(elem[0]) > ts - (order_2_count_interval * order_2_count_interval_num),
@@ -238,7 +245,7 @@ class Exchange(models.Model):
 
         if self.exid == 'binance':
 
-            if default_type == 'spot':
+            if wallet == 'spot':
 
                 request_weight_interval = 60  # 60 seconds
                 request_weight_interval_num = 1  # 1 * 60 sec
@@ -252,7 +259,7 @@ class Exchange(models.Model):
                 order_2_count_interval_num = 1
                 order_2_count_limit = 200000
 
-            elif default_type == 'future':
+            elif wallet == 'future':
 
                 request_weight_interval = 60
                 request_weight_interval_num = 1
@@ -266,7 +273,7 @@ class Exchange(models.Model):
                 order_2_count_interval_num = 10
                 order_2_count_limit = 300
 
-            elif default_type == 'delivery':
+            elif wallet == 'delivery':
 
                 request_weight_interval = 60
                 request_weight_interval_num = 1
@@ -286,27 +293,27 @@ class Exchange(models.Model):
             if order_count_1 > order_1_count_limit:
                 return False
 
-            if default_type in ['spot', 'future']:
+            if wallet in ['spot', 'future']:
                 if order_count_2 > order_2_count_limit:
                     return False
 
             # Update credit max reached
-            self.update_credit_max(default_type, weight, order_count_1, order_count_2)
+            self.update_credit_max(wallet, weight, order_count_1, order_count_2)
 
             # Finally filter out expired entries
-            self.credit[default_type] = dict(filter(lambda elem: float(elem[0]) > ts - (60 * 60 * 24), credit.items()))
+            self.credit[wallet] = dict(filter(lambda elem: float(elem[0]) > ts - (60 * 60 * 24), credit.items()))
             self.save()
 
         return True
 
     # Append weights and order to credit dictionary
-    def update_credit(self, method, default_type=None):
+    def update_credit(self, method, wallet=None):
         credit = self.credit
         ts = get_datetime(timestamp=True)
 
         if self.exid == 'binance':
 
-            if default_type in ['spot', 'future', 'delivery']:
+            if wallet in ['spot', 'future', 'delivery']:
 
                 if method == 'fetchBalance':
                     weight = 5 + 1  # +1 for exchangeInfo
@@ -356,60 +363,60 @@ class Exchange(models.Model):
                     raise Exception('Method unknown : {0}'.format(method))
 
             else:
-                raise Exception('{0} is not valid defaultType for {1}'.format(default_type, self.name))
+                raise Exception('{0} is not valid defaultType for {1}'.format(wallet, self.name))
 
             # Create new dictionary or append to an existing dictionary
-            if default_type in credit:
-                credit[default_type][ts] = dict(weight=weight, order=order, method=method)
+            if wallet in credit:
+                credit[wallet][ts] = dict(weight=weight, order=order, method=method)
             else:
                 dic = dict()
                 dic[ts] = dict(weight=weight,
                                order=order,
                                method=method)
-                credit[default_type] = dic
+                credit[wallet] = dic
 
             self.credit = credit
             self.save()
 
     # Replace max credit reached if a new high is reached
-    def update_credit_max(self, default_type, weight, order_count_1, order_count_2):
+    def update_credit_max(self, wallet, weight, order_count_1, order_count_2):
 
         credit_max = self.credit_max
 
         if not credit_max:
             credit_max = dict()
 
-        if not default_type:
-            default_type = 'default'
+        if not wallet:
+            wallet = 'default'
 
-        if default_type in credit_max:
+        if wallet in credit_max:
 
             # Select max values
-            if 'weight' in credit_max[default_type]:
-                if 'max' in credit_max[default_type]['weight']:
-                    max_w = credit_max[default_type]['weight']['max']
-            if 'order_count_1' in credit_max[default_type]:
-                if 'max' in credit_max[default_type]['order_count_1']:
-                    max_o1 = credit_max[default_type]['order_count_1']['max']
-            if 'order_count_2' in credit_max[default_type]:
-                if 'max' in credit_max[default_type]['order_count_2']:
-                    max_o2 = credit_max[default_type]['order_count_2']['max']
+            if 'weight' in credit_max[wallet]:
+                if 'max' in credit_max[wallet]['weight']:
+                    max_w = credit_max[wallet]['weight']['max']
+            if 'order_count_1' in credit_max[wallet]:
+                if 'max' in credit_max[wallet]['order_count_1']:
+                    max_o1 = credit_max[wallet]['order_count_1']['max']
+            if 'order_count_2' in credit_max[wallet]:
+                if 'max' in credit_max[wallet]['order_count_2']:
+                    max_o2 = credit_max[wallet]['order_count_2']['max']
 
             # Compare to current values and update field credit_max_reached
             if weight > max_w:
-                log.info('Max requests weigh is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
+                log.info('Max requests weigh is now {0}'.format(weight), exchange=self.exid, wallet=wallet)
                 w = dict(date=get_datetime(string=True), max=weight)
-                self.credit_max[default_type]['weight'] = w
+                self.credit_max[wallet]['weight'] = w
 
             if order_count_1 > max_o1:
-                log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
+                log.info('Max order count is now {0}'.format(weight), exchange=self.exid, wallet=wallet)
                 order_1 = dict(date=get_datetime(string=True), max=order_count_1)
-                self.credit_max[default_type]['order_count_1'] = order_1
+                self.credit_max[wallet]['order_count_1'] = order_1
 
             if order_count_2 > max_o2:
-                log.info('Max order count is now {0}'.format(weight), exchange=self.exid, default_type=default_type)
+                log.info('Max order count is now {0}'.format(weight), exchange=self.exid, wallet=wallet)
                 order_2 = dict(date=get_datetime(string=True), max=order_count_2)
-                self.credit_max[default_type]['order_count_2'] = order_2
+                self.credit_max[wallet]['order_count_2'] = order_2
 
             self.save()
 
@@ -421,28 +428,16 @@ class Exchange(models.Model):
             order_2 = dict(date=get_datetime(string=True), max=order_count_2)
 
             self.credit_max = dict()
-            self.credit_max[default_type] = dict(weight=w,
+            self.credit_max[wallet] = dict(weight=w,
                                                  order_count_1=order_1,
                                                  order_count_2=order_2
                                                  )
             self.save()
 
 
-class CurrencyType(models.Model):
-    type = models.CharField(max_length=20, null=True, choices=(('quote', 'quote'),
-                                                               ('base', 'base')))
-
-    class Meta:
-        verbose_name_plural = "Types (currencies)"
-
-    def __str__(self):
-        return self.type
-
-
 class Currency(models.Model):
     name, code = [models.CharField(max_length=100, blank=True, null=True) for i in range(2)]
     exchange = models.ManyToManyField(Exchange, related_name='currency')
-    type = models.ManyToManyField(CurrencyType, related_name='currency')
     stable_coin = models.BooleanField(default=False, null=False, blank=False)
     objects = models.Manager()
 
@@ -460,26 +455,10 @@ class Market(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='market', null=True)
     type = models.CharField(max_length=20, blank=True, null=True, choices=(('spot', 'spot'),
                                                                            ('derivative', 'derivative'),))
-    ccxt_type_response = models.CharField(max_length=20, blank=True, null=True)
-    default_type = models.CharField(max_length=20, blank=True, null=True)
-
-    contract_type = models.CharField(max_length=20, blank=True, null=True, choices=((0, 'perpetual'),
-                                                                                    (1, 'current_month'),
-                                                                                    (2, 'next_month'),
-                                                                                    (3, 'current_quarter'),
-                                                                                    (4, 'next_quarter'),
-                                                                                    )
-                                     )
-    contract_status = models.CharField(max_length=20, blank=True, null=True, choices=((0, 'pending_trading'),
-                                                                                      (1, 'trading'),
-                                                                                      (2, 'pre_delivering'),
-                                                                                      (3, 'delivering'),
-                                                                                      (4, 'delivered'),
-                                                                                      (5, 'pre_settle'),
-                                                                                      (6, 'settling'),
-                                                                                      (7, 'close'),
-                                                                                      )
-                                       )
+    wallet = models.CharField(max_length=20, blank=True, null=True)
+    contract_type = models.CharField(max_length=20, blank=True, null=True)
+    status = models.CharField(max_length=20, blank=True, null=True)
+    order_types = models.CharField(max_length=20, blank=True, null=True)
 
     delivery_date = models.DateTimeField(null=True, blank=True)
     onboard_date = models.DateTimeField(null=True, blank=True)
@@ -488,7 +467,7 @@ class Market(models.Model):
                                  related_name='market_margined',
                                  null=True, blank=True)
 
-    contract_value_currency = models.ForeignKey(Currency,
+    contract_currency = models.ForeignKey(Currency,
                                                 on_delete=models.CASCADE,
                                                 related_name='market_contract',
                                                 null=True,
@@ -501,13 +480,13 @@ class Market(models.Model):
     amount_min, amount_max = [models.FloatField(null=True, blank=True) for i in range(2)]
     price_min, price_max = [models.FloatField(null=True, blank=True) for i in range(2)]
     cost_min, cost_max = [models.FloatField(null=True, blank=True) for i in range(2)]
-    active = models.BooleanField(null=True, default=None)
+    trading = models.BooleanField(null=True, default=None)
     symbol = models.CharField(max_length=50, null=True, blank=True)
     limits, precision, response = [JSONField(null=True) for i in range(3)]
     listing_date = models.DateTimeField(null=True, blank=True)
     order_book = JSONField(null=True, blank=True)
     config = JSONField(null=True, blank=True)
-    updated, excluded = [models.BooleanField(null=True, default=False) for i in range(2)]
+    updated = models.BooleanField(null=True, default=False)
     funding_rate = JSONField(null=True, blank=True)
     top = models.BooleanField(null=True, default=None)
     objects = models.Manager()
@@ -528,20 +507,12 @@ class Market(models.Model):
         if Candle.objects.filter(market=self).exists():
             return True
         else:
-            if not self.excluded:
-                log.info('Market not populated',
-                         wallet=self.default_type,
-                         symbol=self.symbol,
-                         exchange=self.exchange.exid
-                         )
-                return False
-            else:
-                log.info('Market not populated and excluded',
-                         wallet=self.default_type,
-                         symbol=self.symbol,
-                         exchange=self.exchange.exid
-                         )
-                return False
+            log.info('Market not populated',
+                     wallet=self.wallet,
+                     symbol=self.symbol,
+                     exchange=self.exchange.exid
+                     )
+            return False
 
     # Return True if a market is updated
     def is_updated(self):
@@ -553,73 +524,48 @@ class Market(models.Model):
             log.error('Market is not updated',
                       exchange=self.exchange.exid,
                       symbol=self.symbol,
-                      wallet=self.default_type
+                      wallet=self.wallet
                       )
 
-            if self.exchange.is_active():
-                if not self.excluded:
+            if self.exchange.is_trading():
 
-                    # Try to update prices
-                    if self.exchange.is_update_time():
+                # Try to update prices
+                if self.exchange.is_update_time():
 
-                        from marketsdata.tasks import update_prices
-                        update_prices(self.exchange.exid)
-                        return True
+                    from marketsdata.tasks import update_prices
+                    update_prices(self.exchange.exid)
+                    return True
 
-                    else:
-
-                        from marketsdata.tasks import insert_candle_history
-                        insert_candle_history(self.exchange.exid,
-                                              self.default_type,
-                                              self.symbol,
-                                              recent=True)
-                        return True
                 else:
-                    log.warning('Market is excluded',
-                                exchange=self.exchange.exid,
-                                symbol=self.symbol,
-                                wallet=self.default_type
-                                )
-                    return False
+
+                    from marketsdata.tasks import insert_candle_history
+                    insert_candle_history(self.exchange.exid,
+                                          self.wallet,
+                                          self.symbol,
+                                          recent=True)
+                    return True
             else:
                 return False
 
     # Return True if recent candles are missing
     def has_gap(self):
         if self.is_populated():
-            if self.is_future_expired():
-                return False
+            last = self.get_candle_datetime_last()
+            now = timezone.now()
+            gap = (now - last).seconds / 60
+
+            # Multiply by 3 because datetime is at the open
+            if gap > self.exchange.update_frequency * 3:
+                log.warning('Gap detected in market',
+                            market=self.symbol,
+                            wallet=self.wallet,
+                            exchange=self.exchange.exid
+                            )
+                return True
             else:
-                last = self.get_candle_datetime_last()
-                now = timezone.now()
-                gap = (now - last).seconds
-
-                # Multiply by 2 because datetime is at the close
-                # when price is collected at the close of the period
-                if gap > self.exchange.update_frequency * 60 * 2:
-
-                    log.warning('Gap detected in market',
-                                market=self.symbol,
-                                wallet=self.default_type,
-                                exchange=self.exchange.exid
-                                )
-                    return True
-                else:
-                    return False
+                return False
         else:
             return False
-
-    # Return True if a future has expired
-    def is_future_expired(self):
-        if self.type == 'derivative' and self.derivative == 'future':
-            if self.delivery_date:
-                if timezone.now() > self.delivery_date:
-                    return True
-                else:
-                    return False
-            else:
-                return False
-                # raise Exception('Future {0} has not delivery date'.format(self.symbol))
 
     # return sum of volume over last hours
     def get_candle_volume_sum(self, hours):

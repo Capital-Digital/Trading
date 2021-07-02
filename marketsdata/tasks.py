@@ -23,7 +23,7 @@ from capital.methods import *
 from marketsdata.error import *
 from marketsdata.methods import *
 from marketsdata.models import Exchange, Candle, Market, OrderBook
-import strategy.tasks as strategies
+import strategy.tasks as task
 
 log = structlog.get_logger(__name__)
 
@@ -49,32 +49,782 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
-@shared_task()
-def run(exid):
-    for market in Market.objects.filter(exchange__exid=exid).order_by('symbol'):
+@shared_task(name='Markets_____Update information')
+def update_information():
+    """"
+    Hourly task to update currencies, markets and exchange properties
 
-        if not market.is_populated():
-            continue
+    """
+    log.info('Update start')
 
-        # Create a Celery task that handle retransmissions and run it
-        insert_candle_history.s(exid=exid, wallet=market.default_type, symbol=market.symbol,
-                                recent=True).apply_async(countdown=10)
+    from marketsdata.models import Exchange
+    exchanges = [e.exid for e in Exchange.objects.all()]
+
+    # must use si() signatures
+    chains = [chain(status.si(exid),
+                    properties.si(exid),
+                    currencies.si(exid),
+                    markets.si(exid),
+                    funding.si(exid)
+                    ) for exid in exchanges]
+
+    res = group(*chains)()
+
+    while not res.ready():
+        # print(res.completed_count())
+        time.sleep(0.5)
+
+    if res.successful():
+        log.info('Update complete {0} exchanges'.format(res.completed_count()))
+
+    elif res.failed():
+        res.forget()
+        log.error('Update failed')
+
+
+@shared_task(name='Markets_____Update market prices and execute strategies')
+def update():
+    from marketsdata.models import Exchange
+    from strategy.models import Strategy
+
+    # Create lists of exchanges
+    exchanges = [e.exid for e in Exchange.objects.all()]
+    exchanges_w_strat = list(set(Strategy.objects.filter(production=True).values_list('exchange__exid', flat=True)))
+    exchanges_wo_strat = [e for e in exchanges if e not in exchanges_w_strat]
+
+    if exchanges_w_strat:
+
+        # Create a list of chains
+        chains = [chain(
+            prices.si(exid),
+            top_markets.si(exid),
+            task.strategies.si(exid)
+        ) for exid in exchanges_w_strat]
+
+        result = group(*chains).delay()
+
+        # start by updating exchanges with a strategy
+        # gp1 = group(update_prices.s(exid) for exid in exchanges_w_strat).delay()
+
+        while not result.ready():
+            time.sleep(0.5)
+
+        if result.successful():
+            log.info('Markets and strategies update complete')
+
+            # Then update the rest of our exchanges
+            result = group([prices.s(exid) for exid in exchanges_wo_strat]).delay()
+
+            while not result.ready():
+                time.sleep(0.5)
+
+            if result.successful():
+                log.info('Rest of exchanges update complete')
+
+            else:
+                log.error('Rest of exchanges update failed')
+
+        else:
+            log.error('Markets and strategies update failed')
+
+    else:
+        log.info('There is no strategy in production. Update prices')
+        group(prices.s(exid) for exid in exchanges)()
+
+
+@shared_task(name='Markets_____Update prices', base=BaseTaskWithRetry)
+def update_price():
+    exchanges = Exchange.objects.all().values_list('exid', flat=True)
+    result = group([prices.s(exid) for exid in exchanges]).delay()
+
+    while not result.ready():
+        time.sleep(0.5)
+
+    if result.successful():
+        log.info('Task update price complete')
+
+    else:
+        log.error('Task update price failed')
+
+
+@shared_task(base=BaseTaskWithRetry)
+def properties(exid):
+    log.debug('Save exchange properties', exchange=exid)
+
+    from marketsdata.models import Exchange
+    exchange = Exchange.objects.get(exid=exid)
+    client = exchange.get_ccxt_client()
+
+    exchange.version = client.version
+    exchange.precision_mode = client.precisionMode
+    exchange.api = client.api
+    exchange.countries = client.countries
+    exchange.urls = client.urls
+    exchange.has = client.has
+    exchange.timeframes = client.timeframes
+    exchange.timeout = client.timeout
+    exchange.rate_limit = client.rateLimit
+    exchange.credentials = client.requiredCredentials
+    exchange.save()
+
+    log.debug('Save exchange properties complete', exchange=exid)
+
+
+@shared_task(base=BaseTaskWithRetry)
+def status(exid):
+    from marketsdata.models import Exchange
+    exchange = Exchange.objects.get(exid=exid)
+    log.bind(exchange=exid)
+    log.info('Update status')
+
+    try:
+        response = exchange.get_ccxt_client().fetchStatus()
+
+    except ccxt.ExchangeNotAvailable:
+
+        exchange.status = 'nok'
+        exchange.status_at = timezone.now()
+        exchange.save()
+
+        log.error('Update status failed, {1} is {0}'.format(exchange.status, exchange.exid))
+
+    else:
+
+        if response['status'] is not None:
+            exchange.status = response['status']
+
+            if response['status'] != 'ok':
+                log.warning('Update status for {1} is {0}'.format(exchange.status, exchange.exid))
+            else:
+                pass
+                # log.info('Update status complete')
+
+        if response['updated'] is not None:
+            exchange.status_at = timezone.make_aware(datetime.fromtimestamp(response['updated'] / 1e3))
+        if response['eta'] is not None:
+            exchange.eta = datetime.fromtimestamp(response['eta'] / 1e3)
+        if response['url'] is not None:
+            exchange.url = response['url']
+
+        exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
+
+
+@shared_task(base=BaseTaskWithRetry)
+def currencies(exid):
+    """
+    Create/update currency information from load_markets().currencies
+
+    """
+
+    from marketsdata.models import Exchange, Currency
+    exchange = Exchange.objects.get(exid=exid)
+    log.bind(exchange=exid)
+    log.info('Update currencies')
+
+    if exchange.is_trading():
+
+        client = exchange.get_ccxt_client()
+
+        def update(currency):
+
+            code = currency['code']
+            log.bind(code=code)
+
+            try:
+                curr = Currency.objects.get(code=code, exchange=exchange)
+            except MultipleObjectsReturned:
+                log.warning('Duplicate currency {0}'.format(code))
+                pass
+            except ObjectDoesNotExist:
+
+                try:
+                    curr = Currency.objects.get(code=code)
+
+                except MultipleObjectsReturned:
+                    log.error('Duplicate currency {0}'.format(code))
+                    pass
+
+                except ObjectDoesNotExist:
+
+                    # create currency
+                    curr = Currency.objects.create(code=code)
+
+                    # add exchange
+                    curr.exchange.add(exchange)
+
+                    log.info('New currency created {0}'.format(code))
+                    curr.save()
+                else:
+
+                    # add exchange
+                    curr.exchange.add(exchange)
+                    log.info('Exchange attached to currency {0}'.format(code))
+                    curr.save()
+            else:
+                pass
+
+            # Add or remove stablecoin = True if needed
+            if code in exchange.get_supported_stablecoins():
+                curr.stable_coin = True
+                curr.save()
+            else:
+                curr.stable_coin = False
+                curr.save()
+
+        # Iterate through all currencies. Skip OKEx because it returns
+        # all currencies characteristics in a single call ccxt.okex.currencies
+
+        if exchange.wallets and exid != 'okex':
+
+            for wallet in exchange.get_wallets():
+
+                log.bind(wallet=wallet)
+                client.options['defaultType'] = wallet
+
+                if exchange.has_credit(wallet):
+                    client.load_markets(True)
+                    exchange.update_credit('load_markets', wallet)
+
+                    for currency, dic in client.currencies.items():
+                        update(dic)
+
+                log.unbind('wallet')
+
+        else:
+            if exchange.has_credit():
+                client.load_markets(True)
+                exchange.update_credit('load_markets')
+
+                for currency, dic in client.currencies.items():
+                    update(dic)
+
+
+@shared_task(base=BaseTaskWithRetry)
+def markets(exid):
+    def update():
+
+        def is_known_currency(code):
+            try:
+                Currency.objects.get(exchange=exchange, code=code)
+            except ObjectDoesNotExist:
+                log.warning('Unknown currency {0}'.format(code))
+                return False
+            else:
+                return True
+
+        def get_market_type():
+            try:
+                if exid == 'binance':
+                    if 'contractType' in response['info']:
+                        type = 'derivative'
+                    else:
+                        type = 'spot'
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find market type')
+            else:
+                return type
+
+        def get_status():
+            if exid == 'binance':
+                if 'status' in response['info']:
+                    market_status = response['info']['status'].lower()
+                elif 'contractStatus' in response['info']:
+                    market_status = response['info']['contractStatus'].lower()
+            elif exid == 'bybit':
+                market_status = response['info']['status'].lower()
+            if 'market_status' in locals():
+                return market_status
+            else:
+                pprint(response)
+                log.error('Cannot find status')
+
+        def is_trading():
+            if exid == 'binance':
+                if status == 'trading':
+                    trading = True
+                else:
+                    trading = False
+            return trading
+
+        def get_contract_type():
+            try:
+                if exid == 'binance':
+                    contract_type = response['info']['contractType'].lower()
+
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find contract type')
+            else:
+                return contract_type
+
+        def get_margined():
+            try:
+                if exid == 'binance':
+                    margined = response['info']['marginAsset']
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find margin asset')
+            else:
+                return Currency.objects.get(code=margined)
+
+        def get_delivery_date():
+            try:
+                if exid == 'binance':
+                    delivery_date = response['info']['deliveryDate']
+                    delivery_date = timezone.make_aware(datetime.fromtimestamp(float(delivery_date) / 1000))
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find delivery date')
+            else:
+                return delivery_date
+
+        def get_listing_date():
+            try:
+                if exid == 'binance':
+                    listing_date = response['info']['onboardDate']
+                    listing_date = timezone.make_aware(datetime.fromtimestamp(float(listing_date) / 1000))
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find listing date')
+            else:
+                return listing_date
+
+        def get_contract_size():
+            try:
+                if exid == 'binance':
+                    if 'contractSize' in response['info']:
+                        contract_size = response['info']['contractSize']
+                    else:
+                        contract_size = None
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find contract size')
+            else:
+                return contract_size
+
+        def get_contract_currency():
+            try:
+                if exid == 'binance':
+                    if 'contract_val_currency' in response['info']:
+                        contract_currency = response['info']['contract_val_currency']
+                    else:
+                        contract_currency = None
+            except KeyError:
+                pprint(response)
+                log.exception('Cannot find contract currency')
+            else:
+                return contract_currency
+
+        def is_halted():
+            if exid == 'binance':
+                if status in ['close', 'break']:
+                    halt = True
+                else:
+                    halt = False
+            return halt
+
+        base = response['base']
+        quote = response['quote']
+        symbol = response['symbol']
+
+        log.bind(symbol=symbol)
+
+        if is_known_currency(base):
+            if is_known_currency(quote):
+                if quote in exchange.get_supported_quotes():
+
+                    market_type = get_market_type()
+                    status = get_status()
+
+                    if is_halted():
+                        try:
+                            market = Market.objects.get(exchange=exchange,
+                                                        wallet=wallet,
+                                                        symbol=symbol
+                                                        )
+                        except ObjectDoesNotExist:
+                            return
+                        else:
+                            log.info('Delete halted market')
+                            market.delete()
+                            return
+
+                    # Set derivative specs
+                    if market_type == 'derivative':
+                        contract_type = get_contract_type()
+                        margined = get_margined()
+                        delivery_date = get_delivery_date()
+                        listing_date = get_listing_date()
+                        contract_currency = get_contract_currency()
+                        contract_size = get_contract_size()
+
+                    # set limits
+                    amount_min = response['limits']['amount']['min'] if response['limits']['amount']['min'] else None
+                    amount_max = response['limits']['amount']['max'] if response['limits']['amount']['max'] else None
+                    price_min = response['limits']['price']['min'] if response['limits']['price']['min'] else None
+                    price_max = response['limits']['price']['max'] if response['limits']['price']['max'] else None
+                    cost_min = response['limits']['cost']['min'] if response['limits']['cost']['min'] else None
+                    cost_max = response['limits']['cost']['max'] if response['limits']['cost']['max'] else None
+
+                    # create dictionary
+                    defaults = {
+                        'wallet': wallet,
+                        'quote': Currency.objects.get(exchange=exchange, code=quote),
+                        'base': Currency.objects.get(exchange=exchange, code=base),
+                        'type': market_type,
+                        'status': status,
+                        'trading': is_trading(),
+                        'amount_min': amount_min,
+                        'amount_max': amount_max,
+                        'price_min': price_min,
+                        'price_max': price_max,
+                        'cost_min': cost_min,
+                        'cost_max': cost_max,
+                        'limits': response['limits'],
+                        'precision': response['precision'],
+                        'response': response
+                    }
+
+                    if market_type == 'derivative':
+                        defaults['contract_type'] = contract_type
+                        defaults['margined'] = margined
+                        defaults['delivery_date'] = delivery_date
+                        defaults['listing_date'] = listing_date
+                        defaults['contract_currency'] = contract_currency
+                        defaults['contract_value'] = contract_size
+
+                    # create or update market object
+                    obj, created = Market.objects.update_or_create(exchange=exchange,
+                                                                   wallet=wallet,
+                                                                   symbol=symbol,
+                                                                   defaults=defaults
+                                                                   )
+                    if created:
+                        log.info('Create new market')
+
+            else:
+                return
+        else:
+            return
+
+        log.unbind('symbol')
+
+    from marketsdata.models import Exchange, Market, Currency
+    exchange = Exchange.objects.get(exid=exid)
+    log.bind(exchange=exid)
+
+    if exid != 'binance':
+        log.info('Update market not supported')
+        return
+
+    if exchange.is_trading():
+
+        client = exchange.get_ccxt_client()
+
+        # Iterate through supported wallets
+        if exchange.wallets:
+
+            for wallet in exchange.get_wallets():
+
+                client.options['defaultType'] = wallet
+                if exchange.has_credit(wallet):
+                    client.load_markets(True)
+                    exchange.update_credit('load_markets', wallet)
+
+                log.bind(wallet=wallet)
+                log.info('Update markets {0}'.format(wallet))
+
+                for market, response in client.markets.items():
+                    update()
+
+                log.unbind('wallet')
+
+        else:
+            wallet = None
+            if exchange.has_credit():
+                client.load_markets(True)
+                exchange.update_credit('load_markets')
+
+                for market, response in client.markets.items():
+                    update()
+
+        # log.info('Update markets complete')
+        log.unbind('exchange')
+
+
+@shared_task(base=BaseTaskWithRetry)
+def funding(exid):
+    from marketsdata.models import Exchange, Market
+    exchange = Exchange.objects.get(exid=exid)
+    log.bind(exchange=exid)
+
+    if exchange.is_trading():
+        if exid == 'binance':
+
+            log.info('Update funding')
+
+            def update(response, market):
+                premiumindex = [i for i in response if i['symbol'] == market.response['id']][0]
+                market.funding_rate = premiumindex
+                market.save()
+
+            client = exchange.get_ccxt_client()
+
+            # Fetch funding rates for USDT-margined contracts
+            response = client.fapiPublic_get_premiumindex()
+            markets_usdt_margined = Market.objects.filter(exchange=exchange,
+                                                          contract_type='perpetual',
+                                                          wallet='future',
+                                                          updated=True
+                                                          )
+            for market in markets_usdt_margined:
+                update(response, market)
+
+            # Fetch funding rates for COIN-margined contracts
+            response = client.dapiPublic_get_premiumindex()
+            markets_coin_margined = Market.objects.filter(exchange=exchange,
+                                                          contract_type='perpetual',
+                                                          wallet='delivery',
+                                                          updated=True
+                                                          )
+            for market in markets_coin_margined:
+                update(response, market)
+
+            # log.info('Update funding complete')
+
+
+@shared_task(base=BaseTaskWithRetry)
+def prices(exid):
+    from marketsdata.models import Exchange, Market, Candle
+    exchange = Exchange.objects.get(exid=exid)
+    log.bind(exchange=exid)
+
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
+
+            # Update ticker price and volume
+            def update(response):
+
+                def get_quote_volume():
+
+                    if exid == 'binance':
+                        if 'quoteVolume' in response:
+                            volume = response['quoteVolume']
+                        elif 'baseVolume' in response['info']:
+                            volume = float(response['info']['baseVolume']) * response['last']
+
+                    elif exid == 'bybit':
+                        if market.type == 'derivative':
+                            if market.margined.code == 'USDT':
+                                volume = float(response['info']['turnover_24h'])
+                            else:
+                                volume = float(response['info']['volume_24h'])
+
+                    elif exid == 'okex':
+                        if market.wallet == 'spot':
+                            return float(response['info']['quote_volume_24h'])
+                        elif market.wallet == 'swap':
+                            if market.margined.code == 'USDT':
+                                # volume_24h is the volume of contract priced in ETH
+                                volume = float(response['info']['volume_24h']) * market.contract_value * response[
+                                    'last']
+                            else:
+                                # volume_24h is the volume of contract priced in USD
+                                volume = float(response['info']['volume_24h']) * market.contract_value
+                        elif market.wallet == 'futures':
+                            volume = float(response['info']['volume_token_24h']) * response['last']
+
+                    elif exid == 'ftx':
+                        volume = float(response['info']['volumeUsd24h'])
+
+                    elif exid == 'huobipro':
+                        if not market.wallet:
+                            volume = float(response['info']['vol'])
+
+                    elif exid == 'bitfinex2':
+                        volume = float(response['baseVolume']) * response['last']
+
+                    if 'volume' in locals():
+                        return volume
+                    else:
+                        pprint(response)
+                        log.warning('Volume not in load_markets()')
+
+                log.bind(wallet=market.wallet, symbol=market.symbol)
+
+                # Select dictionary
+                if market.symbol in response:
+                    response = response[market.symbol]
+                else:
+                    log.warning('Symbol not in load_markets()')
+                    market.updated = False
+                    market.save()
+                    return
+
+                # Select last price
+                if 'last' in response:
+                    last = response['last']
+                else:
+                    log.warning('Last price not in load_markets()')
+                    market.updated = False
+                    market.save()
+                    return
+
+                # Select trading volume
+                volume = get_quote_volume()
+                if volume is None:
+                    pprint(response)
+                    log.warning('Volume not in load_markets()')
+                    market.updated = False
+                    market.save()
+                    return
+
+                # Create datetime object
+                dt = timezone.now().replace(minute=0,
+                                            second=0,
+                                            microsecond=0) - timedelta(minutes=exchange.update_frequency)
+
+                try:
+                    Candle.objects.get(market=market, exchange=exchange, dt=dt)
+
+                except Candle.DoesNotExist:
+                    Candle.objects.create(market=market,
+                                          exchange=exchange,
+                                          dt=dt,
+                                          close=last,
+                                          volume_avg=volume / 24
+                                          )
+                    market.updated = True
+                    market.save()
+
+                else:
+                    pass
+                    # log.warning('Candle exists')
+
+                finally:
+                    log.unbind('wallet', 'symbol')
+
+            client = exchange.get_ccxt_client()
+            log.info('Prices update start')
+
+            # Create a list of trading markets
+            markets = Market.objects.filter(exchange=exchange,
+                                            quote__code__in=exchange.get_supported_quotes(),
+                                            trading=True
+                                            ).order_by('symbol', 'wallet')
+
+            if exchange.wallets:
+
+                # Iterate through wallets
+                for wallet in exchange.get_wallets():
+                    client.options['defaultType'] = wallet
+                    if exchange.has_credit(wallet):
+
+                        # Load markets
+                        client.load_markets(True)
+                        exchange.update_credit('load_markets', wallet)
+                        if exchange.has_credit(wallet):
+
+                            # FetchTickers
+                            response = client.fetch_tickers()
+                            exchange.update_credit('fetch_tickers', wallet)
+
+                            for market in markets.filter(wallet=wallet):
+                                update(response)
+
+                                # # Download OHLCV if gap detected
+                                # if market.has_gap():
+                                #     insert_candle_history(exid,
+                                #                           market.wallet,
+                                #                           market.symbol,
+                                #                           recent=True)
+                                # else:
+                                #     # Else select price and volume from response
+                                #     update(response, market)
+
+            else:
+                if exchange.has_credit():
+                    client.load_markets(True)
+                    exchange.update_credit('load_markets')
+
+                    if exchange.has_credit():
+                        response = client.fetch_tickers()
+                        exchange.update_credit('fetch_tickers')
+
+                        for market in markets:
+                            update(response)
+
+                            # # Download OHLCV if gap detected
+                            # if market.has_gap():
+                            #     insert_ohlcv(exid,
+                            #                           market.wallet,
+                            #                           market.symbol,
+                            #                           recent=True)
+                            # else:
+                            #     # Else select price and volume from response
+                            #     update(response)
+
+            # Set exchange last update time
+            exchange.last_price_update_dt = timezone.now()
+            exchange.save()
+
+            # log.info('Prices update complete')
+
+        else:
+            raise ('Exchange {0} does not support FetchTickers()'.format(exid))
+
+
+@shared_task(base=BaseTaskWithRetry)
+def top_markets(exid):
+    import operator
+    exchange = Exchange.objects.get(exid=exid)
+
+    if exid == 'binance':
+
+        for wallet in exchange.get_wallets():
+
+            log.info('Set top = True')
+            markets = Market.objects.filter(exchange__exid=exid,
+                                            quote__code=exchange.dollar_currency,
+                                            wallet=wallet,
+                                            updated=True,
+                                            trading=True)
+
+            v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets if m.candle.first().volume_avg]
+
+            top = sorted(v, key=operator.itemgetter(0))[-20:]
+
+            for pk in [pk for pk in [t[1] for t in top]]:
+                market = Candle.objects.get(pk=pk).market
+                market.top = True
+                market.save()
+
+
+# Bulk insert OHLCV candles history
+@shared_task(base=BaseTaskWithRetry)
+def insert_ohlcv_bulk(exid, recent=None):
+    return [chain(insert_ohlcv.si(exid,
+                                  market.wallet,
+                                  market.symbol,
+                                  recent
+                                  ).set(queue='slow')
+                  for market in Market.objects.filter(exchange__exid=exid).order_by('symbol'))]
 
 
 # Insert OHLCV candles history
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
-def insert_candle_history(self, exid, wallet, symbol, recent=None):
-
+def insert_ohlcv(self, exid, wallet, symbol, recent=None):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
 
-    if exchange.is_active():
+    if exchange.is_trading():
 
         def insert(market):
 
             if self.request.retries > 0:
                 log.warning("Download attempt {0}/{1} for {2} at {3}".format(self.request.retries,
-                                                                          self.max_retries, market.symbol, exid))
+                                                                             self.max_retries, market.symbol, exid))
 
             end = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
@@ -104,33 +854,31 @@ def insert_candle_history(self, exid, wallet, symbol, recent=None):
                 client = exchange.get_ccxt_client()
 
                 # Select market type if necessary
-                if exchange.default_types:
-                    client.options['defaultType'] = market.default_type
+                if exchange.wallets:
+                    client.options['defaultType'] = market.wallet
 
-                if exchange.has_credit(market.default_type):
+                if exchange.has_credit(market.wallet):
                     client.load_markets(True)
-                    market.exchange.update_credit('load_markets', market.default_type)
+                    market.exchange.update_credit('load_markets', market.wallet)
 
                 while True:
 
                     try:
-                        if exchange.has_credit(market.default_type):
+                        if exchange.has_credit(market.wallet):
                             response = client.fetchOHLCV(market.symbol, '1h', since_ts, limit)
-                            exchange.update_credit('fetchOHLCV', market.default_type)
+                            exchange.update_credit('fetchOHLCV', market.wallet)
 
                     except ccxt.BadSymbol as e:
 
                         log.exception('Bad symbol')
 
                         if market.type == 'derivative':
-                            if market.derivative == 'future':
+                            if market.contract_type == 'future':
                                 log.info('Deactivate future market')
-                                market.active = False
-                        else:
-                            log.info('Exclude market')
-                            market.excluded = True
+                                market.trading = False
 
                         market.save()
+                        return
 
                     except ccxt.ExchangeError as e:
                         print(since_ts, limit)
@@ -141,6 +889,7 @@ def insert_candle_history(self, exid, wallet, symbol, recent=None):
                         print(getattr(e, 'message', repr(e)))
                         print(getattr(e, 'message', str(e)))
                         log.exception('An unexpected error occurred', exception=e.__class__.__name__)
+                        return
 
                     else:
                         if not len(response):
@@ -203,7 +952,8 @@ def insert_candle_history(self, exid, wallet, symbol, recent=None):
                                         continue
 
                                 log.info(
-                                    'Candles inserted : {0}'.format(insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
+                                    'Candles inserted : {0}'.format(
+                                        insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
 
                                 if insert == 0:
                                     break
@@ -239,718 +989,38 @@ def insert_candle_history(self, exid, wallet, symbol, recent=None):
                                 else:
                                     break
 
-        market = Market.objects.get(exchange=exchange, default_type=wallet, symbol=symbol)
+        market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=symbol)
 
-        # Set start date
-        if recent:
-            start = market.get_candle_datetime_last()
-        else:
-            start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+        if not market.updated or recent is None:
 
-        try:
-            insert(market)
-
-        except Exception as e:
-            log.exception('Unable to fetch OHLCV')
-
-        else:
-            if market.has_gap():
-                log.warning('Insert complete with gaps, exclude market')
-                market.updated = True
-                market.excluded = True
-
+            # Set start date
+            if market.is_populated():
+                if recent:
+                    start = market.get_candle_datetime_last()
+                else:
+                    start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
             else:
-                log.info('Insert complete')
-                market.updated = True
-                market.save()
-
-
-# Save exchange properties
-@shared_task(bind=True, base=BaseTaskWithRetry)
-def update_properties(self, exid):
-    log.debug('Save exchange properties', exchange=exid)
-
-    from marketsdata.models import Exchange
-    exchange = Exchange.objects.get(exid=exid)
-    client = exchange.get_ccxt_client()
-
-    exchange.version = client.version
-    exchange.precision_mode = client.precisionMode
-    exchange.api = client.api
-    exchange.countries = client.countries
-    exchange.urls = client.urls
-    exchange.has = client.has
-    exchange.timeframes = client.timeframes
-    exchange.timeout = client.timeout
-    exchange.rate_limit = client.rateLimit
-    exchange.credentials = client.requiredCredentials
-    exchange.save()
-
-    log.debug('Save exchange properties complete', exchange=exid)
-
-
-@shared_task(bind=True, name='Markets_____Update information')
-def update_information(self):
-    """"
-    Hourly task to update currencies, markets and exchange properties
-
-    """
-    log.info('Update information')
-
-    from marketsdata.models import Exchange
-    exchanges = [e.exid for e in Exchange.objects.all()]
-
-    # must use si() signatures
-    chains = [chain(update_status.si(exid),
-                    update_properties.si(exid),
-                    update_currencies.si(exid),
-                    update_markets.si(exid),
-                    update_funding.si(exid)
-                    ) for exid in exchanges]
-
-    res = group(*chains)()
-
-    while not res.ready():
-        # print(res.completed_count())
-        time.sleep(0.5)
-
-    if res.successful():
-        log.info('Update information complete {0} chains'.format(res.completed_count()))
-
-    elif res.failed():
-        res.forget()
-        log.error('Update information failed')
-
-
-@celery.app.task(bind=True)
-@shared_task(bind=True, name='Markets_____Update market prices and execute strategies')
-def update(self):
-    """"
-    Hourly task to update prices and execute strategies
-
-    """
-
-    from marketsdata.models import Exchange
-    from strategy.models import Strategy
-
-    # Create lists of exchanges
-    exchanges = [e.exid for e in Exchange.objects.all()]
-    exchanges_w_strat = list(set(Strategy.objects.filter(production=True).values_list('exchange__exid', flat=True)))
-    exchanges_wo_strat = [e for e in exchanges if e not in exchanges_w_strat]
-
-    if exchanges_w_strat:
-
-        # Create a list of chains
-        chains = [chain(
-            outtodate_markets.s(exid),
-            update_prices.si(exid),
-            update_top_markets.si(exid),
-            strategies.update.si(exid)
-        ) for exid in exchanges_w_strat]
-
-        result = group(*chains).delay()
-
-        # start by updating exchanges with a strategy
-        # gp1 = group(update_prices.s(exid) for exid in exchanges_w_strat).delay()
-
-        while not result.ready():
-            time.sleep(0.5)
-
-        if result.successful():
-            log.info('Markets and strategies update complete')
-
-            # Then update the rest of our exchanges
-            result = group([update_prices.s(exid) for exid in exchanges_wo_strat]).delay()
-
-            while not result.ready():
-                time.sleep(0.5)
-
-            if result.successful():
-                log.info('Rest of exchanges update complete')
-
-            else:
-                log.error('Rest of exchanges update failed')
-
-        else:
-            log.error('Markets and strategies update failed')
-
-    else:
-        log.info('There is no strategy in production. Update prices')
-        group(update_prices.s(exid) for exid in exchanges)()
-
-
-# Set updated flag to False
-@shared_task(base=BaseTaskWithRetry)
-def outtodate_markets(exid):
-
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-
-    if exchange.is_active():
-        if exchange.is_update_time():
-
-            log.info('Set update flag for markets')
-
-            for market in Market.objects.filter(exchange__exid=exid, excluded=False):
-                market.updated = False
-                market.save()
-
-            log.info('Set update flag for markets OK')
-
-
-@shared_task(bind=True, base=BaseTaskWithRetry)
-def update_status(self, exid):
-    """"
-    Save exchange status
-
-    """
-
-    from marketsdata.models import Exchange
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-    log.info('Save exchange status')
-
-    try:
-        response = exchange.get_ccxt_client().fetchStatus()
-
-    except ccxt.ExchangeNotAvailable:
-
-        exchange.status = 'nok'
-        exchange.status_at = timezone.now()
-        exchange.save()
-
-        log.error('Exchange is {0}'.format(exchange.status))
-
-    else:
-
-        if response['status'] is not None:
-            exchange.status = response['status']
-
-            if response['status'] != 'ok':
-                log.warning('Exchange status is {0}'.format(exchange.status))
-            else:
-                log.info('Exchange status is OK')
-
-        if response['updated'] is not None:
-            exchange.status_at = timezone.make_aware(datetime.fromtimestamp(response['updated'] / 1e3))
-        if response['eta'] is not None:
-            exchange.eta = datetime.fromtimestamp(response['eta'] / 1e3)
-        if response['url'] is not None:
-            exchange.url = response['url']
-
-        exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
-
-
-@shared_task(bind=True, base=BaseTaskWithRetry)
-def update_currencies(self, exid):
-    """
-    Create/update currency information from load_markets().currencies
-
-    """
-
-    from marketsdata.models import Exchange, Currency, CurrencyType
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-    log.info('Update currencies')
-
-    if exchange.is_active():
-
-        client = exchange.get_ccxt_client()
-
-        def update(value):
-            code = value['code']
+                if market.quote == exchange.dollar_currency:
+                    log.info('Download full OHLCV history')
+                    start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+                else:
+                    log.info('Download only recent history')
+                    return
 
             try:
-                curr = Currency.objects.get(code=code, exchange=exchange)
-            except MultipleObjectsReturned:
-                log.warning('Duplicate currency {0}'.format(code))
-                pass
-            except ObjectDoesNotExist:
+                insert(market)
 
-                try:
-                    curr = Currency.objects.get(code=code)
-
-                except MultipleObjectsReturned:
-                    log.error('Duplicate currency {0}'.format(code))
-                    pass
-
-                except ObjectDoesNotExist:
-
-                    # create currency
-                    curr = Currency.objects.create(code=code)
-
-                    # set base type
-                    curr.type.add(CurrencyType.objects.get(type='base'))
-
-                    # add exchange
-                    curr.exchange.add(exchange)
-
-                    log.info('New currency created {0}'.format(code))
-                    curr.save()
-                else:
-
-                    # add exchange
-                    curr.exchange.add(exchange)
-                    log.info('Exchange attached to currency {0}'.format(code))
-                    curr.save()
+            except Exception as e:
+                log.exception('Unable to fetch OHLCV')
 
             else:
-                pass
-
-            # Add or remove CurrencyType.type = quote if needed
-            if code in config['MARKETSDATA']['supported_quotes']:
-                curr.type.add(CurrencyType.objects.get(type='quote'))
-                curr.save()
-            else:
-                quoteType = CurrencyType.objects.get(type='quote')
-                if quoteType in curr.type.all():
-                    curr.type.remove(quoteType)
-                    curr.save()
-
-            # Add or remove stablecoin = True if needed
-            if code in config['MARKETSDATA']['supported_stablecoins']:
-                curr.stable_coin = True
-                curr.save()
-            else:
-                curr.stable_coin = False
-                curr.save()
-
-        # Iterate through all currencies. Skip OKEx because it returns
-        # all currencies characteristics in a single call ccxt.okex.currencies
-
-        if exchange.default_types and exid != 'okex':
-
-            for default_type in exchange.get_default_types():
-                log.bind(default_type=default_type)
-                client.options['defaultType'] = default_type
-
-                if exchange.has_credit(default_type):
-                    client.load_markets(True)
-                    exchange.update_credit('load_markets', default_type)
-
-                    for currency, value in client.currencies.items():
-                        update(value)
-
-                    log.unbind('default_type')
-
-        else:
-            if exchange.has_credit():
-                client.load_markets(True)
-                exchange.update_credit('load_markets')
-
-                for currency, value in client.currencies.items():
-                    update(value)
-
-
-# Create/update markets information from load_markets().markets
-@shared_task(bind=True, base=BaseTaskWithRetry)
-def update_markets(self, exid):
-
-    # Return True if a currency is in the database, else False
-    def is_known_currency(code):
-        try:
-            Currency.objects.get(exchange=exchange, code=code)
-        except ObjectDoesNotExist:
-            log.warning('Unknown currency {0}'.format(code))
-            return False
-        else:
-            return True
-
-    def update(values, default_type=None):
-
-        log.bind(symbol=values['symbol'], base=values['base'], quote=values['quote'])
-
-        if exid == 'binance':
-            if default_type == 'spot':
-                if market.symbol == 'BTC/USDT':
-                    pprint(values)
-            if default_type == 'future':
-                if market.symbol == 'BTC/USDT':
-                    pprint(values)
-
-        base = values['base']
-        quote = values['quote']
-
-        if is_known_currency(base):
-            if is_known_currency(quote):
-
-                # Set market type
-                if 'type' in values:
-                    ccxt_type_response = values['type']
-                else:
-                    if 'swap' in values:
-                        if values['swap']:
-                            ccxt_type_response = 'swap'
-                    if 'spot' in values:
-                        if values['spot']:
-                            ccxt_type_response = 'spot'
-                    if 'future' in values:
-                        if values['future']:
-                            ccxt_type_response = 'future'
-                    if 'futures' in values:
-                        if values['futures']:
-                            ccxt_type_response = 'futures'
-                    if 'delivery' in values:
-                        if values['delivery']:
-                            ccxt_type_response = 'delivery'
-                    if 'option' in values:
-                        if values['option']:
-                            return
-
-                # Prevent insertion of all unlisted BitMEX contract
-                if exid == 'bitmex' and not values['active']:
-                    return
-
-                if 'ccxt_type_response' not in locals():
-                    pprint(values)
-                    raise Exception('Can not find market type')
-
-                # Set derivative type and margined coin
-                if ccxt_type_response in ['swap', 'future', 'futures', 'delivery']:
-
-                    type = 'derivative'
-                    derivative = get_derivative_type(exid, values)  # perpetual or future
-                    margined = get_derivative_margined(exid, values)
-                    delivery_date = get_derivative_delivery_date(exid, values)
-                    listing_date = get_derivative_listing_date(exid, values)
-                    contract_value_currency = get_derivative_contract_value_currency(exid, default_type, values)
-                    contract_value = get_derivative_contract_value(exid, values)
-
-                    # Abort if one of these field is None
-                    if not derivative or not margined:
-                        if exid == 'binance':
-                            if default_type == 'future':
-                                if 'BUSD' in values['quote']:
-                                    print(derivative)
-                                    print(margined)
-                                    pprint(values)
-                        return
-
-                elif ccxt_type_response == 'spot':
-                    type = ccxt_type_response
-                    derivative = None
-
-                elif ccxt_type_response == 'option':
-                    return
-
-                # Test market activity
-                if 'active' in values:
-                    active = values['active']
-
-                ######################
-                # Exchanges specific #
-                # ####################
-
-                # At this point OKEx ccxt_type_options = None, so we need to set the appropriate ccxt_type_options
-                # so we can filter markets and update price with fetch_tickers() later on
-
-                if exid == 'okex':
-                    if type == 'spot':
-                        default_type = 'spot'
-                    elif derivative == 'perpetual':
-                        default_type = 'swap'
-                    elif derivative == 'future':
-                        default_type = 'futures'
-
-                if exid == 'bybit':
-                    # log.warning('Bybit market activity unavailable')
-                    active = True
-
-                if exid == 'ftx' and 'MOVE' in values['symbol']:
-                    return
-
-                # set limits
-                amount_min = values['limits']['amount']['min'] if values['limits']['amount']['min'] else None
-                amount_max = values['limits']['amount']['max'] if values['limits']['amount']['max'] else None
-                price_min = values['limits']['price']['min'] if values['limits']['price']['min'] else None
-                price_max = values['limits']['price']['max'] if values['limits']['price']['max'] else None
-                cost_min = values['limits']['cost']['min'] if values['limits']['cost']['min'] else None
-                cost_max = values['limits']['cost']['max'] if values['limits']['cost']['max'] else None
-
-                # create dictionary
-                defaults = {
-                    'quote': Currency.objects.get(exchange=exchange, code=quote),
-                    'base': Currency.objects.get(exchange=exchange, code=base),
-                    'type': type,
-                    'ccxt_type_response': ccxt_type_response,
-                    'default_type': default_type,
-                    'active': active,
-                    'maker': values['maker'],
-                    'taker': values['taker'],
-                    'amount_min': amount_min,
-                    'amount_max': amount_max,
-                    'price_min': price_min,
-                    'price_max': price_max,
-                    'cost_min': cost_min,
-                    'cost_max': cost_max,
-                    'limits': values['limits'],
-                    'precision': values['precision'],
-                    'response': values
-                }
-
-                if type == 'derivative':
-                    defaults['derivative'] = derivative
-                    defaults['margined'] = margined
-                    defaults['delivery_date'] = delivery_date
-                    defaults['listing_date'] = listing_date
-                    defaults['contract_value_currency'] = contract_value_currency
-                    defaults['contract_value'] = contract_value
-
-                # create or update market object
-                obj, created = Market.objects.update_or_create(symbol=values['symbol'],
-                                                               exchange=exchange,
-                                                               type=type,
-                                                               derivative=derivative,
-                                                               defaults=defaults
-                                                               )
-                if created:
-                    log.info('Creation of new {1} market {0}'.format(values['symbol'], type))
-
-            else:
-                return
-        else:
-            return
-
-    from marketsdata.models import Exchange, Market, Currency
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-
-    if exchange.is_active():
-
-        log.info('Update markets')
-        client = exchange.get_ccxt_client()
-
-        # Iterate through supported market types. Skip OKEx because it returns
-        # all markets characteristics in a single call ccxt.okex.markets
-
-        if exchange.default_types and exid != 'okex':
-
-            for wallet in exchange.get_default_types():
-
-                client.options['defaultType'] = wallet
-                if exchange.has_credit(wallet):
-                    client.load_markets(True)
-                    exchange.update_credit('load_markets', wallet)
-
-                for market, values in client.markets.items():
-                    update(values, default_type=wallet)
-
-        else:
-            if exchange.has_credit():
-                client.load_markets(True)
-                exchange.update_credit('load_markets')
-
-                for market, values in client.markets.items():
-                    update(values)
-
-        log.unbind('base', 'quote', 'symbol')
-        log.info('Update markets complete')
-
-
-@shared_task(base=BaseTaskWithRetry)
-def update_funding(exid):
-
-    from marketsdata.models import Exchange, Market
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-
-    if exchange.is_active():
-        if exid == 'binance':
-
-            log.info('Update funding')
-
-            def update(response, market):
-                premiumindex = [i for i in response if i['symbol'] == market.response['id']][0]
-                market.funding_rate = premiumindex
-                market.save()
-
-            client = exchange.get_ccxt_client()
-
-            # Fetch funding rates for USDT-margined contracts
-            response = client.fapiPublic_get_premiumindex()
-            markets_usdt_margined = Market.objects.filter(exchange=exchange,
-                                                          derivative='perpetual',
-                                                          default_type='future',
-                                                          excluded=False,
-                                                          updated=True
-                                                          )
-            for market in markets_usdt_margined:
-                update(response, market)
-
-            # Fetch funding rates for COIN-margined contracts
-            response = client.dapiPublic_get_premiumindex()
-            markets_coin_margined = Market.objects.filter(exchange=exchange,
-                                                          derivative='perpetual',
-                                                          default_type='delivery',
-                                                          excluded=False,
-                                                          updated=True
-                                                          )
-            for market in markets_coin_margined:
-                update(response, market)
-
-            log.info('Update funding complete')
-
-
-@shared_task(bind=True, base=BaseTaskWithRetry)
-def update_prices(self, exid):
-    """
-    Update market prices and volume every hour at 00:00
-
-    """
-
-    from marketsdata.models import Exchange, Market, Candle
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-
-    if exchange.is_active():
-        if exchange.is_update_time():
-            if exchange.has['fetchTickers']:
-
-                # Update ticker price and volume
-                def update(response, market):
-
-                    log.bind(wallet=market.default_type, symbol=market.symbol)
-
-                    # Select response
-                    if market.symbol in response:
-                        response = response[market.symbol]
-                    else:
-                        log.warning('Symbol not in response')
-                        market.excluded = True
-                        market.updated = False
-                        market.save()
-                        return
-
-                    # Select latest price
-                    if 'last' in response or response['last']:
-                        last = response['last']
-                    else:
-                        log.warning('Last price not in response')
-                        market.excluded = True
-                        market.updated = False
-                        market.save()
-                        return
-
-                    # Extract 24h rolling volume in USD
-                    vo = get_volume_quote_from_ticker(market, response)
-                    if vo is False:
-                        return
-
-                    # Create datetime object
-                    delta = timedelta(minutes=exchange.update_frequency)
-                    dt = timezone.now().replace(minute=0, second=0, microsecond=0) - delta
-
-                    try:
-                        Candle.objects.get(market=market, exchange=exchange, dt=dt)
-
-                    except Candle.DoesNotExist:
-                        Candle.objects.create(market=market,
-                                              exchange=exchange,
-                                              dt=dt,
-                                              close=last,
-                                              volume_avg=vo / 24
-                                              )
-                        market.updated = True
-                        market.save()
-
-                    else:
-                        log.warning('Candle exists')
-                    finally:
-                        log.unbind('wallet', 'symbol')
-
-                client = exchange.get_ccxt_client()
-                log.info('Prices update start')
-
-                # Create a list of active markets
-                markets = Market.objects.filter(exchange=exchange,
-                                                excluded=False,
-                                                updated=False,
-                                                active=True).order_by('symbol', 'default_type')
-
-                if exchange.default_types:
-
-                    # Iterate through default_types
-                    for default_type in exchange.get_default_types():
-                        client.options['defaultType'] = default_type
-                        if exchange.has_credit(default_type):
-
-                            # Load markets
-                            client.load_markets(True)
-                            exchange.update_credit('load_markets', default_type)
-                            if exchange.has_credit(default_type):
-
-                                # FetchTickers
-                                response = client.fetch_tickers()
-                                exchange.update_credit('fetch_tickers', default_type)
-
-                                for market in markets.filter(default_type=default_type):
-
-                                    # Download OHLCV if gap detected
-                                    if market.has_gap():
-                                        insert_candle_history(exid,
-                                                              market.default_type,
-                                                              market.symbol,
-                                                              recent=True)
-                                    else:
-                                        # Else select price and volume from response
-                                        update(response, market)
+                if market.has_gap():
+                    log.warning('Insert complete with gaps, blacklist market ?')
 
                 else:
-                    if exchange.has_credit():
-                        client.load_markets(True)
-                        exchange.update_credit('load_markets')
+                    log.info('Candles complete')
+                    market.updated = True
+                    market.save()
 
-                        if exchange.has_credit():
-                            response = client.fetch_tickers()
-                            exchange.update_credit('fetch_tickers')
-
-                            for market in markets:
-
-                                # Download OHLCV if gap detected
-                                if market.has_gap():
-                                    insert_candle_history(exid,
-                                                          market.default_type,
-                                                          market.symbol,
-                                                          recent=True)
-                                else:
-                                    # Else select price and volume from response
-                                    update(response, market)
-
-                # Set exchange last update time
-                exchange.last_price_update_dt = timezone.now()
-                exchange.save()
-
-                log.info('Prices update complete')
-
-            else:
-                raise('Exchange {0} does not support FetchTickers()'.format(exid))
         else:
-            raise('It is not the time to update prices for {0}'.format(exid))
-
-
-@shared_task(bind=True, base=BaseTaskWithRetry)
-def update_top_markets(self, exid):
-
-    import operator
-    exchange = Exchange.objects.get(exid=exid)
-
-    if exid == 'binance':
-
-        for wallet in exchange.get_default_types():
-
-            log.info('Set top = True')
-            markets = Market.objects.filter(exchange__exid=exid,
-                                            quote__code=exchange.dollar_currency,
-                                            default_type=wallet,
-                                            updated=True,
-                                            active=True)
-
-            v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets if m.candle.first().volume_avg]
-
-            top = sorted(v, key=operator.itemgetter(0))[-20:]
-
-            for pk in [pk for pk in [t[1] for t in top]]:
-                market = Candle.objects.get(pk=pk).market
-                market.top = True
-                market.save()
-
+            log.info('Market is updated')

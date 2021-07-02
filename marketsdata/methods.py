@@ -82,39 +82,39 @@ def get_volume_quote_from_ticker(market, response):
 
     # Select volume 24h
     if exid == 'binance':
-        if market.default_type in ['spot', 'future']:
+        if market.wallet in ['spot', 'future']:
             return float(response['quoteVolume'])
-        elif market.default_type == 'delivery':
+        elif market.wallet == 'delivery':
             if 'baseVolume' in response['info']:
                 # Quote volume not reported by the COIN-margined api. baseVolume is string
                 return float(response['info']['baseVolume']) * response['last']
 
     elif exid == 'bybit':
         if market.type == 'derivative':
-            if market.derivative in ['perpetual', 'future']:
+            if market.contract_type in ['perpetual', 'future']:
                 if market.margined.code == 'USDT':
                     return float(response['info']['turnover_24h'])
                 else:
                     return float(response['info']['volume_24h'])
 
     elif exid == 'okex':
-        if market.default_type == 'spot':
+        if market.wallet == 'spot':
             return float(response['info']['quote_volume_24h'])
-        elif market.default_type == 'swap':
+        elif market.wallet == 'swap':
             if market.margined.code == 'USDT':
                 # volume_24h is the volume of contract priced in ETH
                 return float(response['info']['volume_24h']) * market.contract_value * response['last']
             else:
                 # volume_24h is the volume of contract priced in USD
                 return float(response['info']['volume_24h']) * market.contract_value
-        elif market.default_type == 'futures':
+        elif market.wallet == 'futures':
             return float(response['info']['volume_token_24h']) * response['last']
 
     elif exid == 'ftx':
         return float(response['info']['volumeUsd24h'])
 
     elif exid == 'huobipro':
-        if not market.default_type:
+        if not market.wallet:
             return float(response['info']['vol'])
 
     elif exid == 'bitmex':
@@ -124,7 +124,7 @@ def get_volume_quote_from_ticker(market, response):
         return float(response['baseVolume']) * response['last']
 
     pprint(response)
-    log.error('No rule 24h volume for {1} at {0}'.format(exid, market.symbol, derivative=market.derivative))
+    log.error('No rule 24h volume for {1} at {0}'.format(exid, market.symbol, derivative=market.contract_type))
     return False
 
 
@@ -269,7 +269,7 @@ def get_derivative_contract_value(exid, values):
     return False
 
 
-def get_derivative_contract_value_currency(exid, default_type, values):
+def get_derivative_contract_value_currency(exid, wallet, values):
     #
     # Determine the currency of the contract value for a derivative (update_markets())
     #
@@ -282,9 +282,9 @@ def get_derivative_contract_value_currency(exid, default_type, values):
 
     elif exid == 'binance':
         # base asset are used as contract value currency for USDT-margined and COIN-margined
-        if default_type == 'future':
+        if wallet == 'future':
             return
-        elif default_type == 'delivery':
+        elif wallet == 'delivery':
             return Currency.objects.get(code=values['quote'])
 
     elif exid == 'bybit':
@@ -388,16 +388,5 @@ def get_derivative_listing_date(exid, values):
     pprint(values)
     log.error('No rule contract listing date for {1} at {0}'.format(exid, values['symbol']))
     return False
-
-
-def exclude(market):
-    #
-    # Exclude a market when it's symbol isn't found in fetch_tickers() response
-    # OR when 'last' is not in response or when response['last'] == None
-    # OR when market.active and not market.is_updated() during insert_candle_history()
-    #
-    log.warning('Exclude {1} {0} market at {2}'.format(market.symbol, market.type, market.exchange.exid))
-    market.excluded = True
-    market.save()
 
 

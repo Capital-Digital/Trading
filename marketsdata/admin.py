@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta
-from .models import Exchange, Market, Candle, Currency, CurrencyType, OrderBook
+from .models import Exchange, Market, Candle, Currency, OrderBook
 import structlog
 import locale
 from celery import group
@@ -15,16 +15,15 @@ log = structlog.get_logger(__name__)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'get_status', "timeout", "rate_limit", "updated_at",
                     'get_currencies', 'get_markets', 'get_markets_not_updated', 'get_markets_not_populated',
-                    'get_markets_excluded',
                     'precision_mode', 'start_date',
                     'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
                        'urls', 'rate_limits', 'credit', 'credit_max',
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
-    actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent', 'update_exchange_currencies',
-               'update_exchange_markets', 'update_market_price', 'update_exchange_status', 'update_prices',
-               'update_top_markets']
+    actions = ['insert_full_ohlcv', 'insert_recent_ohlcv', 'update_currencies',
+               'update_markets', 'update_price', 'update_status', 'update_prices',
+               'flag_top_markets']
     save_as = True
     save_on_top = True
 
@@ -50,8 +49,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_markets_not_updated(self, obj):
         not_upd = [m.symbol for m in Market.objects.filter(exchange=obj,
-                                                           active=True,
-                                                           excluded=False,
+                                                           trading=True,
                                                            updated=False
                                                            )]
         return len(not_upd)
@@ -60,110 +58,51 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_markets_not_populated(self, obj):
         not_upd = [m.symbol for m in Market.objects.filter(exchange=obj,
-                                                           active=True,
-                                                           excluded=False
+                                                           trading=True
                                                            ) if not m.is_populated()]
         return len(not_upd)
 
     get_markets_not_populated.short_description = "Not populated"
 
-    def get_markets_excluded(self, obj):
-        excluded = [m.symbol for m in Market.objects.filter(exchange=obj,
-                                                            active=True,
-                                                            excluded=True
-                                                            )]
-        return len(excluded)
-
-    get_markets_excluded.short_description = "Excluded"
-
     ##########
     # Action #
     ##########
 
-    def insert_candles_history_since_launch(self, request, queryset):
-        #
-        # Create a Celery task that handle retransmissions and run it
-        #
-        res = group([tasks.insert_candle_history.s(exid=exchange.exid)
-                    .set(queue='slow') for exchange in queryset]).apply_async()
+    def insert_full_ohlcv(self, request, queryset):
+        exids = [exchange.exid for exchange in queryset]
+        chains = [tasks.insert_ohlcv_bulk(exid) for exid in exids]
+        res = group(*chains).delay()
 
         while not res.ready():
             time.sleep(0.5)
 
         if res.successful():
-            log.info('Insert complete')
+            log.info('Insert full OHLCV complete')
 
         else:
-            log.error('Insert failed :(')
+            log.error('Insert full OHLCV failed')
 
-    insert_candles_history_since_launch.short_description = "Insert candles history since launch"
+    insert_full_ohlcv.short_description = "Insert full OHLCV"
 
-    def insert_candles_history_recent(self, request, queryset):
-        #
-        # Download only the latest history since the last candle received
-        #
-        res = group([tasks.run.s(exchange.exid).set(queue='slow')
-                     for exchange in queryset]).apply_async()
+    def insert_recent_ohlcv(self, request, queryset):
+        exids = [exchange.exid for exchange in queryset]
+        chains = [tasks.insert_ohlcv_bulk(exid, recent=True) for exid in exids]
+        res = group(*chains).delay()
 
         while not res.ready():
             time.sleep(0.5)
 
         if res.successful():
-            log.info('Insert recent complete')
+            log.info('Insert recent OHLCV complete')
 
         else:
-            log.error('Insert recent failed :(')
+            log.error('Insert recent OHLCV failed')
 
-    insert_candles_history_recent.short_description = "Insert candles history recent"
+    insert_recent_ohlcv.short_description = "Insert recent OHLCV"
 
-    def update_exchange_currencies(self, request, queryset):
+    def update_currencies(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-
-        # Create a groups and execute task
-        gp = group(tasks.update_currencies.s(exchange) for exchange in exchanges)
-        result = gp.delay()
-
-    update_exchange_currencies.short_description = "Update currencies"
-
-    def update_prices(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-
-        # Create a groups and execute task
-        res = group(tasks.update_prices.s(exchange) for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Update prices complete')
-
-        else:
-            log.error('Update prices failed :(')
-
-    update_prices.short_description = "Update prices"
-
-    def update_top_markets(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-
-        # Create a groups and execute task
-        res = group(tasks.update_top_markets.s(exchange) for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Update top markets complete')
-
-        else:
-            log.error('Update top markets failed :(')
-
-    update_top_markets.short_description = "Update top markets"
-
-    def update_exchange_markets(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-
-        # Create a groups and execute task
-        res = group(tasks.update_markets.s(exchange) for exchange in exchanges)()
+        res = group(tasks.currencies.s(exchange).set(queue='slow') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
@@ -172,42 +111,91 @@ class CustomerAdmin(admin.ModelAdmin):
             log.info('Update currencies complete')
 
         else:
-            log.error('Update currencies failed :(')
+            log.error('Update currencies failed')
 
-    update_exchange_markets.short_description = "Update markets"
+    update_currencies.short_description = "Update currencies"
 
-    def update_market_prices(self, request, queryset):
+    def update_prices(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-
-        # Create a groups and execute task
-        res = group(tasks.update_prices.s(exchange) for exchange in exchanges)()
+        res = group(tasks.prices.s(exchange).set(queue='slow') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
 
         if res.successful():
-            log.info('Update market complete')
+            log.info('Update prices complete')
 
         else:
-            log.error('Update market failed :(')
+            log.error('Update prices failed')
 
-    update_market_prices.short_description = "Update market price"
+    update_prices.short_description = "Update prices"
 
-    def update_exchange_status(self, request, queryset):
+    def flag_top_markets(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
+        res = group(tasks.top_markets.s(exchange).set(queue='slow') for exchange in exchanges)()
 
-        # Create a groups and execute task
-        gp = group(tasks.update_status.s(exchange) for exchange in exchanges)
-        result = gp.delay()
+        while not res.ready():
+            time.sleep(0.5)
 
-    update_exchange_status.short_description = "Update status"
+        if res.successful():
+            log.info('Flag top markets complete')
+
+        else:
+            log.error('Flag top markets failed')
+
+    flag_top_markets.short_description = "Flag top markets"
+
+    def update_markets(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+        res = group(tasks.markets.s(exchange).set(queue='slow') for exchange in exchanges)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Update markets complete')
+
+        else:
+            log.error('Update markets failed')
+
+    update_markets.short_description = "Update markets"
+
+    def update_prices(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+        res = group(tasks.prices.s(exchange).set(queue='slow') for exchange in exchanges)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Update prices complete')
+
+        else:
+            log.error('Update prices failed')
+
+    update_prices.short_description = "Update price"
+
+    def update_status(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+        res = group(tasks.status.s(exchange).set(queue='slow') for exchange in exchanges)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Update status complete')
+
+        else:
+            log.error('Update status failed')
+
+    update_status.short_description = "Update status"
 
 
 @admin.register(Currency)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('code', 'exchanges', 'get_types', 'get_stable_coin')
-    readonly_fields = ('exchange', 'code', 'type', 'stable_coin')  # Modify config.ini to change type
-    list_filter = ('exchange', 'type', 'stable_coin', 'code',)
+    list_display = ('code', 'exchanges', 'get_stable_coin')
+    readonly_fields = ('exchange', 'code', 'stable_coin')
+    list_filter = ('exchange', 'stable_coin', 'code',)
     save_as = True
     save_on_top = True
 
@@ -220,21 +208,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
     exchanges.short_description = 'Exchanges'
 
-    def get_types(self, obj):
-        return [t.type for t in obj.type.all()]
-
-    get_types.short_description = 'Type'
-
     def get_stable_coin(self, obj):
         return obj.stable_coin
 
     get_stable_coin.boolean = False
     get_stable_coin.short_description = 'Stable coin'
-
-
-@admin.register(CurrencyType)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('type',)
 
 
 @admin.register(OrderBook)
@@ -246,21 +224,21 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'exchange', 'type', 'derivative', 'active', 'updated', 'candles_number',
-                    'margined', 'contract_value', 'contract_value_currency')
-    readonly_fields = ('symbol', 'exchange', 'top', 'active', 'updated', 'excluded', 'type', 'ccxt_type_response',
-                       'default_type',
-                       'derivative', 'quote', 'base', 'funding_rate', 'margined',
-                       'contract_value_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
+    list_display = ('symbol', 'exchange', 'type', 'trading', 'updated', 'candles_number',
+                    'margined', 'contract_value', 'contract_currency')
+    readonly_fields = ('symbol', 'exchange', 'top', 'trading', 'updated', 'type',
+                       'wallet', 'contract_type', 'status',
+                       'quote', 'base', 'funding_rate', 'margined',
+                       'contract_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
                        'price_min', 'price_max', 'cost_min', 'cost_max', 'order_book', 'config', 'limits', 'precision',
                        'taker', 'maker', 'response')
-    list_filter = ('exchange', 'type', 'derivative', 'active', 'excluded', 'default_type',
+    list_filter = ('exchange', 'type', 'contract_type', 'status', 'trading', 'wallet',
                    ('margined', admin.RelatedOnlyFieldListFilter),
                    ('quote', admin.RelatedOnlyFieldListFilter),
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
-    ordering = ('excluded', '-active', 'symbol',)
+    ordering = ('-trading', 'symbol',)
     actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent']
     save_as = True
     save_on_top = True
@@ -306,31 +284,29 @@ class CustomerAdmin(admin.ModelAdmin):
     ##########
 
     def insert_candles_history_since_launch(self, request, queryset):
-        #
-        # Download all history since exchange launch
-        #
-        for market in queryset.order_by('symbol'):
-            tasks.insert_candle_history.s(exid=market.exchange.exid,
-                                          wallet=market.default_type,
-                                          symbol=market.symbol
-                                          ).apply_async(queue='slow')
-
-            if market.exchange.exid == 'bitmex':
-                time.sleep(5)
+        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
+                                         market.wallet,
+                                         market.symbol,
+                                         recent=None
+                                         ).set(queue='slow') for market in queryset)()
 
     insert_candles_history_since_launch.short_description = "Insert candles history since launch"
 
     def insert_candles_history_recent(self, request, queryset):
-        #
-        # Download only the latest history since the last candle received
-        #
-        for market in queryset.order_by('symbol'):
-            if market.is_populated():
-                tasks.insert_candle_history.s(exid=market.exchange.exid,
-                                              wallet=market.default_type,
-                                              symbol=market.symbol,
-                                              recent=True
-                                              ).apply_async(queue='slow')
+        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
+                                         market.wallet,
+                                         market.symbol,
+                                         recent=True
+                                         ).set(queue='slow') for market in queryset)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Update currencies complete')
+
+        else:
+            log.error('Update currencies failed')
 
     insert_candles_history_recent.short_description = "Insert candles history recent"
 
@@ -339,7 +315,7 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('get_dt', 'market', 'exchange', 'get_type', 'close', 'get_vol', 'get_vol_avg')
     readonly_fields = ('exchange', 'market', 'dt', 'close', 'volume', 'dt_created', 'volume_avg',)
-    list_filter = ('exchange', 'market__type', 'market__derivative',
+    list_filter = ('exchange', 'market__type', 'market__contract_type',
                    ('market__quote', admin.RelatedOnlyFieldListFilter),
                    ('market__base', admin.RelatedOnlyFieldListFilter)
                    )

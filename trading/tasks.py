@@ -7,7 +7,7 @@ import traceback
 from itertools import accumulate
 from pprint import pprint
 from django.db.models.query import QuerySet
-
+from django.db.models import Q
 import warnings
 import ccxt
 import ccxtpro
@@ -52,19 +52,19 @@ def fetch_order_open(account):
 
         log.bind(account=account.name, exchange=account.exchange.exid)
         client = account.exchange.get_ccxt_client(account=account)
-        default_type = None
+        wallet = None
 
         # Set market type
-        if account.exchange.default_types:
-            # Select default_type of this account
-            default_type = list(set(Market.objects.filter(exchange=account.exchange,
-                                                          derivative=account.derivative,
+        if account.exchange.wallets:
+            # Select wallet of this account
+            wallet = list(set(Market.objects.filter(exchange=account.exchange,
+                                                          contract_type=account.derivative,
                                                           type=account.type,
                                                           margined=account.margined,
-                                                          active=True,
-                                                          ).values_list('default_type', flat=True)))[0]
+                                                          trading=True,
+                                                          ).values_list('wallet', flat=True)))[0]
 
-            client.options['defaultType'] = default_type
+            client.options['defaultType'] = wallet
 
         # Disable Binance warning
         if account.exchange.exid == 'binance':
@@ -78,7 +78,7 @@ def fetch_order_open(account):
 
             instrument_ids = Market.objects.filter(exchange=account.exchange,
                                                    type=account.type,
-                                                   derivative=account.derivative,
+                                                   contract_type=account.derivative,
                                                    margined=account.margined
                                                    ).values_list('response__id', flat=True)
 
@@ -87,7 +87,7 @@ def fetch_order_open(account):
                 # Check credit, fetch and insert open orders
                 if account.exchange.has_credit():
                     responses = client.fetchOpenOrders(instrument_id)
-                    account.exchange.update_credit('fetchOpenOrders', default_type)
+                    account.exchange.update_credit('fetchOpenOrders', wallet)
 
                     if responses:
 
@@ -101,7 +101,7 @@ def fetch_order_open(account):
             # Check credit and fetch open orders
             if account.exchange.has_credit():
                 responses = client.fetchOpenOrders()
-                account.exchange.update_credit('fetchAllOpenOrders', default_type)
+                account.exchange.update_credit('fetchAllOpenOrders', wallet)
 
             for response in responses:
                 order_create_update(account, response)
@@ -121,15 +121,15 @@ def fetch_order_past(account, market, timestamp):
         # Initialize client
         client = account.exchange.get_ccxt_client(account)
 
-        if market.default_type:
-            client.options['defaultType'] = market.default_type
+        if market.wallet:
+            client.options['defaultType'] = market.wallet
 
         log.info('Fetch orders for {0}'.format(market.symbol))
 
         # Check credit and fetch orders
         if account.exchange.has_credit():
             responses = client.fetch_orders(market.symbol, since=timestamp)
-            account.exchange.update_credit('fetch_orders', market.default_type)
+            account.exchange.update_credit('fetch_orders', market.wallet)
 
         # Insert orders
         for response in responses:
@@ -155,8 +155,8 @@ def cancel_order_id(account, orderid):
     else:
         client = account.exchange.get_ccxt_client(account)
 
-        if order.market.default_type:
-            client.options['defaultType'] = order.market.default_type
+        if order.market.wallet:
+            client.options['defaultType'] = order.market.wallet
 
         log.info('Cancel order {0}'.format(orderid))
 
@@ -167,7 +167,7 @@ def cancel_order_id(account, orderid):
             except ccxt.OrderNotFound:
                 log.warning('Unable to cancel order with ID {0}. Order not found.'.format(order.orderid))
             finally:
-                account.exchange.update_credit('cancel_order', order.market.default_type)
+                account.exchange.update_credit('cancel_order', order.market.wallet)
 
 
 # Place an order to the market after an object is created
@@ -187,9 +187,9 @@ def place_order(account_id, pk):
         # Get client
         client = account.exchange.get_ccxt_client(account)
 
-        # Set default_type is necessary
-        if order.market.default_type:
-            client.options['defaultType'] = order.market.default_type
+        # Set wallet is necessary
+        if order.market.wallet:
+            client.options['defaultType'] = order.market.wallet
 
         # Set primary key as clientOrderId
         if order.params is None:
@@ -233,7 +233,7 @@ def place_order(account_id, pk):
             else:
 
                 # Update credit
-                account.exchange.update_credit('create_order', order.market.default_type)
+                account.exchange.update_credit('create_order', order.market.wallet)
 
                 if response['id']:
 
@@ -347,7 +347,7 @@ def create_fund(id):
                 from django.db.models import Q
 
                 # Select spot market to prevent MultipleObjects
-                market = Market.objects.filter(Q(default_type='spot') | Q(default_type=None)).get(
+                market = Market.objects.filter(Q(wallet='spot') | Q(wallet=None)).get(
                     exchange=account.exchange,
                     base__code=code,
                     quote__code=account.exchange.dollar_currency
@@ -369,10 +369,10 @@ def create_fund(id):
                 return quantity * market.get_candle_price_last()
 
     # Create a dictionary of margin assets
-    def get_margin_assets(response, default_type):
+    def get_margin_assets(response, wallet):
 
         if account.exchange.exid == 'binance':
-            if default_type in ['future', 'delivery']:
+            if wallet in ['future', 'delivery']:
                 return [i for i in response['info']['assets'] if float(i['walletBalance']) > 0]
 
         elif account.exchange.exid == 'bybit':
@@ -381,18 +381,18 @@ def create_fund(id):
         else:
             return
 
-    def get_positions_leverage(response, default_type):
+    def get_positions_leverage(response, wallet):
 
         if account.exchange.exid == 'binance':
-            if default_type in ['future', 'delivery']:
+            if wallet in ['future', 'delivery']:
                 return [dict(leverage=i['leverage'], instrument=i['symbol'])
                         for i in response['info']['positions']]
 
     # Create a dictionary of position
-    def update_pos(response, default_type):
+    def update_pos(response, wallet):
 
         if account.exchange.exid == 'binance':
-            if default_type in ['future', 'delivery']:
+            if wallet in ['future', 'delivery']:
 
                 for position in response['info']['positions']:
                     initial_margin = float(position['initialMargin'])
@@ -407,7 +407,7 @@ def create_fund(id):
                         )
 
                         market = Market.objects.get(exchange=account.exchange,
-                                                    default_type=default_type,
+                                                    wallet=wallet,
                                                     response__id=position['symbol']
                                                     )
 
@@ -429,33 +429,33 @@ def create_fund(id):
     # Create empty dictionaries
     total, used, free, margin_assets, positions = [dict() for _ in range(5)]
 
-    if account.exchange.default_types:
+    if account.exchange.wallets:
 
-        for default_type in account.exchange.get_default_types():
+        for wallet in account.exchange.get_wallets():
 
-            client.options['defaultType'] = default_type
+            client.options['defaultType'] = wallet
 
-            if account.exchange.has_credit(default_type):
+            if account.exchange.has_credit(wallet):
                 response = client.fetchBalance()
 
-                account.exchange.update_credit('fetchBalance', default_type)
+                account.exchange.update_credit('fetchBalance', wallet)
 
                 t, u, f = create_dict(response)
 
-                total[default_type] = t
-                used[default_type] = u
-                free[default_type] = f
+                total[wallet] = t
+                used[wallet] = u
+                free[wallet] = f
 
-                margin_assets[default_type] = get_margin_assets(response, default_type)
-                positions[default_type] = get_positions_leverage(response, default_type)
+                margin_assets[wallet] = get_margin_assets(response, wallet)
+                positions[wallet] = get_positions_leverage(response, wallet)
 
-                update_pos(response, default_type)
+                update_pos(response, wallet)
 
         create_fund_object(total, free, used, margin_assets, positions)
 
     else:
 
-        default_type = 'default'
+        wallet = 'default'
 
         if account.exchange.has_credit():
             response = client.fetchBalance()
@@ -463,12 +463,12 @@ def create_fund(id):
 
             t, u, f = create_dict(response)
 
-            total[default_type] = t
-            used[default_type] = u
-            free[default_type] = f
+            total[wallet] = t
+            used[wallet] = u
+            free[wallet] = f
 
-            margin_assets[default_type] = get_margin_assets(response, default_type)
-            positions[default_type] = get_positions_leverage(response, default_type)
+            margin_assets[wallet] = get_margin_assets(response, wallet)
+            positions[wallet] = get_positions_leverage(response, wallet)
 
             create_fund_object(total, free, used, margin_assets, positions)
 
@@ -509,9 +509,9 @@ def update_order_id(account_id, orderid):
 
             client = account.exchange.get_ccxt_client(account)
 
-            # Set default_type if necessary
-            if order.market.default_type:
-                client.options['defaultType'] = order.market.default_type
+            # Set wallet if necessary
+            if order.market.wallet:
+                client.options['defaultType'] = order.market.wallet
 
             # check if method is supported
             if account.exchange.has['fetchOrder']:
@@ -525,7 +525,7 @@ def update_order_id(account_id, orderid):
                 # Check credit and insert order
                 if account.exchange.has_credit():
                     response = client.fetchOrder(id=orderid, symbol=order.market.symbol)  # , params=params)
-                    account.exchange.update_credit('fetchOrder', order.market.default_type)
+                    account.exchange.update_credit('fetchOrder', order.market.wallet)
 
                     # Update order and return it's primary key if new trade detected
                     orderid = order_create_update(account, response)
@@ -653,9 +653,9 @@ def update_positions(id, orderids=None):
 
         elif markets:
             # or update positions of a specific API
-            if 'swap' in [m.default_type for m in markets]:
+            if 'swap' in [m.wallet for m in markets]:
                 okex_swap()
-            if 'futures' in [m.default_type for m in markets]:
+            if 'futures' in [m.wallet for m in markets]:
                 okex_futures()
 
     # Binance
@@ -787,9 +787,9 @@ def update_positions(id, orderids=None):
 
         elif markets:
             # or update positions of a specific API
-            if 'future' in [m.default_type for m in markets]:
+            if 'future' in [m.wallet for m in markets]:
                 binance_usd_margined()
-            if 'delivery' in [m.default_type for m in markets]:
+            if 'delivery' in [m.wallet for m in markets]:
                 binance_coin_margined()
 
     # Bybit
@@ -1029,7 +1029,7 @@ def rebalance(strategy_id, account_id=None):
 
                     market = Market.objects.get(exchange=exchange,
                                                 symbol=route[segment].market.symbol,
-                                                default_type=route[segment].market.wallet
+                                                wallet=route[segment].market.wallet
                                                 )
                     funding = float(market.funding_rate['lastFundingRate'])
                     action = route[segment].type.action
@@ -1113,7 +1113,7 @@ def rebalance(strategy_id, account_id=None):
 
                 # If market of the segment is the market of the asyncio loop
                 if route[segment].market.symbol == market.symbol:
-                    if route[segment].market.wallet == market.default_type:
+                    if route[segment].market.wallet == market.wallet:
                         depth = get_depth()
                         distance = get_distance()
                         spread = get_spread()
@@ -1169,7 +1169,7 @@ def rebalance(strategy_id, account_id=None):
         # Construct index
         idx = (order.market.base.code,
                order.market.quote.code,
-               'default' if order.market.default_type is None else order.market.default_type,
+               'default' if order.market.wallet is None else order.market.wallet,
                order.market.symbol,
                order.market.type
                )
@@ -1194,7 +1194,7 @@ def rebalance(strategy_id, account_id=None):
         log.info('Update fund object')
 
         # Select wallet of markets where trades occurred
-        wallets = list(set([order.market.default_type for order in Order.objects.filter(orderid__in=orderids)]))
+        wallets = list(set([order.market.wallet for order in Order.objects.filter(orderid__in=orderids)]))
 
         if wallets:
             for wallet in wallets:
@@ -1245,7 +1245,7 @@ def rebalance(strategy_id, account_id=None):
                 prices['spot'][market.base.code] = p
 
         # Collect market price
-        prices[market.default_type][market.symbol] = p
+        prices[market.wallet][market.symbol] = p
 
     # Place an order to the best route for every source currency
     # and update df_markets when an order is placed
@@ -1385,7 +1385,7 @@ def rebalance(strategy_id, account_id=None):
 
                             market = Market.objects.get(exchange=exchange,
                                                         symbol=route[segment].market.symbol,
-                                                        default_type=route[segment].market.wallet
+                                                        wallet=route[segment].market.wallet
                                                         )
                             funding = float(market.funding_rate['lastFundingRate'])
                             order_value = route[segment].trade.order_value
@@ -1414,8 +1414,9 @@ def rebalance(strategy_id, account_id=None):
                                         base__code__in=codes_monitor,
                                         quote__code__in=codes_monitor,
                                         excluded=False,
-                                        active=True
-                                        ).exclude(derivative='future')
+                                        trading=True
+                                        ).exclude(contract_type='current_quarter'
+                                                  ).exclude(contract_type='next_quarter')
 
             if strategy.all_pairs:
                 mks = mks.filter(type='spot')
@@ -1434,7 +1435,7 @@ def rebalance(strategy_id, account_id=None):
                         # Create multilevel columns
                         indexes = pd.MultiIndex.from_tuples([(code,
                                                               market.quote.code,
-                                                              market.default_type,
+                                                              market.wallet,
                                                               market.symbol,
                                                               market.type,
                                                               market.derivative,
@@ -1442,7 +1443,7 @@ def rebalance(strategy_id, account_id=None):
                                                               )],
                                                             names=['base',
                                                                    'quote',
-                                                                   'default_type',
+                                                                   'wallet',
                                                                    'symbol',
                                                                    'type',
                                                                    'derivative',
@@ -1885,7 +1886,7 @@ def rebalance(strategy_id, account_id=None):
             # Market structure
             # 0 'code',
             # 1 'quote',
-            # 2 'default_type',
+            # 2 'wallet',
             # 3 'symbol',
             # 4 'type',
             # 5 'derivative',
@@ -2208,7 +2209,7 @@ def rebalance(strategy_id, account_id=None):
                 # Get leverage of position in a derivative market
                 def get_position_leverage(symbol, wallet):
 
-                    market = Market.objects.get(exchange=exchange, symbol=symbol, default_type=wallet)
+                    market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
                     instrument_id = market.response['id']
                     positions = account.get_fund_latest().positions
                     return float([p['leverage'] for p in positions[wallet] if p['instrument'] == instrument_id][0])
@@ -2295,7 +2296,7 @@ def rebalance(strategy_id, account_id=None):
 
                     market = Market.objects.get(exchange=exchange,
                                                 symbol=segment.market.symbol,
-                                                default_type=segment.market.wallet
+                                                wallet=segment.market.wallet
                                                 )
 
                     # COIN-margined see https://www.binance.com/en/futures/trading-rules/quarterly
@@ -2838,7 +2839,7 @@ def rebalance(strategy_id, account_id=None):
                             routes[id].loc[index, (s, 'trade', 'valid')] = False
                             continue
 
-                    market = Market.objects.get(exchange=exchange, symbol=symbol, default_type=wallet)
+                    market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
                     price = get_price(market)
                     side = get_side()
 
@@ -2989,7 +2990,7 @@ def rebalance(strategy_id, account_id=None):
     async def watch_book(account, client, market, i, j):
 
         id = account.id
-        log.info('Start loop {0} {1} for account {2}'.format(market.default_type, market.symbol, id))
+        log.info('Start loop {0} {1} for account {2}'.format(market.wallet, market.symbol, id))
 
         while True:
             try:
@@ -3012,7 +3013,7 @@ def rebalance(strategy_id, account_id=None):
                             account.updated = True
                             account.save()
 
-                        log.info('Closing stream {0} {1}'.format(market.default_type, market.symbol))
+                        log.info('Closing stream {0} {1}'.format(market.wallet, market.symbol))
                         break
 
                     if i == 0 and j == 0:
@@ -3062,7 +3063,7 @@ def rebalance(strategy_id, account_id=None):
                 # traceback.print_exc()
                 log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
                               symbol=market.symbol,
-                              wallet=market.default_type,
+                              wallet=market.wallet,
                               traceback=traceback.format_exc()
                               )
 
@@ -3073,43 +3074,44 @@ def rebalance(strategy_id, account_id=None):
 
         client = getattr(ccxtpro, exchange.exid)({'enableRateLimit': True, 'asyncio_loop': loop, })
 
-        if exchange.default_types:
+        if exchange.wallets:
             client.options['defaultType'] = wallet
 
         # Select markets to monitor
         markets_monitor = Market.objects.filter(exchange=exchange,
-                                                default_type=wallet,
+                                                wallet=wallet,
                                                 base__code__in=codes_monitor,
-                                                quote__code__in=codes_monitor,
-                                                ).exclude(derivative='future')
+                                                quote__code__in=codes_monitor
+                                                ).exclude(contract_type='current_quarter'
+                                                          ).exclude(contract_type='next_quarter')
 
         # Select updated markets
         for market in markets_monitor:
             if not market.is_updated():
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is not updated'.format(market.symbol, market.default_type))
+                log.warning('Market {0} {1} is not updated'.format(market.symbol, market.wallet))
 
         # Select updated markets
         for market in markets_monitor:
-            if not market.active:
+            if not market.trading:
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is not active'.format(market.symbol, market.default_type))
+                log.warning('Market {0} {1} is not trading'.format(market.symbol, market.wallet))
 
         # Select updated markets
         for market in markets_monitor:
             if market.excluded:
                 markets_monitor = markets_monitor.exclude(symbol=market.symbol)
-                log.warning('Market {0} {1} is excluded'.format(market.symbol, market.default_type))
+                log.warning('Market {0} {1} is excluded'.format(market.symbol, market.wallet))
 
         log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 
         for m in markets_monitor:
-            print('Monitor stream', m.default_type, m.symbol)
+            print('Monitor stream', m.wallet, m.symbol)
 
         # # Create dictionary structure for spot prices in (usd)
         # for market in mks:
         #
-        #     wallet = market.default_type
+        #     wallet = market.wallet
         #     base = market.base.code
         #     symbol = market.symbol
         #
@@ -3214,9 +3216,10 @@ def rebalance(strategy_id, account_id=None):
                                                  trading=True
                                                  ).values_list('id', flat=True)
 
-        log.info('Found {0} accounts not updated for strategy {1}'.format(len(accounts_id), strategy.name))
-
         if len(accounts_id) > 0:
+
+            log.info('Found {0} accounts not updated'.format(len(accounts_id)), strategy=strategy.name)
+
             for id in accounts_id:
 
                 account = Account.objects.get(id=id)
@@ -3244,7 +3247,7 @@ def rebalance(strategy_id, account_id=None):
                     if strategy.all_pairs:
                         wallets = ['spot']
                     else:
-                        wallets = exchange.get_default_types()
+                        wallets = exchange.get_wallets()
 
                     log.info('Create asyncio loops for account {0}'.format(account.id))
 
@@ -3264,7 +3267,7 @@ def rebalance(strategy_id, account_id=None):
                     continue
 
         else:
-            log.info('No account found for rebalancing')
+            log.info('Found 0 account to rebalance')
 
 
 @shared_task(name='Update account', base=BaseTaskWithRetry)

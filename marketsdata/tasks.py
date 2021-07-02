@@ -521,10 +521,6 @@ def markets(exid):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid)
 
-    if exid != 'binance':
-        log.info('Update market not supported')
-        return
-
     if exchange.is_trading():
 
         client = exchange.get_ccxt_client()
@@ -542,8 +538,11 @@ def markets(exid):
                 log.bind(wallet=wallet)
                 log.info('Update markets {0}'.format(wallet))
 
-                for market, response in client.markets.items():
-                    update()
+                if exid == 'binance':
+                    for market, response in client.markets.items():
+                        update()
+                else:
+                    log.info('Skip update')
 
                 # Delete markets not reported by the exchange
                 unlisted = Market.objects.filter(exchange=exchange,
@@ -561,8 +560,11 @@ def markets(exid):
                 client.load_markets(True)
                 exchange.update_credit('load_markets')
 
-                for market, response in client.markets.items():
-                    update()
+                if exid == 'binance':
+                    for market, response in client.markets.items():
+                        update()
+                else:
+                    log.info('Skip update')
 
                 # Delete markets not reported by the exchange
                 unlisted = Market.objects.filter(exchange=exchange).exclude(symbol__in=list(client.markets.keys()))

@@ -3224,33 +3224,38 @@ def rebalance(strategy_id, account_id=None):
 
                     log.info('Monitor {0} codes for strategy'.format(len(codes_strategy)))
                     log.info('Monitor {0} codes for margined stablecoins'.format(len(codes_margined)))
-                    log.info('Monitor {0} codes for account (>$50)'.format(len(codes_account)))
+                    log.info('Monitor {0} codes for account (>50)'.format(len(codes_account)))
 
                     codes_monitor = codes_strategy + codes_margined + codes_account
                     [print('Monitor code', c) for c in codes_monitor]
 
-                    # Create empty dictionaries
-                    balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
-                    create_dataframes(account.id)
+                    if len(codes_monitor) > 1:
 
-                    if strategy.all_pairs:
-                        wallets = ['spot']
+                        # Create empty dictionaries
+                        balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
+                        create_dataframes(account.id)
+
+                        if strategy.all_pairs:
+                            wallets = ['spot']
+                        else:
+                            wallets = exchange.get_wallets()
+
+                        log.info('Create asyncio loops for account {0}'.format(account.id))
+
+                        # loop.set_debug(True)
+                        loop = asyncio.get_event_loop()
+
+                        if loop.is_closed():
+                            log.info('Create a new loop')
+                            loop = asyncio.new_event_loop()
+
+                        gp = asyncio.wait([main(account, loop, wallets)])
+                        loop.run_until_complete(gp)
+                        loop.close()
+
                     else:
-                        wallets = exchange.get_wallets()
-
-                    log.info('Create asyncio loops for account {0}'.format(account.id))
-
-                    # loop.set_debug(True)
-                    loop = asyncio.get_event_loop()
-
-                    if loop.is_closed():
-                        log.info('Create a new loop')
-                        loop = asyncio.new_event_loop()
-
-                    gp = asyncio.wait([main(account, loop, wallets)])
-                    loop.run_until_complete(gp)
-                    loop.close()
-
+                        log.info('Rebalance impossible with 1 code to monitor', codes_monitor=codes_monitor)
+                        continue
                 else:
                     log.info('Account is no credited')
                     continue

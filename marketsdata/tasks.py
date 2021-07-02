@@ -723,7 +723,7 @@ def prices(exid):
 
                 else:
                     pass
-                    # log.warning('Candle exists')
+                    log.warning('Candle exists', dt=dt)
 
                 finally:
                     log.unbind('wallet', 'symbol')

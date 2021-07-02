@@ -985,7 +985,7 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                                     break
 
                 return True
-            
+
         market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=symbol)
 
         if not market.updated or recent is None:
@@ -1007,8 +1007,10 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
             try:
                 res = insert(market)
 
+            except ccxt.DDoSProtection as e:
+                log.error('DDoS protection')
             except Exception as e:
-                log.exception('Unable to fetch OHLCV')
+                log.error('Unable to fetch OHLCV: {0}'.format(e))
 
             else:
                 if res:

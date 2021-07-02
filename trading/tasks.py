@@ -1476,6 +1476,8 @@ def rebalance(strategy_id, account_id=None):
             # Currencies
             ############
 
+            print('markets[id]', markets[id])
+
             markets_index = markets[id].index.tolist()
             stablecoins = account.exchange.get_stablecoins()
 

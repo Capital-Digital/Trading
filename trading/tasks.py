@@ -3244,7 +3244,7 @@ def rebalance(strategy_id, account_id=None):
 
                         # loop.set_debug(True)
                         loop = asyncio.get_event_loop()
-
+                        print(loop)
                         if loop.is_closed():
                             log.info('Create a new loop')
                             loop = asyncio.new_event_loop()

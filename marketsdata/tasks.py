@@ -870,14 +870,9 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 
                     except ccxt.BadSymbol as e:
 
-                        log.exception('Bad symbol')
-
-                        if market.type == 'derivative':
-                            if market.contract_type == 'future':
-                                log.info('Deactivate future market')
-                                market.trading = False
-
-                        market.save()
+                        log.error('Bad symbol')
+                        log.info('Delete market')
+                        market.delete()
                         return
 
                     except ccxt.ExchangeError as e:

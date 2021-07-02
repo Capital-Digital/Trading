@@ -342,20 +342,11 @@ def create_fund(id):
         # Test if code is a currency or an instrument (OKEx)
         if Currency.objects.filter(code=code).exists():
 
-            # Convert base quantity in USD
-            if not Currency.objects.get(code=code).stable_coin:
-                from django.db.models import Q
-
-                # Select spot market to prevent MultipleObjects
-                market = Market.objects.filter(Q(wallet='spot') | Q(wallet=None)).get(
-                    exchange=account.exchange,
-                    base__code=code,
-                    quote__code=account.exchange.dollar_currency
-                )
-                return quantity * market.get_candle_price_last()
-
-            else:
+            if code == account.exchange.dollar_currency:
                 return quantity
+            else:
+                price = get_price_hourly(account.exchange, code, account.exchange.dollar_currency)
+                return quantity * price
 
         else:
             market = Market.objects.get(exchange=account.exchange, symbol=code)

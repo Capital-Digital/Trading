@@ -1578,7 +1578,7 @@ def rebalance(strategy_id, account_id=None):
                           (label, 'market', 'symbol'),
                           (label, 'market', 'wallet'),
                           (label, 'market', 'type'),
-                          (label, 'market', 'derivative'),
+                          (label, 'market', 'contract_type'),
                           (label, 'market', 'margined'),
 
                           (label, 'type', 'action'),
@@ -1621,7 +1621,7 @@ def rebalance(strategy_id, account_id=None):
                             gw.loc[0, (label, 'market', 'wallet')] = gateway[2]
                             gw.loc[0, (label, 'market', 'symbol')] = gateway[3]
                             gw.loc[0, (label, 'market', 'type')] = gateway[4]
-                            gw.loc[0, (label, 'market', 'derivative')] = gateway[5]
+                            gw.loc[0, (label, 'market', 'contract_type')] = gateway[5]
                             gw.loc[0, (label, 'market', 'margined')] = gateway[6]
 
                             gw.loc[0, (label, 'type', 'priority')] = priority
@@ -1673,7 +1673,7 @@ def rebalance(strategy_id, account_id=None):
                     s1.loc[0, (label, 'market', 'wallet')] = wallet
                     s1.loc[0, (label, 'market', 'symbol')] = market[3]
                     s1.loc[0, (label, 'market', 'type')] = market[4]
-                    s1.loc[0, (label, 'market', 'derivative')] = market[5]
+                    s1.loc[0, (label, 'market', 'contract_type')] = market[5]
                     s1.loc[0, (label, 'market', 'margined')] = code
 
                     s1.loc[0, (label, 'type', 'source')] = source
@@ -1755,7 +1755,7 @@ def rebalance(strategy_id, account_id=None):
                                     s3.loc[0, (label, 'market', 'wallet')] = candidate[2]
                                     s3.loc[0, (label, 'market', 'symbol')] = candidate[3]
                                     s3.loc[0, (label, 'market', 'type')] = candidate[4]
-                                    s3.loc[0, (label, 'market', 'derivative')] = candidate[5]
+                                    s3.loc[0, (label, 'market', 'contract_type')] = candidate[5]
                                     s3.loc[0, (label, 'market', 'margined')] = candidate[6]
 
                                     s3.loc[0, (label, 'type', 'priority')] = priority
@@ -1784,7 +1784,7 @@ def rebalance(strategy_id, account_id=None):
                                 s2.loc[0, (label, 'market', 'wallet')] = candidate[2]
                                 s2.loc[0, (label, 'market', 'symbol')] = candidate[3]
                                 s2.loc[0, (label, 'market', 'type')] = candidate[4]
-                                s2.loc[0, (label, 'market', 'derivative')] = candidate[5]
+                                s2.loc[0, (label, 'market', 'contract_type')] = candidate[5]
                                 s2.loc[0, (label, 'market', 'margined')] = candidate[6]
 
                                 s2.loc[0, (label, 'type', 'priority')] = priority
@@ -1827,7 +1827,7 @@ def rebalance(strategy_id, account_id=None):
                                     s2.loc[0, (label, 'market', 'wallet')] = candidate[2]
                                     s2.loc[0, (label, 'market', 'symbol')] = candidate[3]
                                     s2.loc[0, (label, 'market', 'type')] = candidate[4]
-                                    s2.loc[0, (label, 'market', 'derivative')] = candidate[5]
+                                    s2.loc[0, (label, 'market', 'contract_type')] = candidate[5]
                                     s2.loc[0, (label, 'market', 'margined')] = candidate[6]
 
                                     s2.loc[0, (label, 'type', 'priority')] = priority
@@ -1856,7 +1856,7 @@ def rebalance(strategy_id, account_id=None):
                                 s1.loc[0, (label, 'market', 'wallet')] = candidate[2]
                                 s1.loc[0, (label, 'market', 'symbol')] = candidate[3]
                                 s1.loc[0, (label, 'market', 'type')] = candidate[4]
-                                s1.loc[0, (label, 'market', 'derivative')] = candidate[5]
+                                s1.loc[0, (label, 'market', 'contract_type')] = candidate[5]
                                 s1.loc[0, (label, 'market', 'margined')] = candidate[6]
 
                                 s1.loc[0, (label, 'funds', 'code')] = code
@@ -1948,7 +1948,7 @@ def rebalance(strategy_id, account_id=None):
                         s1.loc[0, (label, 'market', 'wallet')] = market[2]
                         s1.loc[0, (label, 'market', 'symbol')] = market[3]
                         s1.loc[0, (label, 'market', 'type')] = market[4]
-                        s1.loc[0, (label, 'market', 'derivative')] = market[5]
+                        s1.loc[0, (label, 'market', 'contract_type')] = market[5]
                         s1.loc[0, (label, 'market', 'margined')] = market[6]
 
                         s1.loc[0, (label, 'type', 'source')] = 'close_hedge'

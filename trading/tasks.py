@@ -1028,17 +1028,17 @@ def rebalance(strategy_id, account_id=None):
                     if funding > 0:
                         # Penalize long
                         if action in ['open_long', 'close_short']:
-                            return funding * 3 * 7
+                            return funding, funding * 3 * 7
                         # Favor short
                         elif action in ['open_short', 'close_long']:
-                            return - funding * 3 * 7
+                            return funding, - funding * 3 * 7
                     else:
                         # Favor long
                         if action in ['open_long', 'close_short']:
-                            return - funding * 3 * 7
+                            return funding, - funding * 3 * 7
                         # Penalize short
                         elif action in ['open_short', 'close_long']:
-                            return funding * 3 * 7
+                            return funding, funding * 3 * 7
 
         def get_fees():
             if route[segment].market.type == 'spot':
@@ -1114,9 +1114,9 @@ def rebalance(strategy_id, account_id=None):
                         distance = get_distance()
                         spread = get_spread()
                         fees = get_fees()
-                        funding = get_funding()
+                        funding, funding_weighted = get_funding()
 
-                        total = spread + distance + fees + (funding if not pd.isna(funding) else 0)
+                        total = spread + distance + fees + (funding_weighted if not pd.isna(funding) else 0)
 
                         # Set costs
                         routes[id].loc[index, (segment, 'cost', 'spread')] = spread

@@ -1025,15 +1025,20 @@ def rebalance(strategy_id, account_id=None):
                     funding = float(market.funding_rate['lastFundingRate'])
                     action = route[segment].type.action
 
-                    if action == 'open_long':
-                        return funding * 3 * 7
-                    elif action == 'open_short':
-                        return -funding * 3 * 7
-
-                    elif action == 'close_long':
-                        return -funding * 3 * 7
-                    elif action == 'close_short':
-                        return funding * 3 * 7
+                    if funding > 0:
+                        # Penalize long
+                        if action in ['open_long', 'close_short']:
+                            return funding * 3 * 7
+                        # Favor short
+                        elif action in ['open_short', 'close_long']:
+                            return - funding * 3 * 7
+                    else:
+                        # Favor long
+                        if action in ['open_long', 'close_short']:
+                            return - funding * 3 * 7
+                        # Penalize short
+                        elif action in ['open_short', 'close_long']:
+                            return funding * 3 * 7
 
         def get_fees():
             if route[segment].market.type == 'spot':

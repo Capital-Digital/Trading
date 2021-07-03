@@ -1040,6 +1040,8 @@ def rebalance(strategy_id, account_id=None):
                         elif action in ['open_short', 'close_long']:
                             return funding, funding * 3 * 7
 
+            return np.nan, np.nan
+
         def get_fees():
             if route[segment].market.type == 'spot':
                 if route[segment].market.quote == 'BUSD':

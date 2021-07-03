@@ -195,7 +195,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_contract_value_curr(self, obj):
         if obj.market:
-            return obj.market.contract_value_currency
+            return obj.market.contract_currency
     get_contract_value_curr.short_description = 'Contract currency'
 
     def get_liquidation_price(self, obj):

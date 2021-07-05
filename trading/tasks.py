@@ -172,7 +172,7 @@ def cancel_order_id(account, orderid):
 
 # Place an order to the market after an object is created
 @shared_task(name='Trading_____Place order by ID', base=BaseTaskWithRetry)
-def place_order(account_id, pk):
+def place_order(account_id, pk, route, segment, balance):
     account = Account.objects.get(id=account_id)
 
     try:
@@ -224,6 +224,31 @@ def place_order(account_id, pk):
 
             except ccxt.InsufficientFunds as e:
                 log.exception('Insufficient funds to place order', exc_info=e, pk=pk)
+
+                segment = route[segment]
+                if segment.market.type == 'spot':
+                    if segment.type.action == 'buy_base':
+                        quote = segment.market.quote
+                        wallet = segment.market.wallet
+                        balance = balance.loc[(quote, wallet)]
+                        log.error('Not enough quote {0} {1}'.format(quote, wallet))
+                        log.info('Segment', segment=segment.to_string())
+                        log.info('Balance', balance=balance.to_string())
+                    else:
+                        base = segment.market.base
+                        wallet = segment.market.wallet
+                        balance = balance.loc[(base, wallet)]
+                        log.error('Not enough base {0} {1}'.format(base, wallet))
+                        log.info('Segment', segment=segment.to_string())
+                        log.info('Balance', balance=balance.to_string())
+                else:
+                    margin = segment.market.margined
+                    wallet = segment.market.wallet
+                    balance = balance.loc[(margin, wallet)]
+                    log.error('Not enough margin {0} {1}'.format(margin, wallet))
+                    log.info('Segment', segment=segment.to_string())
+                    log.info('Balance', balance=balance.to_string())
+
                 return False
 
             except Exception as e:
@@ -1325,7 +1350,7 @@ def rebalance(strategy_id, account_id=None):
                     if orderid:
 
                         # Place order
-                        response = place_order.run(id, orderid)
+                        response = place_order.run(id, orderid, route, segment, balances[id])
                         if response:
 
                             log.info('Order placed')

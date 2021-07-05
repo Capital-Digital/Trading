@@ -1365,6 +1365,8 @@ def rebalance(strategy_id, account_id=None):
                             update_next_segment()
 
                         elif response is False:
+                            log.error('Order placement failed, delete object id {0}'.format(orderid))
+                            Order.objects.get(id=orderid).delete()
                             return
                     else:
                         log.warning('Order object creation failed')

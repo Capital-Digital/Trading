@@ -226,28 +226,38 @@ def place_order(account_id, pk, route, segment, balance):
                 log.exception('Insufficient funds to place order', exc_info=e, pk=pk)
 
                 segment = route[segment]
+
                 if segment.market.type == 'spot':
                     if segment.type.action == 'buy_base':
-                        quote = segment.market.quote
-                        wallet = segment.market.wallet
-                        balance = balance.loc[(quote, wallet)]
-                        log.error('Not enough quote {0} {1}'.format(quote, wallet))
-                        log.info('Segment', segment=segment.to_string())
-                        log.info('Balance', balance=balance.to_string())
+                        code = segment.market.quote
                     else:
-                        base = segment.market.base
-                        wallet = segment.market.wallet
-                        balance = balance.loc[(base, wallet)]
-                        log.error('Not enough base {0} {1}'.format(base, wallet))
-                        log.info('Segment', segment=segment.to_string())
-                        log.info('Balance', balance=balance.to_string())
+                        code = segment.market.base
                 else:
-                    margin = segment.market.margined
-                    wallet = segment.market.wallet
-                    balance = balance.loc[(margin, wallet)]
-                    log.error('Not enough margin {0} {1}'.format(margin, wallet))
-                    log.info('Segment', segment=segment.to_string())
-                    log.info('Balance', balance=balance.to_string())
+                    code = segment.market.margined
+                wallet = segment.market.wallet
+                balance = balance.loc[(code, wallet)]
+                log.error('Not enough quote {0} {1}'.format(code, wallet))
+                log.info('Segment:\n {0} \n'.format(segment.to_string()))
+                log.info('Balance: \n {0} \n'.format(balance.to_string()))
+
+                if segment.type.id == 2:
+                    prev = route['s1']
+                if segment.type.id == 3:
+                    prev = route['s2']
+                if 'prev' in locals():
+
+                    if prev.market.type == 'spot':
+                        if prev.type.action == 'buy_base':
+                            code = prev.market.base
+                        else:
+                            code = prev.market.quote
+                    else:
+                        code = prev.market.margined
+                    wallet = prev.market.wallet
+                    balance = balance.loc[(code, wallet)]
+                    log.error('Previous trade was {0}'.format(prev.market.symbol))
+                    log.info('Previous segment:\n {0} \n'.format(prev.to_string()))
+                    log.info('Previous coin balance:\n {0} \n'.format(balance.to_string()))
 
                 return False
 

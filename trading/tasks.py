@@ -242,8 +242,9 @@ def place_order(account_id, pk, route, segment, balance):
 
                 if segment.type.id == 2:
                     prev = route['s1']
-                if segment.type.id == 3:
+                elif segment.type.id == 3:
                     prev = route['s2']
+
                 if 'prev' in locals():
 
                     if prev.market.type == 'spot':
@@ -259,6 +260,9 @@ def place_order(account_id, pk, route, segment, balance):
                     log.info('Previous segment:\n {0} \n'.format(prev.to_string()))
                     log.info('Previous coin balance:\n {0} \n'.format(balance.to_string()))
 
+                else:
+                    log.info('First segment')
+                    
                 return False
 
             except Exception as e:
@@ -975,7 +979,8 @@ def transfer(id, segment):
 
         except Exception as e:
 
-            log.exception('Unable to transfer fund')
+            log.exception('Unable to transfer {0} {1}'.format(quantity, code))
+            log.error('Segment:\n {0} \n'.format(segment.to_string()))
 
             pprint(dict(
                 code=code,

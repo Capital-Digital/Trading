@@ -1364,17 +1364,20 @@ def rebalance(strategy_id, account_id=None):
                     orderid = Account.objects.get(id=id).create_order(route, segment)
                     if orderid:
 
-                        log.info('Trade market {0} {1} {2} type {3} transfer: {4} {5} {6}'.format(
+                        log.info('Trade market {0} {1} {2} type {3}'.format(
                             route[segment].market.base,
                             route[segment].market.quote,
                             route[segment].market.wallet,
-
-                            route[segment].type.action,
-                            route[segment].type.transfer,
-
-                            route[segment].transfer.asset,
-                            route[segment].transfer.quantity
+                            route[segment].type.action
                         ))
+                        if 'transfer' in route[segment]:
+                            if route[segment].type.transfer:
+
+                                log.info('Transfer asset {0} {1}'.format(
+                                route[segment].transfer.asset,
+                                route[segment].transfer.quantity
+                                ))
+
                         # Place order
                         response = place_order.run(id, orderid, route, segment, balances[id])
                         if response:

@@ -746,8 +746,8 @@ def prices(exid):
                 # Iterate through wallets
                 for wallet in exchange.get_wallets():
 
-                    log.info('Prices update for {0}'.format(wallet))
-                    
+                    log.info('Prices update {0}'.format(wallet))
+
                     client.options['defaultType'] = wallet
                     if exchange.has_credit(wallet):
 
@@ -772,6 +772,7 @@ def prices(exid):
                                 # else:
                                 #     # Else select price and volume from response
                                 #     update(response, market)
+                    log.info('Prices update {0} complete'.format(wallet))
 
             else:
                 if exchange.has_credit():

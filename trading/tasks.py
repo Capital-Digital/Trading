@@ -58,11 +58,11 @@ def fetch_order_open(account):
         if account.exchange.wallets:
             # Select wallet of this account
             wallet = list(set(Market.objects.filter(exchange=account.exchange,
-                                                          contract_type=account.derivative,
-                                                          type=account.type,
-                                                          margined=account.margined,
-                                                          trading=True,
-                                                          ).values_list('wallet', flat=True)))[0]
+                                                    contract_type=account.derivative,
+                                                    type=account.type,
+                                                    margined=account.margined,
+                                                    trading=True,
+                                                    ).values_list('wallet', flat=True)))[0]
 
             client.options['defaultType'] = wallet
 
@@ -1372,10 +1372,9 @@ def rebalance(strategy_id, account_id=None):
                         ))
                         if 'transfer' in route[segment]:
                             if route[segment].type.transfer:
-
                                 log.info('Transfer asset {0} {1}'.format(
-                                route[segment].transfer.asset,
-                                route[segment].transfer.quantity
+                                    route[segment].transfer.asset,
+                                    route[segment].transfer.quantity
                                 ))
 
                         # Place order
@@ -2076,8 +2075,8 @@ def rebalance(strategy_id, account_id=None):
                 if False in trades:
                     invalid.append(index)
 
-            log.info('Dropped routes')
-            print(routes[id].iloc[invalid].to_string())
+            # log.info('Dropped routes')
+            # print(routes[id].iloc[invalid].to_string())
 
             # Drop invalid routes
             routes[id].drop(invalid, inplace=True)

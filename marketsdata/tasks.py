@@ -827,6 +827,8 @@ def top_markets(exid):
                 market.top = True
                 market.save()
 
+            log.info('Set top complete')
+
 
 # Bulk insert OHLCV candles history
 @shared_task(base=BaseTaskWithRetry)

@@ -587,6 +587,9 @@ def update_positions(id, orderids=None):
     account = Account.objects.get(id=id)
     client = account.exchange.get_ccxt_client(account)
 
+    if account.strategy.all_pairs:
+        return
+
     if orderids:
         # Create a list of derivative markets open orders belong to
         markets = list(set([order.market for order in Order.objects.filter(orderid__in=orderids) if

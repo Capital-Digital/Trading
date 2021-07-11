@@ -1322,22 +1322,21 @@ def rebalance(strategy_id, account_id=None):
                         bought = response['filled'] * response['average']
                         asset = route[segment].market.quote
 
-                    log.info('Order filled')
-                    pprint(response)
+                    if 'bought' in locals():
 
-                    # Update transfer quantity
-                    if route[next].type.transfer:
-                        routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
+                        # Update transfer quantity
+                        if route[next].type.transfer:
+                            routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
 
-                        log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
+                            log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 
-                    # Update trade quantity
-                    if route[next].market.type == 'derivative':
-                        routes[id].loc[route.name, (next, 'trade', 'margin_qty')] = bought
-                    elif route[next].market.type == 'spot':
-                        routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
+                        # Update trade quantity
+                        if route[next].market.type == 'derivative':
+                            routes[id].loc[route.name, (next, 'trade', 'margin_qty')] = bought
+                        elif route[next].market.type == 'spot':
+                            routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
 
-                    log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4), asset))
+                        log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4), asset))
 
         try:
 

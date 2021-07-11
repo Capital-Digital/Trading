@@ -163,7 +163,7 @@ class Account(models.Model):
             log.info('Create dataframe in {0} sec'.format(round(end - start, 2)))
 
         except Exception as e:
-            log.exception('create_dataframes() failed: {0} {1}'.format(type(e).__name__, str(e)))
+            log.error('create_dataframes() failed: {0} {1}'.format(type(e).__name__, str(e)))
 
         else:
 

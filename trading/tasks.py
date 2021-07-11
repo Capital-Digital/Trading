@@ -465,6 +465,10 @@ def create_fund(id):
 
             client.options['defaultType'] = wallet
 
+            if account.strategy.all_pairs:
+                if wallet != 'spot':
+                    continue
+
             if account.exchange.has_credit(wallet):
                 response = client.fetchBalance()
 

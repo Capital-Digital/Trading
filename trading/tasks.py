@@ -476,10 +476,12 @@ def create_fund(id):
                 used[wallet] = u
                 free[wallet] = f
 
-                margin_assets[wallet] = get_margin_assets(response, wallet)
-                positions[wallet] = get_positions_leverage(response, wallet)
-
-                update_pos(response, wallet)
+                if not account.strategy.all_pairs:
+                    margin_assets[wallet] = get_margin_assets(response, wallet)
+                    positions[wallet] = get_positions_leverage(response, wallet)
+                    update_pos(response, wallet)
+                else:
+                    margin_assets, positions = [dict() for _ in range(2)]
 
         create_fund_object(total, free, used, margin_assets, positions)
 
@@ -497,10 +499,14 @@ def create_fund(id):
             used[wallet] = u
             free[wallet] = f
 
-            margin_assets[wallet] = get_margin_assets(response, wallet)
-            positions[wallet] = get_positions_leverage(response, wallet)
+            if not account.strategy.all_pairs:
+                margin_assets[wallet] = get_margin_assets(response, wallet)
+                positions[wallet] = get_positions_leverage(response, wallet)
+                create_fund_object(total, free, used, margin_assets, positions)
+                
+            else:
+                margin_assets, positions = [dict() for _ in range(2)]
 
-            create_fund_object(total, free, used, margin_assets, positions)
 
     end = timer()
     log.info('Update funds in {0} sec'.format(round(end - start, 2)))

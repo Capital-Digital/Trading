@@ -772,6 +772,7 @@ def prices(exid):
                                 # else:
                                 #     # Else select price and volume from response
                                 #     update(response, market)
+
                     log.info('Prices update {0} complete'.format(wallet))
 
             else:

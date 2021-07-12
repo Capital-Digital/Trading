@@ -2042,40 +2042,45 @@ def rebalance(strategy_id, account_id=None):
                         route = s1
                         lst.append(route)
 
-            # Concatenate dataframes
-            df = pd.concat(lst)
+            if lst:
 
-            # Create missing segments
-            if 's2' not in df:
-                df = df.join(create_segment('s2'))
-            if 's3' not in df:
-                df = df.join(create_segment('s3'))
+                # Concatenate dataframes
+                df = pd.concat(lst)
 
-            # Drop duplicate routes and keep first
-            # df = df.loc[~df.drop(['label', 'priority'], axis=1, level=2).duplicated(keep='last')]
+                # Create missing segments
+                if 's2' not in df:
+                    df = df.join(create_segment('s2'))
+                if 's3' not in df:
+                    df = df.join(create_segment('s3'))
 
-            # Increment and sort index
-            df.index = (i for i in range(len(df)))
-            df.sort_index(axis=0, inplace=True)
+                # Drop duplicate routes and keep first
+                # df = df.loc[~df.drop(['label', 'priority'], axis=1, level=2).duplicated(keep='last')]
 
-            # Determine number of segment per route
-            segments = df.columns.get_level_values(0).unique()
-            for index, row in df.iterrows():
-                s = [row[s].type.action for s in segments]
-                i = [i for i in s if not pd.isna(i)]
-                se = ['s' + str(segment + 1) for segment in range(len(i))]
-                df.loc[index, 'length'] = len(se)
+                # Increment and sort index
+                df.index = (i for i in range(len(df)))
+                df.sort_index(axis=0, inplace=True)
 
-            # Set length to integer
-            df['length'] = df['length'].astype(int)
+                # Determine number of segment per route
+                segments = df.columns.get_level_values(0).unique()
+                for index, row in df.iterrows():
+                    s = [row[s].type.action for s in segments]
+                    i = [i for i in s if not pd.isna(i)]
+                    se = ['s' + str(segment + 1) for segment in range(len(i))]
+                    df.loc[index, 'length'] = len(se)
 
-            # log.info('Routes found')
-            # print(routes[id].to_string())
+                # Set length to integer
+                df['length'] = df['length'].astype(int)
 
-            end = timer()
-            log.info('Build routes in {0} sec'.format(round(end - start, 2)))
+                # log.info('Routes found')
+                # print(routes[id].to_string())
 
-            return df
+                end = timer()
+                log.info('Build routes in {0} sec'.format(round(end - start, 2)))
+
+                return df
+
+            else:
+                return pd.DataFrame()
 
         # Drop routes with invalid trade
         def drop_routes():

@@ -127,14 +127,15 @@ class Account(models.Model):
             df[('exposure', 'total_quantity')] = df.exposure.quantity.groupby('code').transform('sum')
 
             # Insert max_withdrawal
-            for wallet in funds.total.keys():
-                margin_assets = funds.margin_assets[wallet]
-                if margin_assets:
-                    for asset in margin_assets:
-                        coin = asset['asset']
-                        withdrawal = float(asset['maxWithdrawAmount'])
-                        df.sort_index(axis=0, inplace=True)
-                        df.loc[(coin, wallet), ('withdrawal', 'quantity')] = withdrawal
+            if not self.strategy.all_pairs:
+                for wallet in funds.total.keys():
+                    margin_assets = funds.margin_assets[wallet]
+                    if margin_assets:
+                        for asset in margin_assets:
+                            coin = asset['asset']
+                            withdrawal = float(asset['maxWithdrawAmount'])
+                            df.sort_index(axis=0, inplace=True)
+                            df.loc[(coin, wallet), ('withdrawal', 'quantity')] = withdrawal
 
             # Insert account balance
             balance = df.wallet.total_value.sum()

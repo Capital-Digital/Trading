@@ -1337,6 +1337,11 @@ def rebalance(strategy_id, account_id=None):
                         elif route[next].market.type == 'spot':
                             routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
 
+                            if 'quoteOrderQty' in route[next].trade.params:
+                                param = eval(route[next].trade.params)
+                                param['quoteOrderQty'] = bought
+                                routes[id].loc[route.name, (next, 'trade', 'params')] = str(param)
+
                         log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4), asset))
 
         try:

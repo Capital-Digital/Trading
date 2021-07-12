@@ -17,6 +17,8 @@ from pprint import pprint
 from decimal import Decimal
 import numpy as np
 import pandas as pd
+import traceback
+import sys
 from timeit import default_timer as timer
 
 import json
@@ -107,7 +109,7 @@ class Account(models.Model):
 
             # Insert prices
             for code in df.index.get_level_values(0):
-                # df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices)
+                # df.loc[code, ('price', 'ws')] = get_price_ws(self.exchange, code, prices) spot
                 df.loc[code, ('price', 'hourly')] = get_price_hourly(self.exchange,
                                                                      code,
                                                                      self.strategy.exchange.dollar_currency)
@@ -163,7 +165,8 @@ class Account(models.Model):
             log.info('Create dataframe in {0} sec'.format(round(end - start, 2)))
 
         except Exception as e:
-            log.error('create_dataframes() failed: {0} {1}'.format(type(e).__name__, str(e)))
+            log.exception('create_dataframes() failed: {0} {1}'.format(type(e).__name__, str(e)))
+            log.error('Traceback', traceback=traceback.format_exc())
 
         else:
 

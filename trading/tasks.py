@@ -267,6 +267,7 @@ def place_order(account_id, pk, route, segment, balance):
 
             except Exception as e:
                 log.exception('Unknown error when placing order', exc_info=e)
+                log.error('Traceback', traceback=traceback.format_exc())
                 return False
 
             else:
@@ -994,6 +995,7 @@ def transfer(id, segment):
 
             log.exception('Unable to transfer {0} {1}'.format(quantity, code))
             log.error('Segment:\n {0} \n'.format(segment.to_string()))
+            log.error('Traceback', traceback=traceback.format_exc())
 
             pprint(dict(
                 code=code,
@@ -1003,7 +1005,6 @@ def transfer(id, segment):
             ))
 
             account.exchange.update_credit('transfer', 'spot')
-            traceback.print_exc()
             raise e
 
         else:
@@ -1419,6 +1420,7 @@ def rebalance(strategy_id, account_id=None):
 
         except Exception as e:
             log.exception('trade() failed: {0} {1}'.format(type(e).__name__, str(e)))
+            log.error('Traceback', traceback=traceback.format_exc())
 
         else:
             # Trades success
@@ -3136,6 +3138,7 @@ def rebalance(strategy_id, account_id=None):
                               wallet=market.wallet,
                               traceback=traceback.format_exc()
                               )
+                log.error('Traceback', traceback=traceback.format_exc())
 
     # Configure websocket client for wallet
     async def wallet_loop(account, loop, i, wallet):

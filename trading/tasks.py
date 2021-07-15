@@ -1348,6 +1348,10 @@ def rebalance(strategy_id, account_id=None):
                             print(routes[id].loc[route.name, (next, 'transfer', 'quantity')])
 
                             routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
+                            routes[id].loc[route.name, (next, 'transfer', 'asset')] = asset
+                            routes[id].loc[route.name, (next, 'transfer', 'from_wallet')] = route[segment].market.wallet
+                            routes[id].loc[route.name, (next, 'transfer', 'to_wallet')] = route[next].market.wallet
+
                             log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 
                             log.info('Route after update transfer info')
@@ -1381,7 +1385,8 @@ def rebalance(strategy_id, account_id=None):
                         # Delete variable
                         del bought
 
-                    log.warning('Cannot find bought in local()')
+                    else:
+                        log.warning('Cannot find bought in local()')
 
                 else:
                     log.warning('Order status is not closed')

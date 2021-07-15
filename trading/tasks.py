@@ -1338,19 +1338,16 @@ def rebalance(strategy_id, account_id=None):
                         log.info('Next segment {0}'.format(next))
                         print(route[next].to_string())
 
+                        log.info('Route before update info')
+                        print(routes[id])
+
                         # Update transfer quantity
                         if route[next].type.transfer:
-                            log.info('Route before update transfer info')
-                            print(routes[id])
-
                             routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
                             log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 
                             log.info('Route after update transfer info')
                             print(routes[id])
-
-                        log.info('Route before update trade info')
-                        print(routes[id])
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
@@ -1359,9 +1356,13 @@ def rebalance(strategy_id, account_id=None):
                             routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
 
                             if 'quoteOrderQty' in route[next].trade.params:
-                                param = eval(route[next].trade.params)
-                                param['quoteOrderQty'] = bought
-                                routes[id].loc[route.name, (next, 'trade', 'params')] = str(param)
+                                parameters = eval(route[next].trade.params)
+                                parameters['quoteOrderQty'] = bought
+                                routes[id].loc[route.name, (next, 'trade', 'params')] = str(parameters)
+                                log.info('Update trade params')
+                                pprint(parameters)
+                            else:
+                                log.info('No parameters to update in next segment')
 
                         else:
                             raise Exception('Cannot update next segment')
@@ -1369,11 +1370,13 @@ def rebalance(strategy_id, account_id=None):
                         log.info('Route after update trade info')
                         print(routes[id])
 
-                        log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4),
-                                                                                            asset))
+                        log.info('Update trade details in next segment {0} {1}'.format(round(bought, 4), asset))
+
+                        # Delete variable
+                        del bought
             else:
                 log.info('No update required in next segment')
-                
+
         try:
 
             log.info('')

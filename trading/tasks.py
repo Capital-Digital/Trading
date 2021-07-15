@@ -1343,6 +1343,10 @@ def rebalance(strategy_id, account_id=None):
 
                         # Update transfer quantity
                         if route[next].type.transfer:
+
+                            log.info('Transfer quantity before')
+                            print(routes[id].loc[route.name, (next, 'transfer', 'quantity')])
+
                             routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
                             log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 
@@ -1359,8 +1363,10 @@ def rebalance(strategy_id, account_id=None):
                                 parameters = eval(route[next].trade.params)
                                 parameters['quoteOrderQty'] = bought
                                 routes[id].loc[route.name, (next, 'trade', 'params')] = str(parameters)
+
                                 log.info('Update trade params')
                                 pprint(parameters)
+
                             else:
                                 log.info('No parameters to update in next segment')
 
@@ -1374,6 +1380,12 @@ def rebalance(strategy_id, account_id=None):
 
                         # Delete variable
                         del bought
+
+                    log.warning('Cannot find bought in local()')
+
+                else:
+                    log.warning('Order status is not closed')
+
             else:
                 log.info('No update required in next segment')
 

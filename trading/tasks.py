@@ -260,6 +260,17 @@ def place_order(account_id, pk, route, segment, balance):
                     log.info('Previous segment:\n {0} \n'.format(prev.to_string()))
                     log.info('Previous coin balance:\n {0} \n'.format(balance.to_string()))
 
+                    log.error('Balance')
+                    print(balance.to_string())
+
+                    b, p = account.create_dataframes(target=None)
+
+                    log.error('Balance fresh')
+                    create_fund.run(account.id)
+                    print(b.to_string())
+                    print(p.to_string())
+
+
                 else:
                     log.info('First segment')
 
@@ -511,7 +522,6 @@ def create_fund(id):
                 margin_assets, positions = [dict() for _ in range(2)]
 
             create_fund_object(total, free, used, margin_assets, positions)
-
 
     end = timer()
     log.info('Update funds in {0} sec'.format(round(end - start, 2)))
@@ -1325,11 +1335,22 @@ def rebalance(strategy_id, account_id=None):
 
                     if 'bought' in locals():
 
+                        log.info('Next segment {0}'.format(next))
+                        print(route[next].to_string())
+
                         # Update transfer quantity
                         if route[next].type.transfer:
-                            routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
+                            log.info('Route before update transfer info')
+                            print(routes[id])
 
+                            routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
                             log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
+
+                            log.info('Route after update transfer info')
+                            print(routes[id])
+
+                        log.info('Route before update trade info')
+                        print(routes[id])
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
@@ -1342,8 +1363,17 @@ def rebalance(strategy_id, account_id=None):
                                 param['quoteOrderQty'] = bought
                                 routes[id].loc[route.name, (next, 'trade', 'params')] = str(param)
 
-                        log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4), asset))
+                        else:
+                            raise Exception('Cannot update next segment')
 
+                        log.info('Route after update trade info')
+                        print(routes[id])
+
+                        log.info('Update trade details in next segment with {0} {1}'.format(round(bought, 4),
+                                                                                            asset))
+            else:
+                log.info('No update required in next segment')
+                
         try:
 
             log.info('')

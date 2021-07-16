@@ -852,6 +852,8 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
 
+    log.info('Insert candle {0}'.format(symbol))
+
     if exchange.is_trading():
 
         def insert(market):

@@ -852,8 +852,6 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
 
-    log.info('Insert candle {0}'.format(symbol))
-
     if exchange.is_trading():
 
         def insert(market):
@@ -1025,6 +1023,8 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
         market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=symbol)
 
         if market.quote.code == market.exchange.dollar_currency:
+
+            log.info('Insert candle {0}'.format(symbol))
 
             # Set start date
             if market.is_populated():

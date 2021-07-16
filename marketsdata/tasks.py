@@ -1031,12 +1031,8 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                 else:
                     start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
             else:
-                if market.quote == exchange.dollar_currency:
-                    log.info('Download full OHLCV history')
-                    start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
-                else:
-                    log.info('Download only recent history')
-                    return
+                log.info('Download full OHLCV history')
+                start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
 
             try:
                 res = insert(market)

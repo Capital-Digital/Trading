@@ -1363,16 +1363,19 @@ def rebalance(strategy_id, account_id=None):
                         elif route[next].market.type == 'spot':
                             routes[id].loc[route.name, (next, 'trade', 'order_qty')] = bought
 
-                            if 'quoteOrderQty' in route[next].trade.params:
-                                parameters = eval(route[next].trade.params)
-                                parameters['quoteOrderQty'] = bought
-                                routes[id].loc[route.name, (next, 'trade', 'params')] = str(parameters)
+                            if not pd.isna(route[next].trade.params):
+                                if 'quoteOrderQty' in route[next].trade.params:
+                                    parameters = eval(route[next].trade.params)
+                                    parameters['quoteOrderQty'] = bought
+                                    routes[id].loc[route.name, (next, 'trade', 'params')] = str(parameters)
 
-                                log.info('Update trade params')
-                                pprint(parameters)
+                                    log.info('Update trade params')
+                                    pprint(parameters)
 
+                                else:
+                                    log.info('No quoteOrderQty to update in next segment')
                             else:
-                                log.info('No parameters to update in next segment')
+                                log.info('No parameters found in next segment')
 
                         else:
                             raise Exception('Cannot update next segment')

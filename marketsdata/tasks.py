@@ -1030,7 +1030,6 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
             if market.is_populated():
                 if recent:
                     start = market.get_candle_datetime_last()
-                    print(start)
                 else:
                     start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
             else:

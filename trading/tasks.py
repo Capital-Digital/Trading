@@ -1325,7 +1325,7 @@ def rebalance(strategy_id, account_id=None):
 
                 if response['status'] == 'closed':
 
-                    # Get the quantity we just bought
+                    # Get the quantity and asset we just bought
                     if route[segment].type.action == 'buy_base':
                         bought = response['filled']
                         asset = route[segment].market.base
@@ -1343,9 +1343,6 @@ def rebalance(strategy_id, account_id=None):
 
                         # Update transfer quantity
                         if route[next].type.transfer:
-
-                            log.info('Transfer quantity before')
-                            print(routes[id].loc[route.name, (next, 'transfer', 'quantity')])
 
                             routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
                             routes[id].loc[route.name, (next, 'transfer', 'asset')] = asset

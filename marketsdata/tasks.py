@@ -178,7 +178,8 @@ def status(exid):
     log.info('Update status')
 
     try:
-        response = exchange.get_ccxt_client().fetchStatus()
+        client = exchange.get_ccxt_client()
+        response = client.fetchStatus()
 
     except ccxt.ExchangeNotAvailable:
 

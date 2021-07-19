@@ -109,14 +109,14 @@ class Exchange(models.Model):
     def get_ccxt_client(self, account=None, wallet=None):
 
         client = getattr(ccxt, self.exid)
-        # client = client({
-        #     'timeout': self.timeout,
-        #     'verbose': self.verbose,
-        #     'enableRateLimit': self.enable_rate_limit,
-        #     'rateLimit': self.rate_limit,
-        #     'adjustForTimeDifference': True,
-        #     'session': cloudscraper.create_scraper(allow_brotli=True),
-        # })
+        client = client({
+            'timeout': self.timeout,
+            'verbose': self.verbose,
+            'enableRateLimit': self.enable_rate_limit,
+            'rateLimit': self.rate_limit,
+            'adjustForTimeDifference': True,
+            #'session': cloudscraper.create_scraper(allow_brotli=True),
+        })
 
         # Set API key/secret
         if account:

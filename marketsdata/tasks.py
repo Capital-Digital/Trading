@@ -649,7 +649,8 @@ def prices(exid):
 
                     elif exid == 'okex':
                         if market.wallet == 'spot':
-                            return float(response['info']['quote_volume_24h'])
+                            if 'quote_volume_24h' in response['info']:
+                                volume = float(response['info']['quote_volume_24h'])
                         elif market.wallet == 'swap':
                             if market.margined.code == 'USDT':
                                 # volume_24h is the volume of contract priced in ETH

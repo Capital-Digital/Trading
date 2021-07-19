@@ -2161,11 +2161,17 @@ def rebalance(strategy_id, account_id=None):
             # log.info('Valid routes')
             # print(routes[id].to_string())
 
-            # Drop unused columns
-            if 'valid' in routes[id].columns.get_level_values(2):
-                routes[id].drop('valid', axis=1, level=2, inplace=True)
-            if 'error' in routes[id].columns.get_level_values(2):
-                routes[id].drop('error', axis=1, level=2, inplace=True)
+            if len(list(routes[id].columns.names)) == 3:
+
+                # Drop unused columns
+                if 'valid' in routes[id].columns.get_level_values(2):
+                    routes[id].drop('valid', axis=1, level=2, inplace=True)
+                if 'error' in routes[id].columns.get_level_values(2):
+                    routes[id].drop('error', axis=1, level=2, inplace=True)
+
+            else:
+                log.info('Route dataframe has only 1 level')
+                print(routes[id])
 
             # routes[id].sort_index(axis=1, inplace=True)
 

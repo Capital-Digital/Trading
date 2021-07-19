@@ -655,13 +655,14 @@ def prices(exid):
                                 volume = response['quoteVolume']
                         elif market.wallet == 'swap':
                             if market.margined.code == 'USDT':
-                                volume = float(response['info']['volCcy24h']) * response[
-                                    'last']
+                                volume = float(response['info']['volCcy24h'])
                             else:
-                                # volume_24h is the volume of contract priced in USD
-                                volume = float(response['info']['volume_24h']) * market.contract_value
+                                volume = float(response['info']['volCcy24h']) * response['last']
                         elif market.wallet == 'futures':
-                            volume = float(response['info']['volume_token_24h']) * response['last']
+                            if market.margined.code == 'USDT':
+                                volume = float(response['info']['volCcy24h'])
+                            else:
+                                volume = float(response['info']['volCcy24h']) * response['last']
 
                     elif exid == 'ftx':
                         volume = float(response['info']['volumeUsd24h'])

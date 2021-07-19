@@ -655,8 +655,7 @@ def prices(exid):
                                 volume = response['quoteVolume']
                         elif market.wallet == 'swap':
                             if market.margined.code == 'USDT':
-                                # volume_24h is the volume of contract priced in ETH
-                                volume = float(response['info']['volume_24h']) * market.contract_value * response[
+                                volume = float(response['info']['volCcy24h']) * response[
                                     'last']
                             else:
                                 # volume_24h is the volume of contract priced in USD

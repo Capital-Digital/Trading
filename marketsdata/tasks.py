@@ -89,7 +89,7 @@ def update():
     from strategy.models import Strategy
 
     # Create lists of exchanges
-    exchanges = [e.exid for e in Exchange.objects.all()]
+    exchanges = [e.exid for e in Exchange.objects.filter(enable=True)]
     exchanges_w_strat = list(set(Strategy.objects.filter(production=True).values_list('exchange__exid', flat=True)))
     exchanges_wo_strat = [e for e in exchanges if e not in exchanges_w_strat]
 

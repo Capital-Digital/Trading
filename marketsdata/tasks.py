@@ -68,11 +68,12 @@ def update_information():
                     funding.si(exid)
                     ) for exid in exchanges]
 
+    log.info('Execute chain')
     res = group(*chains)()
 
     while not res.ready():
-        log.info('Not ready')
-        time.sleep(0.5)
+        print('wait...')
+        time.sleep(1)
 
     if res.successful():
         log.info('Update complete {0} exchanges'.format(res.completed_count()))

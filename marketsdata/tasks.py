@@ -58,7 +58,7 @@ def update_information():
     log.info('Update start')
 
     from marketsdata.models import Exchange
-    exchanges = [e.exid for e in Exchange.objects.all()]
+    exchanges = [e.exid for e in Exchange.objects.filter(enable=True)]
 
     # must use si() signatures
     chains = [chain(status.si(exid),
@@ -66,7 +66,7 @@ def update_information():
                     currencies.si(exid),
                     markets.si(exid),
                     funding.si(exid)
-                    ) for exid in exchanges if exid not in ['bybit']]
+                    ) for exid in exchanges]
 
     log.info('Execute chain for {0} exchanges'.format(len(exchanges)))
     res = group(*chains)()

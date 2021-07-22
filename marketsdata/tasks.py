@@ -68,7 +68,7 @@ def update_information():
                     funding.si(exid)
                     ) for exid in exchanges]
 
-    log.info('Execute chain')
+    log.info('Execute chain for {0} exchanges'.format(len(exchanges)))
     res = group(*chains)()
 
     while not res.ready():
@@ -173,10 +173,10 @@ def properties(exid):
 
 @shared_task(base=BaseTaskWithRetry)
 def status(exid):
-    from marketsdata.models import Exchange
-    exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid)
     log.info('Update status')
+    from marketsdata.models import Exchange
+    exchange = Exchange.objects.get(exid=exid)
 
     try:
         client = exchange.get_ccxt_client()

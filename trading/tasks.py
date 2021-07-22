@@ -1151,7 +1151,7 @@ def rebalance(strategy_id, account_id=None):
                 average_price = sum([a * b for a, b in zip(prices, weights)])
 
                 # Calculate distance in % to the best bid or to the best ask
-                distance = abs(100 * (average_price / book[0][0] - 1))
+                distance = abs(average_price / book[0][0] - 1)
 
                 return distance
 
@@ -1161,7 +1161,7 @@ def rebalance(strategy_id, account_id=None):
             spread = asks[0][0] - bids[0][0]
             spread_pct = spread / asks[0][0]
 
-            return spread_pct * 100
+            return spread_pct
 
         start = timer()
 

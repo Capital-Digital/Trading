@@ -525,6 +525,8 @@ def markets(exid):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid)
 
+    log.info('Update market')
+
     if exchange.is_trading():
 
         client = exchange.get_ccxt_client()

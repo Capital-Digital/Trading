@@ -1339,7 +1339,7 @@ def rebalance(strategy_id, account_id=None):
                         print(route[next].to_string())
 
                         log.info('Route before update info')
-                        print(routes[id])
+                        print(routes[id].to_string())
 
                         # Update transfer quantity
                         if route[next].type.transfer:
@@ -1352,7 +1352,7 @@ def rebalance(strategy_id, account_id=None):
                             log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 
                             log.info('Route after update transfer info')
-                            print(routes[id])
+                            print(routes[id].to_string())
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
@@ -1378,7 +1378,7 @@ def rebalance(strategy_id, account_id=None):
                             raise Exception('Cannot update next segment')
 
                         log.info('Route after update trade info')
-                        print(routes[id])
+                        print(routes[id].to_string())
 
                         log.info('Update trade details in next segment {0} {1}'.format(round(bought, 4), asset))
 

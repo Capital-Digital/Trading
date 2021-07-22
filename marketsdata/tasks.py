@@ -61,7 +61,7 @@ def update_information():
     exchanges = [e.exid for e in Exchange.objects.all()]
 
     # must use si() signatures
-    chains = [chain(status.si(exid),
+    chains = [chain(# status.si(exid),
                     properties.si(exid),
                     currencies.si(exid),
                     markets.si(exid),

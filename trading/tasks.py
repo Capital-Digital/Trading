@@ -1351,6 +1351,7 @@ def rebalance(strategy_id, account_id=None):
                             routes[id].loc[route.name, (next, 'transfer', 'asset')] = asset
                             routes[id].loc[route.name, (next, 'transfer', 'from_wallet')] = route[segment].market.wallet
                             routes[id].loc[route.name, (next, 'transfer', 'to_wallet')] = route[next].market.wallet
+                            routes[id].sort_index(axis=1, inplace=True)
 
                             log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
 

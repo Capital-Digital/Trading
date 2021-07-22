@@ -36,6 +36,7 @@ class Exchange(models.Model):
     supported_quotes = models.CharField(max_length=50, blank=True, null=True)
     supported_stablecoins = models.CharField(max_length=50, blank=True, null=True)
     verbose = models.BooleanField(default=False)
+    enable = models.BooleanField(default=False)
     enable_rate_limit = models.BooleanField(default=True)
     limit_ohlcv = models.PositiveIntegerField(null=True, blank=True)
     credit = JSONField(blank=True, null=True)

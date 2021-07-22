@@ -1111,10 +1111,7 @@ def rebalance(strategy_id, account_id=None):
 
         def get_fees():
             if route[segment].market.type == 'spot':
-                if route[segment].market.quote == 'BUSD':
-                    return 0
-                else:
-                    return 0.1 / 100  # taker
+                return 0.1 / 100  # taker
             elif route[segment].market.type == 'derivative':
                 if route[segment].market.base == route[segment].market.margined:
                     return 0.05 / 100  # taker

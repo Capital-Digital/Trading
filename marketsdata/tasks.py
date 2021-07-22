@@ -71,7 +71,7 @@ def update_information():
     res = group(*chains)()
 
     while not res.ready():
-        # print(res.completed_count())
+        log.info('Not ready')
         time.sleep(0.5)
 
     if res.successful():

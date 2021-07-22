@@ -61,12 +61,12 @@ def update_information():
     exchanges = [e.exid for e in Exchange.objects.all()]
 
     # must use si() signatures
-    chains = [chain(# status.si(exid),
+    chains = [chain(status.si(exid),
                     properties.si(exid),
                     currencies.si(exid),
                     markets.si(exid),
                     funding.si(exid)
-                    ) for exid in exchanges]
+                    ) for exid in exchanges if exid not in ['bybit']]
 
     log.info('Execute chain for {0} exchanges'.format(len(exchanges)))
     res = group(*chains)()

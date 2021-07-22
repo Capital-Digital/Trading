@@ -986,6 +986,9 @@ def update_positions(id, orderids=None):
 def transfer(id, segment):
     start = timer()
 
+    log.info('Segment with id {0} for transfer'.format(id))
+    print(segment.to_string())
+
     # Select transfer informations
     code = segment.transfer.asset
     quantity = segment.transfer.quantity
@@ -1424,6 +1427,7 @@ def rebalance(strategy_id, account_id=None):
 
                     # Transfer funds
                     if route[segment].type.transfer:
+                        log.info('Transfer segment {0}'.format(segment))
                         res = transfer(id, route[segment])
                         if not res:
                             return

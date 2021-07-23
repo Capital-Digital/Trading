@@ -1489,6 +1489,13 @@ def rebalance(strategy_id, account_id=None):
             if 'cost' in routes[id].best:
                 if not any(np.isnan(routes[id].best.cost)):
                     return True
+                else:
+                    log.info('Routes costs still nan')
+            else:
+                log.info('Cost level not present')
+        else:
+            log.info('Best level not present')
+
         return False
 
     # Build our dataframes

@@ -3393,18 +3393,25 @@ def rebalance(strategy_id, account_id=None):
                         else:
                             wallets = exchange.get_wallets()
 
-                        log.info('Create asyncio loops for account {0}'.format(account.id))
+                        try:
+                            log.info('Create asyncio loops for account {0}'.format(account.id))
 
-                        # loop.set_debug(True)
-                        loop = asyncio.get_event_loop()
+                            # loop.set_debug(True)
+                            loop = asyncio.get_event_loop()
 
-                        if loop.is_closed():
-                            log.info('Create a new loop')
-                            loop = asyncio.new_event_loop()
+                            if loop.is_closed():
+                                log.info('Create a new loop')
+                                loop = asyncio.new_event_loop()
 
-                        gp = asyncio.wait([main(account, loop, wallets)])
-                        loop.run_until_complete(gp)
-                        loop.close()
+                            gp = asyncio.wait([main(account, loop, wallets)])
+                            loop.run_until_complete(gp)
+                            loop.close()
+
+                        except Exception as e:
+                            log.exception(e)
+
+                        else:
+                            pass
 
                     else:
                         log.info('Rebalance impossible with 1 code to monitor', codes_monitor=codes_monitor)

@@ -1871,7 +1871,7 @@ def rebalance(strategy_id, account_id=None):
                     if 'instruction' in locals():
 
                         # Set default route priority
-                        if not 'priority' in locals():
+                        if 'priority' not in locals():
                             priority = 2
 
                         if source == 'close_position':
@@ -1960,6 +1960,7 @@ def rebalance(strategy_id, account_id=None):
                                     gateway.loc[0, ('segment', 'funds', 'wallet')] = wallet
                                     gateway.loc[0, ('segment', 'type', 'source')] = source
                                     gateway.loc[0, ('segment', 'type', 'id')] = 1
+                                    gateway.loc[0, ('segment', 'type', 'bridge')] = True
 
                                     # Set label
                                     gateway.columns.set_levels(['s1'], level='level_1', inplace=True)

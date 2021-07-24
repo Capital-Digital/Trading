@@ -1317,7 +1317,7 @@ def rebalance(strategy_id, account_id=None):
     def trade(id):
 
         # Update transfer quantity and trade size in segment n
-        # after an asset is bought or released in segment n-1.
+        # after an asset is bought or released in segment n-1
         def update_next_segment():
 
             # Update the asset quantity that should be transferred in segment n+1

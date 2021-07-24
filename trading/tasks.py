@@ -1217,8 +1217,6 @@ def rebalance(strategy_id, account_id=None):
                     log.info('Sort routes by cost')
                     routes[id].sort_values([('s1', 'type', 'priority'),
                                             ('best', 'cost')], ascending=[True, True], inplace=True)
-                else:
-                    log.warning('Routes not sorted yet')
 
     # Update df_markets with order status after an order is placed
     def update_markets_df(id, orderid):

@@ -1417,10 +1417,11 @@ def rebalance(strategy_id, account_id=None):
 
                 for segment in segments:
 
-                    log.info('Trade route {0} segment {1}/{2}'.format(route.name, i + 1, length))
+                    segment_id = route[segment].type.id
+                    log.info('Trade route {0} segment {1}/{2}'.format(route.name, segment_id, length))
 
                     # Update route if 2nd or 3rd segment
-                    if route[segment].type.id > 1:
+                    if segment_id > 1:
                         route = routes[id].iloc[0]
 
                     # Transfer funds

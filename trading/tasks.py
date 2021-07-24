@@ -1335,25 +1335,21 @@ def rebalance(strategy_id, account_id=None):
 
                     if 'bought' in locals():
 
-                        log.info('Next segment {0}'.format(next))
-                        print(route[next].to_string())
-
-                        log.info('Route before update info')
-                        print(routes[id].to_string())
+                        log.info('Next segment {0} before update'.format(next))
+                        print(routes[id][next].to_string())
 
                         # Update transfer quantity
                         if route[next].type.transfer:
 
+                            log.info('Update transfer details with {0} {1}'.format(round(bought, 4), asset))
                             routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
                             routes[id].loc[route.name, (next, 'transfer', 'asset')] = asset
                             routes[id].loc[route.name, (next, 'transfer', 'from_wallet')] = route[segment].market.wallet
                             routes[id].loc[route.name, (next, 'transfer', 'to_wallet')] = route[next].market.wallet
                             routes[id].sort_index(axis=1, inplace=True)
 
-                            log.info('Update transfer details in next segment'.format(round(bought, 4), asset))
-
-                            log.info('Route after update transfer info')
-                            print(routes[id].to_string())
+                            log.info('Next segment {0} after update'.format(next))
+                            print(routes[id][next].to_string())
 
                         # Update trade quantity
                         if route[next].market.type == 'derivative':
@@ -1419,9 +1415,13 @@ def rebalance(strategy_id, account_id=None):
                 length = route.length[0]
                 segments = ['s' + str(i) for i in range(1, length + 1)]
 
-                for i, segment in enumerate(segments):
+                for segment in segments:
 
                     log.info('Trade route {0} segment {1}/{2}'.format(route.name, i + 1, length))
+
+                    # Update route if 2nd or 3rd segment
+                    if route[segment].type.id > 1:
+                        route = routes[id].iloc[0]
 
                     # Transfer funds
                     if route[segment].type.transfer:

@@ -1393,6 +1393,8 @@ def rebalance(strategy_id, account_id=None):
             else:
                 log.info('No update required in next segment')
 
+        sort_routes(id)
+
         try:
 
             log.info('')
@@ -3153,7 +3155,6 @@ def rebalance(strategy_id, account_id=None):
                     # Update costs and sort routes
                     if len(routes[id].index) > 0:
                         calculate_cost(id, market, bids, asks)
-                        sort_routes(id)
 
                     else:
 

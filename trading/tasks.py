@@ -1332,7 +1332,7 @@ def rebalance(strategy_id, account_id=None):
                         bought = response['filled']
                         asset = route[segment].market.base
                     elif route[segment].type.action == 'sell_base':
-                        bought = response['filled'] * response['average']
+                        bought = response['cost'] - response['fee']['cost']
                         asset = route[segment].market.quote
 
                         log.info('Bought estimation {0}'.format(bought))

@@ -1213,8 +1213,12 @@ def rebalance(strategy_id, account_id=None):
         if 'best' in routes[id]:
             if 'cost' in routes[id].best:
                 if 'return' in routes[id].best:
+
+                    log.info('Sort routes by cost')
                     routes[id].sort_values([('s1', 'type', 'priority'),
                                             ('best', 'cost')], ascending=[True, True], inplace=True)
+                else:
+                    log.warning('Routes not sorted yet')
 
     # Update df_markets with order status after an order is placed
     def update_markets_df(id, orderid):
@@ -1417,7 +1421,7 @@ def rebalance(strategy_id, account_id=None):
 
                 for segment in segments:
 
-                    segment_id = route[segment].type.id
+                    segment_id = int(route[segment].type.id)
                     log.info('Trade route {0} segment {1}/{2}'.format(route.name, segment_id, length))
 
                     # Update route if 2nd or 3rd segment

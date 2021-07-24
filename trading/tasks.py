@@ -1334,6 +1334,8 @@ def rebalance(strategy_id, account_id=None):
                     elif route[segment].type.action == 'sell_base':
                         bought = response['filled'] * response['average']
                         asset = route[segment].market.quote
+                        log.info('Bought estimation {0}'.format(bought))
+                        pprint(response)
 
                     if 'bought' in locals():
 

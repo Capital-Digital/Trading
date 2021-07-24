@@ -40,7 +40,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def rebalance(self, request, queryset):
 
         chains = [chain(
-            tasks.rebalance.s(account.strategy.id, account.id).set(queue='slow')
+            tasks.rebalance.s(account.strategy.id, account.id).set(queue='default')
         ) for account in queryset]
 
         result = group(*chains).delay()

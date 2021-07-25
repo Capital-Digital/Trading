@@ -1470,7 +1470,7 @@ def rebalance(strategy_id, account_id=None):
                             order_create_update(id, response, price_hourly)
                             update_next_segment()
 
-                        elif response is False:
+                        elif not response:
                             log.error('Order placement failed, delete object id {0}'.format(orderid))
                             Order.objects.get(id=orderid).delete()
                             return

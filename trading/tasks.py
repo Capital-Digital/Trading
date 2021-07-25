@@ -270,6 +270,9 @@ def place_order(account_id, pk, route, segment, balance):
                     print(b.to_string())
                     print(p.to_string())
 
+                else:
+                    log.info('First segment')
+
                 return False
 
             except Exception as e:
@@ -1392,6 +1395,7 @@ def rebalance(strategy_id, account_id=None):
             else:
                 log.info('No update required in next segment')
 
+        trading = True
         sort_routes(id)
 
         try:
@@ -1466,7 +1470,7 @@ def rebalance(strategy_id, account_id=None):
                             order_create_update(id, response, price_hourly)
                             update_next_segment()
 
-                        elif not response:
+                        elif response is False:
                             log.error('Order placement failed, delete object id {0}'.format(orderid))
                             Order.objects.get(id=orderid).delete()
                             return
@@ -3170,38 +3174,40 @@ def rebalance(strategy_id, account_id=None):
                     if i == 0 and j == 0:
 
                         if have_costs(account.id):
+                            if not trading:
 
-                            log.info('Costs are ready !')
+                                # Trade the best route
+                                trading = True
+                                res = trade(account.id)
+                                if res:
 
-                            # Trade the best route
-                            res = trade(account.id)
-                            if res:
+                                    trading = False
+                                    # Construct new dataframes
+                                    create_dataframes(account.id, update=True)
 
-                                # Construct new dataframes
-                                create_dataframes(account.id, update=True)
+                                    # Update objects of open orders and return a list if trade detected
+                                    orderids = update_orders(account.id)
 
-                                # Update objects of open orders and return a list if trade detected
-                                orderids = update_orders(account.id)
+                                    if orderids:
+                                        log.info('Trades detected')
+                                        print(orderids)
 
-                                if orderids:
-                                    log.info('Trades detected')
-                                    print(orderids)
+                                        # Update df_markets
+                                        [update_markets_df(account.id, orderid) for orderid in orderids]
 
-                                    # Update df_markets
-                                    [update_markets_df(account.id, orderid) for orderid in orderids]
+                                        # Update df_positions if a trade occurred on a derivative market
+                                        update_positions.run(orderids)
 
-                                    # Update df_positions if a trade occurred on a derivative market
-                                    update_positions.run(orderids)
+                                        # Update the latest fund object and df_account
+                                        update_fund_object(account.id, orderids)
 
-                                    # Update the latest fund object and df_account
-                                    update_fund_object(account.id, orderids)
+                                else:
+                                    trading = False
+                                    log.warning('Rebalance failed')
+                                    print(routes[account.id].to_string())
 
-                            else:
-                                log.warning('Rebalance failed')
-                                print(routes[account.id].to_string())
-
-                                # Construct new dataframes
-                                create_dataframes(account.id, update=True)
+                                    # Construct new dataframes
+                                    create_dataframes(account.id, update=True)
 
                         else:
                             log.info('Calculate routes cost')
@@ -3391,6 +3397,7 @@ def rebalance(strategy_id, account_id=None):
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
                         create_dataframes(account.id)
+                        trading = False
 
                         if strategy.all_pairs:
                             wallets = ['spot']

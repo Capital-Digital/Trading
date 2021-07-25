@@ -270,10 +270,6 @@ def place_order(account_id, pk, route, segment, balance):
                     print(b.to_string())
                     print(p.to_string())
 
-
-                else:
-                    log.info('First segment')
-
                 return False
 
             except Exception as e:

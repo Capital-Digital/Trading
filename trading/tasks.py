@@ -3145,6 +3145,7 @@ def rebalance(strategy_id, account_id=None):
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
+        trading = False
         id = account.id
         log.info('Start loop {0} {1} for account {2}'.format(market.wallet, market.symbol, id))
 
@@ -3397,7 +3398,6 @@ def rebalance(strategy_id, account_id=None):
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
                         create_dataframes(account.id)
-                        trading = False
 
                         if strategy.all_pairs:
                             wallets = ['spot']

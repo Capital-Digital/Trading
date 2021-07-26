@@ -1499,8 +1499,10 @@ def rebalance(strategy_id, account_id=None):
                     return True
                 else:
                     if iteration > 10:
+                        log.warning('Routes cost iteration reached 10')
                         return True
                     else:
+                        iteration += 1
                         log.info('Routes costs still nan, iteration {0}'.format(iteration))
             else:
                 log.info('Cost level not present')
@@ -3156,6 +3158,7 @@ def rebalance(strategy_id, account_id=None):
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
+        iteration = 0
         trading = False
         id = account.id
         log.info('Start loop {0} {1} for account {2}'.format(market.wallet, market.symbol, id))
@@ -3222,9 +3225,6 @@ def rebalance(strategy_id, account_id=None):
                                     # Construct new dataframes
                                     create_dataframes(account.id, update=True)
                                     iteration = 0
-
-                        else:
-                            log.info('Calculate routes cost')
                 else:
                     print('wait')
 
@@ -3411,7 +3411,6 @@ def rebalance(strategy_id, account_id=None):
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
                         create_dataframes(account.id)
-                        iteration = 0
 
                         if strategy.all_pairs:
                             wallets = ['spot']

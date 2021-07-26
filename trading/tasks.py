@@ -2819,6 +2819,14 @@ def rebalance(strategy_id, account_id=None):
                         else:
                             capacity_release = min(hedge_capacity_used, to_release)
                             ratio = capacity_release / to_release
+
+                            print('ratio', ratio)
+                            print('leverage', leverage)
+                            print('position value', position_value)
+                            print('close', close)
+                            print('capacity_release', capacity_release)
+                            print('to_release', to_release)
+
                             close = position_value / ratio
                             margin_released = close / leverage
 

@@ -2827,7 +2827,7 @@ def rebalance(strategy_id, account_id=None):
                             print('capacity_release', capacity_release)
                             print('to_release', to_release)
 
-                            close = position_value / ratio
+                            close = position_value * ratio
                             margin_released = close / leverage
 
                         # Update segment

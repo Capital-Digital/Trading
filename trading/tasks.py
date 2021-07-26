@@ -1492,13 +1492,16 @@ def rebalance(strategy_id, account_id=None):
             return True
 
     # Return True if routes costs
-    def have_costs(id):
+    def have_costs(id, iteration):
         if 'best' in routes[id]:
             if 'cost' in routes[id].best:
                 if not any(np.isnan(routes[id].best.cost)):
                     return True
                 else:
-                    log.info('Routes costs still nan')
+                    if iteration > 10:
+                        return True
+                    else:
+                        log.info('Routes costs still nan, iteration {0}'.format(iteration))
             else:
                 log.info('Cost level not present')
         else:
@@ -3182,7 +3185,7 @@ def rebalance(strategy_id, account_id=None):
 
                     if i == 0 and j == 0:
 
-                        if have_costs(account.id):
+                        if have_costs(account.id, iteration):
                             if not trading:
 
                                 # Trade the best route
@@ -3193,6 +3196,7 @@ def rebalance(strategy_id, account_id=None):
                                     trading = False
                                     # Construct new dataframes
                                     create_dataframes(account.id, update=True)
+                                    iteration = 0
 
                                     # Update objects of open orders and return a list if trade detected
                                     orderids = update_orders(account.id)
@@ -3217,6 +3221,7 @@ def rebalance(strategy_id, account_id=None):
 
                                     # Construct new dataframes
                                     create_dataframes(account.id, update=True)
+                                    iteration = 0
 
                         else:
                             log.info('Calculate routes cost')
@@ -3406,6 +3411,7 @@ def rebalance(strategy_id, account_id=None):
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
                         create_dataframes(account.id)
+                        iteration = 0
 
                         if strategy.all_pairs:
                             wallets = ['spot']

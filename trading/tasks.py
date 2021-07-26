@@ -1491,26 +1491,6 @@ def rebalance(strategy_id, account_id=None):
             # Trades success
             return True
 
-    # Return True if routes costs
-    def have_costs(id, iteration):
-        if 'best' in routes[id]:
-            if 'cost' in routes[id].best:
-                if not any(np.isnan(routes[id].best.cost)):
-                    return True
-                else:
-                    if iteration > 10:
-                        log.warning('Routes cost iteration reached 10')
-                        return True
-                    else:
-                        iteration += 1
-                        log.info('Routes costs still nan, iteration {0}'.format(iteration))
-            else:
-                log.info('Cost level not present')
-        else:
-            log.info('Best level not present')
-
-        return False
-
     # Build our dataframes
     def create_dataframes(id, update=False):
 
@@ -3157,6 +3137,26 @@ def rebalance(strategy_id, account_id=None):
 
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
+
+        # Return True if routes costs
+        def have_costs(id, iteration):
+            if 'best' in routes[id]:
+                if 'cost' in routes[id].best:
+                    if not any(np.isnan(routes[id].best.cost)):
+                        return True
+                    else:
+                        if iteration > 10:
+                            log.warning('Routes cost iteration reached 10')
+                            return True
+                        else:
+                            iteration += 1
+                            log.info('Routes costs still nan, iteration {0}'.format(iteration))
+                else:
+                    log.info('Cost level not present')
+            else:
+                log.info('Best level not present')
+
+            return False
 
         iteration = 0
         trading = False

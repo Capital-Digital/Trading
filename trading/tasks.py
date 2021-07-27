@@ -3138,28 +3138,6 @@ def rebalance(strategy_id, account_id=None):
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
-        # Return True if routes costs
-        def have_costs(id, iteration):
-            if 'best' in routes[id]:
-                if 'cost' in routes[id].best:
-                    if not any(np.isnan(routes[id].best.cost)):
-                        return True
-                    else:
-                        if iteration > 10:
-                            log.warning('Routes cost iteration reached 10')
-                            return True
-                        else:
-                            iteration += 1
-                            log.info('Routes costs still nan, iteration {0}, i = {1} j = {2}'.format(iteration,
-                                                                                                     i,
-                                                                                                     j))
-                else:
-                    log.info('Cost level not present')
-            else:
-                log.info('Best level not present')
-
-            return False
-
         iteration = 0
         trading = False
         id = account.id
@@ -3190,43 +3168,52 @@ def rebalance(strategy_id, account_id=None):
 
                     if i == 0 and j == 0:
 
-                        if have_costs(account.id, iteration):
-                            if not trading:
+                        if 'best' in routes[account.id]:
+                            if 'cost' in routes[account.id].best:
+                                if not any(np.isnan(routes[account.id].best.cost)) or iteration > 10:
 
-                                # Trade the best route
-                                trading = True
-                                res = trade(account.id)
-                                if res:
+                                    if not trading:
 
-                                    trading = False
-                                    # Construct new dataframes
-                                    create_dataframes(account.id, update=True)
-                                    iteration = 0
+                                        # Trade the best route
+                                        trading = True
+                                        res = trade(account.id)
+                                        if res:
 
-                                    # Update objects of open orders and return a list if trade detected
-                                    orderids = update_orders(account.id)
+                                            trading = False
+                                            # Construct new dataframes
+                                            create_dataframes(account.id, update=True)
+                                            iteration = 0
 
-                                    if orderids:
-                                        log.info('Trades detected')
-                                        print(orderids)
+                                            # Update objects of open orders and return a list if trade detected
+                                            orderids = update_orders(account.id)
 
-                                        # Update df_markets
-                                        [update_markets_df(account.id, orderid) for orderid in orderids]
+                                            if orderids:
+                                                log.info('Trades detected')
+                                                print(orderids)
 
-                                        # Update df_positions if a trade occurred on a derivative market
-                                        update_positions.run(orderids)
+                                                # Update df_markets
+                                                [update_markets_df(account.id, orderid) for orderid in orderids]
 
-                                        # Update the latest fund object and df_account
-                                        update_fund_object(account.id, orderids)
+                                                # Update df_positions if a trade occurred on a derivative market
+                                                update_positions.run(orderids)
 
+                                                # Update the latest fund object and df_account
+                                                update_fund_object(account.id, orderids)
+
+                                        else:
+                                            trading = False
+                                            log.warning('Rebalance failed')
+                                            print(routes[account.id].to_string())
+
+                                            # Construct new dataframes
+                                            create_dataframes(account.id, update=True)
+                                            iteration = 0
                                 else:
-                                    trading = False
-                                    log.warning('Rebalance failed')
-                                    print(routes[account.id].to_string())
-
-                                    # Construct new dataframes
-                                    create_dataframes(account.id, update=True)
-                                    iteration = 0
+                                    iteration += 1
+                                    log.info(
+                                        'Routes costs still nan, iteration {0}, i = {1} j = {2}'.format(iteration,
+                                                                                                        i,
+                                                                                                        j))
                 else:
                     print('wait')
 

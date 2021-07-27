@@ -2527,17 +2527,27 @@ def rebalance(strategy_id, account_id=None):
                         # Asset was release by closing a position
                         if prev.market.type == 'derivative':
                             asset = prev.market.margined
-                            quantity = prev.trade.margin_qty
+                            margin_qty = prev.trade.margin_qty
+                            order_qty = prev.trade.order_qty
 
                             # Remove fees
-                            order = prev.trade.order_qty
-                            fees = order * 0.9996 if asset == prev.market.base else order * 0.9995
-                            quantity -= fees
+                            fees = order_qty * 0.9996 if asset == prev.market.base else order_qty * 0.9995
+                            margin_qty -= fees
 
+                            # Insert transfer information
                             routes[id].loc[index, (label, 'transfer', 'asset')] = asset
-                            routes[id].loc[index, (label, 'transfer', 'quantity')] = quantity
+                            routes[id].loc[index, (label, 'transfer', 'quantity')] = margin_qty
                             routes[id].loc[index, (label, 'transfer', 'from_wallet')] = prev.market.wallet
                             routes[id].loc[index, (label, 'transfer', 'to_wallet')] = segment.market.wallet
+
+                            # Update order_qty
+                            routes[id].loc[index, (label, 'trade', 'order_qty')] = margin_qty
+
+                            if not pd.isna(segment.trade.params):
+                                if 'quoteOrderQty' in segment.trade.params:
+                                    parameters = eval(segment.trade.params)
+                                    parameters['quoteOrderQty'] = margin_qty
+                                    routes[id].loc[index, (label, 'trade', 'params')] = str(parameters)
 
                         else:
                             # If the asset that should be transferred was initially bought in spot
@@ -3159,7 +3169,7 @@ def rebalance(strategy_id, account_id=None):
                         log.warning('Iteration reached 5 for account {0}'.format(account.name))
                         log.info('Close stream {0} {1}'.format(market.wallet, market.symbol))
                         break
-                        
+
                     else:
 
                         if not account.updated:

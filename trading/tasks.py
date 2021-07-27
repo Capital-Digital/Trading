@@ -3154,6 +3154,12 @@ def rebalance(strategy_id, account_id=None):
                     if len(routes[id].index) > 0:
                         calculate_cost(id, market, bids, asks)
 
+                    elif iteration > 5:
+
+                        log.warning('Iteration reached 5 for account {0}'.format(account.name))
+                        log.info('Close stream {0} {1}'.format(market.wallet, market.symbol))
+                        break
+                        
                     else:
 
                         if not account.updated:
@@ -3163,7 +3169,7 @@ def rebalance(strategy_id, account_id=None):
                             account.updated = True
                             account.save()
 
-                        log.info('Closing stream {0} {1}'.format(market.wallet, market.symbol))
+                        log.info('Close stream {0} {1}'.format(market.wallet, market.symbol))
                         break
 
                     if i == 0 and j == 0:

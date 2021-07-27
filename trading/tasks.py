@@ -3150,7 +3150,9 @@ def rebalance(strategy_id, account_id=None):
                             return True
                         else:
                             iteration += 1
-                            log.info('Routes costs still nan, iteration {0}'.format(iteration))
+                            log.info('Routes costs still nan, iteration {0}, i = {1} j = {2}'.format(iteration,
+                                                                                                     i,
+                                                                                                     j))
                 else:
                     log.info('Cost level not present')
             else:

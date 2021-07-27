@@ -2541,13 +2541,8 @@ def rebalance(strategy_id, account_id=None):
                             routes[id].loc[index, (label, 'transfer', 'to_wallet')] = segment.market.wallet
 
                             # Update order_qty
-                            routes[id].loc[index, (label, 'trade', 'order_qty')] = margin_qty
-
-                            if not pd.isna(segment.trade.params):
-                                if 'quoteOrderQty' in segment.trade.params:
-                                    parameters = eval(segment.trade.params)
-                                    parameters['quoteOrderQty'] = margin_qty
-                                    routes[id].loc[index, (label, 'trade', 'params')] = str(parameters)
+                            if segment.market.type == 'spot':
+                                routes[id].loc[index, (label, 'trade', 'order_qty')] = margin_qty
 
                         else:
                             # If the asset that should be transferred was initially bought in spot

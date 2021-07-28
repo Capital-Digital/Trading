@@ -1128,7 +1128,7 @@ def rebalance(strategy_id, account_id=None):
         # Get average price distance from best bid (ask)
         def get_distance():
 
-            ob = depth
+            ob = get_depth()
             quantity = route[segment].trade.order_qty
 
             if not pd.isna(quantity):
@@ -1152,10 +1152,13 @@ def rebalance(strategy_id, account_id=None):
                 # Calculate distance in % to the best bid or to the best ask
                 distance = abs(average_price / book[0][0] - 1)
 
+                log.info('Symbol is {0} {1}'.format(market.symbol, market.wallet))
+
                 print('book', book)
                 print('average_price', average_price)
                 print('weights', weights)
                 print('ob', ob)
+                print('distance', distance)
 
                 return distance
 
@@ -1180,18 +1183,10 @@ def rebalance(strategy_id, account_id=None):
                 # If market of the segment is the market of the asyncio loop
                 if route[segment].market.symbol == market.symbol:
                     if route[segment].market.wallet == market.wallet:
-                        depth = get_depth()
                         distance = get_distance()
                         spread = get_spread()
                         fees = get_fees()
                         funding, funding_weight = get_funding()
-
-                        log.info('Symbol is {0} {1}'.format(market.symbol, market.wallet))
-                        log.info('spread={0}, distance={1}, fees={2}, funding={3}'.format(spread,
-                                                                                          distance,
-                                                                                          fees,
-                                                                                          funding
-                                                                                          ))
 
                         total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
 

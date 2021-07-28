@@ -1188,15 +1188,20 @@ def rebalance(strategy_id, account_id=None):
                         fees = get_fees()
                         funding, funding_weight = get_funding()
 
-                        total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
+                        try:
+                            total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
 
-                        # Set costs
-                        routes[id].loc[index, (segment, 'cost', 'spread')] = spread
-                        routes[id].loc[index, (segment, 'cost', 'distance')] = distance
-                        routes[id].loc[index, (segment, 'cost', 'fees')] = fees
-                        routes[id].loc[index, (segment, 'cost', 'funding')] = funding
-                        routes[id].loc[index, (segment, 'cost', 'funding_weight')] = funding_weight
-                        routes[id].loc[index, (segment, 'cost', 'total')] = total
+                        except Exception as e:
+                            log.exception('Error {0}'.format(e))
+
+                        else:
+                            # Set costs
+                            routes[id].loc[index, (segment, 'cost', 'spread')] = spread
+                            routes[id].loc[index, (segment, 'cost', 'distance')] = distance
+                            routes[id].loc[index, (segment, 'cost', 'fees')] = fees
+                            routes[id].loc[index, (segment, 'cost', 'funding')] = funding
+                            routes[id].loc[index, (segment, 'cost', 'funding_weight')] = funding_weight
+                            routes[id].loc[index, (segment, 'cost', 'total')] = total
 
             # Set total cost of the route
             if all(['cost' in route[s] for s in segments]):

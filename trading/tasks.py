@@ -1129,7 +1129,10 @@ def rebalance(strategy_id, account_id=None):
         def get_distance():
 
             ob = get_depth()
+
             quantity = route[segment].trade.order_qty
+            if route[segment].type.action == 'buy_base':
+                quantity = quantity / ob[0][0]
 
             if not pd.isna(quantity):
                 # Iterate through depth until desired amount is available
@@ -1141,12 +1144,6 @@ def rebalance(strategy_id, account_id=None):
                             book = ob[:i]  # select the first n elements needed
                             break
 
-                if 'book' not in locals():
-                    log.error('Book not in local')
-                    print(ob)
-                    print(route[segment])
-                    print('quantity', quantity)
-                    
                 # select prices and sum total quantity needed
                 prices = [p[0] for p in book]
                 qty = sum([q[1] for q in book])

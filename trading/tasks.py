@@ -1184,8 +1184,7 @@ def rebalance(strategy_id, account_id=None):
                             total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
 
                         except Exception as e:
-                            print('depth', get_depth())
-                            print('qty', route[segment].trade.order_qty)
+                            print('qty', route[segment].to_string())
                             log.exception('Error {0}'.format(e))
 
                         else:

@@ -3220,6 +3220,7 @@ def rebalance(strategy_id, account_id=None):
                                 else:
                                     iteration += 1
                                     log.info('Routes costs nan, iteration {0}'.format(iteration))
+                                    print(routes[id].to_string())
                 else:
                     print('wait')
 

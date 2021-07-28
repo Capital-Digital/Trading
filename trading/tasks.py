@@ -2154,8 +2154,8 @@ def rebalance(strategy_id, account_id=None):
                 if False in trades:
                     invalid.append(index)
 
-            # log.info('Dropped routes')
-            # print(routes[id].iloc[invalid].to_string())
+            log.info('Dropped routes')
+            print(routes[id].iloc[invalid].to_string())
 
             # Drop invalid routes
             routes[id].drop(invalid, inplace=True)
@@ -2796,7 +2796,10 @@ def rebalance(strategy_id, account_id=None):
 
                         # Get capacity used by the position and leverage
                         position = positions[id].loc[
-                            route.s1.market.base, route.s1.market.quote, route.s1.market.wallet]
+                            route.s1.market.base,
+                            route.s1.market.quote,
+                            route.s1.market.wallet
+                        ]
                         position_value = position.abs_value[0]
                         hedge_capacity_used = position.hedge_capacity_used[0]
                         leverage = position.leverage[0]
@@ -2815,7 +2818,6 @@ def rebalance(strategy_id, account_id=None):
                             print('ratio', ratio)
                             print('leverage', leverage)
                             print('position value', position_value)
-                            print('close', close)
                             print('capacity_release', capacity_release)
                             print('to_release', to_release)
 

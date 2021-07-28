@@ -1128,17 +1128,17 @@ def rebalance(strategy_id, account_id=None):
         # Get average price distance from best bid (ask)
         def get_distance():
 
-            book = depth
+            ob = depth
             quantity = route[segment].trade.order_qty
 
             if not pd.isna(quantity):
                 # Iterate through depth until desired amount is available
-                for i, b in enumerate(book):
+                for i, b in enumerate(ob):
                     if b[1] > quantity:
                         if i == 0:
                             return 0
                         else:
-                            book = book[:i]  # select the first n elements needed
+                            book = ob[:i]  # select the first n elements needed
                             break
 
                 # select prices and sum total quantity needed
@@ -1151,6 +1151,12 @@ def rebalance(strategy_id, account_id=None):
 
                 # Calculate distance in % to the best bid or to the best ask
                 distance = abs(average_price / book[0][0] - 1)
+
+                if not distance:
+                    print('book', book)
+                    print('average_price', average_price)
+                    print('weights', weights)
+                    print('ob', ob)
 
                 return distance
 

@@ -1154,6 +1154,9 @@ def rebalance(strategy_id, account_id=None):
 
                 return distance
 
+            else:
+                return np.nan
+
         # Get bid-ask spread
         def get_spread():
 
@@ -1180,21 +1183,15 @@ def rebalance(strategy_id, account_id=None):
                         fees = get_fees()
                         funding, funding_weight = get_funding()
 
-                        try:
-                            total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
+                        total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
 
-                        except Exception as e:
-                            print('qty', route[segment].to_string())
-                            log.exception('Error {0}'.format(e))
-
-                        else:
-                            # Set costs
-                            routes[id].loc[index, (segment, 'cost', 'spread')] = spread
-                            routes[id].loc[index, (segment, 'cost', 'distance')] = distance
-                            routes[id].loc[index, (segment, 'cost', 'fees')] = fees
-                            routes[id].loc[index, (segment, 'cost', 'funding')] = funding
-                            routes[id].loc[index, (segment, 'cost', 'funding_weight')] = funding_weight
-                            routes[id].loc[index, (segment, 'cost', 'total')] = total
+                        # Set costs
+                        routes[id].loc[index, (segment, 'cost', 'spread')] = spread
+                        routes[id].loc[index, (segment, 'cost', 'distance')] = distance
+                        routes[id].loc[index, (segment, 'cost', 'fees')] = fees
+                        routes[id].loc[index, (segment, 'cost', 'funding')] = funding
+                        routes[id].loc[index, (segment, 'cost', 'funding_weight')] = funding_weight
+                        routes[id].loc[index, (segment, 'cost', 'total')] = total
 
             # Set total cost of the route
             if all(['cost' in route[s] for s in segments]):

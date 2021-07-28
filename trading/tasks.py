@@ -1141,6 +1141,12 @@ def rebalance(strategy_id, account_id=None):
                             book = ob[:i]  # select the first n elements needed
                             break
 
+                if 'book' not in locals():
+                    log.error('Book not in local')
+                    print(ob)
+                    print(route[segment])
+                    print('quantity', quantity)
+                    
                 # select prices and sum total quantity needed
                 prices = [p[0] for p in book]
                 qty = sum([q[1] for q in book])

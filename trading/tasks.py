@@ -1152,14 +1152,6 @@ def rebalance(strategy_id, account_id=None):
                 # Calculate distance in % to the best bid or to the best ask
                 distance = abs(average_price / book[0][0] - 1)
 
-                log.info('Symbol is {0} {1}'.format(market.symbol, market.wallet))
-
-                print('book', book)
-                print('average_price', average_price)
-                print('weights', weights)
-                print('ob', ob)
-                print('distance', distance)
-
                 return distance
 
         # Get bid-ask spread
@@ -1192,6 +1184,8 @@ def rebalance(strategy_id, account_id=None):
                             total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
 
                         except Exception as e:
+                            print('depth', get_depth())
+                            print('qty', route[segment].trade.order_qty)
                             log.exception('Error {0}'.format(e))
 
                         else:

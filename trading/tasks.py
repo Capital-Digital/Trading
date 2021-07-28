@@ -3161,10 +3161,10 @@ def rebalance(strategy_id, account_id=None):
                     if len(routes[id].index) > 0:
                         calculate_cost(id, market, bids, asks)
 
-                    elif iteration > 5:
+                    elif iteration > 10:
 
-                        log.warning('Iteration reached 5 for account {0}'.format(account.name))
-                        log.info('Close stream {0} {1}'.format(market.wallet, market.symbol))
+                        log.warning('Iteration reached 10 for account {0}'.format(account.name))
+                        log.warning('Close stream {0} {1}'.format(market.wallet, market.symbol))
                         break
 
                     else:
@@ -3183,7 +3183,7 @@ def rebalance(strategy_id, account_id=None):
 
                         if 'best' in routes[account.id]:
                             if 'cost' in routes[account.id].best:
-                                if not any(np.isnan(routes[account.id].best.cost)) or iteration > 5:
+                                if (not any(np.isnan(routes[account.id].best.cost))) or iteration > 10:
 
                                     if not trading:
 

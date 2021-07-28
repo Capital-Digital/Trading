@@ -1152,11 +1152,10 @@ def rebalance(strategy_id, account_id=None):
                 # Calculate distance in % to the best bid or to the best ask
                 distance = abs(average_price / book[0][0] - 1)
 
-                if distance is None:
-                    print('book', book)
-                    print('average_price', average_price)
-                    print('weights', weights)
-                    print('ob', ob)
+                print('book', book)
+                print('average_price', average_price)
+                print('weights', weights)
+                print('ob', ob)
 
                 return distance
 

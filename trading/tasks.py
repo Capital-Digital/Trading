@@ -1181,6 +1181,12 @@ def rebalance(strategy_id, account_id=None):
                         fees = get_fees()
                         funding, funding_weight = get_funding()
 
+                        log.info('spread={0}, distance={1}, fees={2}, funding={3}'.format(spread,
+                                                                                          distance,
+                                                                                          fees,
+                                                                                          funding
+                                                                                          ))
+                        
                         total = spread + distance + fees + (funding_weight if not pd.isna(funding) else 0)
 
                         # Set costs

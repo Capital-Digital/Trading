@@ -3182,7 +3182,7 @@ def rebalance(strategy_id, account_id=None):
 
                         if 'best' in routes[account.id]:
                             if 'cost' in routes[account.id].best:
-                                if (not any(np.isnan(routes[account.id].best.cost))) or iteration > 9:
+                                if (not any(np.isnan(routes[account.id].best.cost))) or iteration > 15:
 
                                     if not trading:
 

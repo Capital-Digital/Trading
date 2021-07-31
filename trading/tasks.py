@@ -219,11 +219,11 @@ def place_order(account_id, pk, route, segment, balance):
                 response = client.create_order(**args)
 
             except ccxt.InvalidOrder as e:
-                log.exception('Invalid order', exc_info=e, pk=pk)
+                log.exception('Invalid order', info=e, pk=pk)
                 return False
 
             except ccxt.InsufficientFunds as e:
-                log.exception('Insufficient funds to place order', exc_info=e, pk=pk)
+                log.exception('Insufficient funds to place order', info=e, pk=pk)
 
                 segment = route[segment]
 

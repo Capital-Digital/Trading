@@ -2936,7 +2936,7 @@ def rebalance(strategy_id, account_id=None):
                     if exchange.has['createMarketOrder']:
                         # Select spot price to validate MIN_NOTIONAL
                         # return prices['spot'][market.base.code]['ask']
-                        return get_price_hourly(exchange, market.base.code, market.base.quote)
+                        return get_price_hourly(exchange, market.base.code, market.quote.code)
                     else:
                         raise Exception('Market order not supported')
 

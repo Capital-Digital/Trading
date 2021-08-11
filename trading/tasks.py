@@ -1847,14 +1847,14 @@ def rebalance(strategy_id, account_id=None):
                             if candidate[0] == code:
                                 if candidate[1] in stablecoins:
                                     instruction = 'sell_base'
-                                    priority = 3
+                                    priority = 2
 
                         # Give the opportunity to sell undesired currency as quote
                         if code in codes_sell:
                             if candidate[1] == code:
                                 if candidate[0] in codes_buy:
                                     instruction = 'buy_base'
-                                    priority = 3
+                                    priority = 2
 
                     elif candidate[4] == 'derivative':
 

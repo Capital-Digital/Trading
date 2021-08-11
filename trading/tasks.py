@@ -1617,6 +1617,7 @@ def rebalance(strategy_id, account_id=None):
 
             markets_index = markets[id].index.tolist()
             stablecoins = account.exchange.get_stablecoins()
+            supported_quotes = account.exchange.get_supported_quotes()
 
             # Create a list of currencies with free balance > 0
             free_value = balances[id][('wallet', 'free_value')] > 0
@@ -1744,31 +1745,32 @@ def rebalance(strategy_id, account_id=None):
 
                     for gateway in mk_candidates_spot:
 
-                        if code == gateway[1]:
-                            if code_needed == gateway[0]:
-                                instruction_gw = 'buy_base'
-                        elif code == gateway[0]:
-                            if code_needed == gateway[1]:
-                                instruction_gw = 'sell_base'
+                        if gateway[1] in supported_quotes:
+                            if gateway[1] == code:
+                                if code_needed == gateway[0]:
+                                    instruction_gw = 'buy_base'
+                            elif gateway[0] == code:
+                                if code_needed == gateway[1]:
+                                    instruction_gw = 'sell_base'
 
-                        if 'instruction_gw' in locals():
-                            label = 'segment'
-                            gw = create_segment(label)
+                            if 'instruction_gw' in locals():
+                                label = 'segment'
+                                gw = create_segment(label)
 
-                            gw.loc[0, (label, 'market', 'base')] = gateway[0]
-                            gw.loc[0, (label, 'market', 'quote')] = gateway[1]
-                            gw.loc[0, (label, 'market', 'wallet')] = gateway[2]
-                            gw.loc[0, (label, 'market', 'symbol')] = gateway[3]
-                            gw.loc[0, (label, 'market', 'type')] = gateway[4]
-                            gw.loc[0, (label, 'market', 'contract_type')] = gateway[5]
-                            gw.loc[0, (label, 'market', 'margined')] = gateway[6]
+                                gw.loc[0, (label, 'market', 'base')] = gateway[0]
+                                gw.loc[0, (label, 'market', 'quote')] = gateway[1]
+                                gw.loc[0, (label, 'market', 'wallet')] = gateway[2]
+                                gw.loc[0, (label, 'market', 'symbol')] = gateway[3]
+                                gw.loc[0, (label, 'market', 'type')] = gateway[4]
+                                gw.loc[0, (label, 'market', 'contract_type')] = gateway[5]
+                                gw.loc[0, (label, 'market', 'margined')] = gateway[6]
 
-                            gw.loc[0, (label, 'type', 'priority')] = priority
-                            gw.loc[0, (label, 'type', 'transfer')] = need_transfer(wallet, gateway[2])
-                            gw.loc[0, (label, 'type', 'action')] = instruction_gw
-
-                            del instruction_gw
-                            return gw
+                                gw.loc[0, (label, 'type', 'priority')] = priority
+                                gw.loc[0, (label, 'type', 'transfer')] = need_transfer(wallet, gateway[2])
+                                gw.loc[0, (label, 'type', 'action')] = instruction_gw
+    
+                                del instruction_gw
+                                return gw
 
                     log.warning('No bridge found between {0} and {1}'.format(code, code_needed))
 

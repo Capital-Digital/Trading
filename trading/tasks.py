@@ -1746,10 +1746,11 @@ def rebalance(strategy_id, account_id=None):
                     for gateway in mk_candidates_spot:
 
                         if gateway[1] in supported_quotes:
-                            if gateway[1] == code:
-                                if code_needed == gateway[0]:
-                                    instruction_gw = 'buy_base'
-                            elif gateway[0] == code:
+
+                            # if gateway[1] == code:
+                            #     if code_needed == gateway[0]:
+                            #         instruction_gw = 'buy_base'
+                            if gateway[0] == code:
                                 if code_needed == gateway[1]:
                                     instruction_gw = 'sell_base'
 
@@ -1768,7 +1769,7 @@ def rebalance(strategy_id, account_id=None):
                                 gw.loc[0, (label, 'type', 'priority')] = priority
                                 gw.loc[0, (label, 'type', 'transfer')] = need_transfer(wallet, gateway[2])
                                 gw.loc[0, (label, 'type', 'action')] = instruction_gw
-    
+
                                 del instruction_gw
                                 return gw
 

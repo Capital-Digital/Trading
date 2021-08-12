@@ -3396,7 +3396,7 @@ def rebalance(strategy_id, account_id=None):
                 log.info('Rebalance account {0}'.format(account.name))
 
                 fund = account.get_fund_latest()
-                if fund.balance > 100:
+                if fund.balance > 50:
 
                     codes_account = account.get_codes(greater_than=20)
                     codes_account = [c for c in codes_account if c not in codes_strategy + codes_margined]

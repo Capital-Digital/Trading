@@ -10,13 +10,14 @@ from prettyjson import PrettyJSONWidget
 import json
 from pygments import highlight, formatters, lexers
 from django.utils.safestring import mark_safe
+from django.db.models import Avg
 
 log = structlog.get_logger(__name__)
 
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy',
+    list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy', 'get_distance_avg',
                     'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'user')
     actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all', 'rebalance']
@@ -34,6 +35,15 @@ class CustomerAdmin(admin.ModelAdmin):
         return int(Fund.objects.filter(account=obj).latest('dt_create').total)
 
     get_fund.short_description = "Total"
+
+    def get_distance_avg(self, obj):
+
+        from trading.models import Order
+        orders = Order.objects.filter(accoun=obj)
+        distance_avg = orders.aggregate(Avg('distance'))['distance__avg']
+        return round(distance_avg * 100, 3)
+
+    get_distance_avg.short_description = "Distance avg"
 
     # Actions
 
@@ -107,7 +117,7 @@ class CustomerAdmin(admin.ModelAdmin):
     )
 
     # Columns
-    
+
     def get_distance(self, obj):
         return round(obj.distance * 100, 3)
 

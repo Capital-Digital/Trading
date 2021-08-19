@@ -2706,6 +2706,8 @@ def rebalance(strategy_id, account_id=None):
                     quote3 = route.s3.market.quote
                     label = 's3'
 
+                stablecoins = exchange.get_stablecoins()
+
                 # Determine trades quantity
                 ###########################
 
@@ -2868,13 +2870,17 @@ def rebalance(strategy_id, account_id=None):
 
                     # Two segments
                     elif pd.isna(route.s3.type.action):
-                        delta2 = get_delta(base2)
 
                         if route.s2.type.action in ['buy_base', 'sell_base']:
-                            used = min(free, delta2)
 
                             # Select currency to buy in spot and test hedge capacity
                             code = base2 if route.s2.type.action == 'buy_base' else quote2
+                            delta2 = get_delta(code)
+
+                            if code not in stablecoins:
+                                used = min(free, delta2)
+                            else:
+                                used = delta2
 
                             if not strategy.all_pairs:
                                 used = limit_buy(code, used)
@@ -2883,6 +2889,7 @@ def rebalance(strategy_id, account_id=None):
                             update_row(index, 's2', used, None)
 
                         elif route.s2.type.action in ['open_long', 'open_short']:
+                            delta2 = get_delta(base2)
                             leverage2 = float(account.leverage)
                             required = delta2 / leverage2
                             used = min(free, required)

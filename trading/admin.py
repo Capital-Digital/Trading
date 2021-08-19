@@ -89,8 +89,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'account', 'dt_create', 'market', 'action', 'status', 'side', 'amount', 'cost',
-                    'price', 'price_strategy', 'distance', 'filled',  'dt_update')
+    list_display = ('id', 'account', 'dt_create', 'market', 'action', 'status', 'side', 'amount', 'get_cost',
+                    'get_price', 'price_strategy', 'get_distance', 'filled',  'dt_update')
 
     readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'params',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
@@ -107,11 +107,21 @@ class CustomerAdmin(admin.ModelAdmin):
     )
 
     # Columns
-    #
-    # def get_strategy(self, obj):
-    #     return obj.account.strategy.name  # .split(' ')[2].split('.')[0]
-    #
-    # get_strategy.short_description = 'Strategy'
+    
+    def get_distance(self, obj):
+        return round(obj.distance * 100, 3)
+
+    get_distance.short_description = 'Distance'
+
+    def get_cost(self, obj):
+        return round(obj.cost, 2)
+
+    get_cost.short_description = 'Cost'
+
+    def get_price(self, obj):
+        return round(obj.price, 3)
+
+    get_price.short_description = 'Price'
 
     # def get_exchange(self, obj):
     #     return obj.account.exchange.name  # .split(' ')[2].split('.')[0]

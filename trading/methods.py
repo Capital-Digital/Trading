@@ -46,7 +46,7 @@ def order_create_update(id, response, price_hourly):
         datetime = convert_timestamp_to_datetime(response['timestamp'] / 1000, datetime_directive_binance_order)
 
         # Calculate distance with strategy price
-        distance = (price_hourly / response['price']) - 1
+        distance = (response['price'] / price_hourly) - 1
         distance = distance if response['side'] == 'buy' else - distance
 
         # Create dictionary

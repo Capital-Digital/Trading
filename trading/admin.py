@@ -39,7 +39,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def get_distance_avg(self, obj):
 
         from trading.models import Order
-        orders = Order.objects.filter(accoun=obj)
+        orders = Order.objects.filter(account=obj)
         distance_avg = orders.aggregate(Avg('distance'))['distance__avg']
         return round(distance_avg * 100, 3)
 

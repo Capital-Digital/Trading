@@ -474,7 +474,7 @@ class Account(models.Model):
             return [order.orderid for order in orders]
 
     @property
-    def latest_balances(self):
+    def latest_balance(self):
         return self.get_fund_latest().balance
 
     # Return latest funds object

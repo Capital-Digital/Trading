@@ -1217,7 +1217,6 @@ def rebalance(strategy_id, account_id=None):
         if 'best' in routes[id]:
             if 'cost' in routes[id].best:
                 if 'return' in routes[id].best:
-
                     log.info('Sort routes by cost')
                     routes[id].sort_values([('s1', 'type', 'priority'),
                                             ('best', 'cost')], ascending=[True, True], inplace=True)
@@ -1349,7 +1348,6 @@ def rebalance(strategy_id, account_id=None):
 
                         # Update transfer quantity
                         if route[next].type.transfer:
-
                             log.info('Update transfer details with {0} {1}'.format(round(bought, 4), asset))
                             routes[id].loc[route.name, (next, 'transfer', 'quantity')] = bought
                             routes[id].loc[route.name, (next, 'transfer', 'asset')] = asset
@@ -3378,11 +3376,13 @@ def rebalance(strategy_id, account_id=None):
         if account_id:
             accounts_id = [account_id]
         else:
-            accounts_id = Account.objects.filter(strategy=strategy,
-                                                 exchange=exchange,
-                                                 updated=False,
-                                                 trading=True
-                                                 ).values_list('id', flat=True)
+            accounts = Account.objects.filter(strategy=strategy,
+                                              exchange=exchange,
+                                              updated=False,
+                                              trading=True)
+            # Sort accounts by balance
+            accounts = sorted(accounts, key=lambda m: m.latest_balance)
+            accounts_id = [account.id for account in accounts]
 
         if len(accounts_id) > 0:
 

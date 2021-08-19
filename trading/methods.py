@@ -24,6 +24,19 @@ def order_create_update(id, response, price_hourly):
         # Select order object with client order ID
         order = Order.objects.get(id=float(response['clientOrderId']))
 
+        # Convert cost to USDT
+        if order.market.quote.code != account.exchange.dollar_currency:
+            rate = get_price_hourly(account.exchange, order.market.quote.code, account.exchange.dollar_currency)
+            cost_dollar_curr = response['cost'] * rate
+        else:
+            cost_dollar_curr = response['cost']
+
+        # Calculate distance with strategy price and weight with order cost
+        distance = (response['price'] / price_hourly) - 1
+        distance = distance if response['side'] == 'buy' else - distance
+        delta = distance * cost_dollar_curr
+        distance_weighted = delta / account.get_fund_latest().balance
+
     except ObjectDoesNotExist:
         log.warning('Order object not created')
 
@@ -45,10 +58,6 @@ def order_create_update(id, response, price_hourly):
         # Convert datetime
         datetime = convert_timestamp_to_datetime(response['timestamp'] / 1000, datetime_directive_binance_order)
 
-        # Calculate distance with strategy price
-        distance = (response['price'] / price_hourly) - 1
-        distance = distance if response['side'] == 'buy' else - distance
-
         # Create dictionary
         defaults = dict(
             orderid=response['id'],
@@ -62,7 +71,7 @@ def order_create_update(id, response, price_hourly):
             last_trade_timestamp=response['lastTradeTimestamp'],
             price=response['price'],
             price_strategy=price_hourly,
-            distance=distance,
+            distance=distance_weighted,
             remaining=response['remaining'],
             side=response['side'],
             status=response['status'],

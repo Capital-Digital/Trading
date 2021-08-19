@@ -119,17 +119,20 @@ class CustomerAdmin(admin.ModelAdmin):
     # Columns
 
     def get_distance(self, obj):
-        return round(obj.distance * 100, 3)
+        if obj.distance:
+            return round(obj.distance * 100, 3)
 
     get_distance.short_description = 'Distance'
 
     def get_cost(self, obj):
-        return round(obj.cost, 2)
+        if obj.cost:
+            return round(obj.cost, 2)
 
     get_cost.short_description = 'Cost'
 
     def get_price(self, obj):
-        return round(obj.price, 3)
+        if obj.price:
+            return round(obj.price, 3)
 
     get_price.short_description = 'Price'
 

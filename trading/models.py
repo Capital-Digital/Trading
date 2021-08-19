@@ -473,6 +473,10 @@ class Account(models.Model):
         if orders.exists():
             return [order.orderid for order in orders]
 
+    @property
+    def latest_balances(self):
+        return self.get_fund_latest().balance
+
     # Return latest funds object
     def get_fund_latest(self):
 

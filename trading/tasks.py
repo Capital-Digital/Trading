@@ -3207,7 +3207,12 @@ def rebalance(strategy_id, account_id=None):
 
                                             # Trade the best route
                                             trading = True
-                                            res = trade(account.id)
+                                            if account.trading:
+                                                res = trade(account.id)
+                                            else:
+                                                log.warning('Account {0} is not trading, break loop'.format(account.name))
+                                                break
+
                                             if res:
 
                                                 trading = False
@@ -3246,7 +3251,7 @@ def rebalance(strategy_id, account_id=None):
                     else:
                         print('wait')
                 else:
-                    log.info('Account {0} is not trading, break loop'.format(account.name))
+                    log.warning('Account {0} is not trading, break loop'.format(account.name))
                     break
 
                 await client.sleep(1000)

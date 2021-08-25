@@ -222,6 +222,13 @@ def place_order(account_id, pk, route, segment, balance):
                 log.exception('Invalid order', info=e, pk=pk)
                 return False
 
+            except ccxt.AuthenticationError as e:
+                log.exception('Authentication error', info=e, pk=pk)
+                account.valid_credentials = False
+                account.trading = False
+                account.save()
+                return False
+
             except ccxt.InsufficientFunds as e:
                 log.exception('Insufficient funds to place order', info=e, pk=pk)
 
@@ -3245,6 +3252,7 @@ def rebalance(strategy_id, account_id=None):
                               traceback=traceback.format_exc()
                               )
                 log.error('Traceback', traceback=traceback.format_exc())
+                break
 
     # Configure websocket client for wallet
     async def wallet_loop(account, loop, i, wallet):

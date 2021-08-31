@@ -3175,7 +3175,7 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
-                ob = await client.watch_order_book(market.symbol)  # , limit=account.exchange.orderbook_limit)
+                ob = await client.watch_order_book(market.symbol, limit=account.exchange.orderbook_limit)
                 if ob:
                     # Capture current depth
                     bids, asks = cumulative_book(ob)

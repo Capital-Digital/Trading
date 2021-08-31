@@ -176,10 +176,12 @@ def status(exid):
     log.bind(exchange=exid)
     log.info('Update status')
     from marketsdata.models import Exchange
+    from trading.models import Account
     exchange = Exchange.objects.get(exid=exid)
+    a = Account.objects.get(id=1)
 
     try:
-        client = exchange.get_ccxt_client()
+        client = exchange.get_ccxt_client(a)
         response = client.fetchStatus()
 
     except ccxt.ExchangeNotAvailable:

@@ -177,7 +177,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_status(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.status.s(exchange).set(queue='slow') for exchange in exchanges)()
+        res = group(tasks.status.s(exchange).set(queue='default') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)

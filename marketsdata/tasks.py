@@ -190,7 +190,7 @@ def status(exid):
         exchange.status_at = timezone.now()
         exchange.save()
 
-        log.error('Update status has failed, {1} is {0}'.format(exchange.status, exchange.exid))
+        log.error('Exchange status for {1} is {0}'.format(exchange.status, exchange.exid))
 
     else:
 

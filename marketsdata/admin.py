@@ -35,7 +35,7 @@ class CustomerAdmin(admin.ModelAdmin):
         return True if obj.status == 'ok' else False
 
     get_status.boolean = True
-    get_status.short_description = "Online"
+    get_status.short_description = "Status"
 
     def get_currencies(self, obj):
         return Currency.objects.filter(exchange=obj).count()

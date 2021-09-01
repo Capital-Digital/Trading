@@ -102,7 +102,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_currencies(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.currencies.s(exchange).set(queue='slow') for exchange in exchanges)()
+        res = group(tasks.currencies.s(exchange).set(queue='default') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
@@ -117,7 +117,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_prices(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.prices.s(exchange).set(queue='slow') for exchange in exchanges)()
+        res = group(tasks.prices.s(exchange).set(queue='default') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
@@ -132,7 +132,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def flag_top_markets(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.top_markets.s(exchange).set(queue='slow') for exchange in exchanges)()
+        res = group(tasks.top_markets.s(exchange).set(queue='default') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
@@ -147,7 +147,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_markets(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.markets.s(exchange).set(queue='slow') for exchange in exchanges)()
+        res = group(tasks.markets.s(exchange).set(queue='default') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)
@@ -162,7 +162,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def update_prices(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.prices.s(exchange).set(queue='slow') for exchange in exchanges)()
+        res = group(tasks.prices.s(exchange).set(queue='default') for exchange in exchanges)()
 
         while not res.ready():
             time.sleep(0.5)

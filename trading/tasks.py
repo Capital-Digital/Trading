@@ -3177,6 +3177,9 @@ def rebalance(strategy_id, account_id=None):
             try:
                 ob = await client.watch_order_book(market.symbol, limit=account.exchange.orderbook_limit)
                 if ob:
+
+                    print('Best ask', asks[0][0])
+
                     # Capture current depth
                     bids, asks = cumulative_book(ob)
 
@@ -3265,7 +3268,9 @@ def rebalance(strategy_id, account_id=None):
                 #               )
                 # log.error('Traceback', traceback=traceback.format_exc())
                 # break
-                log.warning('Stream {0}: {1}'.format(market.symbol, e))
+                # log.warning('Stream {0}: {1}'.format(market.symbol, e))
+                # continue
+                print('oh no an error', str(e))
                 continue
 
     # Configure websocket client for wallet
@@ -3300,7 +3305,7 @@ def rebalance(strategy_id, account_id=None):
 
         log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 
-        markets_monitor = markets_monitor[:5]
+        markets_monitor = markets_monitor[:4]
 
         for m in markets_monitor:
             print('Monitor stream', m.wallet, m.symbol)

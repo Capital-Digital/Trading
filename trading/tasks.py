@@ -3300,7 +3300,7 @@ def rebalance(strategy_id, account_id=None):
 
         log.info('Monitor {0} markets {1}'.format(len(markets_monitor), wallet))
 
-        markets_monitor = markets_monitor[:4]
+        markets_monitor = markets_monitor[:5]
 
         for m in markets_monitor:
             print('Monitor stream', m.wallet, m.symbol)

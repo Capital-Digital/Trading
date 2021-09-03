@@ -86,8 +86,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def insert_recent_ohlcv(self, request, queryset):
         exids = [exchange.exid for exchange in queryset]
-        chains = [tasks.insert_ohlcv_bulk(exid, recent=True) for exid in exids]
-        res = group(*chains).delay()
+        groups = [tasks.insert_ohlcv_bulk.s(exid, recent=True) for exid in exids]
+        res = group(*groups).delay()
 
         while not res.ready():
             time.sleep(0.5)

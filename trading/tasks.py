@@ -3178,10 +3178,10 @@ def rebalance(strategy_id, account_id=None):
                 ob = await client.watch_order_book(market.symbol, limit=account.exchange.orderbook_limit)
                 if ob:
 
-                    print('Best ask', asks[0][0])
-
                     # Capture current depth
                     bids, asks = cumulative_book(ob)
+
+                    print('Best ask', asks[0][0])
 
                     # Update costs and sort routes
                     if len(routes[id].index) > 0:

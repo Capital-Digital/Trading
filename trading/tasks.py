@@ -3439,6 +3439,8 @@ def rebalance(strategy_id, account_id=None):
 
                     if len(codes_monitor) > 1:
 
+                        codes_monitor = codes_monitor[:2]
+
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]
                         create_dataframes(account.id)

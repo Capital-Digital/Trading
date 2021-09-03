@@ -3439,7 +3439,7 @@ def rebalance(strategy_id, account_id=None):
 
                     if len(codes_monitor) > 1:
 
-                        codes_monitor = codes_monitor[:5]
+                        codes_monitor = codes_monitor[:6]
 
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]

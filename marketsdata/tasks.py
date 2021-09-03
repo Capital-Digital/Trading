@@ -1050,6 +1050,7 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 
             except ccxt.DDoSProtection as e:
                 log.error('DDoS protection')
+                print(e)
             except Exception as e:
                 log.error('Unable to fetch OHLCV: {0}'.format(e))
 

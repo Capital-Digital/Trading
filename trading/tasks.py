@@ -3265,7 +3265,7 @@ def rebalance(strategy_id, account_id=None):
                 #               )
                 # log.error('Traceback', traceback=traceback.format_exc())
                 # break
-                log.warning('Error {0}'.format(e))
+                log.warning('Stream {0}: {1}'.format(market.symbol, e))
                 continue
 
     # Configure websocket client for wallet

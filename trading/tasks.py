@@ -3303,6 +3303,8 @@ def rebalance(strategy_id, account_id=None):
         for m in markets_monitor:
             print('Monitor stream', m.wallet, m.symbol)
 
+        markets_monitor = markets_monitor[:5]
+
         # # Create dictionary structure for spot prices in (usd)
         # for market in mks:
         #
@@ -3438,8 +3440,6 @@ def rebalance(strategy_id, account_id=None):
                     [print('Monitor code', c) for c in codes_monitor]
 
                     if len(codes_monitor) > 1:
-
-                        codes_monitor = codes_monitor[:6]
 
                         # Create empty dictionaries
                         balances, positions, markets, synthetic_cash, routes, targets = [dict() for _ in range(6)]

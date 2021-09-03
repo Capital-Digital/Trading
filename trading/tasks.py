@@ -3274,7 +3274,7 @@ def rebalance(strategy_id, account_id=None):
                 continue
 
     # Configure websocket client for wallet
-    async def wallet_loop(account, loop, i, wallet):
+    async def market_loop(account, loop, i, wallet):
 
         # EventLoopDelayMonitor(interval=1)
 
@@ -3344,9 +3344,9 @@ def rebalance(strategy_id, account_id=None):
         await client.close()
 
     # Run main asyncio loop
-    async def main(account, loop, wallets):
-        wallet_loops = [wallet_loop(account, loop, i, wallet) for i, wallet in enumerate(wallets)]
-        await asyncio.gather(*wallet_loops)
+    # async def main(account, loop, wallets):
+    #     wallet_loops = [wallet_loop(account, loop, i, wallet) for i, wallet in enumerate(wallets)]
+    #     await asyncio.gather(*wallet_loops)
 
     class EventLoopDelayMonitor:
 
@@ -3465,7 +3465,8 @@ def rebalance(strategy_id, account_id=None):
                                 log.info('Create a new loop')
                                 loop = asyncio.new_event_loop()
 
-                            gp = asyncio.wait([main(account, loop, wallets)])
+                            # gp = asyncio.wait([main(account, loop, wallets)])
+                            gp = asyncio.wait([market_loop(account, loop, 0, 'spot')])
                             loop.run_until_complete(gp)
                             loop.close()
 

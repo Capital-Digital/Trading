@@ -3175,7 +3175,7 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
-                ob = await client.watch_order_book(market.symbol, limit=account.exchange.orderbook_limit)
+                ob = await client.watch_order_book(market.symbol) #, limit=account.exchange.orderbook_limit)
                 if ob:
 
                     # Capture current depth
@@ -3279,8 +3279,8 @@ def rebalance(strategy_id, account_id=None):
 
         client = getattr(ccxtpro, exchange.exid)({'enableRateLimit': True, 'asyncio_loop': loop, })
 
-        if exchange.wallets:
-            client.options['defaultType'] = wallet
+        #if exchange.wallets:
+        #    client.options['defaultType'] = wallet
 
         # Select markets to monitor
         markets_monitor = Market.objects.filter(exchange=exchange,

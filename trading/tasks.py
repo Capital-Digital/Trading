@@ -3260,13 +3260,14 @@ def rebalance(strategy_id, account_id=None):
                 await client.sleep(1000)
 
             except Exception as e:
-                traceback.print_exc()
-                log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
-                              symbol=market.symbol,
-                              wallet=market.wallet,
-                              traceback=traceback.format_exc()
-                              )
-                log.error('Traceback', traceback=traceback.format_exc())
+                # traceback.print_exc()
+                # log.exception('While loop failed: {0} {1}'.format(type(e).__name__, str(e)),
+                #               symbol=market.symbol,
+                #               wallet=market.wallet,
+                #               traceback=traceback.format_exc()
+                #               )
+                # log.error('Traceback', traceback=traceback.format_exc())
+                log.error('oh no an error', str(e))
                 break
                 # log.warning('Stream {0}: {1}'.format(market.symbol, e))
                 # continue

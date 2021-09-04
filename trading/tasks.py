@@ -3461,9 +3461,9 @@ def rebalance(strategy_id, account_id=None):
                             # loop.set_debug(True)
                             loop = asyncio.get_event_loop()
 
-                            if loop.is_closed():
-                                log.info('Create a new loop')
-                                loop = asyncio.new_event_loop()
+                            # if loop.is_closed():
+                            #     log.info('Create a new loop')
+                            #     loop = asyncio.new_event_loop()
 
                             # gp = asyncio.wait([main(account, loop, wallets)])
                             gp = asyncio.wait([market_loop(account, loop, 0, 'spot')])

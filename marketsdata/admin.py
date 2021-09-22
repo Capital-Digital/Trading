@@ -88,7 +88,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_recent_ohlcv(self, request, queryset):
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
-            chains = [tasks.insert_ohlcv.s(exchange.exid,
+            chains = [tasks.insert_ohlcv.si(exchange.exid,
                                            market.wallet,
                                            market.symbol,
                                            True

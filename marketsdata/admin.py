@@ -6,6 +6,7 @@ import locale
 from celery import group
 from marketsdata import tasks
 import time
+from celery import chain
 
 locale.setlocale(locale.LC_ALL, '')
 log = structlog.get_logger(__name__)
@@ -85,18 +86,27 @@ class CustomerAdmin(admin.ModelAdmin):
     insert_full_ohlcv.short_description = "Insert full OHLCV"
 
     def insert_recent_ohlcv(self, request, queryset):
-        exids = [exchange.exid for exchange in queryset]
-        groups = [tasks.insert_ohlcv_bulk.s(exid, recent=True) for exid in exids]
-        res = group(*groups).delay()
+        for exchange in queryset:
+            markets = Market.objects.filter(exchange=exchange).order_by('symbol')
+            for market in markets:
+                tasks.insert_ohlcv.si(exchange.exid,
+                                      market.wallet,
+                                      market.symbol,
+                                      recent=True
+                                      )
 
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Insert recent OHLCV complete')
-
-        else:
-            log.error('Insert recent OHLCV failed')
+        # exids = [exchange.exid for exchange in queryset]
+        # groups = [tasks.insert_ohlcv_bulk.s(exid, recent=True) for exid in exids]
+        # res = group(*groups).delay()
+        #
+        # while not res.ready():
+        #     time.sleep(0.5)
+        #
+        # if res.successful():
+        #     log.info('Insert recent OHLCV complete')
+        #
+        # else:
+        #     log.error('Insert recent OHLCV failed')
 
     insert_recent_ohlcv.short_description = "Insert recent OHLCV"
 

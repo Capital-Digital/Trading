@@ -90,10 +90,10 @@ class CustomerAdmin(admin.ModelAdmin):
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
             for market in markets:
                 tasks.insert_ohlcv.si(exchange.exid,
-                                      market.wallet,
-                                      market.symbol,
-                                      recent=True
-                                      )
+                                   market.wallet,
+                                   market.symbol,
+                                   recent=True
+                                   ).set(queue='slow')
 
         # exids = [exchange.exid for exchange in queryset]
         # groups = [tasks.insert_ohlcv_bulk.s(exid, recent=True) for exid in exids]

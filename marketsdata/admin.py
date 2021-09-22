@@ -91,7 +91,7 @@ class CustomerAdmin(admin.ModelAdmin):
             chains = [tasks.insert_ohlcv.s(exchange.exid,
                                            market.wallet,
                                            market.symbol,
-                                           recent=True
+                                           True
                                            ).set(queue='slow') for market in markets]
             res = chain(*chains).delay()
             while not res.ready():

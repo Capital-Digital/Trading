@@ -88,11 +88,11 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_recent_ohlcv(self, request, queryset):
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
-            chains = [tasks.insert_ohlcv.si(exchange.exid,
-                                            market.wallet,
-                                            market.symbol,
-                                            recent=True
-                                            ).set(queue='slow') for market in markets]
+            chains = [tasks.insert_ohlcv.s(exchange.exid,
+                                           market.wallet,
+                                           market.symbol,
+                                           recent=True
+                                           ).set(queue='slow') for market in markets]
             res = chain(*chains).delay()
             while not res.ready():
                 time.sleep(0.5)

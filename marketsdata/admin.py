@@ -88,12 +88,20 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_recent_ohlcv(self, request, queryset):
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
-            for market in markets:
-                tasks.insert_ohlcv.si(exchange.exid,
-                                   market.wallet,
-                                   market.symbol,
-                                   recent=True
-                                   ).set(queue='slow')
+            chains = [tasks.insert_ohlcv.si(exchange.exid,
+                                            market.wallet,
+                                            market.symbol,
+                                            recent=True
+                                            ).set(queue='slow') for market in markets]
+            res = chain(*chains).delay()
+            while not res.ready():
+                time.sleep(0.5)
+
+            if res.successful():
+                log.info('Insert recent OHLCV complete')
+
+            else:
+                log.error('Insert recent OHLCV failed')
 
         # exids = [exchange.exid for exchange in queryset]
         # groups = [tasks.insert_ohlcv_bulk.s(exid, recent=True) for exid in exids]

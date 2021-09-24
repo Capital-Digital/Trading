@@ -115,6 +115,7 @@ class Account(models.Model):
                                                                      self.strategy.exchange.dollar_currency)
 
             # Insert wallets balances in dollar
+            print(df.to_string())
             for index, row in df.iterrows():
                 df.loc[index, ('wallet', 'total_value')] = row.wallet.total_quantity * row.price.hourly
                 df.loc[index, ('wallet', 'free_value')] = row.wallet.free_quantity * row.price.hourly

@@ -3180,9 +3180,6 @@ def rebalance(strategy_id, account_id=None):
     # Receive websocket streams of book depth
     async def watch_book(account, client, market, i, j):
 
-        print(client.version)
-        print(len(dir(client)))
-
         iteration = 0
         trading = False
         id = account.id
@@ -3190,16 +3187,12 @@ def rebalance(strategy_id, account_id=None):
 
         while True:
             try:
-                print(client)
-                ob = await client.watch_order_book(market.symbol) #, limit=account.exchange.orderbook_limit)
-                log.info('{0}'.format(ob['asks'][0][0]))
+                ob = await client.watch_order_book(market.symbol, limit=account.exchange.orderbook_limit)
 
                 if ob:
 
                     # Capture current depth
                     bids, asks = cumulative_book(ob)
-
-                    print('Best ask', asks[0][0])
 
                     # Update costs and sort routes
                     if len(routes[id].index) > 0:

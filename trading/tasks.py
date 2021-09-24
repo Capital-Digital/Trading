@@ -3279,7 +3279,8 @@ def rebalance(strategy_id, account_id=None):
                 #               )
                 # log.error('Traceback', traceback=traceback.format_exc())
                 log.error('{0}'.format(str(e)), symbol=market.symbol)
-                break
+                continue
+                # break
                 # log.warning('Stream {0}: {1}'.format(market.symbol, e))
                 # continue
                 # print('oh no an error', str(e))

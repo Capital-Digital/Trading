@@ -350,20 +350,26 @@ def create_fund(id):
         for k, v in response['total'].items():
             if v > 0:
                 code = dict()
-                code[k] = dict(quantity=v, value=calculate_value(k, v))
-                total.update(code)
+                value = calculate_value(k, v)
+                if value:
+                    code[k] = dict(quantity=v, value=value)
+                    total.update(code)
 
         for k, v in response['free'].items():
             if response['total'][k] > 0:
                 code = dict()
-                code[k] = dict(quantity=v, value=calculate_value(k, v))
-                free.update(code)
+                value = calculate_value(k, v)
+                if value:
+                    code[k] = dict(quantity=v, value=value)
+                    free.update(code)
 
         for k, v in response['used'].items():
             if response['total'][k] > 0:
                 code = dict()
-                code[k] = dict(quantity=v, value=calculate_value(k, v))
-                used.update(code)
+                value = calculate_value(k, v)
+                if value:
+                    code[k] = dict(quantity=v, value=value)
+                    used.update(code)
 
         return total, used, free
 

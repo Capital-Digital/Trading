@@ -406,15 +406,22 @@ def create_fund(id):
                 return quantity * price
 
         else:
-            market = Market.objects.get(exchange=account.exchange, symbol=code)
+            try:
+                market = Market.objects.get(exchange=account.exchange, symbol=code)
 
-            # Return quantity is market is marginated in USDT
-            if market.margined.stable_coin:
-                return quantity
+            except ObjectDoesNotExist:
+                log.warning('Unknown ticker {0}'.format(code))
+                return 0
 
             else:
-                # Else it's marginated in base currency
-                return quantity * market.get_candle_price_last()
+
+                # Return quantity is market is marginated in USDT
+                if market.margined.stable_coin:
+                    return quantity
+
+                else:
+                    # Else it's marginated in base currency
+                    return quantity * market.get_candle_price_last()
 
     # Create a dictionary of margin assets
     def get_margin_assets(response, wallet):

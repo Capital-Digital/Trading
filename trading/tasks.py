@@ -365,10 +365,9 @@ def create_fund(id):
 
         for k, v in response['used'].items():
             if response['total'][k] > 0:
-                code = dict()
-                value = calculate_value(k, v)
-                if value:
-                    code[k] = dict(quantity=v, value=value)
+                if k in total:
+                    code = dict()
+                    code[k] = dict(quantity=v, value=calculate_value(k, v))
                     used.update(code)
 
         return total, used, free

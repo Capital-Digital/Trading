@@ -624,7 +624,7 @@ class Candle(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='candle', null=True)
     market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='candle', null=True)
     dt = models.DateTimeField()
-    close, volume, volume_avg = [models.FloatField(null=True) for i in range(3)]
+    close, volume, volume_avg, mcap, volume_mcap = [models.FloatField(null=True) for i in range(5)]
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 

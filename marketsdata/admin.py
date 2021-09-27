@@ -332,7 +332,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Candle)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('get_dt', 'market', 'exchange', 'get_type', 'close', 'get_vol', 'get_vol_avg')
-    readonly_fields = ('exchange', 'market', 'dt', 'close', 'volume', 'dt_created', 'volume_avg',)
+    readonly_fields = ('exchange', 'market', 'dt', 'close', 'volume', 'dt_created', 'volume_avg', 'mcap', 'volume_mcap')
     list_filter = ('exchange', 'market__type', 'market__contract_type',
                    ('market__quote', admin.RelatedOnlyFieldListFilter),
                    ('market__base', admin.RelatedOnlyFieldListFilter)

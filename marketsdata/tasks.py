@@ -627,6 +627,40 @@ def funding(exid):
 
 
 @shared_task(base=BaseTaskWithRetry)
+def get_mcap():
+    from requests import Request, Session
+    from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
+    import json
+
+    url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
+    parameters = {
+        'start': '1',
+        'limit': '5000',
+        'convert': 'USD'
+    }
+    headers = {
+        'Accepts': 'application/json',
+        'X-CMC_PRO_API_KEY': '5e2d4f14-42a9-4108-868c-6fd0bb8c6186',
+    }
+
+    session = Session()
+    session.headers.update(headers)
+
+    try:
+        res = session.get(url, params=parameters)
+        data = json.loads(res.text)
+        if data['status']['error_code']:
+            return data
+        else:
+            log.error('Error while retrieving data from CoinMarketCap')
+            log.error("Error: {0}".format(data['status']['error_message']))
+
+    except (ConnectionError, Timeout, TooManyRedirects) as e:
+        log.error('Error while retrieving data from CoinMarketCap')
+        log.error("Error: {0}".format(e))
+
+
+@shared_task(base=BaseTaskWithRetry)
 def prices(exid):
     from marketsdata.models import Exchange, Market, Candle
     exchange = Exchange.objects.get(exid=exid)
@@ -715,6 +749,10 @@ def prices(exid):
                     market.save()
                     return
 
+                # Select market cap
+                market_cap = [d['quote']['USD']['market_cap'] for d in data['data']
+                              if d['symbol'] == market.base.code][0]
+
                 # Create datetime object
                 dt = timezone.now().replace(minute=0,
                                             second=0,
@@ -724,11 +762,12 @@ def prices(exid):
                     Candle.objects.get(market=market, exchange=exchange, dt=dt)
 
                 except Candle.DoesNotExist:
-
                     Candle.objects.create(market=market,
                                           exchange=exchange,
                                           dt=dt,
                                           close=last,
+                                          mcap=market_cap,
+                                          volume_mcap=volume / market_cap,
                                           volume_avg=volume / 24
                                           )
                     market.updated = True
@@ -747,8 +786,10 @@ def prices(exid):
             # Create a list of trading markets
             markets = Market.objects.filter(exchange=exchange,
                                             quote__code__in=exchange.get_supported_quotes(),
-                                            trading=True
-                                            )
+                                            trading=True)
+
+            # Get marketcaps
+            mcap = get_mcap()
 
             if exchange.wallets:
 

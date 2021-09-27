@@ -1120,9 +1120,16 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 def volume_mcap(self):
     candles = Candle.objects.all()
     log.info('Start zeroing')
-    for c in candles:
+
+    counter = 0
+    idx = []
+
+    for c in candles.iterator(2000):
+        counter += 1
         if not c.volume_mcap:
             c.volume_mcap = 0
             c.save()
+        if counter >= 2000:
+            log.info('+2000')
 
     log.info('Zeroing complete')

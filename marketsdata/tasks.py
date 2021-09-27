@@ -649,7 +649,7 @@ def get_mcap():
     try:
         res = session.get(url, params=parameters)
         data = json.loads(res.text)
-        if data['status']['error_code']:
+        if data['status']['error_code'] == 0:
             return data
         else:
             log.error('Error while retrieving data from CoinMarketCap')

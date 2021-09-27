@@ -337,7 +337,6 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('market__quote', admin.RelatedOnlyFieldListFilter),
                    ('market__base', admin.RelatedOnlyFieldListFilter)
                    )
-    actions = ['set_volume_mcap']
     ordering = ('-dt',)
 
     ###########
@@ -366,10 +365,3 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_dt.short_description = 'Datetime UTC'
 
-    def set_volume_mcap(self, request, queryset):
-        for candle in queryset:
-            if not candle.volume_mcap:
-                candle.volume_mcap = 0
-                candle.save()
-
-    set_volume_mcap.short_description = "Set volume/mcap to 0"

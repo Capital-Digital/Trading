@@ -1113,3 +1113,16 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                         log.info('Candles complete')
                         market.updated = True
                         market.save()
+
+
+# Insert OHLCV candles history
+@shared_task(bind=True, name='Markets_____Set_volume_mcap_zero')
+def volume_mcap(self):
+    candles = Candle.objects.all()
+    log.info('Start zeroing')
+    for c in candles:
+        if not c.volume_mcap:
+            c.volume_mcap = 0
+            c.save()
+
+    log.info('Zeroing complete')

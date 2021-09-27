@@ -756,6 +756,7 @@ def prices(exid):
                     volume_mcap = volume / market_cap
                 else:
                     log.warning('Unable to retrieve mcap for {0}'.format(market.base.code))
+                    market_cap = 0
                     volume_mcap = 0
 
                 # Create datetime object

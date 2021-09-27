@@ -1121,15 +1121,9 @@ def volume_mcap(self):
     candles = Candle.objects.all()
     log.info('Start zeroing')
 
-    counter = 0
-    idx = []
-
-    for c in candles.iterator(2000):
-        counter += 1
+    for c in candles.iterator(10000):
         if not c.volume_mcap:
             c.volume_mcap = 0
             c.save()
-        if counter >= 2000:
-            log.info('+2000')
 
     log.info('Zeroing complete')

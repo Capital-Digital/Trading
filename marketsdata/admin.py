@@ -337,6 +337,7 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('market__quote', admin.RelatedOnlyFieldListFilter),
                    ('market__base', admin.RelatedOnlyFieldListFilter)
                    )
+    actions = ['set_volume_mcap']
     ordering = ('-dt',)
 
     ###########

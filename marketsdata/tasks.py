@@ -750,7 +750,7 @@ def prices(exid):
                     return
 
                 # Select market cap
-                market_cap = [d['quote']['USD']['market_cap'] for d in data['data']
+                market_cap = [d['quote']['USD']['market_cap'] for d in mcap['data']
                               if d['symbol'] == market.base.code][0]
 
                 # Create datetime object

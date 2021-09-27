@@ -753,9 +753,10 @@ def prices(exid):
                 market_cap = [d['quote']['USD']['market_cap'] for d in mcap['data'] if d['symbol'] == market.base.code]
                 if market_cap:
                     market_cap = market_cap[0]
+                    volume_mcap = volume / market_cap
                 else:
                     log.warning('Unable to retrieve mcap for {0}'.format(market.base.code))
-                    market_cap = 0
+                    volume_mcap = 0
 
                 # Create datetime object
                 dt = timezone.now().replace(minute=0,
@@ -771,7 +772,7 @@ def prices(exid):
                                           dt=dt,
                                           close=last,
                                           mcap=market_cap,
-                                          volume_mcap=volume / market_cap,
+                                          volume_mcap=volume_mcap,
                                           volume_avg=volume / 24
                                           )
                     market.updated = True

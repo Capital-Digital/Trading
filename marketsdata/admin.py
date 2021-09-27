@@ -89,10 +89,10 @@ class CustomerAdmin(admin.ModelAdmin):
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
             chains = [tasks.insert_ohlcv.si(exchange.exid,
-                                           market.wallet,
-                                           market.symbol,
-                                           True
-                                           ).set(queue='slow') for market in markets]
+                                            market.wallet,
+                                            market.symbol,
+                                            True
+                                            ).set(queue='slow') for market in markets]
             res = chain(*chains).delay()
             while not res.ready():
                 time.sleep(0.5)
@@ -364,3 +364,11 @@ class CustomerAdmin(admin.ModelAdmin):
         return obj.dt
 
     get_dt.short_description = 'Datetime UTC'
+
+    def set_volume_mcap(self, request, queryset):
+        for candle in queryset:
+            if not candle.volume_mcap:
+                candle.volume_mcap = 0
+                candle.save()
+
+    set_volume_mcap.short_description = "Set volume/mcap to 0"

@@ -755,11 +755,9 @@ def prices(exid):
                 quotes = [d['quote']['USD'] for d in mcap['data'] if d['symbol'] == market.base.code]
                 if quotes:
                     quotes = quotes[0]
-                    print(quotes['market_cap'])
                     if quotes['market_cap']:
-                        volume_mcap = volume / quotes['market_cap']
-                    else:
-                        log.warning('Market cap is 0 for {0}'.format(market.base.code))
+                        market_cap = quotes['market_cap']
+                        volume_mcap = volume / market_cap
                 else:
                     log.warning('Unable to retrieve mcap for {0}'.format(market.base.code))
 

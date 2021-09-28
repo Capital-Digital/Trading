@@ -22,7 +22,7 @@ import capital.celery as celery
 from capital.methods import *
 from marketsdata.error import *
 from marketsdata.methods import *
-from marketsdata.models import Exchange, Candle, Market
+from marketsdata.models import Exchange, Candle, Market, Listing
 import strategy.tasks as task
 
 log = structlog.get_logger(__name__)
@@ -627,7 +627,7 @@ def funding(exid):
 
 
 @shared_task(base=BaseTaskWithRetry)
-def get_mcap():
+def get_listing():
     from requests import Request, Session
     from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
     import json
@@ -653,8 +653,12 @@ def get_mcap():
         data = json.loads(res.text)
         if data['status']['error_code'] == 0:
 
-            log.info('Retrieve listing from CMC complete')
-            return data
+            # Create object
+            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+            Listing.objects.create(dt=dt, data=data)
+
+            log.info('Create listing for CMC complete')
+
         else:
             log.error('Error while retrieving data from CoinMarketCap')
             log.error("Error: {0}".format(data['status']['error_message']))

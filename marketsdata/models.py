@@ -639,17 +639,15 @@ class Candle(models.Model):
 
 
 class Listing(models.Model):
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='listing', null=True)
-    dt = models.DateTimeField()
-    price, ranking, volume, mcap, volume_mcap = [models.FloatField(null=True) for i in range(5)]
+    data = JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 
     class Meta:
         verbose_name_plural = 'listings'
-        unique_together = ['currency', 'dt']
-        ordering = ['-dt']
-        get_latest_by = 'dt'
+        unique_together = ['dt_created']
+        ordering = ['-dt_created']
+        get_latest_by = 'dt_created'
 
     def __str__(self):
-        return str(self.dt.strftime("%Y-%m-%d %H:%M:%S"))
+        return str(self.dt_created.strftime("%Y-%m-%d %H:%M:%S"))

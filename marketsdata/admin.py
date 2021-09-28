@@ -370,6 +370,5 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('price', 'currency', 'volume', 'mcap', 'volume_mcap')
     readonly_fields = ('price', 'currency', 'volume', 'mcap', 'volume_mcap')
-    #list_filter = ('currency__code', admin.RelatedOnlyFieldListFilter)
     list_filter = ('currency',)
     ordering = ('-dt',)

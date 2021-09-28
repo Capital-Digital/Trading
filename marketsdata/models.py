@@ -568,7 +568,7 @@ class Market(models.Model):
         else:
             return False
 
-    # return sum of volume over last hours
+    # return sum of volume over last n hours
     def get_candle_volume_sum(self, hours):
         return Candle.objects.filter(market=self,
                                      dt__gte=timezone.now() - timedelta(hours=hours)
@@ -595,8 +595,8 @@ class Market(models.Model):
 
             # create multiindex for columns
             index = [
-                np.array([self.symbol] * 2),
-                np.array(["close", "volume"]),
+                np.array([self.symbol] * 3),
+                np.array(["close", "volume", "volume_mcap"]),
             ]
 
         df.columns = pd.MultiIndex.from_arrays(index)

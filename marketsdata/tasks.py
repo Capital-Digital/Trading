@@ -757,18 +757,6 @@ def prices(exid):
                     market.save()
                     return
 
-                # Select market cap
-                market_cap = 0
-                volume_mcap = 0
-                quotes = [d['quote']['USD'] for d in mcap['data'] if d['symbol'] == market.base.code]
-                if quotes:
-                    quotes = quotes[0]
-                    if quotes['market_cap']:
-                        market_cap = quotes['market_cap']
-                        volume_mcap = volume / market_cap
-                else:
-                    log.warning('Unable to retrieve mcap for {0}'.format(market.base.code))
-
                 # Create datetime object
                 dt = timezone.now().replace(minute=0,
                                             second=0,
@@ -782,8 +770,6 @@ def prices(exid):
                                           exchange=exchange,
                                           dt=dt,
                                           close=last,
-                                          mcap=market_cap,
-                                          volume_mcap=volume_mcap,
                                           volume_avg=volume / 24
                                           )
                     market.updated = True
@@ -803,9 +789,6 @@ def prices(exid):
             markets = Market.objects.filter(exchange=exchange,
                                             quote__code__in=exchange.get_supported_quotes(),
                                             trading=True)
-
-            # Get marketcaps
-            mcap = get_mcap()
 
             if exchange.wallets:
 

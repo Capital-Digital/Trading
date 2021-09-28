@@ -92,7 +92,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_recent_ohlcv(self, request, queryset):
 
         # Retrieve listing data from CMC
-        log.info('CMC')
+        log.info('CMC ')
         mcap = tasks.get_mcap.si().set(queue='slow')
         log.info('CMC ok')
 

@@ -912,6 +912,8 @@ def insert_ohlcv_bulk(exid, recent=None):
 def insert_ohlcv(self, exid, wallet, symbol, mcap, recent=None):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
+    
+    print(mcap)
 
     if exchange.is_trading():
 

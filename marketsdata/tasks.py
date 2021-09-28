@@ -895,9 +895,8 @@ def top_markets(exid):
 
 # Bulk insert OHLCV candles history
 @shared_task(base=BaseTaskWithRetry)
-def insert_ohlcv_bulk(exid, recent=None):
+def insert_ohlcv_bulk(exid, mcap, recent=None):
 
-    mcap = get_mcap()
     return [chain(insert_ohlcv.si(exid,
                                   market.wallet,
                                   market.symbol,
@@ -914,9 +913,6 @@ def insert_ohlcv(self, exid, wallet, symbol, mcap, recent=None):
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
     if exchange.is_trading():
-        
-        log.info('mcap')
-        print(mcap)
 
         def insert(market):
 

@@ -93,16 +93,15 @@ class CustomerAdmin(admin.ModelAdmin):
 
         # Retrieve listing data from CMC
         log.info('CMC ')
-        mcap = tasks.get_mcap.s().set(queue='slow')
-        print(mcap)
-        log.info('CMC ok')
+        data = tasks.get_mcap.s().set(queue='slow')
+        log.info('CMC ok', error_code=data['status']['error_code'])
 
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
             chains = [tasks.insert_ohlcv.si(exchange.exid,
                                             market.wallet,
                                             market.symbol,
-                                            mcap,
+                                            data,
                                             True
                                             ).set(queue='slow') for market in markets]
             res = chain(*chains).delay()

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta
-from .models import Exchange, Market, Candle, Currency
+from .models import Exchange, Market, Candle, Currency, Listing
 import structlog
 import locale
 from celery import group
@@ -365,3 +365,10 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_dt.short_description = 'Datetime UTC'
 
+
+@admin.register(Listing)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('price', 'currency', 'volume', 'mcap', 'volume_mcap')
+    readonly_fields = ('price', 'currency', 'volume', 'mcap', 'volume_mcap')
+    list_filter = ('currency__code', admin.RelatedOnlyFieldListFilter)
+    ordering = ('-dt',)

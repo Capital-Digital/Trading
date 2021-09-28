@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta
-from .models import Exchange, Market, Candle, Currency, OrderBook
+from .models import Exchange, Market, Candle, Currency
 import structlog
 import locale
 from celery import group
@@ -238,13 +238,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_stable_coin.boolean = False
     get_stable_coin.short_description = 'Stable coin'
-
-
-@admin.register(OrderBook)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    save_as = True
-    save_on_top = True
 
 
 @admin.register(Market)

@@ -639,7 +639,7 @@ class Candle(models.Model):
 
 
 class Listing(models.Model):
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='marketcap', null=True)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='listing', null=True)
     dt = models.DateTimeField()
     price, ranking, volume, mcap, volume_mcap = [models.FloatField(null=True) for i in range(5)]
     dt_created = models.DateTimeField(auto_now=True)

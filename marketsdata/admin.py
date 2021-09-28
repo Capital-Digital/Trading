@@ -93,7 +93,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
         # Retrieve listing data from CMC
         log.info('CMC')
-        mcap = tasks.get_mcap()
+        mcap = tasks.get_mcap.si().set(queue='slow')
         log.info('CMC ok')
 
         for exchange in queryset:

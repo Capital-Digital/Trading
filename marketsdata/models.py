@@ -637,16 +637,3 @@ class Candle(models.Model):
     def __str__(self):
         return str(self.dt.strftime("%Y-%m-%d %H:%M:%S"))
 
-
-class OrderBook(models.Model):
-    name = models.CharField(max_length=20, null=True)
-    data = JSONField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    objects = models.Manager()
-
-    class Meta:
-        verbose_name_plural = "order books"
-
-    def __str__(self):
-        return str(self.updated_at)

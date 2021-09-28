@@ -368,7 +368,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Listing)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('price', 'currency', 'volume', 'mcap', 'volume_mcap')
-    readonly_fields = ('price', 'currency', 'volume', 'mcap', 'volume_mcap')
-    list_filter = ('currency',)
-    ordering = ('-dt',)
+    list_display = ('dt_created')
+    readonly_fields = ('dt_created', 'data')
+    ordering = ('-dt_created',)

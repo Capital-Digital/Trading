@@ -94,7 +94,8 @@ class CustomerAdmin(admin.ModelAdmin):
         # Retrieve listing data from CMC
         log.info('CMC ')
         data = tasks.get_mcap()
-        log.info('CMC retrieve ok', data=data)
+        log.info('Data', data=data)
+        log.info('CMC retrieve ok')
 
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')

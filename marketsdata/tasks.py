@@ -899,12 +899,11 @@ def top_markets(exid):
 
 # Bulk insert OHLCV candles history
 @shared_task(base=BaseTaskWithRetry)
-def insert_ohlcv_bulk(exid, mcap, recent=None):
+def insert_ohlcv_bulk(exid, recent=None):
 
     return [chain(insert_ohlcv.si(exid,
                                   market.wallet,
                                   market.symbol,
-                                  mcap,
                                   recent
                                   ).set(queue='slow')
                   for market in Market.objects.filter(exchange__exid=exid).order_by('symbol'))]
@@ -912,9 +911,7 @@ def insert_ohlcv_bulk(exid, mcap, recent=None):
 
 # Insert OHLCV candles history
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
-def insert_ohlcv(self, exid, wallet, symbol, mcap, recent=None):
-
-    log.info('Data is', data=mcap)
+def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
@@ -1038,25 +1035,25 @@ def insert_ohlcv(self, exid, wallet, symbol, mcap, recent=None):
                                         insert += 1
                                         # log.info('Insert candle', dt=dt.strftime("%Y-%m-%d %H:%M:%S"))
 
-                                        # Select market cap
-                                        market_cap = 0
-                                        volume_mcap = 0
-                                        quotes = [d['quote']['USD'] for d in mcap['data'] if
-                                                  d['symbol'] == market.base.code]
-                                        if quotes:
-                                            quotes = quotes[0]
-                                            if quotes['market_cap']:
-                                                market_cap = quotes['market_cap']
-                                                volume_mcap = vo / market_cap
-                                        else:
-                                            log.warning('Unable to retrieve mcap for {0}'.format(market.base.code))
+                                        # # Select market cap
+                                        # market_cap = 0
+                                        # volume_mcap = 0
+                                        # quotes = [d['quote']['USD'] for d in mcap['data'] if
+                                        #           d['symbol'] == market.base.code]
+                                        # if quotes:
+                                        #     quotes = quotes[0]
+                                        #     if quotes['market_cap']:
+                                        #         market_cap = quotes['market_cap']
+                                        #         volume_mcap = vo / market_cap
+                                        # else:
+                                        #     log.warning('Unable to retrieve mcap for {0}'.format(market.base.code))
 
                                         Candle.objects.create(market=market,
                                                               exchange=exchange,
                                                               close=cl,
                                                               volume=vo,
-                                                              market_cap=market_cap,
-                                                              volume_mcap=volume_mcap,
+                                                              # market_cap=market_cap,
+                                                              # volume_mcap=volume_mcap,
                                                               dt=dt)
                                     else:
                                         # Candles returned by exchange can be into database

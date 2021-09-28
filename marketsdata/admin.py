@@ -72,10 +72,10 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_full_ohlcv(self, request, queryset):
 
         # Retrieve listing data from CMC
-        mcap = tasks.get_mcap()
+        # mcap = tasks.get_mcap()
 
         exids = [exchange.exid for exchange in queryset]
-        chains = [tasks.insert_ohlcv_bulk(exid, mcap, recent=None) for exid in exids]
+        chains = [tasks.insert_ohlcv_bulk(exid, recent=None) for exid in exids]
         res = group(*chains).delay()
 
         while not res.ready():
@@ -92,21 +92,22 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_recent_ohlcv(self, request, queryset):
 
         # Retrieve listing data from CMC
-        log.info('CMC ')
-        data = tasks.get_mcap()
-        log.info('Data', data=data)
-        log.info('CMC retrieve ok')
+        # log.info('CMC ')
+        # data = tasks.get_mcap()
+        # log.info('Data', data=data)
+        # log.info('CMC retrieve ok')
 
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
             chains = [tasks.insert_ohlcv.si(exchange.exid,
                                             market.wallet,
                                             market.symbol,
-                                            data,
                                             True
                                             ).set(queue='slow') for market in markets]
+            print(chains)
             res = chain(*chains).delay()
             while not res.ready():
+                print('wait')
                 time.sleep(0.5)
 
             if res.successful():

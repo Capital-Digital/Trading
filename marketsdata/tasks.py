@@ -1123,7 +1123,8 @@ def insert_ohlcv(self, exid, wallet, symbol, mcap, recent=None):
                 log.error('DDoS protection')
                 print(e)
             except Exception as e:
-                log.error('Unable to fetch OHLCV: {0}'.format(e))
+                print(e)
+                log.exception('Unable to fetch OHLCV: {0}'.format(e))
 
             else:
                 if res:

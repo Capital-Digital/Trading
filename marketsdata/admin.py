@@ -92,9 +92,9 @@ class CustomerAdmin(admin.ModelAdmin):
     def insert_recent_ohlcv(self, request, queryset):
 
         # Retrieve listing data from CMC
-        print('CMC')
+        log.info('CMC')
         mcap = tasks.get_mcap()
-        print('CMC is', mcap)
+        log.info('CMC ok')
 
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')

@@ -631,7 +631,7 @@ def get_mcap():
     from requests import Request, Session
     from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
     import json
-    
+
     log.info('Retrieve listing from CMC')
 
     url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'

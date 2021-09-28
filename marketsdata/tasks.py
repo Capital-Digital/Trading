@@ -914,6 +914,8 @@ def insert_ohlcv_bulk(exid, mcap, recent=None):
 @shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
 def insert_ohlcv(self, exid, wallet, symbol, mcap, recent=None):
 
+    log.info('Data is', data=mcap)
+
     exchange = Exchange.objects.get(exid=exid)
     log.bind(exchange=exid, symbol=symbol, wallet=wallet)
     if exchange.is_trading():

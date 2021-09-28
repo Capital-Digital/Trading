@@ -91,12 +91,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def insert_recent_ohlcv(self, request, queryset):
 
-        # Retrieve listing data from CMC
-        # log.info('CMC ')
-        # data = tasks.get_mcap()
-        # log.info('Data', data=data)
-        # log.info('CMC retrieve ok')
-
         for exchange in queryset:
             markets = Market.objects.filter(exchange=exchange).order_by('symbol')
             chains = [tasks.insert_ohlcv.si(exchange.exid,

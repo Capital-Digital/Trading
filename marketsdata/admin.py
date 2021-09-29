@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta
-from .models import Exchange, Market, Candle, Currency, Listing
+from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika
 import structlog
 import locale
 from celery import group
@@ -371,3 +371,10 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('dt',)
     readonly_fields = ('dt', 'dt_created', 'data')
     ordering = ('-dt',)
+
+
+@admin.register(CoinPaprika)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('timestamp',)
+    readonly_fields = ('timestamp', 'dt_created', 'price', 'volume_24h', 'market_cap')
+    ordering = ('-timestamp',)

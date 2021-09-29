@@ -652,3 +652,21 @@ class Listing(models.Model):
 
     def __str__(self):
         return str(self.dt.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+class CoinPaprika(models.Model):
+    volume_24h = models.FloatField(null=True)
+    market_cap = models.FloatField(null=True)
+    price = models.FloatField(null=True)
+    timestamp = models.DateTimeField(null=True)
+    dt_created = models.DateTimeField(auto_now=True)
+    objects = DataFrameManager()  # activate custom manager
+
+    class Meta:
+        verbose_name_plural = 'coinpaprika'
+        unique_together = ['timestamp']
+        ordering = ['-timestamp']
+        get_latest_by = 'timestamp'
+
+    def __str__(self):
+        return str(self.timestamp.strftime("%Y-%m-%d %H:%M:%S"))

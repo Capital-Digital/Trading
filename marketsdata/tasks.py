@@ -65,8 +65,7 @@ def update_information():
                     properties.si(exid),
                     currencies.si(exid),
                     markets.si(exid),
-                    funding.si(exid),
-                    get_listing
+                    funding.si(exid)
                     ) for exid in exchanges]
 
     log.info('Execute chain for {0} exchanges'.format(len(exchanges)))
@@ -627,7 +626,7 @@ def funding(exid):
             # log.info('Update funding complete')
 
 
-@shared_task(base=BaseTaskWithRetry)
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')
 def get_listing():
     from requests import Request, Session
     from requests.exceptions import ConnectionError, Timeout, TooManyRedirects

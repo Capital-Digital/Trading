@@ -640,6 +640,7 @@ class Candle(models.Model):
 
 class Listing(models.Model):
     data = JSONField(null=True, blank=True)
+    cmc = models.CharField(blank=True, null=True)
     dt = models.DateTimeField(null=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager

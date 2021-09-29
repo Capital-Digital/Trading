@@ -654,7 +654,7 @@ def get_listing():
         if data['status']['error_code'] == 0:
 
             # Create datetime object
-            dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+            dt = timezone.now().replace(minute=0, second=0, microsecond=0) # + timedelta(hours=1)
             raw = {i['symbol']: i for i in data['data'] if i['cmc_rank'] < 300}
             Listing.objects.create(dt=dt, data=raw)
 

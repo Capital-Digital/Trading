@@ -655,7 +655,7 @@ def get_listing():
 
             # Create datetime object
             dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-            raw = {i['symbol']: i for i in data['data']}
+            raw = {i['symbol']: i for i in data['data'] if i['cmc_rank'] < 300}
             Listing.objects.create(dt=dt, data=raw)
 
             log.info('Create listing for CMC complete')

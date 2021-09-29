@@ -651,4 +651,4 @@ class Listing(models.Model):
         get_latest_by = 'dt_created'
 
     def __str__(self):
-        return str(self.dt_created.strftime("%Y-%m-%d %H:%M:%S"))
+        return str(self.dt.strftime("%Y-%m-%d %H:%M:%S"))

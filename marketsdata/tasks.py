@@ -653,9 +653,10 @@ def get_listing():
         data = json.loads(res.text)
         if data['status']['error_code'] == 0:
 
-            # Create object
+            # Create datetime object
             dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-            Listing.objects.create(dt=dt, data=dict(raw=data))
+            raw = {i['symbol']: i for i in data['data']}
+            Listing.objects.create(dt=dt, data=raw)
 
             log.info('Create listing for CMC complete')
 

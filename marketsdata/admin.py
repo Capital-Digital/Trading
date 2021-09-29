@@ -368,6 +368,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Listing)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('dt_created',)
-    readonly_fields = ('dt_created', 'data')
-    ordering = ('-dt_created',)
+    list_display = ('dt',)
+    readonly_fields = ('dt', 'dt_created', 'data')
+    ordering = ('-dt',)

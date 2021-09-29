@@ -65,7 +65,8 @@ def update_information():
                     properties.si(exid),
                     currencies.si(exid),
                     markets.si(exid),
-                    funding.si(exid)
+                    funding.si(exid),
+                    get_listing
                     ) for exid in exchanges]
 
     log.info('Execute chain for {0} exchanges'.format(len(exchanges)))

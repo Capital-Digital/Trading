@@ -655,7 +655,7 @@ def get_listing():
 
             # Create object
             dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-            Listing.objects.create(dt=dt, data=data)
+            Listing.objects.create(dt=dt, data=dict(raw=data))
 
             log.info('Create listing for CMC complete')
 

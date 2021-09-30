@@ -377,5 +377,6 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('coin', 'index')
     readonly_fields = ('coin', 'index', 'dt_created', 'history')
+    list_filter = ('coin__code',)
     ordering = ('-dt_created',)
     save_as = True

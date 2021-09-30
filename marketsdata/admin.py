@@ -378,3 +378,4 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('coin',)
     readonly_fields = ('coin', 'dt_created', 'history')
     ordering = ('-dt_created',)
+    save_as = True

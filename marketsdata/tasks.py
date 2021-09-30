@@ -632,77 +632,82 @@ def get_paprika():
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()
 
-    # Get latest listing
     listing = client.coins()
     listing = [i for i in listing if i['rank'] < 400]
     directive = '%Y-%m-%dT%H:%M:%SZ'
 
     for coin in listing:
 
-        currency = Currency.objects.get(code=coin['symbol'])
-        qs = CoinPaprika.objects.filter(coin=currency)
+        try:
+            currency = Currency.objects.get(code=coin['symbol'])
 
-        # Set start datetime
-        if not qs:
-            start = '2020-01-01T00:00:00Z'
-            start_dt = datetime.strptime(start, directive)
+        except ObjectDoesNotExist:
+            continue
+
         else:
-            end = qs.order_by('-index')[0].history[-1]['timestamp']
-            start_dt = datetime.strptime(end, directive)
-            start_dt += timedelta(hours=1)
-            start = start_dt.strftime(directive)
+            qs = CoinPaprika.objects.filter(coin=currency)
 
-        while start_dt < datetime.now():
-
-            log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
-            history = client.historical(coin['id'], start=start, interval='1h', limit=5000)
-
-            if history:
-
-                # Query objects
-                qs = CoinPaprika.objects.filter(coin=currency)
-
-                if not qs:
-
-                    log.info('Create object with index 1')
-
-                    # Create object with index =1
-                    CoinPaprika.objects.create(index=1,
-                                               coin=currency,
-                                               history=history
-                                               )
-                else:
-
-                    # Select object with the highest index
-                    obj = qs.order_by('-index')[0]
-                    if obj.history:
-
-                        if len(history) < 10000:  # hours
-
-                            log.info('Update object with index {0}'.format(obj.index))
-
-                            # Concatenate the two lists
-                            obj.history += history
-                            obj.save()
-
-                        else:
-
-                            log.info('Create object with index {0}'.format(obj.index))
-
-                            # Create a new object
-                            CoinPaprika.objects.create(index=obj.index + 1,
-                                                       coin=currency,
-                                                       history=history
-                                                       )
-
-                # Update start datetime
-                start_dt = datetime.strptime(history[-1]['timestamp'], directive)
+            # Set start datetime
+            if not qs:
+                start = '2020-01-01T00:00:00Z'
+                start_dt = datetime.strptime(start, directive)
+            else:
+                end = qs.order_by('-index')[0].history[-1]['timestamp']
+                start_dt = datetime.strptime(end, directive)
                 start_dt += timedelta(hours=1)
                 start = start_dt.strftime(directive)
 
-            else:
-                log.info('No data returned for {0}'.format(coin['symbol']))
-                break
+            while start_dt < datetime.now():
+
+                log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
+                history = client.historical(coin['id'], start=start, interval='1h', limit=5000)
+
+                if history:
+
+                    # Query objects
+                    qs = CoinPaprika.objects.filter(coin=currency)
+
+                    if not qs:
+
+                        log.info('Create object with index 1')
+
+                        # Create object with index =1
+                        CoinPaprika.objects.create(index=1,
+                                                   coin=currency,
+                                                   history=history
+                                                   )
+                    else:
+
+                        # Select object with the highest index
+                        obj = qs.order_by('-index')[0]
+                        if obj.history:
+
+                            if len(history) < 10000:
+
+                                log.info('Update object with index {0}'.format(obj.index))
+
+                                # Concatenate the two lists
+                                obj.history += history
+                                obj.save()
+
+                            else:
+
+                                log.info('Create object with index {0}'.format(obj.index))
+
+                                # Create a new object
+                                CoinPaprika.objects.create(index=obj.index + 1,
+                                                           coin=currency,
+                                                           history=history
+                                                           )
+
+                    # Update start datetime
+                    start_dt = datetime.strptime(history[-1]['timestamp'], directive)
+                    start_dt += timedelta(hours=1)
+                    start = start_dt.strftime(directive)
+
+                else:
+                    log.info('No data returned for {0}'.format(coin['symbol']))
+                    break
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')

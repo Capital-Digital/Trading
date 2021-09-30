@@ -626,6 +626,19 @@ def funding(exid):
             # log.info('Update funding complete')
 
 
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Get CoinPaprika')
+def get_paprika():
+
+    from coinpaprika import client as Coinpaprika
+    client = Coinpaprika.Client()
+
+    # Get latest listing
+    listing = client.coins()
+    listing = [i for i in listing if i['rank'] < 400]
+
+
+
+
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')
 def get_listing():
     from requests import Request, Session

@@ -655,18 +655,16 @@ class Listing(models.Model):
 
 
 class CoinPaprika(models.Model):
-    volume_24h = models.FloatField(null=True)
-    market_cap = models.FloatField(null=True)
-    price = models.FloatField(null=True)
-    timestamp = models.DateTimeField(null=True)
+    coin = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
+    history = JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 
     class Meta:
         verbose_name_plural = 'coinpaprika'
-        unique_together = ['timestamp']
-        ordering = ['-timestamp']
-        get_latest_by = 'timestamp'
+        unique_together = ['dt_created']
+        ordering = ['-dt_created']
+        get_latest_by = 'dt_created'
 
     def __str__(self):
-        return str(self.timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+        return str(self.dt_created.strftime("%Y-%m-%d %H:%M:%S"))

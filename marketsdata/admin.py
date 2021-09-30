@@ -375,6 +375,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('timestamp',)
-    readonly_fields = ('timestamp', 'dt_created', 'price', 'volume_24h', 'market_cap')
-    ordering = ('-timestamp',)
+    list_display = ('coin',)
+    readonly_fields = ('coin', 'dt_created', 'history')
+    ordering = ('-dt_created',)

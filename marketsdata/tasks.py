@@ -637,7 +637,7 @@ def get_paprika():
     listing = [i for i in listing if i['rank'] < 400]
     directive = '%Y-%m-%dT%H:%M:%SZ'
 
-    for coin in listing[:2]:
+    for coin in listing:
 
         currency = Currency.objects.get(code=coin['symbol'])
         qs = CoinPaprika.objects.filter(coin=currency)

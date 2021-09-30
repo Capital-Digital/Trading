@@ -376,6 +376,6 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('coin',)
-    readonly_fields = ('coin', 'dt_created', 'history')
+    readonly_fields = ('dt_created', 'history')
     ordering = ('-dt_created',)
     save_as = True

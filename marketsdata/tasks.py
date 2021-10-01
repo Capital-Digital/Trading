@@ -640,7 +640,8 @@ def get_paprika():
 
         try:
 
-            currency = Currency.objects.get(code=coin['symbol'])
+            code = coin['symbol']
+            currency = Currency.objects.get(code=code)
 
         except ObjectDoesNotExist:
             continue
@@ -648,14 +649,21 @@ def get_paprika():
         else:
             qs = CoinPaprika.objects.filter(coin=currency)
 
-            # Set start datetime
             if not qs:
+                # Set start datetime
                 start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive)
             else:
                 # Add +1 hour to latest record
                 end = qs.order_by('-index')[0].history[-1]['timestamp']
-                start_dt = datetime.strptime(end, directive)
-                start_dt += timedelta(hours=1)
+                end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+                now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+
+                if end_dt == now:
+                    log.info('Object {0} is updated'.format(code))
+                    continue
+
+                else:
+                    start_dt = end_dt + timedelta(hours=1)
 
             while start_dt < datetime.now():
 
@@ -749,7 +757,6 @@ def update_paprika():
         )
 
         try:
-
             currency = Currency.objects.get(code=code)
 
         except ObjectDoesNotExist:
@@ -774,9 +781,6 @@ def update_paprika():
                 # Select object with the highest index
                 obj = qs.order_by('-index')[0]
 
-                print('len', len(obj.history))
-                print(obj.history[-1])
-
                 if len(obj.history) < 5000:
                     if obj.history[-1]['timestamp'] != timestamp:
 
@@ -787,7 +791,8 @@ def update_paprika():
                         obj.save()
 
                     else:
-                        log.info('Timestamp exist')
+                        log.info('Object {0} is updated'.format(code))
+                        continue
 
                 else:
 

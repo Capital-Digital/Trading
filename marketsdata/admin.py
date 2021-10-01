@@ -1,5 +1,5 @@
 from django.contrib import admin
-from datetime import timedelta
+from datetime import timedelta, datetime
 from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika
 import structlog
 import locale
@@ -383,6 +383,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_timestamp(self, obj):
         ts = obj.history[-1]['timestamp']
-        return ts.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ')
 
     get_timestamp.short_description = 'Timestamp'

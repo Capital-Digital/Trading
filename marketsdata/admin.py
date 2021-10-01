@@ -378,7 +378,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('coin', 'index', 'rank', 'get_timestamp')
     readonly_fields = ('rank', 'name', 'coin', 'index', 'dt_created', 'history')
     list_filter = ('coin__code',)
-    ordering = ('-index', 'rank',)
+    ordering = ('rank',)
     save_as = True
 
     def get_timestamp(self, obj):

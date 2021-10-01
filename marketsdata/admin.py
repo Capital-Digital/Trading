@@ -383,6 +383,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_timestamp(self, obj):
         if obj.history:
+            o = obj.history[-1]
             if 'timestamp' in obj.history[-1]:
                 ts = obj.history[-1]['timestamp']
                 return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ')

@@ -670,7 +670,4 @@ class CoinPaprika(models.Model):
         get_latest_by = 'dt_created'
 
     def __str__(self):
-        if self.index and self.name:
-            return self.name + '_' + str(self.index)
-        else:
-            return self.dt_created
+        return self.dt_created

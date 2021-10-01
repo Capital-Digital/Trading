@@ -382,7 +382,8 @@ class CustomerAdmin(admin.ModelAdmin):
     save_as = True
 
     def get_timestamp(self, obj):
-        ts = obj.history[-1]['timestamp']
-        return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ')
+        if obj.history:
+            ts = obj.history[-1]['timestamp']
+            return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ')
 
     get_timestamp.short_description = 'Timestamp'

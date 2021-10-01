@@ -639,6 +639,7 @@ def get_paprika():
     for coin in listing:
 
         try:
+
             currency = Currency.objects.get(code=coin['symbol'])
 
         except ObjectDoesNotExist:
@@ -649,16 +650,16 @@ def get_paprika():
 
             # Set start datetime
             if not qs:
-                start = '2020-01-01T00:00:00Z'
-                start_dt = datetime.strptime(start, directive)
+                start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive)
             else:
+                # Add +1 hour to latest record
                 end = qs.order_by('-index')[0].history[-1]['timestamp']
                 start_dt = datetime.strptime(end, directive)
                 start_dt += timedelta(hours=1)
-                start = start_dt.strftime(directive)
 
             while start_dt < datetime.now():
 
+                start = start_dt.strftime(directive)
                 log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
                 history = client.historical(coin['id'], start=start, interval='1h', limit=5000)
 
@@ -673,6 +674,8 @@ def get_paprika():
 
                         # Create object with index =1
                         CoinPaprika.objects.create(index=1,
+                                                   name=coin['name'],
+                                                   rank=coin['rank'],
                                                    coin=currency,
                                                    history=history
                                                    )
@@ -682,7 +685,7 @@ def get_paprika():
                         obj = qs.order_by('-index')[0]
                         if obj.history:
 
-                            if len(history) < 10000:
+                            if len(history) < 5000:
 
                                 log.info('Update object with index {0}'.format(obj.index))
 
@@ -696,6 +699,8 @@ def get_paprika():
 
                                 # Create a new object
                                 CoinPaprika.objects.create(index=obj.index + 1,
+                                                           name=coin['name'],
+                                                           rank=coin['rank'],
                                                            coin=currency,
                                                            history=history
                                                            )
@@ -706,8 +711,17 @@ def get_paprika():
                     start = start_dt.strftime(directive)
 
                 else:
-                    log.info('No data returned for {0}'.format(coin['symbol']))
-                    break
+                    log.info('No data returned, add 30 days...')
+                    start_dt += timedelta(days=30)
+
+                time.sleep(1)
+
+            log.info('While loop break')
+
+
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update CoinPaprika')
+def update_paprika():
+    pass
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')

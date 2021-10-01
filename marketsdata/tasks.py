@@ -729,6 +729,8 @@ def get_paprika():
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Update CoinPaprika')
 def update_paprika():
 
+    log.info('Start listing update')
+
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()
 

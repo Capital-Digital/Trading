@@ -636,7 +636,7 @@ def get_paprika():
     listing = [i for i in listing if i['rank'] < 400]
     directive = '%Y-%m-%dT%H:%M:%SZ'
 
-    for coin in listing:
+    for coin in listing[0:2]:
 
         try:
 
@@ -683,27 +683,26 @@ def get_paprika():
 
                         # Select object with the highest index
                         obj = qs.order_by('-index')[0]
-                        if obj.history:
 
-                            if len(history) < 5000:
+                        if len(obj.history) < 5000:
 
-                                log.info('Update object with index {0}'.format(obj.index))
+                            log.info('Update object with index {0}'.format(obj.index))
 
-                                # Concatenate the two lists
-                                obj.history += history
-                                obj.save()
+                            # Concatenate the two lists
+                            obj.history += history
+                            obj.save()
 
-                            else:
+                        else:
 
-                                log.info('Create object with index {0}'.format(obj.index))
+                            log.info('Create object with index {0}'.format(obj.index))
 
-                                # Create a new object
-                                CoinPaprika.objects.create(index=obj.index + 1,
-                                                           name=coin['name'],
-                                                           rank=coin['rank'],
-                                                           coin=currency,
-                                                           history=history
-                                                           )
+                            # Create a new object
+                            CoinPaprika.objects.create(index=obj.index + 1,
+                                                       name=coin['name'],
+                                                       rank=coin['rank'],
+                                                       coin=currency,
+                                                       history=history
+                                                       )
 
                     # Update start datetime
                     start_dt = datetime.strptime(history[-1]['timestamp'], directive)
@@ -721,7 +720,86 @@ def get_paprika():
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Update CoinPaprika')
 def update_paprika():
-    pass
+
+    from coinpaprika import client as Coinpaprika
+    client = Coinpaprika.Client()
+
+    listing = client.tickers()
+    listing = [i for i in listing if i['rank'] < 400]
+
+    for i in listing[0:2]:
+
+        # Select data
+        code = i['symbol']
+        name = i['name']
+        rank = i['rank']
+        price = i['quotes']['USD']['price']
+        volume_24h = i['quotes']['USD']['volume_24h']
+        market_cap = i['quotes']['USD']['market_cap']
+
+        # Create timestamp
+        timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+        timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        history = dict(
+            price=price,
+            timestamp=timestamp,
+            volume_24h=volume_24h,
+            market_cap=market_cap
+        )
+
+        try:
+
+            currency = Currency.objects.get(code=code)
+
+        except ObjectDoesNotExist:
+            continue
+
+        else:
+            qs = CoinPaprika.objects.filter(coin=currency)
+
+            if not qs:
+
+                log.info('Create new object for {0}'.format(code))
+
+                # Create object with index =1
+                CoinPaprika.objects.create(index=1,
+                                           name=name,
+                                           rank=rank,
+                                           coin=currency,
+                                           history=list(history)
+                                           )
+            else:
+
+                # Select object with the highest index
+                obj = qs.order_by('-index')[0]
+
+                print('len', len(obj.history))
+                print(obj.history[-1])
+
+                if len(obj.history) < 5000:
+                    if obj.history[-1]['timestamp'] != timestamp:
+
+                        log.info('Update object for {0}'.format(code))
+
+                        # Append latest data to history
+                        obj.history.append(history)
+                        obj.save()
+
+                    else:
+                        log.info('Timestamp exist')
+
+                else:
+
+                    log.info('Create object for {0}'.format(code))
+
+                    # Create a new object
+                    CoinPaprika.objects.create(index=obj.index + 1,
+                                               name=name,
+                                               rank=rank,
+                                               coin=currency,
+                                               history=[history]
+                                               )
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')

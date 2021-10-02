@@ -654,17 +654,17 @@ class Listing(models.Model):
         return str(self.dt.strftime("%Y-%m-%d %H:%M:%S"))
 
 
-class CoinPaprika(models.Model):
+class Listing(models.Model):
     year = models.IntegerField(blank=True, null=True)
     semester = models.IntegerField(blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='listings', null=True)
     data = JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 
     class Meta:
-        verbose_name_plural = 'coinpaprika'
+        verbose_name_plural = 'listings'
         unique_together = ['currency', 'year', 'semester']
         get_latest_by = 'dt_created'
 

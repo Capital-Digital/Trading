@@ -874,6 +874,7 @@ def fetch_candle_history(exid, wallet, symbol):
                 else:
                     # Set datetime
                     dt = end_dt + timedelta(hours=1)
+                    log.info('Set start time to {0}'.format(dt))
 
             else:
                 # Set datetime

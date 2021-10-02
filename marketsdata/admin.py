@@ -376,7 +376,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('currency', 'year', 'semester', 'count_timestamp')
-    readonly_fields = ('name', 'currency', 'semester', 'dt_created', 'data')
+    readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')
     list_filter = ('currency__code',)
     ordering = ('currency',)
     save_as = True

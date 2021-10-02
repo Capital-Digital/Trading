@@ -975,10 +975,37 @@ def insert_ohlcv(exid, wallet, symbol):
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
-# Insert OHLCV candles history
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Update price')
-def update_prices():
-    pass
+# Insert tickers
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
+def insert_tickers(exid):
+
+    log.info('Start tickers insertion')
+
+    def insert(response):
+        pass
+
+    exchange = Exchange.objects.get(exid=exid)
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
+
+            client = exchange.get_ccxt_client()
+            if exchange.wallets:
+                for wallet in exchange.get_wallets():
+
+                    client.options['defaultType'] = wallet
+                    response = client.fetch_tickers()
+                    insert(response)
+
+            else:
+                response = client.fetch_tickers()
+                insert(response)
+
+
+
+
+
+
+
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
@@ -1099,7 +1126,7 @@ def update_paprika():
     listing = client.tickers()
     listing = [i for i in listing if i['rank'] < 400]
 
-    for i in listing[0:2]:
+    for i in listing:
 
         # Select data
         code = i['symbol']

@@ -647,7 +647,10 @@ def get_paprika():
             continue
 
         else:
-            qs = CoinPaprika.objects.filter(coin=currency)
+            qs = CoinPaprika.objects.filter(currency=currency)
+            years = get_years('2020-01-01T00:00:00Z')
+            semester_1st = ['01', '02', '03', '04', '05', '06']
+            semester_2nd = ['07', '08', '09', '10', '11', '12']
 
             if not qs:
                 # Set start datetime
@@ -669,35 +672,45 @@ def get_paprika():
 
                 start = start_dt.strftime(directive)
                 log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
-                history = client.historical(coin['id'], start=start, interval='1h', limit=5000)
+                data = client.historical(coin['id'], start=start, interval='1h', limit=5000)
 
-                if history:
+                if data:
 
                     # Query objects
-                    qs = CoinPaprika.objects.filter(coin=currency)
+                    qs = CoinPaprika.objects.filter(currency=currency)
 
                     if not qs:
 
-                        log.info('Create object with index 1')
+                        for year in years:
 
-                        # Create object with index =1
-                        CoinPaprika.objects.create(index=1,
-                                                   name=coin['name'],
-                                                   rank=coin['rank'],
-                                                   coin=currency,
-                                                   history=history
-                                                   )
+                            months_0106 = [year + '-' + i for i in semester_1st]
+                            months_0712 = [year + '-' + i for i in semester_2nd]
+
+                            semester_1 = [i for i in data if months_0106 in i['timestamp']]
+                            semester_2 = [i for i in data if months_0712 in i['timestamp']]
+
+                            if semester_1:
+
+                                log.info('Create new object')
+
+                                # Create object with index =1
+                                CoinPaprika.objects.create(year=year,
+                                                           semester=1,
+                                                           name=coin['name'],
+                                                           currency=currency,
+                                                           data=semester_1
+                                                           )
                     else:
 
                         # Select object with the highest index
                         obj = qs.order_by('-index')[0]
 
-                        if len(obj.history) < 5000:
+                        if len(obj.data) < 5000:
 
                             log.info('Update object with index {0}'.format(obj.index))
 
                             # Concatenate the two lists
-                            obj.history += history
+                            obj.data += data
                             obj.save()
 
                         else:
@@ -708,12 +721,12 @@ def get_paprika():
                             CoinPaprika.objects.create(index=obj.index + 1,
                                                        name=coin['name'],
                                                        rank=coin['rank'],
-                                                       coin=currency,
-                                                       history=history
+                                                       currency=currency,
+                                                       data=data
                                                        )
 
                     # Update start datetime
-                    start_dt = datetime.strptime(history[-1]['timestamp'], directive)
+                    start_dt = datetime.strptime(data[-1]['timestamp'], directive)
                     start_dt += timedelta(hours=1)
                     start = start_dt.strftime(directive)
 

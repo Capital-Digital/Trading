@@ -326,7 +326,7 @@ class CustomerAdmin(admin.ModelAdmin):
     get_dt.short_description = 'Datetime UTC'
 
 
-@admin.register(CoinPaprika)
+@admin.register(Listing)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('currency', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')

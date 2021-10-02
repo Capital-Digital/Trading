@@ -242,10 +242,9 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'exchange', 'type', 'trading', 'updated', 'candles_number',
-                    'margined', 'contract_value', 'contract_currency')
-    readonly_fields = ('symbol', 'exchange', 'top', 'trading', 'updated', 'type',
-                       'wallet', 'contract_type', 'status',
+    list_display = ('symbol', 'exchange', 'type', 'trading', 'updated', 'margined', 'contract_value',
+                    'contract_currency')
+    readonly_fields = ('symbol', 'exchange', 'top', 'trading', 'updated', 'type', 'wallet', 'contract_type', 'status',
                        'quote', 'base', 'funding_rate', 'margined',
                        'contract_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',
                        'amount_max',
@@ -257,19 +256,13 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
     ordering = ('-trading', 'symbol',)
-    actions = ['insert_candles_history_since_launch', 'insert_candles_history_recent']
+    actions = ['fetch_history',]
     save_as = True
     save_on_top = True
 
     ###########
     # Columns #
     ###########
-
-    # Return the number of candles
-    def candles_number(self, obj):
-        return Candle.objects.filter(market=obj).count()
-
-    candles_number.short_description = 'Candles'
 
     # Return the datetime of the most recent candle
     def latest(self, obj):
@@ -301,32 +294,23 @@ class CustomerAdmin(admin.ModelAdmin):
     # Action #
     ##########
 
-    def insert_candles_history_since_launch(self, request, queryset):
+    def fetch_history(self, request, queryset):
         res = group(tasks.insert_ohlcv.s(market.exchange.exid,
                                          market.wallet,
                                          market.symbol,
                                          recent=None
-                                         ).set(queue='slow') for market in queryset)()
-
-    insert_candles_history_since_launch.short_description = "Insert candles history since launch"
-
-    def insert_candles_history_recent(self, request, queryset):
-        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
-                                         market.wallet,
-                                         market.symbol,
-                                         recent=True
-                                         ).set(queue='slow') for market in queryset)()
+                                         ).set(queue='default') for market in queryset)()
 
         while not res.ready():
             time.sleep(0.5)
 
         if res.successful():
-            log.info('Update currencies complete')
+            log.info('Fetch history complete')
 
         else:
-            log.error('Update currencies failed')
+            log.error('Fetch history failed')
 
-    insert_candles_history_recent.short_description = "Insert candles history recent"
+    fetch_history.short_description = "Fetch history"
 
 
 @admin.register(Candle)
@@ -364,13 +348,6 @@ class CustomerAdmin(admin.ModelAdmin):
         return obj.dt
 
     get_dt.short_description = 'Datetime UTC'
-
-
-@admin.register(Listing)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('dt',)
-    readonly_fields = ('dt', 'dt_created', 'data')
-    ordering = ('-dt',)
 
 
 @admin.register(CoinPaprika)

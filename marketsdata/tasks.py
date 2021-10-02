@@ -981,8 +981,51 @@ def insert_tickers(exid):
 
     log.info('Start tickers insertion')
 
-    def insert(response):
-        pass
+    def insert(data, wallet=None):
+
+        # Recreate dictionaries with desired keys
+        data = [data[i] for i in data]
+        data = [{k: d[k] for k in ['symbol', 'last', 'datetime', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
+                for d in data]
+
+        # Insert dictionaries
+        for dic in data:
+
+            market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=dic['symbol'])
+
+            try:
+                obj = Tickers.objects.get(year=year, semester=semester, market=market)
+
+            except ObjectDoesNotExist:
+
+                log.info('Create object {0} {1} {2}'.format(market.symbol, year, semester))
+
+                # Create new object
+                CoinPaprika.objects.create(year=year,
+                                           semester=semester,
+                                           market=market,
+                                           data=list(dic)
+                                           )
+
+            else:
+
+                # Avoid duplicate records
+                if timestamp_st not in [d['datetime'] for d in obj.data]:
+
+                    log.info('Update object {0} {1} {2}'.format(market.symbol, year, semester))
+
+                    # Concatenate the two lists
+                    obj.data.append(dic)
+                    obj.save()
+
+                else:
+
+                    log.info('Object for {0} already updated'.format(market.symbol))
+
+    timestamp = timezone.now().replace(minute=0, second=0, microsecond=0)
+    timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+    year = timestamp.year
+    semester = 1 if timestamp.month <= 6 else 2
 
     exchange = Exchange.objects.get(exid=exid)
     if exchange.is_trading():
@@ -993,19 +1036,12 @@ def insert_tickers(exid):
                 for wallet in exchange.get_wallets():
 
                     client.options['defaultType'] = wallet
-                    response = client.fetch_tickers()
-                    insert(response)
+                    data = client.fetch_tickers()
+                    insert(data, wallet)
 
             else:
-                response = client.fetch_tickers()
-                insert(response)
-
-
-
-
-
-
-
+                data = client.fetch_tickers()
+                insert(data)
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
@@ -1175,8 +1211,8 @@ def update_paprika():
 
             else:
 
-                # Remove duplicate records
-                if timestamp_st != obj.data[-1]['timestamp']:
+                # Avoid duplicate records
+                if timestamp_st not in [d['timestamp'] for d in obj.data]:
 
                     log.info('Update object {0} {1} {2}'.format(currency.code, year, code))
 

@@ -626,7 +626,7 @@ def funding(exid):
             # log.info('Update funding complete')
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Get CoinPaprika')
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
 def fetch_paprika_history():
 
     from coinpaprika import client as Coinpaprika

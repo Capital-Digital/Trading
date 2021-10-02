@@ -297,7 +297,6 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('market__quote', admin.RelatedOnlyFieldListFilter),
                    ('market__base', admin.RelatedOnlyFieldListFilter)
                    )
-    actions = ['update_candles', ]
     ordering = ('-dt',)
 
     ###########
@@ -325,31 +324,6 @@ class CustomerAdmin(admin.ModelAdmin):
         return obj.dt
 
     get_dt.short_description = 'Datetime UTC'
-
-    ##########
-    # Action #
-    ##########
-
-    def update_candles(self, request, queryset):
-
-        log.info('Create groups')
-
-        markets = [c.market for c in queryset]
-        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
-                                         market.wallet,
-                                         market.symbol
-                                         ).set(queue='default') for market in markets)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Fetch history complete')
-
-        else:
-            log.error('Fetch history failed')
-
-    update_candles.short_description = "Update records"
 
 
 @admin.register(CoinPaprika)
@@ -380,6 +354,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_filter = ('year', 'semester', 'market',)
     ordering = ('-year', '-semester', 'market',)
     save_as = True
+    actions = ['update_candles', ]
 
     def count_records(self, obj):
         if obj.data:
@@ -392,3 +367,28 @@ class CustomerAdmin(admin.ModelAdmin):
             return obj.data[-1][0][:16]
 
     latest_timestamp.short_description = 'Latest'
+
+    ##########
+    # Action #
+    ##########
+
+    def update_candles(self, request, queryset):
+
+        log.info('Create groups')
+
+        markets = [c.market for c in queryset]
+        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
+                                         market.wallet,
+                                         market.symbol
+                                         ).set(queue='default') for market in markets)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Fetch history complete')
+
+        else:
+            log.error('Fetch history failed')
+
+    update_candles.short_description = "Update records"

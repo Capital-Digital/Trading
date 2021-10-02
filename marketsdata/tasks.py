@@ -889,8 +889,8 @@ def fetch_candle_history(exid, wallet, symbol):
             print('now object is', now)
             print('dt  object is', dt)
 
-            if dt < now:
-                while dt < now:
+            if dt <= now:
+                while dt <= now:
 
                     try:
                         data = client.fetchOHLCV(market.symbol, '1h', since, limit)

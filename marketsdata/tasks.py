@@ -842,18 +842,6 @@ def top_markets(exid):
             log.info('Set top complete')
 
 
-# Bulk insert OHLCV candles history
-@shared_task(base=BaseTaskWithRetry)
-def insert_ohlcv_bulk(exid, recent=None):
-
-    return [chain(insert_ohlcv.si(exid,
-                                  market.wallet,
-                                  market.symbol,
-                                  recent
-                                  ).set(queue='slow')
-                  for market in Market.objects.filter(exchange__exid=exid).order_by('symbol'))]
-
-
 # Insert OHLCV candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert candle history')
 def insert_ohlcv(exid, wallet, symbol):
@@ -987,6 +975,12 @@ def insert_ohlcv(exid, wallet, symbol):
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
+# Insert OHLCV candles history
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update price')
+def update_prices():
+    pass
+
+
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
 def fetch_paprika_history():
 
@@ -998,7 +992,7 @@ def fetch_paprika_history():
     listing = [i for i in listing if i['rank'] < 400 and i['is_active']]
     directive = '%Y-%m-%dT%H:%M:%SZ'
 
-    for coin in listing[0:2]:
+    for coin in listing:
 
         try:
 

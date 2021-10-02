@@ -675,13 +675,30 @@ class CoinPaprika(models.Model):
 class Candles(models.Model):
     year = models.IntegerField(blank=True, null=True)
     semester = models.IntegerField(blank=True, null=True)
-    market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
+    market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='candles', null=True)
     data = JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 
     class Meta:
         verbose_name_plural = 'candles'
+        unique_together = ['market', 'year', 'semester']
+        get_latest_by = 'dt_created'
+
+    def __str__(self):
+        return str(self.dt_created.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+class Tickers(models.Model):
+    year = models.IntegerField(blank=True, null=True)
+    semester = models.IntegerField(blank=True, null=True)
+    market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='tickers', null=True)
+    data = JSONField(null=True, blank=True)
+    dt_created = models.DateTimeField(auto_now=True)
+    objects = DataFrameManager()  # activate custom manager
+
+    class Meta:
+        verbose_name_plural = 'tickers'
         unique_together = ['market', 'year', 'semester']
         get_latest_by = 'dt_created'
 

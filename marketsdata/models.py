@@ -656,11 +656,10 @@ class Listing(models.Model):
 
 class CoinPaprika(models.Model):
     year = models.IntegerField(blank=True, null=True)
-    index = models.IntegerField(blank=True, null=True)
-    rank = models.IntegerField(blank=True, null=True)
+    semester = models.IntegerField(blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)
-    coin = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
-    history = JSONField(null=True, blank=True)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
+    data = JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 

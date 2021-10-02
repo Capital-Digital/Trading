@@ -375,10 +375,10 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('coin', 'index', 'rank', 'get_timestamp')
-    readonly_fields = ('rank', 'name', 'coin', 'index', 'dt_created', 'history')
-    list_filter = ('coin__code',)
-    ordering = ('rank',)
+    list_display = ('currency', 'semester', 'get_timestamp')
+    readonly_fields = ('name', 'currency', 'semester', 'dt_created', 'data')
+    list_filter = ('currency__code',)
+    ordering = ('currency',)
     save_as = True
 
     def get_timestamp(self, obj):

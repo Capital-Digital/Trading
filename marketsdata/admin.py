@@ -342,7 +342,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def latest_timestamp(self, obj):
         if obj.data:
-            return # obj.data[-1]['timestamp'][:16]
+            return obj.data[-1]['timestamp'][:16]
 
     latest_timestamp.short_description = 'Latest'
 
@@ -364,7 +364,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def latest_timestamp(self, obj):
         if obj.data:
-            return None # obj.data[-1][0][:16]
+            return obj.data[-1][0][:16]
 
     latest_timestamp.short_description = 'Latest'
 

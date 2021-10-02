@@ -22,7 +22,7 @@ import capital.celery as celery
 from capital.methods import *
 from marketsdata.error import *
 from marketsdata.methods import *
-from marketsdata.models import Exchange, Candle, Market, Currency, CoinPaprika, Candles, Tickers
+from marketsdata.models import Exchange, Candle, Market, Currency, Listing, Candles, Tickers
 import strategy.tasks as task
 
 log = structlog.get_logger(__name__)
@@ -1001,7 +1001,7 @@ def insert_current_tickers(exid):
                 log.info('Create object {0} {1} {2}'.format(market.symbol, year, semester))
 
                 # Create new object
-                CoinPaprika.objects.create(year=year,
+                Listing.objects.create(year=year,
                                            semester=semester,
                                            market=market,
                                            data=list(dic)
@@ -1066,7 +1066,7 @@ def fetch_listing_history():
             continue
 
         else:
-            qs = CoinPaprika.objects.filter(currency=currency)
+            qs = Listing.objects.filter(currency=currency)
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
             if not qs:
@@ -1110,14 +1110,14 @@ def fetch_listing_history():
                             if var:
 
                                 try:
-                                    obj = CoinPaprika.objects.get(year=year, semester=i, currency=currency)
+                                    obj = Listing.objects.get(year=year, semester=i, currency=currency)
 
                                 except ObjectDoesNotExist:
 
                                     log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
 
                                     # Create new object for semester 1
-                                    CoinPaprika.objects.create(year=year,
+                                    Listing.objects.create(year=year,
                                                                semester=i,
                                                                name=coin['name'],
                                                                currency=currency,
@@ -1195,14 +1195,14 @@ def insert_curren_listing():
         else:
 
             try:
-                obj = CoinPaprika.objects.get(year=year, semester=semester, currency=currency)
+                obj = Listing.objects.get(year=year, semester=semester, currency=currency)
 
             except ObjectDoesNotExist:
 
                 log.info('Create object {0} {1} {2}'.format(currency.code, year, code))
 
                 # Create new object
-                CoinPaprika.objects.create(year=year,
+                Listing.objects.create(year=year,
                                            semester=semester,
                                            name=name,
                                            currency=currency,

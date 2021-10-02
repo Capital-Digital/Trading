@@ -865,15 +865,11 @@ def fetch_candle_history(exid, wallet, symbol):
 
                 # Get latest timestamp
                 end = queryset.order_by('-year', '-semester')[0].data[-1][0]
-                end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+                dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
 
-                if end_dt == now:
+                if dt == now:
                     log.info('Market {0} {1} is updated'.format(symbol, wallet))
                     return
-
-                else:
-                    # Set datetime
-                    dt = end_dt + timedelta(hours=1)
 
             else:
                 # Set datetime
@@ -883,13 +879,11 @@ def fetch_candle_history(exid, wallet, symbol):
             client = exchange.get_ccxt_client()
             client.options['defaultType'] = market.wallet if exchange.wallets else None
 
-            # Convert start date to milliseconds
-            since = int(dt.timestamp() * 1000)
-
-            print('now object is', now)
-            print('dt  object is', dt)
-
             if dt < now:
+
+                # Add 1 hour and convert to milliseconds
+                since = int((dt + timedelta(hours=1)).timestamp() * 1000)
+
                 while dt < now:
 
                     try:
@@ -1171,10 +1165,13 @@ def insert_current_listing():
     client = Coinpaprika.Client()
     listing = client.tickers()
     listing = [i for i in listing if i['rank'] < 400]
+    ids = [i['id'] for i in listing]
+    ids.sort()
 
-    for i in listing:
+    for c in ids:
 
         # Select data
+        i = [i for i in listing if i['id'] == c]
         code = i['symbol']
         name = i['name']
         price = i['quotes']['USD']['price']

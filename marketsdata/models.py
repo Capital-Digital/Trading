@@ -666,7 +666,7 @@ class CoinPaprika(models.Model):
     class Meta:
         verbose_name_plural = 'coinpaprika'
         unique_together = ['dt_created']
-        ordering = ['-rank']
+        ordering = ['-currency']
         get_latest_by = 'dt_created'
 
     def __str__(self):

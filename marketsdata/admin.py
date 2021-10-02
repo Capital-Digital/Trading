@@ -79,8 +79,7 @@ class CustomerAdmin(admin.ModelAdmin):
             markets = Market.objects.filter(exchange=exchange)
             res = chain(tasks.insert_ohlcv.s(market.exchange.exid,
                                              market.wallet,
-                                             market.symbol,
-                                             recent=None
+                                             market.symbol
                                              ).set(queue='default') for market in markets)()
 
             while not res.ready():
@@ -275,8 +274,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
         res = chain(tasks.insert_ohlcv.s(market.exchange.exid,
                                          market.wallet,
-                                         market.symbol,
-                                         recent=None
+                                         market.symbol
                                          ).set(queue='default') for market in queryset)()
 
         while not res.ready():

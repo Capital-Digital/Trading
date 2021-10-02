@@ -270,9 +270,9 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def fetch_history(self, request, queryset):
 
-        log.info('Create chain')
+        log.info('Create groups')
 
-        res = chain(tasks.insert_ohlcv.s(market.exchange.exid,
+        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
                                          market.wallet,
                                          market.symbol
                                          ).set(queue='default') for market in queryset)()

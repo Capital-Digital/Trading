@@ -627,13 +627,12 @@ def funding(exid):
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Get CoinPaprika')
-def get_paprika():
+def fetch_paprika_history():
 
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()
-
     listing = client.coins()
-    listing = [i for i in listing if i['rank'] < 400]
+    listing = [i for i in listing if i['rank'] < 400 and i['is_active']]
     directive = '%Y-%m-%dT%H:%M:%SZ'
 
     for coin in listing[0:2]:
@@ -648,18 +647,15 @@ def get_paprika():
 
         else:
             qs = CoinPaprika.objects.filter(currency=currency)
-            years = get_years('2020-01-01T00:00:00Z')
-            semester_1st = ['01', '02', '03', '04', '05', '06']
-            semester_2nd = ['07', '08', '09', '10', '11', '12']
+            now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
             if not qs:
                 # Set start datetime
-                start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive)
+                start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive).replace(tzinfo=pytz.UTC)
             else:
                 # Add +1 hour to latest record
-                end = qs.order_by('-index')[0].history[-1]['timestamp']
+                end = qs.order_by('-year', '-semester')[0].data[-1]['timestamp']
                 end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
-                now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
                 if end_dt == now:
                     log.info('Object {0} is updated'.format(code))
@@ -668,7 +664,7 @@ def get_paprika():
                 else:
                     start_dt = end_dt + timedelta(hours=1)
 
-            while start_dt < datetime.now():
+            while start_dt < now:
 
                 start = start_dt.strftime(directive)
                 log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
@@ -676,57 +672,49 @@ def get_paprika():
 
                 if data:
 
-                    # Query objects
-                    qs = CoinPaprika.objects.filter(currency=currency)
+                    # Iterate through years
+                    for year in get_years('2020-01-01T00:00:00Z'):
 
-                    if not qs:
+                        filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
+                        filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
 
-                        for year in years:
+                        # And filter records by semester
+                        data_1 = [i for i in data if i['timestamp'][:7] in filter_1]
+                        data_2 = [i for i in data if i['timestamp'][:7] in filter_2]
 
-                            months_0106 = [year + '-' + i for i in semester_1st]
-                            months_0712 = [year + '-' + i for i in semester_2nd]
+                        for i in range(1, 3):
 
-                            semester_1 = [i for i in data if months_0106 in i['timestamp']]
-                            semester_2 = [i for i in data if months_0712 in i['timestamp']]
+                            var = eval('data_' + str(i))
+                            if var:
 
-                            if semester_1:
+                                try:
+                                    obj = CoinPaprika.objects.get(year=year, semester=i, currency=currency)
 
-                                log.info('Create new object')
+                                except ObjectDoesNotExist:
 
-                                # Create object with index =1
-                                CoinPaprika.objects.create(year=year,
-                                                           semester=1,
-                                                           name=coin['name'],
-                                                           currency=currency,
-                                                           data=semester_1
-                                                           )
-                    else:
+                                    log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
 
-                        # Select object with the highest index
-                        obj = qs.order_by('-index')[0]
+                                    # Create new object for semester 1
+                                    CoinPaprika.objects.create(year=year,
+                                                               semester=i,
+                                                               name=coin['name'],
+                                                               currency=currency,
+                                                               data=var
+                                                               )
 
-                        if len(obj.data) < 5000:
+                                else:
 
-                            log.info('Update object with index {0}'.format(obj.index))
+                                    log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
 
-                            # Concatenate the two lists
-                            obj.data += data
-                            obj.save()
+                                    # Remove duplicate records
+                                    diff = [i for i in var if i not in obj.data]
 
-                        else:
-
-                            log.info('Create object with index {0}'.format(obj.index))
-
-                            # Create a new object
-                            CoinPaprika.objects.create(index=obj.index + 1,
-                                                       name=coin['name'],
-                                                       rank=coin['rank'],
-                                                       currency=currency,
-                                                       data=data
-                                                       )
+                                    # Concatenate the two lists
+                                    obj.data += diff
+                                    obj.save()
 
                     # Update start datetime
-                    start_dt = datetime.strptime(data[-1]['timestamp'], directive)
+                    start_dt = datetime.strptime(data[-1]['timestamp'], directive).replace(tzinfo=pytz.UTC)
                     start_dt += timedelta(hours=1)
                     start = start_dt.strftime(directive)
 
@@ -746,7 +734,6 @@ def update_paprika():
 
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()
-
     listing = client.tickers()
     listing = [i for i in listing if i['rank'] < 400]
 
@@ -755,21 +742,24 @@ def update_paprika():
         # Select data
         code = i['symbol']
         name = i['name']
-        rank = i['rank']
         price = i['quotes']['USD']['price']
         volume_24h = i['quotes']['USD']['volume_24h']
         market_cap = i['quotes']['USD']['market_cap']
 
         # Create timestamp
         timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-        timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+        timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        history = dict(
+        record = dict(
             price=price,
-            timestamp=timestamp,
+            timestamp=timestamp_st,
             volume_24h=volume_24h,
             market_cap=market_cap
         )
+
+        # Get year and semester
+        year = timestamp.year
+        semester = 1 if timestamp.month <= 6 else 2
 
         try:
             currency = Currency.objects.get(code=code)
@@ -778,48 +768,36 @@ def update_paprika():
             continue
 
         else:
-            qs = CoinPaprika.objects.filter(coin=currency)
 
-            if not qs:
+            try:
+                obj = CoinPaprika.objects.get(year=year, semester=semester, currency=currency)
 
-                log.info('Create new object for {0}'.format(code))
+            except ObjectDoesNotExist:
 
-                # Create object with index =1
-                CoinPaprika.objects.create(index=1,
+                log.info('Create object {0} {1} {2}'.format(currency.code, year, code))
+
+                # Create new object
+                CoinPaprika.objects.create(year=year,
+                                           semester=semester,
                                            name=name,
-                                           rank=rank,
-                                           coin=currency,
-                                           history=list(history)
+                                           currency=currency,
+                                           data=list(record)
                                            )
+
             else:
 
-                # Select object with the highest index
-                obj = qs.order_by('-index')[0]
+                # Remove duplicate records
+                if timestamp_st != obj.data[-1]['timestamp']:
 
-                if len(obj.history) < 5000:
-                    if obj.history[-1]['timestamp'] != timestamp:
+                    log.info('Update object {0} {1} {2}'.format(currency.code, year, code))
 
-                        log.info('Update object for {0}'.format(code))
-
-                        # Append latest data to history
-                        obj.history.append(history)
-                        obj.save()
-
-                    else:
-                        log.info('Object {0} is updated'.format(code))
-                        continue
+                    # Concatenate the two lists
+                    obj.data.append(record)
+                    obj.save()
 
                 else:
 
-                    log.info('Create object for {0}'.format(code))
-
-                    # Create a new object
-                    CoinPaprika.objects.create(index=obj.index + 1,
-                                               name=name,
-                                               rank=rank,
-                                               coin=currency,
-                                               history=[history]
-                                               )
+                    log.info('Object for {0} already updated'.format(currency.code))
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')

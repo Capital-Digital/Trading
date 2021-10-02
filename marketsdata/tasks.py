@@ -626,183 +626,6 @@ def funding(exid):
             # log.info('Update funding complete')
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
-def fetch_paprika_history():
-
-    from coinpaprika import client as Coinpaprika
-    client = Coinpaprika.Client()
-    listing = client.coins()
-    listing = [i for i in listing if i['rank'] < 400 and i['is_active']]
-    directive = '%Y-%m-%dT%H:%M:%SZ'
-
-    for coin in listing[0:2]:
-
-        try:
-
-            code = coin['symbol']
-            currency = Currency.objects.get(code=code)
-
-        except ObjectDoesNotExist:
-            continue
-
-        else:
-            qs = CoinPaprika.objects.filter(currency=currency)
-            now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-
-            if not qs:
-                # Set start datetime
-                start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive).replace(tzinfo=pytz.UTC)
-            else:
-                # Add +1 hour to latest record
-                end = qs.order_by('-year', '-semester')[0].data[-1]['timestamp']
-                end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
-
-                if end_dt == now:
-                    log.info('Object {0} is updated'.format(code))
-                    continue
-
-                else:
-                    start_dt = end_dt + timedelta(hours=1)
-
-            while start_dt < now:
-
-                start = start_dt.strftime(directive)
-                log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
-                data = client.historical(coin['id'], start=start, interval='1h', limit=5000)
-
-                if data:
-
-                    # Iterate through years
-                    for year in get_years('2020-01-01T00:00:00Z'):
-
-                        filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
-                        filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
-
-                        # And filter records by semester
-                        data_1 = [i for i in data if i['timestamp'][:7] in filter_1]
-                        data_2 = [i for i in data if i['timestamp'][:7] in filter_2]
-
-                        for i in range(1, 3):
-
-                            var = eval('data_' + str(i))
-                            if var:
-
-                                try:
-                                    obj = CoinPaprika.objects.get(year=year, semester=i, currency=currency)
-
-                                except ObjectDoesNotExist:
-
-                                    log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
-
-                                    # Create new object for semester 1
-                                    CoinPaprika.objects.create(year=year,
-                                                               semester=i,
-                                                               name=coin['name'],
-                                                               currency=currency,
-                                                               data=var
-                                                               )
-
-                                else:
-                                    # Remove duplicate records
-                                    diff = [i for i in var if i not in obj.data]
-
-                                    if diff:
-
-                                        log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
-
-                                        # Concatenate the two lists
-                                        obj.data += diff
-                                        obj.save()
-
-                                    else:
-                                        log.info('Object {0} {1} {2} is up to date'.format(currency.code, year, i))
-
-                    # Update start datetime
-                    start_dt = datetime.strptime(data[-1]['timestamp'], directive).replace(tzinfo=pytz.UTC)
-                    start_dt += timedelta(hours=1)
-
-                else:
-                    log.info('No data returned, add 30 days...')
-                    start_dt += timedelta(days=30)
-
-                time.sleep(1)
-
-            log.info('While loop break')
-
-
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Update CoinPaprika')
-def update_paprika():
-
-    log.info('Start listing update')
-
-    from coinpaprika import client as Coinpaprika
-    client = Coinpaprika.Client()
-    listing = client.tickers()
-    listing = [i for i in listing if i['rank'] < 400]
-
-    for i in listing[0:2]:
-
-        # Select data
-        code = i['symbol']
-        name = i['name']
-        price = i['quotes']['USD']['price']
-        volume_24h = i['quotes']['USD']['volume_24h']
-        market_cap = i['quotes']['USD']['market_cap']
-
-        # Create timestamp
-        timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-        timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-        record = dict(
-            price=price,
-            timestamp=timestamp_st,
-            volume_24h=volume_24h,
-            market_cap=market_cap
-        )
-
-        # Get year and semester
-        year = timestamp.year
-        semester = 1 if timestamp.month <= 6 else 2
-
-        try:
-            currency = Currency.objects.get(code=code)
-
-        except ObjectDoesNotExist:
-            continue
-
-        else:
-
-            try:
-                obj = CoinPaprika.objects.get(year=year, semester=semester, currency=currency)
-
-            except ObjectDoesNotExist:
-
-                log.info('Create object {0} {1} {2}'.format(currency.code, year, code))
-
-                # Create new object
-                CoinPaprika.objects.create(year=year,
-                                           semester=semester,
-                                           name=name,
-                                           currency=currency,
-                                           data=list(record)
-                                           )
-
-            else:
-
-                # Remove duplicate records
-                if timestamp_st != obj.data[-1]['timestamp']:
-
-                    log.info('Update object {0} {1} {2}'.format(currency.code, year, code))
-
-                    # Concatenate the two lists
-                    obj.data.append(record)
-                    obj.save()
-
-                else:
-
-                    log.info('Object for {0} already updated'.format(currency.code))
-
-
 @shared_task(base=BaseTaskWithRetry)
 def prices(exid):
     from marketsdata.models import Exchange, Market, Candle
@@ -1032,180 +855,163 @@ def insert_ohlcv_bulk(exid, recent=None):
 
 
 # Insert OHLCV candles history
-@shared_task(bind=True, name='Markets_____Insert candle history', base=BaseTaskWithRetry)
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert candle history', bind=True)
 def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 
-    log.info('Insert OHLCV')
     exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid, symbol=symbol, wallet=wallet)
+    market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
+
     if exchange.is_trading():
 
-        def insert(market):
+        if market.quote.code == market.exchange.dollar_currency:
 
-            if self.request.retries > 0:
-                log.warning("Download attempt {0}/{1} for {2} at {3}".format(self.request.retries,
-                                                                             self.max_retries, market.symbol, exid))
+            log.info('Fetch candles for {0} {1}'.format(symbol, wallet))
+            log.bind(exchange=exid, symbol=symbol, wallet=wallet)
 
-            end = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            queryset = Candles.objects.filter(market=market)
+            now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            directive = '%Y-%m-%dT%H:%M:%SZ'
 
-            # Create ranges of indexes
-            idx_range = pd.date_range(start=start, end=end, freq='H')
-            idx_db = pd.DatetimeIndex([i['dt'] for i in Candle.objects.filter(market=market).values('dt')])
+            if queryset:
 
-            # Check for missing indexes
-            idx_miss = idx_range.difference(idx_db)
+                # Get latest timestamp
+                end = markets.order_by('-year', '-semester')[0].data[-1]['timestamp']
+                end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
 
-            # Set limit to it's maximum if start datetime is the exchange launch date. Else set limit to the minimum
-            if not exchange.limit_ohlcv:
-                raise Exception('There is no OHLCV limit for exchange {0}'.format(exchange.exid))
-            elif not start:
-                limit = exchange.limit_ohlcv
+                if end_dt == now:
+                    log.info('Market {0} {1} is updated'.format(symbol, wallet))
+                    return
+
+                else:
+                    # Set start datetime
+                    start_dt = end_dt + timedelta(hours=1)
+
             else:
-                limit = min(exchange.limit_ohlcv, len(idx_range))
+                # Set start datetime
+                start_dt = exchange.start_date
 
-            log.bind(limit=limit)
+            limit = exchange.limit_ohlcv
+            start_ts = int(start_dt.timestamp() * 1000)
+            client = exchange.get_ccxt_client()
+            client.options['defaultType'] = market.wallet if exchange.wallets else None
 
-            if len(idx_miss):
+            while start_dt < now:
 
-                # Calculate since variable
-                since_dt = idx_miss[-1] - timedelta(hours=limit - 1)  # add one hour to get the latest candle
-                since_ts = int(since_dt.timestamp() * 1000)
+                try:
+                    response = client.fetchOHLCV(market.symbol, '1h', start_ts, limit)
 
-                client = exchange.get_ccxt_client()
+                except ccxt.BadSymbol as e:
+                    market.delete()
+                    log.exception('Bad symbol', exception=e)
+                    return
 
-                # Select market type if necessary
-                if exchange.wallets:
-                    client.options['defaultType'] = market.wallet
+                except ccxt.ExchangeError as e:
+                    log.exception('Exchange error', exception=e)
+                    return
 
-                if exchange.has_credit(market.wallet):
-                    client.load_markets(True)
-                    market.exchange.update_credit('load_markets', market.wallet)
+                except Exception as e:
+                    log.exception('An unexpected error occurred', exception=e)
+                    return
 
-                while True:
+                else:
 
-                    try:
-                        if exchange.has_credit(market.wallet):
-                            response = client.fetchOHLCV(market.symbol, '1h', since_ts, limit)
-                            exchange.update_credit('fetchOHLCV', market.wallet)
+                    if response:
 
-                    except ccxt.BadSymbol as e:
+                        # Extract a list of datetime objects from response
+                        idx_ohlcv = pd.DatetimeIndex(
+                            [timezone.make_aware(datetime.fromtimestamp(ohlcv[0] / 1000)) for ohlcv in response])
 
-                        log.error('Bad symbol')
-                        log.info('Delete market')
-                        market.delete()
-                        return
+                        # Select datetime objects present in the list of missing datetime objects
+                        missing = idx_ohlcv.intersection(idx_miss)
 
-                    except ccxt.ExchangeError as e:
-                        print(since_ts, limit)
-                        log.exception('Exchange error')
-                        return
+                        # There is at least one candle to insert
+                        if len(missing):
 
-                    except Exception as e:
-                        print(getattr(e, 'message', repr(e)))
-                        print(getattr(e, 'message', str(e)))
-                        log.exception('An unexpected error occurred', exception=e.__class__.__name__)
-                        return
+                            insert = 0
+                            for ohlcv in response:
 
-                    else:
-                        if not len(response):
-                            break
+                                if len(ohlcv) != 6:
+                                    log.error('Unknown OHLCV format')
+                                else:
+                                    ts, op, hi, lo, cl, vo = ohlcv
+                                    dt = timezone.make_aware(datetime.fromtimestamp(ts / 1000))
+
+                                    if cl is None:
+                                        log.warning('Invalid price (None)', timestamp=ts)
+                                        continue
+
+                                    if vo is None:
+                                        log.warning('Invalid volume (None)', timestamp=ts)
+                                        continue
+
+                                # Prevent insert candle of the current hour
+                                if dt > end:
+                                    continue
+
+                                # convert volumes of spot markets
+                                vo = get_volume_quote_from_ohlcv(market, vo, cl)
+
+                                # Break the loop if no conversion rule found
+                                if vo is False:
+                                    log.error('No rule for volume conversion')
+                                    break
+
+                                try:
+                                    Candle.objects.get(market=market, dt=dt)
+
+                                except ObjectDoesNotExist:
+
+                                    insert += 1
+                                    # log.info('Insert candle', dt=dt.strftime("%Y-%m-%d %H:%M:%S"))
+
+                                    Candle.objects.create(market=market,
+                                                          exchange=exchange,
+                                                          close=cl,
+                                                          volume=vo,
+                                                          # market_cap=market_cap,
+                                                          # volume_mcap=volume_mcap,
+                                                          dt=dt)
+                                else:
+                                    # Candles returned by exchange can be into database
+                                    continue
+
+                            log.info(
+                                'Candles inserted : {0}'.format(
+                                    insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
+
+                            if insert == 0:
+                                break
+
+                            if since_dt == start:
+                                break
+
+                            elif since_dt < idx_miss[0]:
+                                break
+
+                            # Filter unchecked indexes
+                            idx_miss_not_checked = idx_miss[idx_miss < since_dt]
+
+                            # Shift since variable
+                            since_dt = idx_miss_not_checked[-1] - timedelta(
+                                hours=limit - 1)  # Remove 1 to prevent holes
+                            since_dt = start if since_dt < start else since_dt
+                            since_ts = int(since_dt.timestamp() * 1000)
+
+                            if exid == 'bitfinex2':
+                                time.sleep(3)
+                            else:
+                                time.sleep(1)
+
                         else:
 
-                            # Extract a list of datetime objects from response
-                            idx_ohlcv = pd.DatetimeIndex(
-                                [timezone.make_aware(datetime.fromtimestamp(ohlcv[0] / 1000)) for ohlcv in response])
+                            if since_dt == start:
+                                break
 
-                            # Select datetime objects present in the list of missing datetime objects
-                            missing = idx_ohlcv.intersection(idx_miss)
-
-                            # There is at least one candle to insert
-                            if len(missing):
-
-                                insert = 0
-                                for ohlcv in response:
-
-                                    if len(ohlcv) != 6:
-                                        log.error('Unknown OHLCV format')
-                                    else:
-                                        ts, op, hi, lo, cl, vo = ohlcv
-                                        dt = timezone.make_aware(datetime.fromtimestamp(ts / 1000))
-
-                                        if cl is None:
-                                            log.warning('Invalid price (None)', timestamp=ts)
-                                            continue
-
-                                        if vo is None:
-                                            log.warning('Invalid volume (None)', timestamp=ts)
-                                            continue
-
-                                    # Prevent insert candle of the current hour
-                                    if dt > end:
-                                        continue
-
-                                    # convert volumes of spot markets
-                                    vo = get_volume_quote_from_ohlcv(market, vo, cl)
-
-                                    # Break the loop if no conversion rule found
-                                    if vo is False:
-                                        log.error('No rule for volume conversion')
-                                        break
-
-                                    try:
-                                        Candle.objects.get(market=market, dt=dt)
-
-                                    except ObjectDoesNotExist:
-
-                                        insert += 1
-                                        # log.info('Insert candle', dt=dt.strftime("%Y-%m-%d %H:%M:%S"))
-
-                                        Candle.objects.create(market=market,
-                                                              exchange=exchange,
-                                                              close=cl,
-                                                              volume=vo,
-                                                              # market_cap=market_cap,
-                                                              # volume_mcap=volume_mcap,
-                                                              dt=dt)
-                                    else:
-                                        # Candles returned by exchange can be into database
-                                        continue
-
-                                log.info(
-                                    'Candles inserted : {0}'.format(
-                                        insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
-
-                                if insert == 0:
-                                    break
-
-                                if since_dt == start:
-                                    break
-
-                                elif since_dt < idx_miss[0]:
-                                    break
-
-                                # Filter unchecked indexes
-                                idx_miss_not_checked = idx_miss[idx_miss < since_dt]
-
-                                # Shift since variable
-                                since_dt = idx_miss_not_checked[-1] - timedelta(
-                                    hours=limit - 1)  # Remove 1 to prevent holes
-                                since_dt = start if since_dt < start else since_dt
-                                since_ts = int(since_dt.timestamp() * 1000)
-
-                                if exid == 'bitfinex2':
-                                    time.sleep(3)
-                                else:
-                                    time.sleep(1)
+                            elif since_dt < idx_miss[0]:
+                                break
 
                             else:
-
-                                if since_dt == start:
-                                    break
-
-                                elif since_dt < idx_miss[0]:
-                                    break
-
-                                else:
-                                    break
+                                break
 
                 return True
 
@@ -1220,7 +1026,7 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                 if recent:
                     start = market.get_candle_datetime_last()
                 else:
-                    start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
+                    start = exchange.start_date
             else:
                 log.info('Download full OHLCV history')
                 start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
@@ -1246,16 +1052,183 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                         market.updated = True
                         market.save()
 
-#
-# # Insert OHLCV candles history
-# @shared_task(bind=True, name='Markets_____Set_volume_mcap_zero')
-# def volume_mcap(self):
-#     candles = Candle.objects.all()
-#     log.info('Start zeroing')
-#
-#     for c in candles.iterator(10000):
-#         if not c.volume_mcap:
-#             c.volume_mcap = 0
-#             c.save()
-#
-#     log.info('Zeroing complete')
+
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
+def fetch_paprika_history():
+
+    log.info('Start fetching records')
+
+    from coinpaprika import client as Coinpaprika
+    client = Coinpaprika.Client()
+    listing = client.coins()
+    listing = [i for i in listing if i['rank'] < 400 and i['is_active']]
+    directive = '%Y-%m-%dT%H:%M:%SZ'
+
+    for coin in listing[0:2]:
+
+        try:
+
+            code = coin['symbol']
+            currency = Currency.objects.get(code=code)
+
+        except ObjectDoesNotExist:
+            continue
+
+        else:
+            qs = CoinPaprika.objects.filter(currency=currency)
+            now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+
+            if not qs:
+                # Set start datetime
+                start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive).replace(tzinfo=pytz.UTC)
+            else:
+
+                # Get latest timestamp
+                end = qs.order_by('-year', '-semester')[0].data[-1]['timestamp']
+                end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+
+                if end_dt == now:
+                    log.info('Object {0} is updated'.format(code))
+                    continue
+
+                else:
+                    # Set start datetime
+                    start_dt = end_dt + timedelta(hours=1)
+
+            while start_dt < now:
+
+                start = start_dt.strftime(directive)
+                log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
+                data = client.historical(coin['id'], start=start, interval='1h', limit=5000)
+
+                if data:
+
+                    # Iterate through years
+                    for year in get_years('2020-01-01T00:00:00Z'):
+
+                        filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
+                        filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
+
+                        # And filter records by semester
+                        data_1 = [i for i in data if i['timestamp'][:7] in filter_1]
+                        data_2 = [i for i in data if i['timestamp'][:7] in filter_2]
+
+                        for i in range(1, 3):
+
+                            var = eval('data_' + str(i))
+                            if var:
+
+                                try:
+                                    obj = CoinPaprika.objects.get(year=year, semester=i, currency=currency)
+
+                                except ObjectDoesNotExist:
+
+                                    log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
+
+                                    # Create new object for semester 1
+                                    CoinPaprika.objects.create(year=year,
+                                                               semester=i,
+                                                               name=coin['name'],
+                                                               currency=currency,
+                                                               data=var
+                                                               )
+
+                                else:
+                                    # Remove duplicate records
+                                    diff = [i for i in var if i not in obj.data]
+
+                                    if diff:
+
+                                        log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
+
+                                        # Concatenate the two lists
+                                        obj.data += diff
+                                        obj.save()
+
+                                    else:
+                                        log.info('Object {0} {1} {2} is up to date'.format(currency.code, year, i))
+
+                    # Update start datetime
+                    start_dt = datetime.strptime(data[-1]['timestamp'], directive).replace(tzinfo=pytz.UTC)
+                    start_dt += timedelta(hours=1)
+
+                else:
+                    log.info('No data returned, add 30 days...')
+                    start_dt += timedelta(days=30)
+
+                time.sleep(1)
+
+            log.info('While loop break')
+
+
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update CoinPaprika')
+def update_paprika():
+
+    log.info('Start listing update')
+
+    from coinpaprika import client as Coinpaprika
+    client = Coinpaprika.Client()
+    listing = client.tickers()
+    listing = [i for i in listing if i['rank'] < 400]
+
+    for i in listing[0:2]:
+
+        # Select data
+        code = i['symbol']
+        name = i['name']
+        price = i['quotes']['USD']['price']
+        volume_24h = i['quotes']['USD']['volume_24h']
+        market_cap = i['quotes']['USD']['market_cap']
+
+        # Create timestamp
+        timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+        timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        record = dict(
+            price=price,
+            timestamp=timestamp_st,
+            volume_24h=volume_24h,
+            market_cap=market_cap
+        )
+
+        # Get year and semester
+        year = timestamp.year
+        semester = 1 if timestamp.month <= 6 else 2
+
+        try:
+            currency = Currency.objects.get(code=code)
+
+        except ObjectDoesNotExist:
+            continue
+
+        else:
+
+            try:
+                obj = CoinPaprika.objects.get(year=year, semester=semester, currency=currency)
+
+            except ObjectDoesNotExist:
+
+                log.info('Create object {0} {1} {2}'.format(currency.code, year, code))
+
+                # Create new object
+                CoinPaprika.objects.create(year=year,
+                                           semester=semester,
+                                           name=name,
+                                           currency=currency,
+                                           data=list(record)
+                                           )
+
+            else:
+
+                # Remove duplicate records
+                if timestamp_st != obj.data[-1]['timestamp']:
+
+                    log.info('Update object {0} {1} {2}'.format(currency.code, year, code))
+
+                    # Concatenate the two lists
+                    obj.data.append(record)
+                    obj.save()
+
+                else:
+
+                    log.info('Object for {0} already updated'.format(currency.code))

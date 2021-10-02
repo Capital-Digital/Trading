@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta, datetime
-from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika
+from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika, Candles
 import structlog
 import locale
 from celery import group
@@ -375,14 +375,29 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('currency', 'year', 'semester', 'count_timestamp')
+    list_display = ('currency', 'year', 'semester', 'count_records')
     readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')
     list_filter = ( 'year', 'semester', 'currency__code',)
     ordering = ('-year', '-semester', 'currency', )
     save_as = True
 
-    def count_timestamp(self, obj):
+    def count_records(self, obj):
         if obj.data:
             return len(obj.data)
 
-    count_timestamp.short_description = 'Records'
+    count_records.short_description = 'Records'
+
+
+@admin.register(Candles)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('market', 'year', 'semester', 'count_records')
+    readonly_fields = ('name', 'market', 'year', 'semester', 'dt_created', 'data')
+    list_filter = ( 'year', 'semester', 'market__code',)
+    ordering = ('-year', '-semester', 'market', )
+    save_as = True
+
+    def count_records(self, obj):
+        if obj.data:
+            return len(obj.data)
+
+    count_records.short_description = 'Records'

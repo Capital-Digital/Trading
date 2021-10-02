@@ -28,7 +28,7 @@ class Exchange(models.Model):
     precision_mode = models.IntegerField(null=True, blank=True)
     status_at, eta = [models.DateTimeField(blank=True, null=True) for i in range(2)]
     url = models.URLField(blank=True, null=True)
-    start_date = models.DateField(null=True)
+    start_date = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     update_frequency = models.SmallIntegerField(null=True, default=60)
@@ -666,7 +666,23 @@ class CoinPaprika(models.Model):
     class Meta:
         verbose_name_plural = 'coinpaprika'
         unique_together = ['currency', 'year', 'semester']
-        # ordering = ['-currency']
+        get_latest_by = 'dt_created'
+
+    def __str__(self):
+        return str(self.dt_created.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+class Candles(models.Model):
+    year = models.IntegerField(blank=True, null=True)
+    semester = models.IntegerField(blank=True, null=True)
+    market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
+    data = JSONField(null=True, blank=True)
+    dt_created = models.DateTimeField(auto_now=True)
+    objects = DataFrameManager()  # activate custom manager
+
+    class Meta:
+        verbose_name_plural = 'candles'
+        unique_together = ['market', 'year', 'semester']
         get_latest_by = 'dt_created'
 
     def __str__(self):

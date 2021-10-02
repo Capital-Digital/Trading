@@ -855,8 +855,8 @@ def insert_ohlcv_bulk(exid, recent=None):
 
 
 # Insert OHLCV candles history
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert candle history', bind=True)
-def insert_ohlcv(self, exid, wallet, symbol, recent=None):
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert candle history')
+def insert_ohlcv(exid, wallet, symbol):
 
     exchange = Exchange.objects.get(exid=exid)
     market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
@@ -868,14 +868,15 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
             log.info('Fetch candles for {0} {1}'.format(symbol, wallet))
             log.bind(exchange=exid, symbol=symbol, wallet=wallet)
 
-            queryset = Candles.objects.filter(market=market)
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             directive = '%Y-%m-%dT%H:%M:%SZ'
 
+            # Test if an object already exist
+            queryset = Candles.objects.filter(market=market)
             if queryset:
 
                 # Get latest timestamp
-                end = markets.order_by('-year', '-semester')[0].data[-1]['timestamp']
+                end = queryset.order_by('-year', '-semester')[0].data[-1][0]
                 end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
 
                 if end_dt == now:
@@ -883,22 +884,24 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
                     return
 
                 else:
-                    # Set start datetime
-                    start_dt = end_dt + timedelta(hours=1)
+                    # Set datetime
+                    dt = end_dt + timedelta(hours=1)
 
             else:
-                # Set start datetime
-                start_dt = exchange.start_date
+                # Set datetime
+                dt = exchange.start_date
 
             limit = exchange.limit_ohlcv
-            start_ts = int(start_dt.timestamp() * 1000)
             client = exchange.get_ccxt_client()
             client.options['defaultType'] = market.wallet if exchange.wallets else None
 
-            while start_dt < now:
+            # Convert start date to milliseconds
+            since = int(dt.timestamp() * 1000)
+
+            while dt < now:
 
                 try:
-                    response = client.fetchOHLCV(market.symbol, '1h', start_ts, limit)
+                    data = client.fetchOHLCV(market.symbol, '1h', since, limit)
 
                 except ccxt.BadSymbol as e:
                     market.delete()
@@ -915,142 +918,73 @@ def insert_ohlcv(self, exid, wallet, symbol, recent=None):
 
                 else:
 
-                    if response:
+                    if data:
 
-                        # Extract a list of datetime objects from response
-                        idx_ohlcv = pd.DatetimeIndex(
-                            [timezone.make_aware(datetime.fromtimestamp(ohlcv[0] / 1000)) for ohlcv in response])
+                        # Remove record of current hour
+                        end_ts = data[-1][0]
+                        end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
+                        if end_dt > now:
+                            del data[-1]
 
-                        # Select datetime objects present in the list of missing datetime objects
-                        missing = idx_ohlcv.intersection(idx_miss)
+                        # Convert timestamp from ms to string
+                        for idx, i in enumerate(data):
+                            dt = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
+                            ts = dt.strftime(directive)
+                            data[idx][0] = ts
 
-                        # There is at least one candle to insert
-                        if len(missing):
+                        # Iterate through years
+                        for year in list(range(dt.year, timezone.now().year + 1)):
 
-                            insert = 0
-                            for ohlcv in response:
+                            filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
+                            filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
 
-                                if len(ohlcv) != 6:
-                                    log.error('Unknown OHLCV format')
-                                else:
-                                    ts, op, hi, lo, cl, vo = ohlcv
-                                    dt = timezone.make_aware(datetime.fromtimestamp(ts / 1000))
+                            # Filter records by semester
+                            data_1 = [i for i in data if i[0][:7] in filter_1]
+                            data_2 = [i for i in data if i[0][:7] in filter_2]
 
-                                    if cl is None:
-                                        log.warning('Invalid price (None)', timestamp=ts)
-                                        continue
+                            for i in range(1, 3):
 
-                                    if vo is None:
-                                        log.warning('Invalid volume (None)', timestamp=ts)
-                                        continue
+                                var = eval('data_' + str(i))
+                                if var:
 
-                                # Prevent insert candle of the current hour
-                                if dt > end:
-                                    continue
+                                    try:
+                                        obj = Candles.objects.get(year=year, semester=i, market=market)
 
-                                # convert volumes of spot markets
-                                vo = get_volume_quote_from_ohlcv(market, vo, cl)
+                                    except ObjectDoesNotExist:
 
-                                # Break the loop if no conversion rule found
-                                if vo is False:
-                                    log.error('No rule for volume conversion')
-                                    break
+                                        log.info('Create object {0} {1} {2}'.format(market.symbol, year, i))
 
-                                try:
-                                    Candle.objects.get(market=market, dt=dt)
+                                        # Create new object for semester 1
+                                        Candles.objects.create(year=year,
+                                                               semester=i,
+                                                               market=market,
+                                                               data=var)
+                                    else:
+                                        # Remove duplicate records
+                                        diff = [i for i in var if i not in obj.data]
 
-                                except ObjectDoesNotExist:
+                                        if diff:
 
-                                    insert += 1
-                                    # log.info('Insert candle', dt=dt.strftime("%Y-%m-%d %H:%M:%S"))
+                                            log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
 
-                                    Candle.objects.create(market=market,
-                                                          exchange=exchange,
-                                                          close=cl,
-                                                          volume=vo,
-                                                          # market_cap=market_cap,
-                                                          # volume_mcap=volume_mcap,
-                                                          dt=dt)
-                                else:
-                                    # Candles returned by exchange can be into database
-                                    continue
+                                            # Concatenate the two lists
+                                            obj.data += diff
+                                            obj.save()
 
-                            log.info(
-                                'Candles inserted : {0}'.format(
-                                    insert))  # since=since_dt.strftime("%Y-%m-%d %H:%M"))
+                                        else:
 
-                            if insert == 0:
-                                break
+                                            log.info('Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
 
-                            if since_dt == start:
-                                break
+                        # Update since and dt
+                        since = end_ts + (60 * 60 * 1000)
+                        dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
 
-                            elif since_dt < idx_miss[0]:
-                                break
-
-                            # Filter unchecked indexes
-                            idx_miss_not_checked = idx_miss[idx_miss < since_dt]
-
-                            # Shift since variable
-                            since_dt = idx_miss_not_checked[-1] - timedelta(
-                                hours=limit - 1)  # Remove 1 to prevent holes
-                            since_dt = start if since_dt < start else since_dt
-                            since_ts = int(since_dt.timestamp() * 1000)
-
-                            if exid == 'bitfinex2':
-                                time.sleep(3)
-                            else:
-                                time.sleep(1)
-
-                        else:
-
-                            if since_dt == start:
-                                break
-
-                            elif since_dt < idx_miss[0]:
-                                break
-
-                            else:
-                                break
-
-                return True
-
-        market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=symbol)
-
-        if market.quote.code == market.exchange.dollar_currency:
-
-            log.info('Insert candle {0}'.format(symbol))
-
-            # Set start date
-            if market.is_populated():
-                if recent:
-                    start = market.get_candle_datetime_last()
-                else:
-                    start = exchange.start_date
-            else:
-                log.info('Download full OHLCV history')
-                start = timezone.make_aware(datetime.combine(exchange.start_date, datetime.min.time()))
-
-            try:
-                res = insert(market)
-
-            except ccxt.DDoSProtection as e:
-                log.error('DDoS protection')
-                print(e)
-            except Exception as e:
-                print(e)
-                log.exception('Unable to fetch OHLCV: {0}'.format(e))
-
-            else:
-                if res:
-                    if market.has_gap():
-                        log.warning('Insert complete with gaps')
-                        log.info('Delete market')
-                        market.delete()
                     else:
-                        log.info('Candles complete')
-                        market.updated = True
-                        market.save()
+                        since += (30 * 24 * 60 * 1000)
+                        log.info('Empty array, set since to {0}'.format(since))
+    else:
+
+        log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')

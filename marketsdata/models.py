@@ -665,8 +665,8 @@ class CoinPaprika(models.Model):
 
     class Meta:
         verbose_name_plural = 'coinpaprika'
-        unique_together = ['dt_created']
-        ordering = ['-currency']
+        unique_together = ['currency', 'year', 'semester']
+        # ordering = ['-currency']
         get_latest_by = 'dt_created'
 
     def __str__(self):

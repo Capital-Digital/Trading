@@ -1165,13 +1165,15 @@ def insert_current_listing():
     client = Coinpaprika.Client()
     listing = client.tickers()
     listing = [i for i in listing if i['rank'] < 400]
+
+    # Sort indices
     ids = [i['id'] for i in listing]
     ids.sort()
-
     for c in ids:
 
-        # Select data
+        # Select dictionary
         i = [v for v in listing if v['id'] == c][0]
+
         code = i['symbol']
         name = i['name']
         price = i['quotes']['USD']['price']
@@ -1218,10 +1220,7 @@ def insert_current_listing():
 
             else:
 
-                # Avoid duplicate records
-                print(currency.code)
-
-                #if timestamp_st not in [d['timestamp'] for d in obj.data]:
+                # if timestamp_st not in [d['timestamp'] for d in obj.data]:
                 if timestamp_st != obj.data[-1]['timestamp']:
 
                     log.info('Update {0} {1} {2}'.format(currency.code, year, semester))

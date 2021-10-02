@@ -887,95 +887,99 @@ def fetch_candle_history(exid, wallet, symbol):
             since = int(dt.timestamp() * 1000)
 
             print('now object is', now)
-            print('dt object is', dt)
-            
-            while dt < now:
+            print('dt  object is', dt)
 
-                try:
-                    data = client.fetchOHLCV(market.symbol, '1h', since, limit)
+            if dt < now:
+                while dt < now:
 
-                except ccxt.BadSymbol as e:
-                    market.delete()
-                    log.exception('Bad symbol', exception=e)
-                    return
+                    try:
+                        data = client.fetchOHLCV(market.symbol, '1h', since, limit)
 
-                except ccxt.ExchangeError as e:
-                    log.exception('Exchange error', exception=e)
-                    return
+                    except ccxt.BadSymbol as e:
+                        market.delete()
+                        log.exception('Bad symbol', exception=e)
+                        return
 
-                except Exception as e:
-                    log.exception('An unexpected error occurred', exception=e)
-                    return
+                    except ccxt.ExchangeError as e:
+                        log.exception('Exchange error', exception=e)
+                        return
 
-                else:
-
-                    if data:
-
-                        print('Fetch {0} candles'.format(len(data)))
-
-                        # Remove record of current hour
-                        end_ts = data[-1][0]
-                        end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
-                        if end_dt > now:
-                            print('Delete incomplete (current) record', end_dt)
-                            del data[-1]
-
-                        # Convert timestamp from ms to string
-                        for idx, i in enumerate(data):
-                            dt = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
-                            ts = dt.strftime(directive)
-                            data[idx][0] = ts
-
-                        # Iterate through years
-                        for year in list(range(dt.year, timezone.now().year + 1)):
-
-                            filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
-                            filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
-
-                            # Filter records by semester
-                            data_1 = [i for i in data if i[0][:7] in filter_1]
-                            data_2 = [i for i in data if i[0][:7] in filter_2]
-
-                            for i in range(1, 3):
-
-                                var = eval('data_' + str(i))
-                                if var:
-
-                                    try:
-                                        obj = Candles.objects.get(year=year, semester=i, market=market)
-
-                                    except ObjectDoesNotExist:
-
-                                        log.info('Create object {0} {1} {2}'.format(market.symbol, year, i))
-
-                                        # Create new object for semester 1
-                                        Candles.objects.create(year=year,
-                                                               semester=i,
-                                                               market=market,
-                                                               data=var)
-                                    else:
-                                        # Remove duplicate records
-                                        diff = [i for i in var if i not in obj.data]
-
-                                        if diff:
-
-                                            log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
-
-                                            # Concatenate the two lists
-                                            obj.data += diff
-                                            obj.save()
-
-                                        else:
-
-                                            log.info('Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
-
-                        # Update since and dt
-                        since = end_ts + (60 * 60 * 1000)
-                        dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
+                    except Exception as e:
+                        log.exception('An unexpected error occurred', exception=e)
+                        return
 
                     else:
-                        since += 30 * 24 * (60 * 60 * 1000)
-                        log.info('Empty array, set since to {0}'.format(since))
+
+                        if data:
+
+                            print('Fetch {0} candles'.format(len(data)))
+
+                            # Remove record of current hour
+                            end_ts = data[-1][0]
+                            end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
+                            if end_dt > now:
+                                print('Delete incomplete (current) record', end_dt)
+                                del data[-1]
+
+                            # Convert timestamp from ms to string
+                            for idx, i in enumerate(data):
+                                dt = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
+                                ts = dt.strftime(directive)
+                                data[idx][0] = ts
+
+                            # Iterate through years
+                            for year in list(range(dt.year, timezone.now().year + 1)):
+
+                                filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
+                                filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
+
+                                # Filter records by semester
+                                data_1 = [i for i in data if i[0][:7] in filter_1]
+                                data_2 = [i for i in data if i[0][:7] in filter_2]
+
+                                for i in range(1, 3):
+
+                                    var = eval('data_' + str(i))
+                                    if var:
+
+                                        try:
+                                            obj = Candles.objects.get(year=year, semester=i, market=market)
+
+                                        except ObjectDoesNotExist:
+
+                                            log.info('Create object {0} {1} {2}'.format(market.symbol, year, i))
+
+                                            # Create new object for semester 1
+                                            Candles.objects.create(year=year,
+                                                                   semester=i,
+                                                                   market=market,
+                                                                   data=var)
+                                        else:
+                                            # Remove duplicate records
+                                            diff = [i for i in var if i not in obj.data]
+
+                                            if diff:
+
+                                                log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
+
+                                                # Concatenate the two lists
+                                                obj.data += diff
+                                                obj.save()
+
+                                            else:
+
+                                                log.info('Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
+
+                            # Update since and dt
+                            since = end_ts + (60 * 60 * 1000)
+                            dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
+
+                        else:
+                            since += 30 * 24 * (60 * 60 * 1000)
+                            log.info('Empty array, set since to {0}'.format(since))
+
+            else:
+                log.info('There is no candle to download')
     else:
 
         log.warning('Exchange {0} is not trading'.format(exchange.exid))

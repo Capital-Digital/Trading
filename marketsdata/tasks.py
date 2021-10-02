@@ -1171,8 +1171,7 @@ def insert_current_listing():
     for c in ids:
 
         # Select data
-        i = [v for v in listing if v['id'] == c]
-        print(i)
+        i = [v for v in listing if v['id'] == c][0]
         code = i['symbol']
         name = i['name']
         price = i['quotes']['USD']['price']

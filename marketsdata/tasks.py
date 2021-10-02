@@ -886,6 +886,9 @@ def fetch_candle_history(exid, wallet, symbol):
             # Convert start date to milliseconds
             since = int(dt.timestamp() * 1000)
 
+            print('now object is', now)
+            print('dt object is', dt)
+            
             while dt < now:
 
                 try:
@@ -909,7 +912,7 @@ def fetch_candle_history(exid, wallet, symbol):
                     if data:
 
                         print('Fetch {0} candles'.format(len(data)))
-                        
+
                         # Remove record of current hour
                         end_ts = data[-1][0]
                         end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))

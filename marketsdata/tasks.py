@@ -908,10 +908,13 @@ def fetch_candle_history(exid, wallet, symbol):
 
                     if data:
 
+                        print('Fetch {0} candles'.format(len(data)))
+                        
                         # Remove record of current hour
                         end_ts = data[-1][0]
                         end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
                         if end_dt > now:
+                            print('Delete incomplete (current) record', end_dt)
                             del data[-1]
 
                         # Convert timestamp from ms to string

@@ -375,21 +375,14 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('currency', 'semester', 'get_timestamp')
+    list_display = ('currency', 'year', 'semester', 'count_timestamp')
     readonly_fields = ('name', 'currency', 'semester', 'dt_created', 'data')
     list_filter = ('currency__code',)
     ordering = ('currency',)
     save_as = True
 
-    def get_timestamp(self, obj):
-        return None
-        # if obj.history:
-        #     if isinstance(obj.history, list):
-        #         if 'timestamp' in obj.history[-1]:
-        #             ts = obj.history[-1]['timestamp']
-        #             return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ')
-        #         else:
-        #             obj.history = obj.history[:-1]
-        #             obj.save()
+    def count_timestamp(self, obj):
+        if obj.data:
+            return len(obj.data)
 
-    get_timestamp.short_description = 'Timestamp'
+    count_timestamp.short_description = 'Records'

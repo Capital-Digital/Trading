@@ -655,6 +655,7 @@ class Listing(models.Model):
 
 
 class CoinPaprika(models.Model):
+    year = models.IntegerField(blank=True, null=True)
     index = models.IntegerField(blank=True, null=True)
     rank = models.IntegerField(blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)

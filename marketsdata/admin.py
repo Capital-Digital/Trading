@@ -297,6 +297,7 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('market__quote', admin.RelatedOnlyFieldListFilter),
                    ('market__base', admin.RelatedOnlyFieldListFilter)
                    )
+    actions = ['update_candles', ]
     ordering = ('-dt',)
 
     ###########
@@ -332,7 +333,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def update_candles(self, request, queryset):
 
         log.info('Create groups')
-        
+
         markets = [c.market for c in queryset]
         res = group(tasks.insert_ohlcv.s(market.exchange.exid,
                                          market.wallet,

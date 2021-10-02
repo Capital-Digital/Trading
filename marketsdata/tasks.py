@@ -22,7 +22,7 @@ import capital.celery as celery
 from capital.methods import *
 from marketsdata.error import *
 from marketsdata.methods import *
-from marketsdata.models import Exchange, Candle, Market, Currency, CoinPaprika, Candles
+from marketsdata.models import Exchange, Candle, Market, Currency, CoinPaprika, Candles, Tickers
 import strategy.tasks as task
 
 log = structlog.get_logger(__name__)
@@ -842,9 +842,9 @@ def top_markets(exid):
             log.info('Set top complete')
 
 
-# Insert OHLCV candles history
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert candle history')
-def insert_ohlcv(exid, wallet, symbol):
+# Insert candles history
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
+def fetch_candle_history(exid, wallet, symbol):
 
     exchange = Exchange.objects.get(exid=exid)
     market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
@@ -975,9 +975,9 @@ def insert_ohlcv(exid, wallet, symbol):
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
-# Insert tickers
+# Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
-def insert_tickers(exid):
+def insert_current_tickers(exid):
 
     log.info('Start tickers insertion')
 
@@ -1044,8 +1044,8 @@ def insert_tickers(exid):
                 insert(data)
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika history')
-def fetch_paprika_history():
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch listing history')
+def fetch_listing_history():
 
     log.info('Start fetching records')
 
@@ -1152,10 +1152,10 @@ def fetch_paprika_history():
             log.info('While loop break')
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Update CoinPaprika')
-def update_paprika():
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert current listing')
+def insert_curren_listing():
 
-    log.info('Start listing update')
+    log.info('Start listing insertion')
 
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()

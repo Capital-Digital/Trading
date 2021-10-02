@@ -404,6 +404,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def latest_timestamp(self, obj):
         if obj.data:
-            return obj.data[-1][0]
+            return obj.data[-1][0][:16]
 
     latest_timestamp.short_description = 'Latest'

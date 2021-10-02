@@ -69,62 +69,32 @@ class CustomerAdmin(admin.ModelAdmin):
     # Action #
     ##########
 
-    def insert_full_ohlcv(self, request, queryset):
-
-        # Retrieve listing data from CMC
-        # mcap = tasks.get_mcap()
-
-        exids = [exchange.exid for exchange in queryset]
-        chains = [tasks.insert_ohlcv_bulk(exid, recent=None) for exid in exids]
-        res = group(*chains).delay()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Insert full OHLCV complete')
-
-        else:
-            log.error('Insert full OHLCV failed')
-
-    insert_full_ohlcv.short_description = "Insert full OHLCV"
-
-    def insert_recent_ohlcv(self, request, queryset):
+    # Fetch markets history
+    def fetch_markets_history(self, request, queryset):
 
         for exchange in queryset:
-            markets = Market.objects.filter(exchange=exchange).order_by('symbol')
-            chains = [tasks.insert_ohlcv.si(exchange.exid,
-                                            market.wallet,
-                                            market.symbol,
-                                            True
-                                            ).set(queue='slow') for market in markets]
-            print(chains)
-            res = chain(*chains).delay()
+
+            log.info('Create chain for {0}'.format(exchange.exid))
+
+            markets = Market.objects.filter(exchange=exchange)
+            res = chain(tasks.insert_ohlcv.s(market.exchange.exid,
+                                             market.wallet,
+                                             market.symbol,
+                                             recent=None
+                                             ).set(queue='default') for market in markets)()
+
             while not res.ready():
-                print('wait')
                 time.sleep(0.5)
 
             if res.successful():
-                log.info('Insert recent OHLCV complete')
+                log.info('Fetch markets history complete for {0}'.format(exchange.exid))
 
             else:
-                log.error('Insert recent OHLCV failed')
+                log.error('Fetch markets history error for {0}'.format(exchange.exid))
 
-        # exids = [exchange.exid for exchange in queryset]
-        # groups = [tasks.insert_ohlcv_bulk.s(exid, recent=True) for exid in exids]
-        # res = group(*groups).delay()
-        #
-        # while not res.ready():
-        #     time.sleep(0.5)
-        #
-        # if res.successful():
-        #     log.info('Insert recent OHLCV complete')
-        #
-        # else:
-        #     log.error('Insert recent OHLCV failed')
+    fetch_markets_history.short_description = "Fetch markets history"
 
-    insert_recent_ohlcv.short_description = "Insert recent OHLCV"
-
+    # Fetch markets history
     def update_currencies(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
         res = group(tasks.currencies.s(exchange).set(queue='default') for exchange in exchanges)()
@@ -140,6 +110,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_currencies.short_description = "Update currencies"
 
+    # Update prices
     def update_prices(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
         res = group(tasks.prices.s(exchange).set(queue='default') for exchange in exchanges)()
@@ -155,21 +126,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_prices.short_description = "Update prices"
 
-    def flag_top_markets(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.top_markets.s(exchange).set(queue='default') for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Flag top markets complete')
-
-        else:
-            log.error('Flag top markets failed')
-
-    flag_top_markets.short_description = "Flag top markets"
-
+    # Update markets
     def update_markets(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
         res = group(tasks.markets.s(exchange).set(queue='default') for exchange in exchanges)()
@@ -185,6 +142,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_markets.short_description = "Update markets"
 
+    # Update price
     def update_prices(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
         res = group(tasks.prices.s(exchange).set(queue='default') for exchange in exchanges)()
@@ -200,6 +158,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_prices.short_description = "Update price"
 
+    # Update status
     def update_status(self, request, queryset):
         exchanges = [exchange.exid for exchange in queryset]
         res = group(tasks.status.s(exchange).set(queue='default') for exchange in exchanges)()
@@ -214,6 +173,22 @@ class CustomerAdmin(admin.ModelAdmin):
             log.error('Update status failed')
 
     update_status.short_description = "Update status"
+
+    # Flag top markets
+    def flag_top_markets(self, request, queryset):
+        exchanges = [exchange.exid for exchange in queryset]
+        res = group(tasks.top_markets.s(exchange).set(queue='default') for exchange in exchanges)()
+
+        while not res.ready():
+            time.sleep(0.5)
+
+        if res.successful():
+            log.info('Flag top markets complete')
+
+        else:
+            log.error('Flag top markets failed')
+
+    flag_top_markets.short_description = "Flag top markets"
 
 
 @admin.register(Currency)
@@ -256,7 +231,7 @@ class CustomerAdmin(admin.ModelAdmin):
                    ('base', admin.RelatedOnlyFieldListFilter)
                    )
     ordering = ('-trading', 'symbol',)
-    actions = ['fetch_history',]
+    actions = ['fetch_history', ]
     save_as = True
     save_on_top = True
 
@@ -295,7 +270,10 @@ class CustomerAdmin(admin.ModelAdmin):
     ##########
 
     def fetch_history(self, request, queryset):
-        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
+
+        log.info('Create chain')
+
+        res = chain(tasks.insert_ohlcv.s(market.exchange.exid,
                                          market.wallet,
                                          market.symbol,
                                          recent=None
@@ -354,8 +332,8 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('currency', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ( 'year', 'semester', 'currency__code',)
-    ordering = ('-year', '-semester', 'currency', )
+    list_filter = ('year', 'semester', 'currency__code',)
+    ordering = ('-year', '-semester', 'currency',)
     save_as = True
 
     def count_records(self, obj):
@@ -375,8 +353,8 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ( 'year', 'semester', 'market',)
-    ordering = ('-year', '-semester', 'market', )
+    list_filter = ('year', 'semester', 'market',)
+    ordering = ('-year', '-semester', 'market',)
     save_as = True
 
     def count_records(self, obj):

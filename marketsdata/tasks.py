@@ -720,7 +720,6 @@ def fetch_paprika_history():
                     # Update start datetime
                     start_dt = datetime.strptime(data[-1]['timestamp'], directive).replace(tzinfo=pytz.UTC)
                     start_dt += timedelta(hours=1)
-                    start = start_dt.strftime(directive)
 
                 else:
                     log.info('No data returned, add 30 days...')

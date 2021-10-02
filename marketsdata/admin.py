@@ -391,8 +391,8 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Candles)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('market', 'year', 'semester', 'count_records')
-    readonly_fields = ('name', 'market', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ( 'year', 'semester', 'market__code',)
+    readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
+    list_filter = ( 'year', 'semester', 'market',)
     ordering = ('-year', '-semester', 'market', )
     save_as = True
 

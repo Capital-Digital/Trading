@@ -1220,7 +1220,6 @@ def insert_current_listing():
 
                 # Avoid duplicate records
                 print(currency.code)
-                print(obj.data)
 
                 if timestamp_st not in [d['timestamp'] for d in obj.data]:
 

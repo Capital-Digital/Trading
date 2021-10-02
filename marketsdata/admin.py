@@ -378,7 +378,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('currency', 'year', 'semester', 'count_timestamp')
     readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')
     list_filter = ('currency__code', 'year',)
-    ordering = ('-year', 'currency', '-semester', )
+    ordering = ('-year', '-semester', 'currency', )
     save_as = True
 
     def count_timestamp(self, obj):

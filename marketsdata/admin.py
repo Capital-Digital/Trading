@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta, datetime
-from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika, Candles
+from .models import Exchange, Market, Candle, Currency, Listing, Candles
 import structlog
 import locale
 from celery import group

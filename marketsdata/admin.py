@@ -390,7 +390,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Candles)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('market', 'year', 'semester', 'count_records')
+    list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
     list_filter = ( 'year', 'semester', 'market',)
     ordering = ('-year', '-semester', 'market', )
@@ -401,3 +401,9 @@ class CustomerAdmin(admin.ModelAdmin):
             return len(obj.data)
 
     count_records.short_description = 'Records'
+
+    def latest_timestamp(self, obj):
+        if obj.data:
+            return obj.data[-1][0]
+
+    latest_timestamp.short_description = 'Latest'

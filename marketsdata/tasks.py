@@ -1199,7 +1199,7 @@ def insert_current_listing():
 
             except ObjectDoesNotExist:
 
-                log.info('Create object {0} {1} {2}'.format(currency.code, year, code))
+                log.info('Create object {0} {1} {2}'.format(currency.code, year, semester))
 
                 # Create new object
                 CoinPaprika.objects.create(year=year,
@@ -1214,7 +1214,7 @@ def insert_current_listing():
                 # Avoid duplicate records
                 if timestamp_st not in [d['timestamp'] for d in obj.data]:
 
-                    log.info('Update object {0} {1} {2}'.format(currency.code, year, code))
+                    log.info('Update object {0} {1} {2}'.format(currency.code, year, semester))
 
                     # Concatenate the two lists
                     obj.data.append(record)

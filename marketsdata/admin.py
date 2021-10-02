@@ -377,10 +377,10 @@ class CustomerAdmin(admin.ModelAdmin):
         log.info('Create groups')
 
         markets = [c.market for c in queryset]
-        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
-                                         market.wallet,
-                                         market.symbol
-                                         ).set(queue='default') for market in markets)()
+        res = group(tasks.fetch_candle_history.s(market.exchange.exid,
+                                                 market.wallet,
+                                                 market.symbol
+                                                 ).set(queue='default') for market in markets)()
 
         while not res.ready():
             time.sleep(0.5)

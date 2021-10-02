@@ -980,7 +980,7 @@ def insert_ohlcv(exid, wallet, symbol):
                         dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
 
                     else:
-                        since += (30 * 24 * 60 * 1000)
+                        since += 30 * 24 * (60 * 60 * 1000)
                         log.info('Empty array, set since to {0}'.format(since))
     else:
 

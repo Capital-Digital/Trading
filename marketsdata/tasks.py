@@ -803,49 +803,6 @@ def update_paprika():
                     log.info('Object for {0} already updated'.format(currency.code))
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Get listing')
-def get_listing():
-    from requests import Request, Session
-    from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
-    import json
-
-    log.info('Retrieve listing from CMC')
-
-    url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
-    parameters = {
-        'start': '1',
-        'limit': '5000',
-        'convert': 'USD'
-    }
-    headers = {
-        'Accepts': 'application/json',
-        'X-CMC_PRO_API_KEY': '5e2d4f14-42a9-4108-868c-6fd0bb8c6186',
-    }
-
-    session = Session()
-    session.headers.update(headers)
-
-    try:
-        res = session.get(url, params=parameters)
-        data = json.loads(res.text)
-        if data['status']['error_code'] == 0:
-
-            # Create datetime object
-            dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-            raw = {i['symbol']: i for i in data['data'] if i['cmc_rank'] < 300}
-            Listing.objects.create(dt=dt, data=raw)
-
-            log.info('Create listing for CMC complete')
-
-        else:
-            log.error('Error while retrieving data from CoinMarketCap')
-            log.error("Error: {0}".format(data['status']['error_message']))
-
-    except (ConnectionError, Timeout, TooManyRedirects) as e:
-        log.error('Error while retrieving data from CoinMarketCap')
-        log.error("Error: {0}".format(e))
-
-
 @shared_task(base=BaseTaskWithRetry)
 def prices(exid):
     from marketsdata.models import Exchange, Market, Candle

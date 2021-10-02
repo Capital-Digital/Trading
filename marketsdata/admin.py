@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta, datetime
-from .models import Exchange, Market, Candle, Currency, Listing, Candles
+from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika, Candles
 import structlog
 import locale
 from celery import group
@@ -326,7 +326,7 @@ class CustomerAdmin(admin.ModelAdmin):
     get_dt.short_description = 'Datetime UTC'
 
 
-@admin.register(Listing)
+@admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('currency', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')

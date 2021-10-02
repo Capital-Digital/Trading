@@ -703,15 +703,19 @@ def fetch_paprika_history():
                                                                )
 
                                 else:
-
-                                    log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
-
                                     # Remove duplicate records
                                     diff = [i for i in var if i not in obj.data]
 
-                                    # Concatenate the two lists
-                                    obj.data += diff
-                                    obj.save()
+                                    if diff:
+
+                                        log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
+
+                                        # Concatenate the two lists
+                                        obj.data += diff
+                                        obj.save()
+
+                                    else:
+                                        log.info('Object {0} {1} {2} is up to date'.format(currency.code, year, i))
 
                     # Update start datetime
                     start_dt = datetime.strptime(data[-1]['timestamp'], directive).replace(tzinfo=pytz.UTC)

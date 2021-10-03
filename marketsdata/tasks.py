@@ -845,7 +845,6 @@ def top_markets(exid):
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid, wallet, symbol):
-
     exchange = Exchange.objects.get(exid=exid)
     market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
 
@@ -962,7 +961,8 @@ def fetch_candle_history(exid, wallet, symbol):
 
                                             else:
 
-                                                log.info('Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
+                                                log.info(
+                                                    'Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
 
                             # Update since and dt
                             since = end_ts + (60 * 60 * 1000)
@@ -982,7 +982,6 @@ def fetch_candle_history(exid, wallet, symbol):
 # Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(exid):
-
     log.info('Start tickers insertion')
 
     def insert(data, wallet=None):
@@ -1005,11 +1004,11 @@ def insert_current_tickers(exid):
                 log.info('Create object {0} {1} {2}'.format(market.symbol, year, semester))
 
                 # Create new object
-                CoinPaprika.objects.create(year=year,
-                                           semester=semester,
-                                           market=market,
-                                           data=list(dic)
-                                           )
+                Tickers.objects.create(year=year,
+                                       semester=semester,
+                                       market=market,
+                                       data=list(dic)
+                                       )
 
             else:
 
@@ -1024,7 +1023,7 @@ def insert_current_tickers(exid):
 
                 else:
 
-                    log.info('Object for {0} already updated'.format(market.symbol))
+                    log.info('Object for {0} updated'.format(market.symbol))
 
     timestamp = timezone.now().replace(minute=0, second=0, microsecond=0)
     timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -1038,7 +1037,6 @@ def insert_current_tickers(exid):
             client = exchange.get_ccxt_client()
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
-
                     client.options['defaultType'] = wallet
                     data = client.fetch_tickers()
                     insert(data, wallet)
@@ -1050,7 +1048,6 @@ def insert_current_tickers(exid):
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch listing history')
 def fetch_listing_history():
-
     log.info('Start fetching records')
 
     from coinpaprika import client as Coinpaprika
@@ -1166,7 +1163,6 @@ def fetch_listing_history():
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert current listing')
 def insert_current_listing():
-
     log.info('Start listing insertion')
 
     from coinpaprika import client as Coinpaprika

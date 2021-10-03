@@ -846,7 +846,7 @@ def top_markets(exid):
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
     exchange = Exchange.objects.get(exid=exid)
-    markets = Market.objects.filter(exchange=exchange, active=True)
+    markets = Market.objects.filter(exchange=exchange, trading=True)
 
     if exchange.is_trading():
 

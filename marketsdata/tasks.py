@@ -980,7 +980,7 @@ def fetch_candle_history(exid, wallet, symbol):
 
 
 # Insert current tickers
-@shared_task(base=BaseTaskWithRetry)
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Hourly tasks')
 def hourly_tasks():
 
     exids = [i.exid for i in Exchange.objects.all()]
@@ -1024,7 +1024,7 @@ def insert_current_tickers(exid):
                 Tickers.objects.create(year=year,
                                        semester=semester,
                                        market=market,
-                                       data=list(dic)
+                                       data=[dic]
                                        )
 
             else:
@@ -1132,10 +1132,6 @@ def fetch_listing_history():
 
                                 except ObjectDoesNotExist:
 
-                                    if currency.code == 'AUTO':
-                                        print('\nAUTO')
-                                        print(var)
-
                                     log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
 
                                     # Create new object for semester 1
@@ -1151,10 +1147,6 @@ def fetch_listing_history():
                                     diff = [i for i in var if i not in obj.data]
 
                                     if diff:
-
-                                        if currency.code == 'AUTO':
-                                            print('\nAUTO')
-                                            print(list(diff))
 
                                         log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
 
@@ -1207,23 +1199,12 @@ def insert_current_listing():
         timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
         timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        if code in ['AUTO', 'PIVX']:
-            print('ts', timestamp_st)
-            print('vo', volume_24h)
-            print('mc', market_cap)
-            print(type(i))
-            pprint(i)
-
         record = dict(
             price=price,
             timestamp=timestamp_st,
             volume_24h=volume_24h,
             market_cap=market_cap
         )
-
-        if code in ['AUTO', 'PIVX']:
-            print('Record')
-            pprint(record)
 
         # Get year and semester
         year = timestamp.year
@@ -1244,10 +1225,6 @@ def insert_current_listing():
 
                 log.info('Create {0} {1} {2}'.format(currency.code, year, semester))
 
-                if currency.code in ['AUTO', 'PIVX']:
-                    print('\nAUTO')
-                    print([record])
-
                 # Create new object
                 CoinPaprika.objects.create(year=year,
                                            semester=semester,
@@ -1260,10 +1237,6 @@ def insert_current_listing():
 
                 # if timestamp_st not in [d['timestamp'] for d in obj.data]:
                 if timestamp_st != obj.data[-1]['timestamp']:
-
-                    if currency.code in ['AUTO', 'PIVX']:
-                        print('\nAUTO')
-                        print(record)
 
                     log.info('Update {0} {1} {2}'.format(currency.code, year, semester))
 

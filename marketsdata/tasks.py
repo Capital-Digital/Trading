@@ -844,136 +844,138 @@ def top_markets(exid):
 
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
-def fetch_candle_history(exid, wallet, symbol):
+def fetch_candle_history(exid):
     exchange = Exchange.objects.get(exid=exid)
-    market = Market.objects.get(exchange=exchange, symbol=symbol, wallet=wallet)
+    markets = Market.objects.filter(exchange=exchange, active=True)
 
     if exchange.is_trading():
 
-        if market.quote.code == market.exchange.dollar_currency:
+        for market in markets:
 
-            log.info('Fetch candles for {0} {1}'.format(symbol, wallet))
-            log.bind(exchange=exid, symbol=symbol, wallet=wallet)
+            if market.quote.code == market.exchange.dollar_currency:
 
-            now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-            directive = '%Y-%m-%dT%H:%M:%SZ'
+                log.info('Fetch candles for {0} {1}'.format(market.symbol, market.wallet))
+                log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)
 
-            # Test if an object already exist
-            queryset = Candles.objects.filter(market=market)
-            if queryset:
+                now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+                directive = '%Y-%m-%dT%H:%M:%SZ'
 
-                # Get latest timestamp
-                end = queryset.order_by('-year', '-semester')[0].data[-1][0]
-                dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+                # Test if an object already exist
+                queryset = Candles.objects.filter(market=market)
+                if queryset:
 
-                if dt == now:
-                    log.info('Market {0} {1} is updated'.format(symbol, wallet))
-                    return
+                    # Get latest timestamp
+                    end = queryset.order_by('-year', '-semester')[0].data[-1][0]
+                    dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
 
-            else:
-                # Set datetime
-                dt = exchange.start_date
-
-            limit = exchange.limit_ohlcv
-            client = exchange.get_ccxt_client()
-            client.options['defaultType'] = market.wallet if exchange.wallets else None
-
-            if dt < now:
-
-                # Add 1 hour and convert to milliseconds
-                since = int((dt + timedelta(hours=1)).timestamp() * 1000)
-
-                while dt < now:
-
-                    try:
-                        data = client.fetchOHLCV(market.symbol, '1h', since, limit)
-
-                    except ccxt.BadSymbol as e:
-                        market.delete()
-                        log.exception('Bad symbol', exception=e)
+                    if dt == now:
+                        log.info('Market {0} {1} is updated'.format(market.symbol, market.wallet))
                         return
 
-                    except ccxt.ExchangeError as e:
-                        log.exception('Exchange error', exception=e)
-                        return
+                else:
+                    # Set datetime
+                    dt = exchange.start_date
 
-                    except Exception as e:
-                        log.exception('An unexpected error occurred', exception=e)
-                        return
+                limit = exchange.limit_ohlcv
+                client = exchange.get_ccxt_client()
+                client.options['defaultType'] = market.wallet if exchange.wallets else None
 
-                    else:
+                if dt < now:
 
-                        if data:
+                    # Add 1 hour and convert to milliseconds
+                    since = int((dt + timedelta(hours=1)).timestamp() * 1000)
 
-                            print('Fetch {0} candles'.format(len(data)))
+                    while dt < now:
 
-                            # Remove record of current hour
-                            end_ts = data[-1][0]
-                            end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
-                            if end_dt > now:
-                                print('Delete incomplete (current) record', end_dt)
-                                del data[-1]
+                        try:
+                            data = client.fetchOHLCV(market.symbol, '1h', since, limit)
 
-                            # Convert timestamp from ms to string
-                            for idx, i in enumerate(data):
-                                dt = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
-                                ts = dt.strftime(directive)
-                                data[idx][0] = ts
+                        except ccxt.BadSymbol as e:
+                            market.delete()
+                            log.exception('Bad symbol', exception=e)
+                            return
 
-                            # Iterate through years
-                            for year in list(range(dt.year, timezone.now().year + 1)):
+                        except ccxt.ExchangeError as e:
+                            log.exception('Exchange error', exception=e)
+                            return
 
-                                filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
-                                filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
-
-                                # Filter records by semester
-                                data_1 = [i for i in data if i[0][:7] in filter_1]
-                                data_2 = [i for i in data if i[0][:7] in filter_2]
-
-                                for i in range(1, 3):
-
-                                    var = eval('data_' + str(i))
-                                    if var:
-
-                                        try:
-                                            obj = Candles.objects.get(year=year, semester=i, market=market)
-
-                                        except ObjectDoesNotExist:
-
-                                            log.info('Create object {0} {1} {2}'.format(market.symbol, year, i))
-
-                                            # Create new object for semester 1
-                                            Candles.objects.create(year=year,
-                                                                   semester=i,
-                                                                   market=market,
-                                                                   data=var)
-                                        else:
-                                            # Remove duplicate records
-                                            diff = [i for i in var if i not in obj.data]
-
-                                            if diff:
-
-                                                log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
-
-                                                # Concatenate the two lists
-                                                obj.data += diff
-                                                obj.save()
-
-                                            else:
-
-                                                log.info(
-                                                    'Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
-
-                            # Update since and dt
-                            since = end_ts + (60 * 60 * 1000)
-                            dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
+                        except Exception as e:
+                            log.exception('An unexpected error occurred', exception=e)
+                            return
 
                         else:
-                            since += 30 * 24 * (60 * 60 * 1000)
-                            log.info('Empty array, set since to {0}'.format(since))
 
-            else:
-                log.info('There is no candle to download')
+                            if data:
+
+                                print('Fetch {0} candles'.format(len(data)))
+
+                                # Remove record of current hour
+                                end_ts = data[-1][0]
+                                end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
+                                if end_dt > now:
+                                    print('Delete incomplete (current) record', end_dt)
+                                    del data[-1]
+
+                                # Convert timestamp from ms to string
+                                for idx, i in enumerate(data):
+                                    dt = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
+                                    ts = dt.strftime(directive)
+                                    data[idx][0] = ts
+
+                                # Iterate through years
+                                for year in list(range(dt.year, timezone.now().year + 1)):
+
+                                    filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
+                                    filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
+
+                                    # Filter records by semester
+                                    data_1 = [i for i in data if i[0][:7] in filter_1]
+                                    data_2 = [i for i in data if i[0][:7] in filter_2]
+
+                                    for i in range(1, 3):
+
+                                        var = eval('data_' + str(i))
+                                        if var:
+
+                                            try:
+                                                obj = Candles.objects.get(year=year, semester=i, market=market)
+
+                                            except ObjectDoesNotExist:
+
+                                                log.info('Create object {0} {1} {2}'.format(market.symbol, year, i))
+
+                                                # Create new object for semester 1
+                                                Candles.objects.create(year=year,
+                                                                       semester=i,
+                                                                       market=market,
+                                                                       data=var)
+                                            else:
+                                                # Remove duplicate records
+                                                diff = [i for i in var if i not in obj.data]
+
+                                                if diff:
+
+                                                    log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
+
+                                                    # Concatenate the two lists
+                                                    obj.data += diff
+                                                    obj.save()
+
+                                                else:
+
+                                                    log.info(
+                                                        'Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
+
+                                # Update since and dt
+                                since = end_ts + (60 * 60 * 1000)
+                                dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
+
+                            else:
+                                since += 30 * 24 * (60 * 60 * 1000)
+                                log.info('Empty array, set since to {0}'.format(since))
+
+                else:
+                    log.info('There is no candle to download')
     else:
 
         log.warning('Exchange {0} is not trading'.format(exchange.exid))

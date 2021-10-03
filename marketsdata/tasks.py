@@ -569,8 +569,11 @@ def markets(exid):
                 client.load_markets(True)
                 exchange.update_credit('load_markets')
 
-                for market, response in client.markets.items():
-                    update()
+                if exid == 'binance':
+                    for market, response in client.markets.items():
+                        update()
+                else:
+                    log.info('Skip update')
 
                 # Delete markets not reported by the exchange
                 unlisted = Market.objects.filter(exchange=exchange).exclude(symbol__in=list(client.markets.keys()))

@@ -569,11 +569,8 @@ def markets(exid):
                 client.load_markets(True)
                 exchange.update_credit('load_markets')
 
-                if exid == 'binance':
-                    for market, response in client.markets.items():
-                        update()
-                else:
-                    log.info('Skip update')
+                for market, response in client.markets.items():
+                    update()
 
                 # Delete markets not reported by the exchange
                 unlisted = Market.objects.filter(exchange=exchange).exclude(symbol__in=list(client.markets.keys()))
@@ -1011,11 +1008,10 @@ def insert_current_tickers(exid):
         # Insert dictionaries
         for dic in data:
 
+            # Select market
             args = dict(exchange=exchange, symbol=dic['symbol'])
             if wallet:
                 args['wallet'] = wallet
-
-            pprint(args)
             market = Market.objects.get(**args)
 
             try:

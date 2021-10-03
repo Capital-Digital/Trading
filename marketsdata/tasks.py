@@ -1210,6 +1210,10 @@ def insert_current_listing():
 
                 log.info('Create {0} {1} {2}'.format(currency.code, year, semester))
 
+                if currency.code == 'AUTO':
+                    print('\nAUTO')
+                    print(list(record))
+
                 # Create new object
                 CoinPaprika.objects.create(year=year,
                                            semester=semester,
@@ -1223,6 +1227,10 @@ def insert_current_listing():
                 # if timestamp_st not in [d['timestamp'] for d in obj.data]:
                 if timestamp_st != obj.data[-1]['timestamp']:
 
+                    if currency.code == 'AUTO':
+                        print('\nAUTO')
+                        print(list(record))
+                        
                     log.info('Update {0} {1} {2}'.format(currency.code, year, semester))
 
                     # Concatenate the two lists

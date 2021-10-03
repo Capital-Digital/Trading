@@ -1012,7 +1012,7 @@ def insert_current_tickers(exid):
         # Iterate through symbols
         for symbol in symbols:
 
-            dic = [i for i in data if i['symbol'] == symbol]
+            dic = [i for i in data if i['symbol'] == symbol][0]
             dic['timestamp'] = timestamp_st
             args = dict(exchange=exchange, symbol=dic['symbol'])
             if wallet:

@@ -547,7 +547,7 @@ def markets(exid):
                 log.bind(wallet=wallet)
                 log.info('Update markets {0}'.format(wallet))
 
-                if exid in ['binance', 'ftx']:
+                if exid in ['binance']:
                     for market, response in client.markets.items():
                         update()
                 else:

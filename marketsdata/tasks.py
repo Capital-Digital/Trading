@@ -1207,7 +1207,7 @@ def insert_current_listing():
         timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
         timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        if currency.code in ['AUTO', 'PIVX']:
+        if code in ['AUTO', 'PIVX']:
             print('\nAUTO')
             print(i)
 

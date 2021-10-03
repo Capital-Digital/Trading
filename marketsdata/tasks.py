@@ -1015,13 +1015,18 @@ def insert_current_tickers(exid):
             dic = [i for i in data if i['symbol'] == symbol][0]
             dic['timestamp'] = timestamp_st
 
-            args = dict(exchange=exchange)
-            if wallet == 'delivery':
+            args = dict(exchange=exchange,
+                        symbol=dic['symbol'],
+                        wallet=wallet
+                        )
+
+            # Select market with Binance's symbol
+            if exid == 'binance' and wallet == 'delivery':
+                del args['symbol']
                 args['response__info__symbol'] = dic['symbol']
-            else:
-                args['symbol'] = dic['symbol']
-            if wallet:
-                args['wallet'] = wallet
+
+            if not wallet:
+                del args['wallet']
 
             try:
                 market = Market.objects.get(**args)

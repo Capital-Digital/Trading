@@ -22,7 +22,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'urls', 'rate_limits', 'credit', 'credit_max',
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
-    actions = ['insert_full_ohlcv', 'insert_recent_ohlcv', 'update_currencies',
+    actions = ['fetch_candle_history', 'update_currencies',
                'update_markets', 'update_price', 'update_status', 'update_prices',
                'flag_top_markets']
     save_as = True

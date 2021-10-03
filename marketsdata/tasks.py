@@ -901,7 +901,7 @@ def fetch_candle_history(exid):
 
                         except Exception as e:
                             log.exception('An unexpected error occurred', exception=e)
-                            return
+                            continue
 
                         else:
 

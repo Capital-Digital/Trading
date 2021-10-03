@@ -980,9 +980,26 @@ def fetch_candle_history(exid, wallet, symbol):
 
 
 # Insert current tickers
+@shared_task(base=BaseTaskWithRetry)
+def hourly_tasks():
+
+    exids = [i.exid for i in Exchange.objects.all()]
+
+    res = chain(insert_current_tickers.s(exid) for exid in exids)()
+    while not res.ready():
+        time.sleep(0.5)
+
+    if res.successful():
+        log.info('Hourly tasks complete')
+
+    else:
+        log.error('Hourly tasks failed')
+
+
+# Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(exid):
-    log.info('Start tickers insertion')
+    log.info('Start tickers insertion for {0}'.format(exid))
 
     def insert(data, wallet=None):
 

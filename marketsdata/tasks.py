@@ -1246,14 +1246,14 @@ def insert_current_listing():
 
                 if currency.code in ['AUTO', 'PIVX']:
                     print('\nAUTO')
-                    print(list(record))
+                    print([record])
 
                 # Create new object
                 CoinPaprika.objects.create(year=year,
                                            semester=semester,
                                            name=name,
                                            currency=currency,
-                                           data=list(record)
+                                           data=[record]
                                            )
 
             else:

@@ -1118,6 +1118,10 @@ def fetch_listing_history():
 
                                 except ObjectDoesNotExist:
 
+                                    if currency.code == 'AUTO':
+                                        print('\nAUTO')
+                                        print(var)
+
                                     log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
 
                                     # Create new object for semester 1
@@ -1133,6 +1137,10 @@ def fetch_listing_history():
                                     diff = [i for i in var if i not in obj.data]
 
                                     if diff:
+
+                                        if currency.code == 'AUTO':
+                                            print('\nAUTO')
+                                            print(list(diff))
 
                                         log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
 
@@ -1231,7 +1239,7 @@ def insert_current_listing():
 
                     if currency.code == 'AUTO':
                         print('\nAUTO')
-                        print(list(record))
+                        print(record)
 
                     log.info('Update {0} {1} {2}'.format(currency.code, year, semester))
 

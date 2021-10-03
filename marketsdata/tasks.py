@@ -1012,13 +1012,16 @@ def insert_current_tickers(exid):
         # Iterate through symbols
         for symbol in symbols:
 
+            log.info('Start tickers insertion for {0}'.format(symbol))
+
             dic = [i for i in data if i['symbol'] == symbol][0]
             dic['timestamp'] = timestamp_st
-            args = dict(exchange=exchange, symbol=dic['symbol'])
-            if wallet:
-                args['wallet'] = wallet
 
             try:
+
+                args = dict(exchange=exchange, symbol=dic['symbol'])
+                if wallet:
+                    args['wallet'] = wallet
                 market = Market.objects.get(**args)
 
             except ObjectDoesNotExist:

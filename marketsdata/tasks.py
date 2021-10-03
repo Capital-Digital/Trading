@@ -1180,6 +1180,8 @@ def insert_current_listing():
         volume_24h = i['quotes']['USD']['volume_24h']
         market_cap = i['quotes']['USD']['market_cap']
 
+        log.info('{0} insertion'.format(code))
+
         # Create timestamp
         timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
         timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -1230,7 +1232,7 @@ def insert_current_listing():
                     if currency.code == 'AUTO':
                         print('\nAUTO')
                         print(list(record))
-                        
+
                     log.info('Update {0} {1} {2}'.format(currency.code, year, semester))
 
                     # Concatenate the two lists

@@ -1233,6 +1233,10 @@ def insert_current_listing():
             volume_24h=volume_24h,
             market_cap=market_cap
         )
+        
+        if None in record.values():
+            pprint(record)
+            raise Exception('None detect in {0}'.format(code))
 
         # Get year and semester
         year = timestamp.year

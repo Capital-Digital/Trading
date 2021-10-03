@@ -1011,7 +1011,9 @@ def insert_current_tickers(exid):
         # Insert dictionaries
         for dic in data:
 
-            market = Market.objects.get(exchange=exchange, wallet=wallet, symbol=dic['symbol'])
+            market = Market.objects.get(exchange=exchange, symbol=dic['symbol'])
+            if wallet:
+                market = market.filter(wallet=wallet)
 
             try:
                 obj = Tickers.objects.get(year=year, semester=semester, market=market)

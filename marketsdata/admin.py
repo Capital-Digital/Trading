@@ -399,10 +399,8 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ('year', 'semester', 'market',)
+    list_filter = ('year', 'semester',)
     ordering = ('-year', '-semester', 'market',)
-    save_as = True
-    actions = ['update_candles', ]
 
     def count_records(self, obj):
         if obj.data:

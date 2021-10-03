@@ -983,7 +983,7 @@ def fetch_candle_history(exid, wallet, symbol):
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Hourly tasks')
 def hourly_tasks():
 
-    res = chain(insert_current_tickers.s(exid) for exid in ['binance'])()
+    res = group(insert_current_tickers.s(exid) for exid in ['binance'])()
     while not res.ready():
         time.sleep(0.5)
 

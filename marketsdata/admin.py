@@ -1,6 +1,6 @@
 from django.contrib import admin
 from datetime import timedelta, datetime
-from .models import Exchange, Market, Candle, Currency, Listing, CoinPaprika, Candles
+from .models import Exchange, Market, Candle, Currency, Tickers, CoinPaprika, Candles
 import structlog
 import locale
 from celery import group
@@ -393,3 +393,25 @@ class CustomerAdmin(admin.ModelAdmin):
             log.error('Fetch history failed')
 
     update_candles.short_description = "Update records"
+
+
+@admin.register(Tickers)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')
+    readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
+    list_filter = ('year', 'semester', 'market',)
+    ordering = ('-year', '-semester', 'market',)
+    save_as = True
+    actions = ['update_candles', ]
+
+    def count_records(self, obj):
+        if obj.data:
+            return len(obj.data)
+
+    count_records.short_description = 'Records'
+
+    def latest_timestamp(self, obj):
+        if obj.data:
+            return obj.data[-1][0][:16]
+
+    latest_timestamp.short_description = 'Latest'

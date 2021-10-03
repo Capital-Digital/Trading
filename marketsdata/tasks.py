@@ -1012,8 +1012,6 @@ def insert_current_tickers(exid):
         # Iterate through symbols
         for symbol in symbols:
 
-            log.info('Start tickers insertion for {0}'.format(symbol))
-
             dic = [i for i in data if i['symbol'] == symbol][0]
             dic['timestamp'] = timestamp_st
 
@@ -1078,6 +1076,8 @@ def insert_current_tickers(exid):
             else:
                 data = client.fetch_tickers()
                 insert(data)
+    
+    log.info('Insertion for {0} complete'.format(exid))
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch listing history')

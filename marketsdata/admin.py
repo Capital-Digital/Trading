@@ -399,7 +399,7 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ('year', 'semester', 'market__currency__code')
+    list_filter = ('year', 'semester', 'market__base__code')
     ordering = ('-year', '-semester', 'market',)
 
     def count_records(self, obj):

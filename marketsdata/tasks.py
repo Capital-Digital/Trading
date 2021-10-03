@@ -1015,6 +1015,7 @@ def insert_current_tickers(exid):
             if wallet:
                 args['wallet'] = wallet
 
+            pprint(args)
             market = Market.objects.get(**args)
 
             try:

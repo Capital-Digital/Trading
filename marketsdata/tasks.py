@@ -1015,11 +1015,15 @@ def insert_current_tickers(exid):
             dic = [i for i in data if i['symbol'] == symbol][0]
             dic['timestamp'] = timestamp_st
 
-            try:
+            args = dict(exchange=exchange)
+            if wallet == 'delivery':
+                args['response__info__symbol'] = dic['symbol']
+            else:
+                args['symbol'] = dic['symbol']
+            if wallet:
+                args['wallet'] = wallet
 
-                args = dict(exchange=exchange, symbol=dic['symbol'])
-                if wallet:
-                    args['wallet'] = wallet
+            try:
                 market = Market.objects.get(**args)
 
             except ObjectDoesNotExist:
@@ -1076,7 +1080,7 @@ def insert_current_tickers(exid):
             else:
                 data = client.fetch_tickers()
                 insert(data)
-    
+
     log.info('Insertion for {0} complete'.format(exid))
 
 

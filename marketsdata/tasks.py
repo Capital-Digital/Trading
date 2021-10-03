@@ -1009,42 +1009,53 @@ def insert_current_tickers(exid):
         # Insert dictionaries
         for dic in data:
 
+            # Add timestamp to dictionary
+            dic['timestamp'] = timestamp_st
+
             # Select market
             args = dict(exchange=exchange, symbol=dic['symbol'])
             if wallet:
                 args['wallet'] = wallet
-            market = Market.objects.get(**args)
 
             try:
-                obj = Tickers.objects.get(year=year, semester=semester, market=market)
+                market = Market.objects.get(**args)
 
             except ObjectDoesNotExist:
-
-                log.info('Create object {0} {1} {2}'.format(market.symbol, year, semester))
-
-                # Create new object
-                Tickers.objects.create(year=year,
-                                       semester=semester,
-                                       market=market,
-                                       data=[dic]
-                                       )
+                print('No market', dic['symbol'], wallet)
+                continue
 
             else:
 
-                # Avoid duplicate records
-                if timestamp_st not in [d['datetime'] for d in obj.data]:
+                try:
+                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
 
-                    log.info('Update object {0} {1} {2}'.format(market.symbol, year, semester))
+                except ObjectDoesNotExist:
 
-                    # Concatenate the two lists
-                    obj.data.append(dic)
-                    obj.save()
+                    log.info('Create object {0} {1} {2}'.format(market.symbol, year, semester))
+
+                    # Create new object
+                    Tickers.objects.create(year=year,
+                                           semester=semester,
+                                           market=market,
+                                           data=[dic]
+                                           )
 
                 else:
 
-                    log.info('Object for {0} updated'.format(market.symbol))
+                    # Avoid duplicate records
+                    if timestamp_st not in [d['datetime'] for d in obj.data]:
 
-    timestamp = timezone.now().replace(minute=0, second=0, microsecond=0)
+                        log.info('Update object {0} {1} {2}'.format(market.symbol, year, semester))
+
+                        # Concatenate the two lists
+                        obj.data.append(dic)
+                        obj.save()
+
+                    else:
+
+                        log.info('Object for {0} updated'.format(market.symbol))
+
+    timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
     year = timestamp.year
     semester = 1 if timestamp.month <= 6 else 2

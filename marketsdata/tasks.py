@@ -1233,7 +1233,7 @@ def insert_current_listing():
 
                 log.info('Create {0} {1} {2}'.format(currency.code, year, semester))
 
-                if currency.code == 'AUTO':
+                if currency.code in ['AUTO', 'PIVX']:
                     print('\nAUTO')
                     print(list(record))
 
@@ -1250,7 +1250,7 @@ def insert_current_listing():
                 # if timestamp_st not in [d['timestamp'] for d in obj.data]:
                 if timestamp_st != obj.data[-1]['timestamp']:
 
-                    if currency.code == 'AUTO':
+                    if currency.code in ['AUTO', 'PIVX']:
                         print('\nAUTO')
                         print(record)
 

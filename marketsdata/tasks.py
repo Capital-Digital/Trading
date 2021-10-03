@@ -1208,8 +1208,11 @@ def insert_current_listing():
         timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         if code in ['AUTO', 'PIVX']:
-            print('\nAUTO')
-            print(i)
+            print('ts', timestamp_st)
+            print('vo', volume_24h)
+            print('mc', market_cap)
+            print(type(i))
+            pprint(i)
 
         record = dict(
             price=price,
@@ -1217,6 +1220,10 @@ def insert_current_listing():
             volume_24h=volume_24h,
             market_cap=market_cap
         )
+
+        if code in ['AUTO', 'PIVX']:
+            print('Record')
+            pprint(record)
 
         # Get year and semester
         year = timestamp.year

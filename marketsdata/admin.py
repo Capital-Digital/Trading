@@ -70,28 +70,21 @@ class CustomerAdmin(admin.ModelAdmin):
     ##########
 
     # Fetch markets history
-    def fetch_markets_history(self, request, queryset):
+    def fetch_candle_history(self, request, queryset):
 
-        for exchange in queryset:
+        exids = [i.exid for i in queryset]
+        res = group(tasks.fetch_candle_history.s(exid).set(queue='default') for exid in exids)()
 
-            log.info('Create chain for {0}'.format(exchange.exid))
+        while not res.ready():
+            time.sleep(0.5)
 
-            markets = Market.objects.filter(exchange=exchange)
-            res = chain(tasks.insert_ohlcv.s(market.exchange.exid,
-                                             market.wallet,
-                                             market.symbol
-                                             ).set(queue='default') for market in markets)()
+        if res.successful():
+            log.info('Fetch markets history complete')
 
-            while not res.ready():
-                time.sleep(0.5)
+        else:
+            log.error('Fetch markets history error')
 
-            if res.successful():
-                log.info('Fetch markets history complete for {0}'.format(exchange.exid))
-
-            else:
-                log.error('Fetch markets history error for {0}'.format(exchange.exid))
-
-    fetch_markets_history.short_description = "Fetch markets history"
+    fetch_candle_history.short_description = "Fetch markets history"
 
     # Fetch markets history
     def update_currencies(self, request, queryset):
@@ -263,30 +256,6 @@ class CustomerAdmin(admin.ModelAdmin):
         return obj.precision['price']
 
     get_precision_price.short_description = "Precision price"
-
-    ##########
-    # Action #
-    ##########
-
-    def fetch_history(self, request, queryset):
-
-        log.info('Create groups')
-
-        res = group(tasks.insert_ohlcv.s(market.exchange.exid,
-                                         market.wallet,
-                                         market.symbol
-                                         ).set(queue='default') for market in queryset)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Fetch history complete')
-
-        else:
-            log.error('Fetch history failed')
-
-    fetch_history.short_description = "Fetch history"
 
 
 @admin.register(Candle)

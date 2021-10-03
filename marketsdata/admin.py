@@ -343,7 +343,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def latest_timestamp(self, obj):
         if obj.data:
             log.info('Display {0}'.format(obj.currency.code))
-            return # obj.data[-1]['timestamp'][:16]
+            return obj.data[-1]['timestamp'][:16]
 
     latest_timestamp.short_description = 'Latest'
 

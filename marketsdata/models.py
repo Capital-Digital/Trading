@@ -659,7 +659,7 @@ class CoinPaprika(models.Model):
     semester = models.IntegerField(blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
-    data = JSONField(null=True, blank=True)
+    data = models. (null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 

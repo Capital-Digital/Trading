@@ -252,4 +252,4 @@ def clean_metadata(request, logger, **kwargs):
     # logger.bind(user_email=getattr(request.user, 'email', ''))
     logger.unbind('request_id', 'ip', 'user_id')
 
-
+DEFAULT_AUTO_FIELD='django.db.models.AutoField'

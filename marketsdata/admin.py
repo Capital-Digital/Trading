@@ -342,27 +342,6 @@ class CustomerAdmin(admin.ModelAdmin):
     # Action #
     ##########
 
-    def update_candles(self, request, queryset):
-
-        log.info('Create groups')
-
-        markets = [c.market for c in queryset]
-        res = group(tasks.fetch_candle_history.s(market.exchange.exid,
-                                                 market.wallet,
-                                                 market.symbol
-                                                 ).set(queue='default') for market in markets)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Fetch history complete')
-
-        else:
-            log.error('Fetch history failed')
-
-    update_candles.short_description = "Update records"
-
 
 @admin.register(Tickers)
 class CustomerAdmin(admin.ModelAdmin):

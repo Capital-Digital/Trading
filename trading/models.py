@@ -1,7 +1,6 @@
 import ccxt
 from django.db import models
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from django.db.models import Q
@@ -526,7 +525,7 @@ class Fund(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    balance, total, free, used, margin_assets, positions = [JSONField(null=True) for i in range(6)]
+    balance, total, free, used, margin_assets, positions = [models.JSONField(null=True) for i in range(6)]
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -554,7 +553,7 @@ class Order(models.Model):
     route_type = models.CharField(max_length=10, null=True)
     action = models.CharField(max_length=20, null=True)
     average, price, price_strategy, distance = [models.FloatField(null=True, blank=True) for i in range(4)]
-    fee, trades, params, response, route, segments = [JSONField(null=True) for i in range(6)]
+    fee, trades, params, response, route, segments = [models.JSONField(null=True) for i in range(6)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
@@ -593,8 +592,8 @@ class Position(models.Model):
     # leverage = models.DecimalField(null=True, max_digits=5, decimal_places=2)
     leverage = models.IntegerField(null=True)
     created_at = models.DateTimeField(null=True)
-    response = JSONField(null=True)
-    response_2 = JSONField(null=True)
+    response = models.JSONField(null=True)
+    response_2 = models.JSONField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
     user = models.ForeignKey(
@@ -667,7 +666,7 @@ class Transfer(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transfer', null=True)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='transfer', null=True)
     amount = models.FloatField(null=True)
-    response = JSONField(null=True)
+    response = models.JSONField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
     from_wallet, to_wallet = [models.CharField(max_length=50, null=True) for i in range(2)]
     transferid = models.BigIntegerField(null=True)

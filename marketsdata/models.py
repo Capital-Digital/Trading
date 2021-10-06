@@ -2,7 +2,6 @@ import time
 from datetime import datetime, date
 import ccxt
 import ccxtpro
-from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django_pandas.managers import DataFrameManager
@@ -22,7 +21,7 @@ class Exchange(models.Model):
     wallets = models.CharField(max_length=50, blank=True, null=True)
     dollar_currency = models.CharField(max_length=4, blank=False, null=True)
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
-    api, countries, urls, has, timeframes, credentials, options = [JSONField(blank=True, null=True) for i in range(7)]
+    api, countries, urls, has, timeframes, credentials, options = [models.JSONField(blank=True, null=True) for i in range(7)]
     timeout = models.IntegerField(default=3000)
     rate_limit = models.IntegerField(default=1000)
     precision_mode = models.IntegerField(null=True, blank=True)
@@ -39,9 +38,9 @@ class Exchange(models.Model):
     enable = models.BooleanField(default=False)
     enable_rate_limit = models.BooleanField(default=True)
     limit_ohlcv = models.PositiveIntegerField(null=True, blank=True)
-    credit = JSONField(blank=True, null=True)
-    credit_max = JSONField(blank=True, null=True)
-    rate_limits = JSONField(blank=True, null=True)
+    credit = models.JSONField(blank=True, null=True)
+    credit_max = models.JSONField(blank=True, null=True)
+    rate_limits = models.JSONField(blank=True, null=True)
     funding_rate_freq = models.PositiveSmallIntegerField(null=True, blank=True, default=8)
 
     status = models.CharField(max_length=12, default='ok', null=True, blank=True,
@@ -483,12 +482,12 @@ class Market(models.Model):
     cost_min, cost_max = [models.FloatField(null=True, blank=True) for i in range(2)]
     trading = models.BooleanField(null=True, default=None)
     symbol = models.CharField(max_length=50, null=True, blank=True)
-    limits, precision, response = [JSONField(null=True) for i in range(3)]
+    limits, precision, response = [models.JSONField(null=True) for i in range(3)]
     listing_date = models.DateTimeField(null=True, blank=True)
-    order_book = JSONField(null=True, blank=True)
-    config = JSONField(null=True, blank=True)
+    order_book = models.JSONField(null=True, blank=True)
+    config = models.JSONField(null=True, blank=True)
     updated = models.BooleanField(null=True, default=False)
-    funding_rate = JSONField(null=True, blank=True)
+    funding_rate = models.JSONField(null=True, blank=True)
     top = models.BooleanField(null=True, default=None)
     objects = models.Manager()
 
@@ -639,7 +638,7 @@ class Candle(models.Model):
 
 
 class Listing(models.Model):
-    data = JSONField(null=True, blank=True)
+    data = models.JSONField(null=True, blank=True)
     dt = models.DateTimeField(null=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
@@ -659,7 +658,7 @@ class CoinPaprika(models.Model):
     semester = models.IntegerField(blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='coinpaprika', null=True)
-    data = models. (null=True, blank=True)
+    data = models.JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 
@@ -676,7 +675,7 @@ class Candles(models.Model):
     year = models.IntegerField(blank=True, null=True)
     semester = models.IntegerField(blank=True, null=True)
     market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='candles', null=True)
-    data = JSONField(null=True, blank=True)
+    data = models.JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 
@@ -693,7 +692,7 @@ class Tickers(models.Model):
     year = models.IntegerField(blank=True, null=True)
     semester = models.IntegerField(blank=True, null=True)
     market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name='tickers', null=True)
-    data = JSONField(null=True, blank=True)
+    data = models.JSONField(null=True, blank=True)
     dt_created = models.DateTimeField(auto_now=True)
     objects = DataFrameManager()  # activate custom manager
 

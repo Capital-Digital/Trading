@@ -16,3 +16,5 @@ urlpatterns = [
 
 
 admin.site.site_header = 'Admin Dashboard'
+admin.autodiscover()
+admin.site.enable_nav_sidebar = False

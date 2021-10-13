@@ -22,6 +22,12 @@ def get_years(timestamp):
     return years
 
 
+def get_semesters(dt):
+    semester_start = 1 if dt.month < 6 else 2
+    semester_current = 1 if datetime.now().month < 6 else 2
+    return list({semester_start, semester_current})
+
+
 def get_year():
     return datetime.now().year
 

@@ -21,7 +21,8 @@ class Exchange(models.Model):
     wallets = models.CharField(max_length=50, blank=True, null=True)
     dollar_currency = models.CharField(max_length=4, blank=False, null=True)
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
-    api, countries, urls, has, timeframes, credentials, options = [models.JSONField(blank=True, null=True) for i in range(7)]
+    api, countries, urls, has, timeframes, credentials, options = [models.JSONField(blank=True, null=True) for i in
+                                                                   range(7)]
     timeout = models.IntegerField(default=3000)
     rate_limit = models.IntegerField(default=1000)
     precision_mode = models.IntegerField(null=True, blank=True)
@@ -115,7 +116,7 @@ class Exchange(models.Model):
             'enableRateLimit': self.enable_rate_limit,
             'rateLimit': self.rate_limit,
             'adjustForTimeDifference': True,
-            #'session': cloudscraper.create_scraper(allow_brotli=True),
+            # 'session': cloudscraper.create_scraper(allow_brotli=True),
         })
 
         # Set API key/secret
@@ -429,9 +430,9 @@ class Exchange(models.Model):
 
             self.credit_max = dict()
             self.credit_max[wallet] = dict(weight=w,
-                                                 order_count_1=order_1,
-                                                 order_count_2=order_2
-                                                 )
+                                           order_count_1=order_1,
+                                           order_count_2=order_2
+                                           )
             self.save()
 
 
@@ -449,6 +450,14 @@ class Currency(models.Model):
 
     def __str__(self):
         return self.code if self.code else ''
+
+    def get_latest_price(self):
+        candles = Candles.objects.get(market__quote__code=self.exchange.dollar_currency,
+                                      market__base__code=self.code,
+                                      market__type='spot',
+                                      year=get_year(),
+                                      semester=get_semester())
+        return candles[-1][4]
 
 
 class Market(models.Model):
@@ -468,11 +477,11 @@ class Market(models.Model):
                                  null=True, blank=True)
 
     contract_currency = models.ForeignKey(Currency,
-                                                on_delete=models.CASCADE,
-                                                related_name='market_contract',
-                                                null=True,
-                                                blank=True
-                                                )
+                                          on_delete=models.CASCADE,
+                                          related_name='market_contract',
+                                          null=True,
+                                          blank=True
+                                          )
     contract_value = models.FloatField(null=True, blank=True)
     base = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='market_base', null=True)
     quote = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='market_quote', null=True)

@@ -13,7 +13,7 @@ directive_coinpaprika = '%Y-%m-%dT%H:%M:%SZ'
 
 # Return a list of years since timestamp
 def get_years(timestamp):
-    if isinstance(timestamp, datetime.date):
+    if isinstance(timestamp, datetime):
         years = list(range(timestamp.year, timezone.now().year + 1))
     elif isinstance(timestamp, str):
         dt = datetime.strptime(timestamp, directive_coinpaprika).replace(tzinfo=pytz.UTC)

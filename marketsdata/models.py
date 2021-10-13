@@ -451,8 +451,8 @@ class Currency(models.Model):
     def __str__(self):
         return self.code if self.code else ''
 
-    def get_latest_price(self):
-        candles = Candles.objects.get(market__quote__code=self.exchange.dollar_currency,
+    def get_latest_price(self, exchange):
+        candles = Candles.objects.get(market__quote__code=exchange.dollar_currency,
                                       market__base__code=self.code,
                                       market__type='spot',
                                       year=get_year(),

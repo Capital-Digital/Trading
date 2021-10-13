@@ -1015,7 +1015,7 @@ def insert_current_tickers(exid):
         for symbol in symbols:
 
             dic = [i for i in data if i['symbol'] == symbol][0]
-            dic['timestamp'] = timestamp_st
+            dic['timestamp'] = int(timestamp.timestamp())
 
             args = dict(exchange=exchange,
                         symbol=dic['symbol'],

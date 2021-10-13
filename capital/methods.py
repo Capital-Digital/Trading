@@ -7,7 +7,8 @@ log = structlog.get_logger(__name__)
 
 datetime_directive_s = "%Y-%m-%d %H:%M:%S"
 datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
-directive_binance_order = '%Y-%m-%dT%H:%M:%S.%fZ'
+directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'
+directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_coinpaprika = '%Y-%m-%dT%H:%M:%SZ'
 
 

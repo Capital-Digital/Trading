@@ -1005,7 +1005,7 @@ def insert_current_tickers(exid):
 
         # Recreate dictionaries with desired keys
         data = [data[i] for i in data]
-        data = [{k: d[k] for k in ['symbol', 'last', 'datetime', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
+        data = [{k: d[k] for k in ['symbol', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
                 for d in data]
 
         symbols = [i['symbol'] for i in data]
@@ -1015,7 +1015,8 @@ def insert_current_tickers(exid):
         for symbol in symbols:
 
             dic = [i for i in data if i['symbol'] == symbol][0]
-            dic['timestamp'] = int(timestamp.timestamp())
+            dic['timestamp'] = int(dt.timestamp())
+            dic['datetime'] = timestamp_st
 
             args = dict(exchange=exchange,
                         symbol=dic['symbol'],
@@ -1044,7 +1045,7 @@ def insert_current_tickers(exid):
 
                 except ObjectDoesNotExist:
 
-                    log.info('Create object {0} {1} {2}'.format(market.symbol, year, semester))
+                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
 
                     # Create new object
                     Tickers.objects.create(year=year,
@@ -1058,7 +1059,7 @@ def insert_current_tickers(exid):
                     # Avoid duplicate records
                     if timestamp_st not in [d['timestamp'] for d in obj.data]:
 
-                        log.info('Update object {0} {1} {2}'.format(market.symbol, year, semester))
+                        log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
 
                         # Concatenate the two lists
                         obj.data.append(dic)
@@ -1066,12 +1067,12 @@ def insert_current_tickers(exid):
 
                     else:
 
-                        log.info('Object for {0} updated'.format(market.symbol))
+                        log.info('Tickers for {0} updated'.format(market.symbol))
 
-    timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-    timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
-    year = timestamp.year
-    semester = 1 if timestamp.month <= 6 else 2
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    timestamp_st = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    year = dt.year
+    semester = 1 if dt.month <= 6 else 2
 
     exchange = Exchange.objects.get(exid=exid)
     if exchange.is_trading():

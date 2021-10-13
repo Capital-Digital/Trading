@@ -17,14 +17,20 @@ def get_years(timestamp):
     return list(range(dt.year, timezone.now().year + 1))
 
 
+def get_year():
+    return datetime.now().year
+
+
 # Return semester of timestamp
-def get_semester(timestamp):
-    dt = datetime.strptime(timestamp, directive_coinpaprika).replace(tzinfo=pytz.UTC)
-    semester = 1 if dt.month < 6 else 2
-    return semester
+def get_semester(timestamp=None):
+    if timestamp:
+        dt = datetime.strptime(timestamp, directive_coinpaprika).replace(tzinfo=pytz.UTC)
+        semester = 1 if dt.month < 6 else 2
+        return semester
+    else:
+        return 1 if datetime.now().month < 6 else 2
 
 
-# Return a Python datetime object TZ aware if USE_TZ=True
 def get_datetime(hour=None, minute=None, delta=None, string=False, timestamp=False, ms=False):
     # Create datetime object and set minute or hour
     if hour:

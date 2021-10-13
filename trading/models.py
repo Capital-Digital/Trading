@@ -62,6 +62,18 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
+    def get_balance(self):
+
+        client = self.exchange.get_ccxt_client(self)
+
+        if self.exchange.wallets:
+            for wallet in self.exchange.get_wallets():
+                client.options['defaultType'] = wallet
+                response = client.fetchBalance()
+
+
+
+    ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta
     def create_dataframes(self, target=None):
 

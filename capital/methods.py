@@ -32,6 +32,14 @@ def get_year():
     return datetime.now().year
 
 
+def get_datetime_obj(str, format):
+    return datetime.strptime(str, format).replace(tzinfo=pytz.UTC)
+
+
+def get_datetime_str(dt, format):
+    return dt.strftime(format)
+
+
 # Return semester of timestamp
 def get_semester(timestamp=None):
     if timestamp:

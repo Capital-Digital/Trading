@@ -409,7 +409,7 @@ class Account(models.Model):
         return list(set(position.market.base.code for position in self.positions.all()))
 
     # Return absolute value of a code or a list of codes
-    def get_balance(self, code):
+    def get_balance_old(self, code):
 
         funds = self.get_fund_latest()
         values = []

@@ -79,7 +79,7 @@ class Account(models.Model):
         return dict(map(lambda x: (x[0], convert_value(x[0], x[1])), bal.items()))
 
     def get_delta(self):
-
+        pass
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

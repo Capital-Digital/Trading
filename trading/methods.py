@@ -20,7 +20,7 @@ def sum_wallet_balances(dic):
     for wallet, values in dic.items():
         for code in values.keys():
             total.append(dic[wallet][code])
-    sum(total)
+    return sum(total)
 
 
 # Create/update an order object with response returned by exchange

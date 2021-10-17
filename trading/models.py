@@ -63,13 +63,13 @@ class Account(models.Model):
         return self.name
 
     # Return a dictionary with balance of a specific wallet
-    def get_balance(self, wallet, key='total'):
+    def get_usdt_balance(self, wallet, key='total'):
 
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         response[key] = {k: v for k, v in response[key].items() if v > 0}
-        return response[key]
+        return self.convert_balance(response[key])
 
     def convert_balance(self, bal):
         def convert_value(key, value):
@@ -77,6 +77,8 @@ class Account(models.Model):
             return value * price
 
         return dict(map(lambda x: (x[0], convert_value(x[0], x[1])), bal.items()))
+
+    def get_delta(self):
 
 
     ##############################################################################################

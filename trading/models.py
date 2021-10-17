@@ -78,12 +78,13 @@ class Account(models.Model):
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self, wallet, key='total'):
-        balances = self.get_balances_qty(wallet, key)
-        balances_value = convert_balance(balances, self.exchange)
+        balances_qty = self.get_balances_qty(wallet, key)
+        balances_value = convert_balance(balances_qty, self.exchange)
 
         # Save dictionary
         if not hasattr(self, 'balances_value'):
             self.balances_value = collections.defaultdict(dict)
+        print(self.balances_value)
         self.balances_value[wallet][key] = balances_value
 
         return balances_value

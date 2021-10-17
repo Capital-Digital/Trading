@@ -83,7 +83,6 @@ class Account(models.Model):
 
         # Save dictionary
         if not hasattr(self, 'balances_value'):
-            print('Create collection dictionary')
             self.balances_value = collections.defaultdict(dict)
         self.balances_value[wallet][key] = balances_value
 

@@ -84,12 +84,12 @@ class Account(models.Model):
         for wallet in self.exchange.get_wallets():
             dic[wallet] = self.get_usdt_balance(wallet)
         total = sum_wallet_balances(dic)
-        weights = self.strategy.get_target()
+        weights = self.strategy.get_target_pct()
         return total * weights
 
     # Returns a Pandas Series with quantity per coin
     def get_target_qty(self):
-        target = self.get_target_usdt()
+        target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
         return target

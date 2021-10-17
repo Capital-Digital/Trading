@@ -96,6 +96,7 @@ class Account(models.Model):
 
     def get_delta(self):
         target = self.get_target_qty()
+        print(self.dic)
 
 
 

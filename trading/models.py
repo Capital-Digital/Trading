@@ -78,11 +78,22 @@ class Account(models.Model):
 
         return dict(map(lambda x: (x[0], convert_value(x[0], x[1])), bal.items()))
 
-    def get_delta(self):
-        balances = dict()
+    # Returns a Pandas Series with target USDT
+    def get_target_usdt(self):
+        dic = dict()
         for wallet in self.exchange.get_wallets():
-            balances[wallet] = self.get_usdt_balance(wallet)
-        pprint(balances)
+            dic[wallet] = self.get_usdt_balance(wallet)
+        total = sum_wallet_balances(dic)
+        weights = self.strategy.get_target()
+        return total * weights
+
+    # Returns a Pandas Series with target quantity
+    def get_target(self):
+        target = self.get_target_usdt()
+        for code in target:
+            target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
+        return target
+
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

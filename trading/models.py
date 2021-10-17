@@ -70,6 +70,8 @@ class Account(models.Model):
 
         # Save dictionary
         self.balances = dict()
+        if wallet not in self.balances:
+            self.balances[wallet] = dict()
         if key not in self.balances[wallet]:
             self.balances[wallet][key] = dict()
         self.balances[wallet][key] = response[key]
@@ -83,6 +85,8 @@ class Account(models.Model):
 
         # Save dictionary
         self.balances_value = dict()
+        if wallet not in self.balances_value:
+            self.balances_value[wallet] = dict()
         if key not in self.balances_value[wallet]:
             self.balances_value[wallet][key] = dict()
         self.balances_value[wallet][key] = balances_value

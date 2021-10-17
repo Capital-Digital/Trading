@@ -15,6 +15,14 @@ datetime_directives_std = '%Y-%m-%dT%H:%M:%S.%fZ'
 dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
 
+def sum_wallet_balances(dic):
+    total = []
+    for wallet, values in dic.items():
+        for code in values.keys():
+            total.append(dic[wallet][code])
+    sum(total)
+
+
 # Create/update an order object with response returned by exchange
 def order_create_update(id, response, price_hourly):
     from trading.models import Account, Order

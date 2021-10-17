@@ -79,10 +79,10 @@ class Account(models.Model):
         return dict(map(lambda x: (x[0], convert_value(x[0], x[1])), bal.items()))
 
     def get_delta(self):
-        delta = dict()
+        balances = dict()
         for wallet in self.exchange.get_wallets():
-            delta[wallet] = self.get_usdt_balance(wallet)
-        pprint(delta)
+            balances[wallet] = self.get_usdt_balance(wallet)
+        pprint(balances)
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

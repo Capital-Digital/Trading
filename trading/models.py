@@ -92,7 +92,7 @@ class Account(models.Model):
     def get_target_value(self):
         self.balances_value = dict()
         for wallet in self.exchange.get_wallets():
-            self.balances_value[wallet] = self.get_balance_value(wallet)
+            self.balances_value[wallet] = self.get_balances_value(wallet)
         total = sum_wallet_balances(self.balances_value)
         weights = self.strategy.get_target_pct()
         return total * weights

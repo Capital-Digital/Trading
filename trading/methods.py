@@ -26,11 +26,11 @@ def convert_balance(bal, exchange):
 def sum_wallet_balances(dic):
     total = []
     dic = dict(dic)
+    pprint(dic)
     for wallet, values in dic.items():
         for key, val in values.items():
             print(val)
             total.append(dic[wallet][key])
-    pprint(total)
     return sum(total)
 
 

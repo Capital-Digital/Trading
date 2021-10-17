@@ -78,12 +78,12 @@ class Account(models.Model):
 
         return dict(map(lambda x: (x[0], convert_value(x[0], x[1])), bal.items()))
 
-    # Returns a Pandas Series with USDT value per coin
+    # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
-        dic = dict()
+        self.dic = dict()
         for wallet in self.exchange.get_wallets():
-            dic[wallet] = self.get_usdt_balance(wallet)
-        total = sum_wallet_balances(dic)
+            self.dic[wallet] = self.get_usdt_balance(wallet)
+        total = sum_wallet_balances(self.dic)
         weights = self.strategy.get_target_pct()
         return total * weights
 
@@ -93,6 +93,10 @@ class Account(models.Model):
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
         return target
+
+    def get_delta(self):
+        target = self.get_target_qty()
+
 
 
     ##############################################################################################

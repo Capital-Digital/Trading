@@ -80,10 +80,10 @@ class Account(models.Model):
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
-        self.dic = dict()
+        self.balances = dict()
         for wallet in self.exchange.get_wallets():
-            self.dic[wallet] = self.get_usdt_balance(wallet)
-        total = sum_wallet_balances(self.dic)
+            self.balances[wallet] = self.get_usdt_balance(wallet)
+        total = sum_wallet_balances(self.balances)
         weights = self.strategy.get_target_pct()
         return total * weights
 
@@ -96,7 +96,11 @@ class Account(models.Model):
 
     def get_delta(self):
         target = self.get_target_qty()
-        print(self.dic)
+        for coin_target in target.index:
+            for wallet in self.balances.keys():
+                for coin_account, balance in wallet.items():
+                    print(coin_account, balance)
+
 
 
 

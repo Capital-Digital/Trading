@@ -90,7 +90,7 @@ class Account(models.Model):
     # Returns a Pandas Series with target quantity
     def get_target(self):
         target = self.get_target_usdt()
-        for code in target:
+        for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
         return target
 

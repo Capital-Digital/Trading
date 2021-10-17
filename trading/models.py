@@ -63,23 +63,23 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    def get_balances(self, wallet, key='total'):
+    def get_balances_qty(self, wallet, key='total'):
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         response[key] = {k: v for k, v in response[key].items() if v > 0}
 
         # Save dictionary
-        if not hasattr(self, 'balances'):
-            self.balances = collections.defaultdict(dict)
-        self.balances[wallet][key] = response[key]
+        if not hasattr(self, 'balances_qty'):
+            self.balances_qty = collections.defaultdict(dict)
+        self.balances_qty[wallet][key] = response[key]
 
         return response[key]
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self, wallet, key='total'):
-        balances = self.get_balances(wallet, key)
-        balances_value = self.convert_balance(balances)
+        balances = self.get_balances_qty(wallet, key)
+        balances_value = self.convert_balance(balances, self.exchange)
 
         # Save dictionary
         if not hasattr(self, 'balances_value'):
@@ -87,13 +87,6 @@ class Account(models.Model):
         self.balances_value[wallet][key] = balances_value
 
         return balances_value
-
-    def convert_balance(self, bal):
-        def convert_value(key, value):
-            price = Currency.objects.get(code=key).get_latest_price(self.exchange)
-            return value * price
-
-        return dict(map(lambda x: (x[0], convert_value(x[0], x[1])), bal.items()))
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):

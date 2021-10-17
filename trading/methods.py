@@ -27,9 +27,9 @@ def sum_wallet_balances(dic):
     total = []
     dic = dict(dic)
     for wallet, values in dic.items():
-        for code in values.keys():
-            print(dic[wallet][code])
-            total.append(dic[wallet][code])
+        for key, val in values.items():
+            print(val)
+            total.append(dic[wallet][key])
     pprint(total)
     return sum(total)
 

@@ -71,12 +71,7 @@ class Account(models.Model):
 
         # Save dictionary
         if not hasattr(self, 'balances'):
-            print('no attribute')
             self.balances = collections.defaultdict(dict)
-
-            if hasattr(self, 'balances'):
-                print('attribute !')
-                
         self.balances[wallet][key] = response[key]
 
         return response[key]

@@ -84,10 +84,7 @@ class Account(models.Model):
         # Save dictionary
         if not hasattr(self, 'balances_value'):
             self.balances_value = collections.defaultdict(dict)
-        print(self.balances_value)
-        print(wallet)
-        print(key)
-        print(balances_value)
+            self.balances_value[wallet] = dict()
         self.balances_value[wallet][key] = balances_value
 
         return balances_value

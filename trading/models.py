@@ -77,22 +77,21 @@ class Account(models.Model):
         return response[key]
 
     # Return a dictionary with balance of a specific wallet
-    def get_balances_value(self, wallet, key='total'):
-        balances_qty = self.get_balances_qty(wallet, key)
-        balances_value = convert_balance(balances_qty, self.exchange)
+    def get_balances_value(self, key='total'):
+        for wallet in self.exchange.get_wallets():
+            balances_qty = self.get_balances_qty(wallet, key)
+            balances_value = convert_balance(balances_qty, self.exchange)
 
-        # Save dictionary
-        if not hasattr(self, 'balances_value'):
-            self.balances_value = collections.defaultdict(dict)
-        self.balances_value[wallet][key] = balances_value
+            # Save dictionary
+            if not hasattr(self, 'balances_value'):
+                self.balances_value = collections.defaultdict(dict)
+            self.balances_value[wallet][key] = balances_value
 
         return balances_value
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
-        self.balances_value = dict()
-        for wallet in self.exchange.get_wallets():
-            self.balances_value[wallet] = self.get_balances_value(wallet)
+        self.get_balances_value()
         total = sum_wallet_balances(self.balances_value)
         weights = self.strategy.get_target_pct()
         return total * weights

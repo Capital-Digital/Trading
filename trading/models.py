@@ -85,6 +85,9 @@ class Account(models.Model):
         if not hasattr(self, 'balances_value'):
             self.balances_value = collections.defaultdict(dict)
         print(self.balances_value)
+        print(wallet)
+        print(key)
+        print(balances_value)
         self.balances_value[wallet][key] = balances_value
 
         return balances_value

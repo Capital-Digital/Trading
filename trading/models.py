@@ -70,7 +70,8 @@ class Account(models.Model):
         response[key] = {k: v for k, v in response[key].items() if v > 0}
 
         # Save dictionary
-        self.balances = collections.defaultdict(dict)
+        if not hasattr(self, 'balances'):
+            self.balances = collections.defaultdict(dict)
         self.balances[wallet][key] = response[key]
 
         return response[key]
@@ -81,7 +82,8 @@ class Account(models.Model):
         balances_value = self.convert_balance(balances)
 
         # Save dictionary
-        self.balances_value = collections.defaultdict(dict)
+        if not hasattr(self, 'balances_value'):
+            self.balances_value = collections.defaultdict(dict)
         self.balances_value[wallet][key] = balances_value
 
         return balances_value

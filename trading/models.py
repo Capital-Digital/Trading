@@ -62,14 +62,32 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Return a dictionary with balance of a specific wallet
-    def get_usdt_balance(self, wallet, key='total'):
-
+    def get_balances(self, wallet, key='total'):
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         response[key] = {k: v for k, v in response[key].items() if v > 0}
-        return self.convert_balance(response[key])
+
+        # Save dictionary
+        self.balances = dict()
+        if key not in self.balances[wallet]:
+            self.balances[wallet][key] = dict()
+        self.balances[wallet][key] = response[key]
+
+        return response[key]
+
+    # Return a dictionary with balance of a specific wallet
+    def get_balances_value(self, wallet, key='total'):
+        balances = self.get_balances(wallet, key)
+        balances_value = self.convert_balance(balances)
+
+        # Save dictionary
+        self.balances_value = dict()
+        if key not in self.balances_value[wallet]:
+            self.balances_value[wallet][key] = dict()
+        self.balances_value[wallet][key] = balances_value
+
+        return balances_value
 
     def convert_balance(self, bal):
         def convert_value(key, value):
@@ -80,10 +98,10 @@ class Account(models.Model):
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
-        self.balances = dict()
+        self.balances_value = dict()
         for wallet in self.exchange.get_wallets():
-            self.balances[wallet] = self.get_usdt_balance(wallet)
-        total = sum_wallet_balances(self.balances)
+            self.balances_value[wallet] = self.get_usdt_balance(wallet)
+        total = sum_wallet_balances(self.balances_value)
         weights = self.strategy.get_target_pct()
         return total * weights
 

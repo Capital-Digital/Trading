@@ -19,6 +19,7 @@ import pandas as pd
 import traceback
 import sys
 from timeit import default_timer as timer
+import collections
 
 import json
 
@@ -69,11 +70,7 @@ class Account(models.Model):
         response[key] = {k: v for k, v in response[key].items() if v > 0}
 
         # Save dictionary
-        self.balances = dict()
-        if wallet not in self.balances:
-            self.balances[wallet] = dict()
-        if key not in self.balances[wallet]:
-            self.balances[wallet][key] = dict()
+        self.balances = collections.defaultdict(dict)
         self.balances[wallet][key] = response[key]
 
         return response[key]
@@ -84,11 +81,7 @@ class Account(models.Model):
         balances_value = self.convert_balance(balances)
 
         # Save dictionary
-        self.balances_value = dict()
-        if wallet not in self.balances_value:
-            self.balances_value[wallet] = dict()
-        if key not in self.balances_value[wallet]:
-            self.balances_value[wallet][key] = dict()
+        self.balances_value = collections.defaultdict(dict)
         self.balances_value[wallet][key] = balances_value
 
         return balances_value

@@ -84,6 +84,7 @@ class Account(models.Model):
 
         log.info('Get balances value')
 
+        # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
             balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
@@ -98,10 +99,32 @@ class Account(models.Model):
             mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
+        # Get open positions
+        self.get_positions_value()
+
         return self.balances
 
     def get_positions_value(self):
-        pass
+
+        log.info('Get open positions')
+
+        client = self.exchange.get_ccxt_client(self)
+        response = client.fapiPrivateGetPositionRisk()
+        opened = [i for i in response if float(i['positionAmt']) != 0]
+        closed = [i for i in response if float(i['positionAmt']) == 0]
+
+        for position in opened:
+            market = Market.objects.get(exchange=self.exchange,
+                                        type='derivative',
+                                        response__id=position['symbol']
+                                        )
+            size = float(position['positionAmt'])
+            self.balances.loc[market.base, ('position', 'open', 'value')] = float(position['positionAmt'])
+            self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if size > 0 else 'sell'
+            self.balances.loc[market.base, ('position', 'open', 'value_usd')] = size * float(position['markPrice'])
+            self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
+            self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
+            self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):

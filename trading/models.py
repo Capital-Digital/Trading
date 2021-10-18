@@ -165,7 +165,8 @@ class Account(models.Model):
         for coin_target in target.index:
             for coin_account in df.index:
                 for source in df.columns:
-                    print(coin_account, self.balances[source])
+                    if coin_target == coin_account:
+                        print(coin_account, df.loc[coin_account, source])
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

@@ -76,7 +76,7 @@ class Account(models.Model):
         self.balances = pd.DataFrame()
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
-            print(balances_qty)
+            print(balances_qty.index)
             dic = convert_balance(balances_qty, self.exchange)
             df = pd.DataFrame(index=dic.keys(), data=dic.values(), columns=[key])
             self.balances = pd.concat([self.balances, df], axis=1)

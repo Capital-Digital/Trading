@@ -85,7 +85,7 @@ class Account(models.Model):
                               data=balances_qty.values,
                               columns=pd.MultiIndex.from_product([['value'], [key], [wallet]])
                               )
-            print(df)
+            print(df.columns)
             self.balances = pd.concat([self.balances, df])
         return self.balances
 

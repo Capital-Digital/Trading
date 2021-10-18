@@ -15,13 +15,10 @@ datetime_directives_std = '%Y-%m-%dT%H:%M:%S.%fZ'
 dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
 
-def convert_balance(bal, exchange):
-    def convert_value(row):
-        print(row.index)
-        price = Currency.objects.get(code=row.index).get_latest_price(exchange)
-        return row.value * price
-
-    return bal.apply(lambda row: convert_value(row), axis=1)
+def convert_balance(row, exchange):
+    print(row.index)
+    price = Currency.objects.get(code=row.index).get_latest_price(exchange)
+    return row.value * price
 
 
 def sum_wallet_balances(dic):

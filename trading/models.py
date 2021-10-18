@@ -94,6 +94,7 @@ class Account(models.Model):
         df = self.get_balances_value()
         balance = df.loc[:, df.columns.get_level_values(2)=='value'].sum().sum()
         weights = self.strategy.get_target_pct()
+        print('Weights\n', weights)
         return balance * weights
 
     # Returns a Pandas Series with quantity per coin

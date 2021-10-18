@@ -114,7 +114,7 @@ class Account(models.Model):
         closed = [i for i in response if float(i['positionAmt']) == 0]
         if not hasattr(self, 'balances'):
             self.balances = pd.DataFrame()
-            
+
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,
                                         type='derivative',
@@ -128,6 +128,8 @@ class Account(models.Model):
             self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
             self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
+        return self.balances
+    
     # Returns a Series with target value
     def get_target_value(self):
 

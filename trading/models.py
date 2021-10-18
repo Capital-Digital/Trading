@@ -182,7 +182,7 @@ class Account(models.Model):
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'sell'] = qty
 
-        return target
+        return self.balances
 
     def sell(self):
         delta = self.get_delta()

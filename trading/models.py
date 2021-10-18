@@ -107,7 +107,7 @@ class Account(models.Model):
     def get_target_value(self):
 
         log.info('Get target value')
-        
+
         df = self.get_balances_value()
         balance = df.loc[:, df.columns.get_level_values(2) == 'value'].sum().sum()
         weights = self.strategy.get_target_pct()

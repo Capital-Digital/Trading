@@ -92,9 +92,7 @@ class Account(models.Model):
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
         df = self.get_balances_value()
-        balance = []
-        for wallet in self.exchange.get_wallets():
-            balance.append(df[wallet].total.value.sum())
+        balance = df.loc[:, df.columns.get_level_values(2)=='value'].sum().sum()
         weights = self.strategy.get_target_pct()
         return balance * weights
 

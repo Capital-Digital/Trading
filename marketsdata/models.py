@@ -458,6 +458,7 @@ class Currency(models.Model):
                                           market__type='spot',
                                           year=get_year(),
                                           semester=get_semester())
+            print(candles.data[-1])
             return candles.data[-1][4]
         else:
             return 1

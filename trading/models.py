@@ -137,9 +137,7 @@ class Account(models.Model):
         log.info('Get target value')
 
         df = self.get_balances_value()
-        print(df)
         tmp = df.loc[:, df.columns.get_level_values(2) == 'value']
-        print(tmp)
         if 'position' in tmp.columns:  # drop open position's value
             tmp = tmp.drop('position', axis=1)
         balance = tmp.sum().sum()

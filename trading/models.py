@@ -113,7 +113,6 @@ class Account(models.Model):
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
 
-        opened = []
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,
                                         type='derivative',
@@ -133,9 +132,11 @@ class Account(models.Model):
         log.info('Get target value')
 
         df = self.get_balances_value()
-        balance = df.loc[:, df.columns.get_level_values(2) == 'value'].drop('position', 1).sum().sum()
-        weights = self.strategy.get_target_pct()
-        return balance * weights
+        df = df.loc[:, df.columns.get_level_values(2) == 'value']
+        if 'position' in df.columns:
+            df.drop('position', axis=1, inplace=True)
+        balance = df.sum().sum()
+        return balance * self.strategy.get_target_pct()
 
     # Returns a Pandas Series with quantity per coin
     def get_target_qty(self):

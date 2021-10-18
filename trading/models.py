@@ -73,7 +73,7 @@ class Account(models.Model):
                           columns=pd.MultiIndex.from_product([['quantity'], [key], [wallet]])
                           )
         self.balances = df if not hasattr(self, 'balances') else pd.concat([self.balances, df])
-        self.balances.groupby(df.index, axis=1).mean()
+        self.balances.groupby(df.index, axis=0).mean()
         return self.balances
 
     # Return a dictionary with balance of a specific wallet

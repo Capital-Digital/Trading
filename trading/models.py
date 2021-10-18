@@ -122,10 +122,10 @@ class Account(models.Model):
                                         response__id=position['symbol'],
                                         type='derivative'
                                         )
-            size = float(position['positionAmt'])
-            self.balances.loc[market.base, ('position', 'open', 'quantity')] = float(position['positionAmt'])
-            self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if size > 0 else 'sell'
-            self.balances.loc[market.base, ('position', 'open', 'value')] = size * float(position['markPrice'])
+            quantity = float(position['positionAmt'])
+            self.balances.loc[market.base, ('position', 'open', 'quantity')] = quantity
+            self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
+            self.balances.loc[market.base, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
             self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
             self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
             self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
@@ -162,6 +162,8 @@ class Account(models.Model):
         target = self.get_target_qty()
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
         df = df.droplevel([1, 2], axis=1)
+        return df
+        df = df.to_frame('target')
 
         # Coins in target portfolio
         for coin_target in target.index:
@@ -169,8 +171,7 @@ class Account(models.Model):
                 for source in df.columns:
                     if coin_target == coin_account:
                         if not np.isnan(df.loc[coin_account, source]):
-                            # Remove coins we hold from target portfolio
-                            target[coin_target] -= df.loc[coin_account, source]
+                            target.loc[coin_target, 'delta'] = df.loc[coin_account, source]
 
         # Remove coins not in target portfolio
         for coin_account in df.index:
@@ -181,6 +182,13 @@ class Account(models.Model):
                             target[coin_account] = -df.loc[coin_account, source]
 
         return target
+
+    def sell(self):
+        delta = self.get_delta()
+        for coin in delta[delta<0].index:
+
+            pass
+
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

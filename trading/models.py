@@ -73,10 +73,12 @@ class Account(models.Model):
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self, key='total'):
+        self.balances = pd.DataFrame()
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
             dic = convert_balance(balances_qty, self.exchange)
-            self.balances = pd.DataFrame(index=dic.keys(), data=dic.values(), columns=[key])
+            df = pd.DataFrame(index=dic.keys(), data=dic.values(), columns=[key])
+            self.balances = pd.concat([self.balances, df], axis=1)
         return self.balances
 
     # Returns a Pandas Series with dollar value per coin

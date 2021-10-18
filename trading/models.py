@@ -171,11 +171,12 @@ class Account(models.Model):
                             target[coin_target] -= df.loc[coin_account, source]
 
         for coin_account in df.index:
-            if coin_account not in target.index:
-                for source in df.columns:
-                    if not np.isnan(df.loc[coin_account, source]):
-                        print('sell', coin_account, df.loc[coin_account, source])
-                        target[coin_account] = -df.loc[coin_account, source]
+            if coin_account != self.exchange.dollar_currency:
+                if coin_account not in target.index:
+                    for source in df.columns:
+                        if not np.isnan(df.loc[coin_account, source]):
+                            print('sell', coin_account, df.loc[coin_account, source])
+                            target[coin_account] = -df.loc[coin_account, source]
 
         return target
 

@@ -152,6 +152,7 @@ class Account(models.Model):
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
+        print(target)
         return target
 
     def get_delta(self):
@@ -162,20 +163,21 @@ class Account(models.Model):
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
         df = df.droplevel([1, 2], axis=1)
 
+        # Coins in target portfolio
         for coin_target in target.index:
             for coin_account in df.index:
                 for source in df.columns:
                     if coin_target == coin_account:
                         if not np.isnan(df.loc[coin_account, source]):
-                            print(df.loc[coin_account, source])
+                            # Remove coins we hold from target portfolio
                             target[coin_target] -= df.loc[coin_account, source]
 
+        # Remove coins not in target portfolio
         for coin_account in df.index:
             if coin_account != self.exchange.dollar_currency:
                 if coin_account not in target.index:
                     for source in df.columns:
                         if not np.isnan(df.loc[coin_account, source]):
-                            print('sell', coin_account, df.loc[coin_account, source])
                             target[coin_account] = -df.loc[coin_account, source]
 
         return target

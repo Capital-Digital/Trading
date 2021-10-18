@@ -64,6 +64,9 @@ class Account(models.Model):
         return self.name
 
     def get_balances_qty(self, wallet, key='total'):
+
+        log.info('Get balances quantity')
+
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
@@ -78,6 +81,9 @@ class Account(models.Model):
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self, key='total'):
+
+        log.info('Get balances value')
+
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
             balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
@@ -94,8 +100,14 @@ class Account(models.Model):
 
         return self.balances
 
+    def get_positions_value(self):
+        pass
+
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
+
+        log.info('Get target value')
+        
         df = self.get_balances_value()
         balance = df.loc[:, df.columns.get_level_values(2) == 'value'].sum().sum()
         weights = self.strategy.get_target_pct()

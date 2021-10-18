@@ -87,14 +87,19 @@ class Account(models.Model):
                               )
             self.balances = pd.concat([self.balances, df])
             self.balances = self.balances.groupby(level=0).last()
+
+            # Drop coins < $10
+            mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
+            self.balances = self.balances.loc[(mask == True).any(axis=1)]
+
         return self.balances
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
         df = self.get_balances_value()
-        balance = df.loc[:, df.columns.get_level_values(2)=='value'].sum().sum()
+        balance = df.loc[:, df.columns.get_level_values(2) == 'value'].sum().sum()
         weights = self.strategy.get_target_pct()
-        print('Weights\n', weights)
+        print('Weights', weights)
         return balance * weights
 
     # Returns a Pandas Series with quantity per coin

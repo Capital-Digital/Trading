@@ -188,7 +188,7 @@ class Account(models.Model):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] > 0].iterrows():
 
-            print(row['target'])
+            print(row[('target', '', '')])
             # Determine amount we must sell
             if row['target'] < 0:  # short
                 qty = row['delta'] - row['target']

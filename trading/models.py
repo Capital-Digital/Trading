@@ -160,7 +160,6 @@ class Account(models.Model):
         log.info('Get delta quantity')
 
         target = self.get_target_qty()
-        target = target.to_frame('target')
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
         df = df.droplevel([1, 2], axis=1)
 
@@ -171,7 +170,8 @@ class Account(models.Model):
                     if coin_target == coin_account:
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):
-                            self.balances.loc[coin_target, 'delta'] = target.loc[coin_target, 'target'] - qty
+                            self.balances.loc[coin_target, 'target'] = target[coin_target]
+                            self.balances.loc[coin_target, 'delta'] = target[coin_target] - qty
 
         # Remove coins not in target portfolio
         for coin_account in df.index:

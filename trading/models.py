@@ -197,7 +197,7 @@ class Account(models.Model):
                 qty = delta
 
             price = Currency.objects.get(code=code).get_latest_price(self.exchange)
-            print(row.index, qty, price)
+            print(code, qty, price)
 
 
 

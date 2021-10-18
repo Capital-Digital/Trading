@@ -171,7 +171,7 @@ class Account(models.Model):
                     if coin_target == coin_account:
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):
-                            target.loc[coin_target, 'delta'] = qty - df.loc[coin_account, source]
+                            target.loc[coin_target, 'delta'] = target.loc[coin_target, 'target'] - qty
 
         # Remove coins not in target portfolio
         for coin_account in df.index:

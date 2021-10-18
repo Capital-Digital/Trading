@@ -90,7 +90,7 @@ class Account(models.Model):
             balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
             df = pd.DataFrame(index=balances_qty.index,
                               data=balances_qty.values,
-                              columns=pd.MultiIndex.from_product([[wallet], [key], ['value']])
+                              columns=pd.MultiIndex.from_product([[wallet], [key], ['value']], names=['l0', 'l1', 'l2'])
                               )
             self.balances = pd.concat([self.balances, df])
             self.balances = self.balances.groupby(level=0).last()
@@ -114,7 +114,8 @@ class Account(models.Model):
         closed = [i for i in response if float(i['positionAmt']) == 0]
 
         if not hasattr(self, 'balances'):
-            self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']]))
+            self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']],
+                                                                            names=['l0', 'l1', 'l2']))
 
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,
@@ -158,10 +159,13 @@ class Account(models.Model):
         log.info('Get delta quantity')
 
         target = self.get_target_qty()
+        df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
+        df = df.droplevel('l2', axis=1).droplevel('l1', axis=1)
+
         for coin_target in target.index:
-            for wallet in self.balances.keys():
-                for coin_account, balance in wallet.items():
-                    print(coin_account, balance)
+            for coin_account in df.index:
+                for source in df.columns:
+                    print(coin_account, self.balances[source])
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

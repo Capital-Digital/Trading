@@ -21,7 +21,7 @@ def convert_balance(bal, exchange):
         price = Currency.objects.get(code=row.index).get_latest_price(exchange)
         return row.value * price
 
-    return bal.apply(lambda row: convert_value(row), axis=0)
+    return bal.apply(lambda row: convert_value(row), axis=1)
 
 
 def sum_wallet_balances(dic):

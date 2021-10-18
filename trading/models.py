@@ -184,11 +184,17 @@ class Account(models.Model):
 
         return self.balances
 
-    def sell(self):
-        delta = self.get_delta()
-        for coin in delta[delta<0].index:
+    def sell_spot(self):
+        df = self.get_delta()
+        for row in df.loc[df['delta'] > 0].index:
 
-            pass
+            # Determine max. amount we can sell
+            if row['target'] < 0:
+                qty = row['delta'] - row['target']
+            elif (row['target'] > 0) or np.isnan(row['target']):
+                qty = row['delta']
+
+
 
 
     ##############################################################################################

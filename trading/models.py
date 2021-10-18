@@ -91,10 +91,12 @@ class Account(models.Model):
 
     # Returns a Pandas Series with dollar value per coin
     def get_target_value(self):
-        self.get_balances_value()
-        total = sum_wallet_balances(self.balances_value)
+        df = self.get_balances_value()
+        balance = []
+        for wallet in self.exchange.get_wallets():
+            balance.append(df[wallet].total.value.sum())
         weights = self.strategy.get_target_pct()
-        return total * weights
+        return balance * weights
 
     # Returns a Pandas Series with quantity per coin
     def get_target_qty(self):

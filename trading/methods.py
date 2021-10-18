@@ -20,16 +20,6 @@ def convert_balance(row, wallet, key, exchange):
     return row[wallet][key]['quantity'] * price
 
 
-def sum_wallet_balances(dic):
-    total = []
-    dic = dict(dic)
-    for wallet, values in dic.items():
-        for key, val in values.items():
-            print(val)
-            total.append(dic[wallet][key])
-    return sum(total)
-
-
 # Create/update an order object with response returned by exchange
 def order_create_update(id, response, price_hourly):
     from trading.models import Account, Order

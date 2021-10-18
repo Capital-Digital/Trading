@@ -188,12 +188,14 @@ class Account(models.Model):
         df = self.get_delta()
         for row in df.loc[df['delta'] > 0].index:
 
-            # Determine max. amount we can sell
-            if row['target'] < 0:
+            # Determine amount we must sell
+            if row['target'] < 0:  # short
                 qty = row['delta'] - row['target']
             elif (row['target'] > 0) or np.isnan(row['target']):
                 qty = row['delta']
 
+            price = Currency.objects.get(code=row.index).get_latest_price(self.exchange)
+            print(row.index, qty, price)
 
 
 

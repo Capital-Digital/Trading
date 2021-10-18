@@ -86,7 +86,7 @@ class Account(models.Model):
                               columns=pd.MultiIndex.from_product([['value'], [key], [wallet]])
                               )
             print(df)
-            self.balances = pd.concat([self.balances, df], axis=1)
+            self.balances = pd.concat([self.balances, df])
         return self.balances
 
     # Returns a Pandas Series with dollar value per coin

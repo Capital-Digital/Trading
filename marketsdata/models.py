@@ -453,13 +453,13 @@ class Currency(models.Model):
 
     def get_latest_price(self, exchange):
         if self.code != exchange.dollar_currency:
-            candles = Candles.objects.get(market__quote__code=exchange.dollar_currency,
+            candles = Tickers.objects.get(market__quote__code=exchange.dollar_currency,
                                           market__base__code=self.code,
                                           market__type='spot',
                                           year=get_year(),
                                           semester=get_semester())
             print(candles.data[-1])
-            return candles.data[-1][4]
+            return candles.data[-1]['price']
         else:
             return 1
 

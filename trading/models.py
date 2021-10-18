@@ -166,7 +166,7 @@ class Account(models.Model):
             for coin_account in df.index:
                 for source in df.columns:
                     if coin_target == coin_account:
-                        if df.loc[coin_account, source] != np.nan:
+                        if df.loc[coin_account, source] is not np.nan:
                             print(df.loc[coin_account, source])
                             target[coin_target] -= df.loc[coin_account, source]
 

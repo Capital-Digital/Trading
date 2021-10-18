@@ -112,13 +112,14 @@ class Account(models.Model):
         response = client.fapiPrivateGetPositionRisk()
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
+
         if not hasattr(self, 'balances'):
-            self.balances = pd.DataFrame()
+            self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']]))
 
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,
-                                        type='derivative',
-                                        response__id=position['symbol']
+                                        response__id=position['symbol'],
+                                        type='derivative'
                                         )
             size = float(position['positionAmt'])
             self.balances.loc[market.base, ('position', 'open', 'quantity')] = float(position['positionAmt'])
@@ -129,7 +130,7 @@ class Account(models.Model):
             self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
         return self.balances
-    
+
     # Returns a Series with target value
     def get_target_value(self):
 

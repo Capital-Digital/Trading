@@ -112,7 +112,9 @@ class Account(models.Model):
         response = client.fapiPrivateGetPositionRisk()
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
-
+        if not hasattr(self, 'balances'):
+            self.balances = pd.DataFrame()
+            
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,
                                         type='derivative',

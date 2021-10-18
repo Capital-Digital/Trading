@@ -68,10 +68,11 @@ class Account(models.Model):
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         dic = {k: v for k, v in response[key].items() if v > 0}
-        self.balances = pd.DataFrame(index=dic.keys(),
-                                     data=dic.values(),
-                                     columns=pd.MultiIndex.from_product([['quantity'], [key], [wallet]])
-                                     )
+        df = pd.DataFrame(index=dic.keys(),
+                          data=dic.values(),
+                          columns=pd.MultiIndex.from_product([['quantity'], [key], [wallet]])
+                          )
+        self.balances = df if self.balances.empty else pd.concat([self.balances, df])
         return self.balances
 
     # Return a dictionary with balance of a specific wallet

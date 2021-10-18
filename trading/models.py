@@ -76,8 +76,11 @@ class Account(models.Model):
         self.balances = pd.DataFrame()
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
-            balances_qty = balances_qty.apply(lambda row: convert_balance(row, self.exchange), axis=1)
-            df = pd.DataFrame(index=balances_qty.index, data=balances_qty[key], columns=[key])
+            balances_qty = balances_qty.apply(lambda row: convert_balance(row, key, self.exchange), axis=1)
+            df = pd.DataFrame(index=balances_qty.index,
+                              data=balances_qty.values,
+                              columns=pd.MultiIndex.from_product([[key], [wallet]])
+                              )
             self.balances = pd.concat([self.balances, df], axis=1)
         return self.balances
 
@@ -102,9 +105,6 @@ class Account(models.Model):
                 for coin_account, balance in wallet.items():
                     print(coin_account, balance)
 
-
-
-
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta
     def create_dataframes(self, target=None):
@@ -124,7 +124,6 @@ class Account(models.Model):
 
                             # Create columns for total, free and used quantities
                             if field == 'quantity':
-
                                 cols = pd.MultiIndex.from_product([['wallet'], [i + '_quantity']], names=['level_1',
                                                                                                           'level_2'])
                                 indexes = pd.MultiIndex.from_tuples([(code, wallet)], names=['code', 'wallet'])
@@ -166,7 +165,8 @@ class Account(models.Model):
 
             # Insert exposure value (balance + positions) and total
             df[('exposure', 'value')] = pd.concat([df.position.value, df.wallet.total_value], axis=1).sum(axis=1)
-            df[('exposure', 'quantity')] = pd.concat([df.position.quantity, df.wallet.total_quantity], axis=1).sum(axis=1)
+            df[('exposure', 'quantity')] = pd.concat([df.position.quantity, df.wallet.total_quantity], axis=1).sum(
+                axis=1)
             df[('exposure', 'total_value')] = df.exposure.value.groupby('code').transform('sum')
             df[('exposure', 'total_quantity')] = df.exposure.quantity.groupby('code').transform('sum')
 
@@ -257,7 +257,6 @@ class Account(models.Model):
 
         if positions:
             for position in positions:
-
                 # Select market
                 wallet = position.market.wallet
                 type = position.market.type

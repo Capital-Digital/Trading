@@ -180,7 +180,7 @@ class Account(models.Model):
                     for source in df.columns:
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):
-                            self.balances.loc[coin_account, 'sell'] = qty
+                            self.balances.loc[coin_account, 'delta'] = qty
 
         return self.balances
 

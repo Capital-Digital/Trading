@@ -119,9 +119,9 @@ class Account(models.Model):
                                         response__id=position['symbol']
                                         )
             size = float(position['positionAmt'])
-            self.balances.loc[market.base, ('position', 'open', 'value')] = float(position['positionAmt'])
+            self.balances.loc[market.base, ('position', 'open', 'quantity')] = float(position['positionAmt'])
             self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if size > 0 else 'sell'
-            self.balances.loc[market.base, ('position', 'open', 'value_usd')] = size * float(position['markPrice'])
+            self.balances.loc[market.base, ('position', 'open', 'value')] = size * float(position['markPrice'])
             self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
             self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
             self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
@@ -132,6 +132,7 @@ class Account(models.Model):
         log.info('Get target value')
 
         df = self.get_balances_value()
+        print(df.loc[:, df.columns.get_level_values(2) == 'value'])
         balance = df.loc[:, df.columns.get_level_values(2) == 'value'].sum().sum()
         weights = self.strategy.get_target_pct()
         print('Weights', weights)

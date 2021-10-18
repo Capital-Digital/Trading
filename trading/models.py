@@ -69,6 +69,7 @@ class Account(models.Model):
         response = client.fetchBalance()
         dic = {k: v for k, v in response[key].items() if v > 0}
         self.balances_qty = pd.DataFrame(index=dic.keys(), data=dic.values(), columns=[key])
+        print('qty', self.balances_qty)
         return self.balances_qty
 
     # Return a dictionary with balance of a specific wallet

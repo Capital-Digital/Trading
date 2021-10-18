@@ -126,7 +126,7 @@ class Account(models.Model):
             self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
             self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
-    # Returns a Pandas Series with dollar value per coin
+    # Returns a Series with target value
     def get_target_value(self):
 
         log.info('Get target value')

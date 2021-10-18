@@ -17,7 +17,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 def convert_balance(row, key, exchange):
     price = Currency.objects.get(code=row.name).get_latest_price(exchange)
-    return row['quantity'][key] * price
+    return row[key]['quantity'] * price
 
 
 def sum_wallet_balances(dic):

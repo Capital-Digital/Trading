@@ -70,7 +70,7 @@ class Account(models.Model):
         dic = {k: v for k, v in response[key].items() if v > 0}
         df = pd.DataFrame(index=dic.keys(),
                           data=dic.values(),
-                          columns=pd.MultiIndex.from_product([['quantity'], [key], [wallet]])
+                          columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
                           )
         self.balances = df if not hasattr(self, 'balances') else pd.concat([self.balances, df])
         self.balances = self.balances.groupby(level=0).last()
@@ -83,7 +83,7 @@ class Account(models.Model):
             balances_qty = balances_qty.apply(lambda row: convert_balance(row, key, self.exchange), axis=1)
             df = pd.DataFrame(index=balances_qty.index,
                               data=balances_qty.values,
-                              columns=pd.MultiIndex.from_product([['value'], [key], [wallet]])
+                              columns=pd.MultiIndex.from_product([[wallet], [key], ['value']])
                               )
             print(df.columns)
             self.balances = pd.concat([self.balances, df])

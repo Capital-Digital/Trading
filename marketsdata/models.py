@@ -459,7 +459,7 @@ class Currency(models.Model):
                                           year=get_year(),
                                           semester=get_semester())
             print(candles.data[-1])
-            return candles.data[-1]['price']
+            return candles.data[-1]['last']
         else:
             return 1
 

@@ -80,7 +80,7 @@ class Account(models.Model):
     def get_balances_value(self, key='total'):
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
-            balances_qty = balances_qty.apply(lambda row: convert_balance(row, key, self.exchange), axis=1)
+            balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
             df = pd.DataFrame(index=balances_qty.index,
                               data=balances_qty.values,
                               columns=pd.MultiIndex.from_product([[wallet], [key], ['value']])

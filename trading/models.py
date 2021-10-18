@@ -112,7 +112,7 @@ class Account(models.Model):
         response = client.fapiPrivateGetPositionRisk()
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
-        opened = []
+
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,
                                         type='derivative',
@@ -133,19 +133,25 @@ class Account(models.Model):
 
         df = self.get_balances_value()
         df = df.loc[:, df.columns.get_level_values(2) == 'value']
-        if 'position' in df.columns:
+        if 'position' in df.columns:  # drop open position's value
             df.drop('position', axis=1, inplace=True)
         balance = df.sum().sum()
         return balance * self.strategy.get_target_pct()
 
-    # Returns a Pandas Series with quantity per coin
+    # Returns a Series with target quantity per coin
     def get_target_qty(self):
+
+        log.info('Get target quantity')
+
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
         return target
 
     def get_delta(self):
+
+        log.info('Get delta quantity')
+
         target = self.get_target_qty()
         for coin_target in target.index:
             for wallet in self.balances.keys():

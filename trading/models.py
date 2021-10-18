@@ -132,8 +132,9 @@ class Account(models.Model):
         log.info('Get target value')
 
         df = self.get_balances_value()
-        print(df.loc[:, df.columns.get_level_values(2) == 'value'])
-        balance = df.loc[:, df.columns.get_level_values(2) == 'value'].sum().sum()
+        balance = df.loc[:, df.columns.get_level_values(2) == 'value'].drop('position', 1)
+        print(balance)
+        balance = balance.sum().sum()
         weights = self.strategy.get_target_pct()
         print('Weights', weights)
         return balance * weights

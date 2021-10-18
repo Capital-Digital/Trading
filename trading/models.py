@@ -192,7 +192,7 @@ class Account(models.Model):
 
             # Determine amount we must sell
             if target < 0:  # short
-                qty = delta - target
+                qty = delta - abs(target)
             elif (target > 0) or np.isnan(target):
                 qty = delta
 

@@ -186,7 +186,7 @@ class Account(models.Model):
 
     def sell_spot(self):
         df = self.get_delta()
-        for row in df.loc[df['delta'] > 0].index:
+        for code, row in df.loc[df['delta'] > 0].iterrows():
 
             # Determine amount we must sell
             if row['target'] < 0:  # short
@@ -194,7 +194,7 @@ class Account(models.Model):
             elif (row['target'] > 0) or np.isnan(row['target']):
                 qty = row['delta']
 
-            price = Currency.objects.get(code=row.index).get_latest_price(self.exchange)
+            price = Currency.objects.get(code=code).get_latest_price(self.exchange)
             print(row.index, qty, price)
 
 

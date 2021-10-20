@@ -286,7 +286,7 @@ class Account(models.Model):
                     amount=amount,
                     price=price
                 )
-                print('order')
+                print(market.type, 'order')
                 pprint(args)
 
                 # Place order and create object

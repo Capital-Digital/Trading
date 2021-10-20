@@ -104,9 +104,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
     readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'params',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
-                       'last_trade_timestamp', 'price', 'price_strategy', 'distance', 'fee', 'datetime',
-                       'response',
-                       'route', 'segments')
+                       'last_trade_timestamp', 'price', 'fee', 'datetime',
+                       'response')
     actions = ['place_order', 'refresh', 'cancel_order']
 
     list_filter = (
@@ -117,12 +116,6 @@ class CustomerAdmin(admin.ModelAdmin):
     )
 
     # Columns
-
-    def get_distance(self, obj):
-        if obj.distance:
-            return round(obj.distance * 100, 3)
-
-    get_distance.short_description = 'Distance'
 
     def get_cost(self, obj):
         if obj.cost:
@@ -136,19 +129,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_price.short_description = 'Price'
 
-    # def get_exchange(self, obj):
-    #     return obj.account.exchange.name  # .split(' ')[2].split('.')[0]
-    #
-    # get_exchange.short_description = 'Exchange'
-
     # Actions
-
-    def place_order(self, request, queryset):
-        for order in queryset:
-            order.place()
-            log.info('Order placed')
-
-    place_order.short_description = 'Place order'
 
     def refresh(self, request, queryset):
         for order in queryset:

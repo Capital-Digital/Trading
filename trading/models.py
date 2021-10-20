@@ -233,20 +233,21 @@ class Account(models.Model):
     def buy_spot(self):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
-            if 'position' in df.columns.get_level_values(0):
-                if not row.position.open.quantity < 0:
+            
+            pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
+            if not pos_qty < 0:
 
-                    # Select quantities
-                    delta = row[('delta', '', '')]
-                    amount = abs(delta)
+                # Select quantities
+                delta = row[('delta', '', '')]
+                amount = abs(delta)
 
-                    price = Currency.objects.get(code=code).get_latest_price(self.exchange)
-                    price += (price * self.limit_price_tolerance)
-                    market = Market.objects.get(quote__code=self.exchange.dollar_currency,
-                                                exchange=self.exchange,
-                                                base__code=code,
-                                                type='spot')
-                    self.place_order('buy spot', market, 'buy', amount, price)
+                price = Currency.objects.get(code=code).get_latest_price(self.exchange)
+                price += (price * self.limit_price_tolerance)
+                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='spot')
+                self.place_order('buy spot', market, 'buy', amount, price)
 
     def open_short(self):
         df = self.get_delta()
@@ -269,7 +270,12 @@ class Account(models.Model):
                 self.place_order('open short', market, 'sell', amount, price)
 
     def place_order(self, action, market, side, amount, price):
-        log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type, amount, action))
+        log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
+                                                                      market.base.code,
+                                                                      market.type,
+                                                                      amount,
+                                                                      action)
+                 )
         client = self.exchange.get_ccxt_client(self)
         args = dict(
             symbol=market.symbol,

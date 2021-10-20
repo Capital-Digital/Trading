@@ -88,7 +88,7 @@ class Account(models.Model):
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
-            if balances_qty:
+            if balances_qty is not None:
                 balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
                 df = pd.DataFrame(index=balances_qty.index,
                                   data=balances_qty.values,

@@ -274,25 +274,24 @@ class Account(models.Model):
                                                                       market.base.code,
                                                                       market.type,
                                                                       amount,
-                                                                      action)
-                 )
+                                                                      action))
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
-                                n=amount
-                                )
-        args = dict(
-            symbol=market.symbol,
-            type='limit' if self.limit_order else 'market',
-            side=side,
-            amount=amount,
-            price=price
-        )
-        print('order')
-        pprint(args)
-        # Place order and create object
-        client = self.exchange.get_ccxt_client(self)
-        response = client.create_order(**args)
-        self.create_update_order(response, action, market)
+                                n=amount)
+        if amount:
+            args = dict(
+                symbol=market.symbol,
+                type='limit' if self.limit_order else 'market',
+                side=side,
+                amount=amount,
+                price=price
+            )
+            print('order')
+            pprint(args)
+            # Place order and create object
+            client = self.exchange.get_ccxt_client(self)
+            response = client.create_order(**args)
+            self.create_update_order(response, action, market)
 
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])

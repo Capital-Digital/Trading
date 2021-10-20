@@ -17,7 +17,7 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy', 'get_distance_avg',
+    list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy',
                     'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'user')
     actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all', 'rebalance']
@@ -35,15 +35,6 @@ class CustomerAdmin(admin.ModelAdmin):
         return int(Fund.objects.filter(account=obj).latest('dt_create').total)
 
     get_fund.short_description = "Total"
-
-    def get_distance_avg(self, obj):
-
-        from trading.models import Order
-        orders = Order.objects.filter(account=obj)
-        distance_avg = orders.aggregate(Avg('distance'))['distance__avg']
-        return round(distance_avg * 100, 3)
-
-    get_distance_avg.short_description = "Distance avg"
 
     # Actions
 

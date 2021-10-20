@@ -514,6 +514,12 @@ class Market(models.Model):
         type = self.type[:4] if self.type == 'derivative' else 'spot'
         return ex + space + type + '__' + self.symbol
 
+    def get_latest_price(self):
+        candles = Tickers.objects.get(market=self,
+                                      year=get_year(),
+                                      semester=get_semester())
+        return candles.data[-1]['last']
+
     # Return True if a market has candles
     def is_populated(self):
         if Candle.objects.filter(market=self).exists():

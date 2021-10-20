@@ -190,44 +190,87 @@ class Account(models.Model):
 
     def sell_spot(self):
         df = self.get_delta()
-        for code, row in df.loc[df['delta'] > 0].iterrows():
+        for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
             # Select quantities
+            hold = row.spot.total.quantity
             target = row[('target', '', '')]
             delta = row[('delta', '', '')]
 
             # Determine amount we must sell
             if target < 0:  # short
-                amount = delta - abs(target)
+                amount = hold
             elif (target > 0) or np.isnan(target):
                 amount = delta
 
-            type = 'type' if self.limit_order else 'market'
-            side = 'sell'
-            action = 'sell_spot'
             price = Currency.objects.get(code=code).get_latest_price(self.exchange)
             price += (price * self.limit_price_tolerance)
             market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                         exchange=self.exchange,
                                         base__code=code,
                                         type='spot')
-            self.place_order(action, market, type, side, amount, price)
+            self.place_order('sell spot', market, 'sell', amount, price)
 
     def close_short(self):
         df = self.get_delta()
-        for code, row in df.loc[df['delta'] > 0].iterrows():
+        for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
+            if row.position.open.quantity < 0:
+                delta = row[('delta', '', '')]
+                amount = min(abs(delta), abs(row.position.open.quantity))
 
-            # Select quantities
+                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='derivative',
+                                            contract_type='perpetual'
+                                            )
+                price = market.get_latest_price(self.exchange)
+                price -= (price * self.limit_price_tolerance)
+                self.place_order('close short', market, 'buy', amount, price)
+
+    def buy_spot(self):
+        df = self.get_delta()
+        for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
+            if not row.position.open.quantity < 0:
+
+                # Select quantities
+                delta = row[('delta', '', '')]
+                amount = abs(delta)
+
+                price = Currency.objects.get(code=code).get_latest_price(self.exchange)
+                price += (price * self.limit_price_tolerance)
+                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='spot')
+                self.place_order('buy spot', market, 'buy', amount, price)
+
+    def open_short(self):
+        df = self.get_delta()
+        for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
             target = row[('target', '', '')]
-            delta = row[('delta', '', '')]
+            if target < 0:
 
+                # Select quantities
+                delta = row[('delta', '', '')]
+                amount = delta
 
-    def place_order(self, action, market, type, side, amount, price):
-        log.info('Place order to {0} on {1}'.format(action, market.symbol))
+                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='derivative',
+                                            contract_type='perpetual'
+                                            )
+                price = market.get_latest_price(self.exchange)
+                price -= (price * self.limit_price_tolerance)
+                self.place_order('open short', market, 'sell', amount, price)
+
+    def place_order(self, action, market, side, amount, price):
+        log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type, amount, action))
         client = self.exchange.get_ccxt_client(self)
         args = dict(
             symbol=market.symbol,
-            type=type,
+            type='type' if self.limit_order else 'market',
             side=side,
             amount=amount,
             price=price

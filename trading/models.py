@@ -343,7 +343,12 @@ class Account(models.Model):
                     except Exception as e:
                         log.error('Error while canceling order {0}'.format(order['id']), e=e)
                     else:
-                        Order.objects.get(orderid=order['id']).delete()
+                        try:
+                            order = Order.objects.get(orderid=order['id'])
+                        except ObjectDoesNotExist:
+                            pass
+                        else:
+                            order.delete()
 
     def trade(self):
         self.sell_spot()

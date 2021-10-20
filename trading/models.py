@@ -303,7 +303,7 @@ class Account(models.Model):
             orders = Order.objects.filter(account=self, market__wallet=wallet, status='open')
             if orders.exists():
 
-                log.info('Order object update', wallet=wallet)
+                log.info('Update orders start', nb=len(orders), wallet=wallet)
 
                 client.options['defaultType'] = wallet
                 client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
@@ -311,10 +311,10 @@ class Account(models.Model):
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
                     self.create_update_order(responses, action=order.action, market=order.market)
 
-                log.info('Order object update complete', wallet=wallet)
+                log.info('Update orders complete', wallet=wallet)
 
             else:
-                log.info('Order object update N/A', wallet=wallet)
+                log.info('Update order object N/A', wallet=wallet)
 
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])
@@ -339,9 +339,9 @@ class Account(models.Model):
         obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
         if created:
-            log.info('Order object created', id=response['id'])
+            log.info('Create order', id=response['id'])
         else:
-            log.info('Order object updated', id=response['id'])
+            log.info('Update order', id=response['id'])
 
     def cancel_orders(self):
         client = self.exchange.get_ccxt_client(account=self)
@@ -352,12 +352,12 @@ class Account(models.Model):
 
             if responses:
 
-                log.info('{0} orders to cancel in {1}'.format(len(responses), wallet))
+                log.info('Cancel orders start', nb=len(responses), wallet=wallet)
 
                 for order in responses:
                     try:
                         client.cancel_order(id=order['id'], symbol=order['symbol'])
-                        log.info('Order {0} canceled'.format(order['id']))
+                        log.info('Cancel order', id=order['id'])
 
                     except Exception as e:
                         log.error('Error while canceling order {0}'.format(order['id']), e=e)
@@ -371,6 +371,8 @@ class Account(models.Model):
                         else:
                             order.status = 'canceled'
                             order.save()
+
+                log.info('Cancel orders complete')
 
     def has_order(self, market):
         client = self.exchange.get_ccxt_client(self)

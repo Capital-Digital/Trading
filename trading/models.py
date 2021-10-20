@@ -215,36 +215,38 @@ class Account(models.Model):
     def close_short(self):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
-            if row.position.open.quantity < 0:
-                delta = row[('delta', '', '')]
-                amount = min(abs(delta), abs(row.position.open.quantity))
+            if 'position' in df.columns.get_level_values(0):
+                if row.position.open.quantity < 0:
+                    delta = row[('delta', '', '')]
+                    amount = min(abs(delta), abs(row.position.open.quantity))
 
-                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='derivative',
-                                            contract_type='perpetual'
-                                            )
-                price = market.get_latest_price(self.exchange)
-                price -= (price * self.limit_price_tolerance)
-                self.place_order('close short', market, 'buy', amount, price)
+                    market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                                exchange=self.exchange,
+                                                base__code=code,
+                                                type='derivative',
+                                                contract_type='perpetual'
+                                                )
+                    price = market.get_latest_price(self.exchange)
+                    price -= (price * self.limit_price_tolerance)
+                    self.place_order('close short', market, 'buy', amount, price)
 
     def buy_spot(self):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
-            if not row.position.open.quantity < 0:
+            if 'position' in df.columns.get_level_values(0):
+                if not row.position.open.quantity < 0:
 
-                # Select quantities
-                delta = row[('delta', '', '')]
-                amount = abs(delta)
+                    # Select quantities
+                    delta = row[('delta', '', '')]
+                    amount = abs(delta)
 
-                price = Currency.objects.get(code=code).get_latest_price(self.exchange)
-                price += (price * self.limit_price_tolerance)
-                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='spot')
-                self.place_order('buy spot', market, 'buy', amount, price)
+                    price = Currency.objects.get(code=code).get_latest_price(self.exchange)
+                    price += (price * self.limit_price_tolerance)
+                    market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                                exchange=self.exchange,
+                                                base__code=code,
+                                                type='spot')
+                    self.place_order('buy spot', market, 'buy', amount, price)
 
     def open_short(self):
         df = self.get_delta()

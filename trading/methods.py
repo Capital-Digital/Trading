@@ -19,7 +19,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 def convert_balance(row, wallet, key, exchange):
     price = Currency.objects.get(code=row.name).get_latest_price(exchange)
-    if not np.isnan(row[wallet][key]['quantity']):
+    if row[wallet][key]['quantity']:
         return row[wallet][key]['quantity'] * price
 
 

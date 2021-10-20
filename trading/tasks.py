@@ -44,10 +44,19 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
-@shared_task(name='Trading_____Cancel open orders', base=BaseTaskWithRetry)
-def cancel_orders():
+@shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
+def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
+
+        # Cancel open orders
         account.cancel_orders()
+
+        # Construct dataframe
+        account.self.get_delta()
+
+        # Place orders
+        account.sell_spot(load=False)
+        account.close_short(load=False)
 
 
 # Fetch past orders for a specific period of time

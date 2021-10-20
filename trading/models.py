@@ -192,8 +192,8 @@ class Account(models.Model):
         print(self.balances)
         return self.balances
 
-    def sell_spot(self):
-        df = self.get_delta()
+    def sell_spot(self, load=True):
+        df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
             # Select quantities
@@ -215,8 +215,8 @@ class Account(models.Model):
                                         type='spot')
             self.place_order('sell spot', market, 'sell', amount, price)
 
-    def close_short(self):
-        df = self.get_delta()
+    def close_short(self, load=True):
+        df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
             if 'position' in df.columns.get_level_values(0):
                 if row.position.open.quantity < 0:
@@ -235,8 +235,8 @@ class Account(models.Model):
             else:
                 log.info('There is actually no {0}/USDT position to close short'.format(code))
 
-    def buy_spot(self):
-        df = self.get_delta()
+    def buy_spot(self, load=True):
+        df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
             pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
             if not pos_qty < 0:
@@ -252,8 +252,8 @@ class Account(models.Model):
                                             type='spot')
                 self.place_order('buy spot', market, 'buy', amount, price)
 
-    def open_short(self):
-        df = self.get_delta()
+    def open_short(self, load=True):
+        df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
             target = row[('target', '', '')]
             if target < 0:
@@ -297,6 +297,25 @@ class Account(models.Model):
             else:
                 log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
 
+    def update_orders(self):
+        client = self.exchange.get_ccxt_client(account=self)
+        for wallet in self.exchange.get_wallets():
+            orders = Order.objects.filter(account=self, market__wallet=wallet, status='open')
+            if orders.exists():
+
+                log.info('Order object update', wallet=wallet)
+
+                client.options['defaultType'] = wallet
+                client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
+                for order in orders:
+                    responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
+                    self.create_update_order(responses, action=order.action, market=order.market)
+
+                log.info('Order object update complete', wallet=wallet)
+
+            else:
+                log.info('There is no open order', wallet=wallet)
+
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])
         defaults = dict(
@@ -317,14 +336,12 @@ class Account(models.Model):
             trades=response['trades'],
             type=response['type']
         )
-        pprint(args)
-        pprint(defaults)
         obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
         if created:
-            log.info('Order object created')
+            log.info('Order object created', id=response['id'])
         else:
-            log.info('Order object updated')
+            log.info('Order object updated', id=response['id'])
 
     def cancel_orders(self):
         client = self.exchange.get_ccxt_client(account=self)
@@ -352,12 +369,8 @@ class Account(models.Model):
                         except ObjectDoesNotExist:
                             pass
                         else:
-                            order.delete()
-
-    def trade(self):
-        self.sell_spot()
-        self.close_short()
-        self.buy_spot()
+                            order.status = 'canceled'
+                            order.save()
 
     def has_order(self, market):
         client = self.exchange.get_ccxt_client(self)

@@ -270,15 +270,15 @@ class Account(models.Model):
                 self.place_order('open short', market, 'sell', amount, price)
 
     def place_order(self, action, market, side, amount, price):
-        log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
-                                                                      market.base.code,
-                                                                      market.type,
-                                                                      amount,
-                                                                      action))
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
                                 n=amount)
         if amount:
+            log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
+                                                                          market.base.code,
+                                                                          market.type,
+                                                                          amount,
+                                                                          action))
             args = dict(
                 symbol=market.symbol,
                 type='limit' if self.limit_order else 'market',

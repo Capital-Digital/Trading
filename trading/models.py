@@ -274,24 +274,26 @@ class Account(models.Model):
                                 precision=market.precision['amount'],
                                 n=amount)
         if amount:
-            log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
-                                                                          market.base.code,
-                                                                          market.type,
-                                                                          amount,
-                                                                          action))
-            args = dict(
-                symbol=market.symbol,
-                type='limit' if self.limit_order else 'market',
-                side=side,
-                amount=amount,
-                price=price
-            )
-            print('order')
-            pprint(args)
-            # Place order and create object
-            client = self.exchange.get_ccxt_client(self)
-            response = client.create_order(**args)
-            self.create_update_order(response, action, market)
+            if not self.has_order(market):
+                log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
+                                                                              amount, action))
+                args = dict(
+                    symbol=market.symbol,
+                    type='limit' if self.limit_order else 'market',
+                    side=side,
+                    amount=amount,
+                    price=price
+                )
+                print('order')
+                pprint(args)
+
+                # Place order and create object
+                client = self.exchange.get_ccxt_client(self)
+                response = client.create_order(**args)
+                self.create_update_order(response, action, market)
+
+            else:
+                log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
 
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])
@@ -321,6 +323,20 @@ class Account(models.Model):
             log.info('Order object created')
         else:
             log.info('Order object updated')
+
+    def trade(self):
+        self.sell_spot()
+        self.close_short()
+        self.buy_spot()
+
+    def has_order(self, market):
+        client = self.exchange.get_ccxt_client(self)
+        client.options['defaultType'] = market.wallet
+        orders = client.fetchOpenOrders(market.symbol)
+        if orders:
+            return True
+        else:
+            return False
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

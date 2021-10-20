@@ -298,7 +298,7 @@ class Account(models.Model):
             amount=response['amount'],
             average=response['average'],
             cost=response['cost'],
-            datetime=datetime,
+            datetime=datetime.now().replace(tzinfo=pytz.UTC),
             fee=response['fee'],
             filled=float(response['filled']),
             last_trade_timestamp=response['lastTradeTimestamp'],

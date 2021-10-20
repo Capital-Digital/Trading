@@ -71,6 +71,8 @@ class Account(models.Model):
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         dic = {k: v for k, v in response[key].items() if v > 0}
+        print('dic', wallet)
+        pprint(dic)
         df = pd.DataFrame(index=dic.keys(),
                           data=dic.values(),
                           columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])

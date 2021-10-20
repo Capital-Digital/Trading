@@ -91,11 +91,6 @@ class CustomerAdmin(admin.ModelAdmin):
         ('exchange', admin.RelatedOnlyFieldListFilter)
     )
 
-    # def get_balance(self, obj):
-    #     return f'{int(round(sum([v for k, v in obj.balance.items()]), 2)):n}'
-    #
-    # get_balance.short_description = 'Balance'
-
 
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):

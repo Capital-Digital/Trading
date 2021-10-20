@@ -152,7 +152,6 @@ class Account(models.Model):
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
-        print(target)
         return target
 
     def get_delta(self):
@@ -163,17 +162,22 @@ class Account(models.Model):
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
         df = df.droplevel([1, 2], axis=1)
 
-        # Coins in target portfolio
         for coin_target in target.index:
-            for coin_account in df.index:
-                for source in df.columns:
-                    if coin_target == coin_account:
-                        qty = df.loc[coin_account, source]
-                        if not np.isnan(qty):
-                            self.balances.loc[coin_target, 'target'] = target[coin_target]
-                            self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
 
-        # Remove coins not in target portfolio
+            # Coins in account
+            if coin_target in df.index:
+                for source in df.columns:
+                    qty = df.loc[coin_target, source]
+                    if not np.isnan(qty):
+                        self.balances.loc[coin_target, 'target'] = target[coin_target]
+                        self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
+
+            # Coins not in account
+            if coin_target not in df.index:
+                self.balances.loc[coin_target, 'target'] = target[coin_target]
+                self.balances.loc[coin_target, 'delta'] = -target[coin_target]
+
+        # Coins not in target portfolio
         for coin_account in df.index:
             if coin_account != self.exchange.dollar_currency:
                 if coin_account not in target.index:
@@ -207,11 +211,19 @@ class Account(models.Model):
                                         exchange=self.exchange,
                                         base__code=code,
                                         type='spot')
-
             self.place_order(action, market, type, side, amount, price)
 
+    def close_short(self):
+        df = self.get_delta()
+        for code, row in df.loc[df['delta'] > 0].iterrows():
+
+            # Select quantities
+            target = row[('target', '', '')]
+            delta = row[('delta', '', '')]
+
+
     def place_order(self, action, market, type, side, amount, price):
-        log.info('Place order')
+        log.info('Place order to {0} on {1}'.format(action, market.symbol))
         client = self.exchange.get_ccxt_client(self)
         args = dict(
             symbol=market.symbol,
@@ -220,6 +232,7 @@ class Account(models.Model):
             amount=amount,
             price=price
         )
+        # Place order and create object
         response = client.create_order(**args)
         self.create_update_order(response, action, market)
 

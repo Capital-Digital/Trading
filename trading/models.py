@@ -276,6 +276,8 @@ class Account(models.Model):
             amount=amount,
             price=price
         )
+        print('order')
+        pprint(args)
         # Place order and create object
         response = client.create_order(**args)
         self.create_update_order(response, action, market)

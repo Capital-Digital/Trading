@@ -233,7 +233,7 @@ class Account(models.Model):
     def buy_spot(self):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
-            
+
             pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
             if not pos_qty < 0:
 
@@ -242,7 +242,7 @@ class Account(models.Model):
                 amount = abs(delta)
 
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange)
-                price += (price * self.limit_price_tolerance)
+                price += (price * float(self.limit_price_tolerance))
                 market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                             exchange=self.exchange,
                                             base__code=code,

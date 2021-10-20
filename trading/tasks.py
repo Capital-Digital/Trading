@@ -44,12 +44,20 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
+@shared_task(name='Trading_____Update orders', base=BaseTaskWithRetry)
+def update_orders():
+    for account in Account.objects.filter(trading=True, exchange__exid='binance'):
+
+        # Update open orders
+        account.update_orders()
+
+
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
 
         # Cancel open orders
-        account.cancel_orders()
+        account.cancel_orders(web=False)
 
         # Construct dataframe
         account.self.get_delta()

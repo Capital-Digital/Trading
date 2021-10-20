@@ -187,17 +187,69 @@ class Account(models.Model):
     def sell_spot(self):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] > 0].iterrows():
+
+            # Select quantities
             target = row[('target', '', '')]
             delta = row[('delta', '', '')]
 
             # Determine amount we must sell
             if target < 0:  # short
-                qty = delta - abs(target)
+                amount = delta - abs(target)
             elif (target > 0) or np.isnan(target):
-                qty = delta
+                amount = delta
 
+            type = 'type' if self.limit_order else 'market'
+            side = 'sell'
+            action = 'sell_spot'
             price = Currency.objects.get(code=code).get_latest_price(self.exchange)
-            print(code, qty, price)
+            price += (price * self.limit_price_tolerance)
+            market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                        exchange=self.exchange,
+                                        base__code=code,
+                                        type='spot')
+
+            self.place_order(action, market, type, side, amount, price)
+
+    def place_order(self, action, market, type, side, amount, price):
+        log.info('Place order')
+        client = self.exchange.get_ccxt_client(self)
+        args = dict(
+            symbol=market.symbol,
+            type=type,
+            side=side,
+            amount=amount,
+            price=price
+        )
+        response = client.create_order(**args)
+        self.create_update_order(response, action, market)
+
+    def create_update_order(self, response, action, market):
+        args = dict(account=self, market=market, orderid=response['id'])
+        defaults = dict(
+            action=action,
+            amount=response['amount'],
+            average=response['average'],
+            cost=response['cost'],
+            datetime=datetime,
+            fee=response['fee'],
+            filled=float(response['filled']),
+            last_trade_timestamp=response['lastTradeTimestamp'],
+            price=response['price'],
+            remaining=response['remaining'],
+            response=response,
+            side=response['side'],
+            status=response['status'],
+            timestamp=int(response['timestamp']),
+            trades=response['trades'],
+            type=response['type']
+        )
+
+        obj, created = Order.objects.update_or_create(**args, defaults=defaults)
+
+        if created:
+            log.info('Order object created')
+        else:
+            log.info('Order object updated')
 
 
 
@@ -689,10 +741,9 @@ class Order(models.Model):
     amount, filled, remaining, max_qty = [models.FloatField(max_length=10, null=True) for i in range(4)]
     side = models.CharField(max_length=10, null=True, choices=(('buy', 'buy'), ('sell', 'sell')))
     cost = models.FloatField(null=True)
-    route_type = models.CharField(max_length=10, null=True)
     action = models.CharField(max_length=20, null=True)
-    average, price, price_strategy, distance = [models.FloatField(null=True, blank=True) for i in range(4)]
-    fee, trades, params, response, route, segments = [models.JSONField(null=True) for i in range(6)]
+    average, price = [models.FloatField(null=True, blank=True) for i in range(2)]
+    fee, trades, params, response = [models.JSONField(null=True) for i in range(4)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
     dt_update = models.DateTimeField(auto_now=True)

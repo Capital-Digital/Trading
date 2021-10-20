@@ -271,7 +271,7 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(self)
         args = dict(
             symbol=market.symbol,
-            type='type' if self.limit_order else 'market',
+            type='limit' if self.limit_order else 'market',
             side=side,
             amount=amount,
             price=price

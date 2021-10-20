@@ -71,16 +71,14 @@ class Account(models.Model):
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         dic = {k: v for k, v in response[key].items() if v > 0}
-        print('dic', wallet)
-        pprint(dic)
-        df = pd.DataFrame(index=dic.keys(),
-                          data=dic.values(),
-                          columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
-                          )
-        self.balances = df if not hasattr(self, 'balances') else pd.concat([self.balances, df])
-        self.balances = self.balances.groupby(level=0).last()
-        print(self.balances)
-        return self.balances
+        if dic:
+            df = pd.DataFrame(index=dic.keys(),
+                              data=dic.values(),
+                              columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
+                              )
+            self.balances = df if not hasattr(self, 'balances') else pd.concat([self.balances, df])
+            self.balances = self.balances.groupby(level=0).last()
+            return self.balances
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self, key='total'):
@@ -90,17 +88,18 @@ class Account(models.Model):
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet, key)
-            balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
-            df = pd.DataFrame(index=balances_qty.index,
-                              data=balances_qty.values,
-                              columns=pd.MultiIndex.from_product([[wallet], [key], ['value']], names=['l0', 'l1', 'l2'])
-                              )
-            self.balances = pd.concat([self.balances, df])
-            self.balances = self.balances.groupby(level=0).last()
+            if balances_qty:
+                balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
+                df = pd.DataFrame(index=balances_qty.index,
+                                  data=balances_qty.values,
+                                  columns=pd.MultiIndex.from_product([[wallet], [key], ['value']], names=['l0', 'l1', 'l2'])
+                                  )
+                self.balances = pd.concat([self.balances, df])
+                self.balances = self.balances.groupby(level=0).last()
 
-            # Drop coins < $10
-            mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
-            self.balances = self.balances.loc[(mask == True).any(axis=1)]
+                # Drop coins < $10
+                mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
+                self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
         # Get open positions
         self.get_positions_value()

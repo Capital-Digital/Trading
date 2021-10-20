@@ -116,8 +116,7 @@ class Account(models.Model):
         closed = [i for i in response if float(i['positionAmt']) == 0]
 
         if not hasattr(self, 'balances'):
-            self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']],
-                                                                            names=['l0', 'l1', 'l2']))
+            self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']]))
 
         for position in opened:
             market = Market.objects.get(exchange=self.exchange,

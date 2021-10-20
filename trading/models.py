@@ -336,8 +336,10 @@ class Account(models.Model):
         client.options['defaultType'] = market.wallet
         orders = client.fetchOpenOrders(market.symbol)
         if orders:
+            print('yes')
             return True
         else:
+            print('no')
             return False
 
     ##############################################################################################

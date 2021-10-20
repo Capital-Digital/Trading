@@ -257,10 +257,10 @@ class Account(models.Model):
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
             target = row[('target', '', '')]
             if target < 0:
+
                 # Select quantities
                 delta = row[('delta', '', '')]
                 amount = delta
-
                 market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                             exchange=self.exchange,
                                             base__code=code,
@@ -326,6 +326,25 @@ class Account(models.Model):
         else:
             log.info('Order object updated')
 
+    def cancel_orders(self):
+        client = self.exchange.get_ccxt_client(account=self)
+        for wallet in self.exchange.wallets:
+            client.options['defaultType'] = wallet
+            client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
+            responses = client.fetchOpenOrders()
+
+            if responses:
+
+                log.info('{0} orders to cancel in {1}'.format(len(responses), wallet))
+
+                for order in responses:
+                    try:
+                        client.cancel_order(id=order['id'], symbol=order['symbol'])
+                    except Exception as e:
+                        log.error('Error while canceling order {0}'.format(order['id']), e=e)
+                    else:
+                        Order.objects.get(orderid=order['id']).delete()
+
     def trade(self):
         self.sell_spot()
         self.close_short()
@@ -336,10 +355,8 @@ class Account(models.Model):
         client.options['defaultType'] = market.wallet
         orders = client.fetchOpenOrders(market.symbol)
         if orders:
-            print('yes')
             return True
         else:
-            print('no')
             return False
 
     ##############################################################################################

@@ -229,11 +229,12 @@ class Account(models.Model):
                     price = market.get_latest_price(self.exchange)
                     price -= (price * self.limit_price_tolerance)
                     self.place_order('close short', market, 'buy', amount, price)
+            else:
+                log.info('There is actually no {0}/USDT position to close short'.format(code))
 
     def buy_spot(self):
         df = self.get_delta()
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
-
             pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
             if not pos_qty < 0:
 
@@ -310,7 +311,8 @@ class Account(models.Model):
             trades=response['trades'],
             type=response['type']
         )
-
+        pprint(args)
+        pprint(defaults)
         obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
         if created:

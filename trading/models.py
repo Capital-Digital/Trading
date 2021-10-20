@@ -314,7 +314,7 @@ class Account(models.Model):
                 log.info('Order object update complete', wallet=wallet)
 
             else:
-                log.info('There is no open order', wallet=wallet)
+                log.info('Order object update N/A', wallet=wallet)
 
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])

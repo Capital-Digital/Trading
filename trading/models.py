@@ -340,9 +340,13 @@ class Account(models.Model):
                 for order in responses:
                     try:
                         client.cancel_order(id=order['id'], symbol=order['symbol'])
+                        log.info('Order {0} canceled'.format(order['id']))
+
                     except Exception as e:
                         log.error('Error while canceling order {0}'.format(order['id']), e=e)
+
                     else:
+
                         try:
                             order = Order.objects.get(orderid=order['id'])
                         except ObjectDoesNotExist:

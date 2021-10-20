@@ -343,36 +343,55 @@ class Account(models.Model):
         else:
             log.info('Update order', id=response['id'])
 
-    def cancel_orders(self):
+    def cancel_orders(self, web=False):
+        log.info('Cancel orders start')
         client = self.exchange.get_ccxt_client(account=self)
+
         for wallet in self.exchange.get_wallets():
             client.options['defaultType'] = wallet
             client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
-            responses = client.fetchOpenOrders()
 
-            if responses:
-
-                log.info('Cancel orders start', nb=len(responses), wallet=wallet)
-
-                for order in responses:
-                    try:
+            if web:
+                # Fetch all open orders from exchange
+                responses = client.fetchOpenOrders()
+                if responses:
+                    for order in responses:
                         client.cancel_order(id=order['id'], symbol=order['symbol'])
-                        log.info('Cancel order', id=order['id'])
-
-                    except Exception as e:
-                        log.error('Error while canceling order {0}'.format(order['id']), e=e)
-
-                    else:
-
+                        log.info('Cancel order', orderid=order['id'])
                         try:
-                            order = Order.objects.get(orderid=order['id'])
+                            obj = Order.objects.get(orderid=order['id'])
                         except ObjectDoesNotExist:
                             pass
                         else:
-                            order.status = 'canceled'
-                            order.save()
+                            obj.status = 'canceled'
+                            obj.save()
 
-                log.info('Cancel orders complete')
+                    log.info('Cancel orders complete')
+
+                else:
+                    log.info('Cancel orders N/A', wallet=wallet)
+            else:
+                # Query known open orders from db
+                orders = Order.objects.filter(account=self,
+                                              market__wallet=wallet,
+                                              status='open'
+                                              )
+                if orders.exists():
+                    for order in orders:
+                        client.cancel_order(id=order['id'], symbol=order['symbol'])
+                        log.info('Cancel order', orderid=order['id'])
+                        try:
+                            obj = Order.objects.get(orderid=order['id'])
+                        except ObjectDoesNotExist:
+                            pass
+                        else:
+                            obj.status = 'canceled'
+                            obj.save()
+
+                    log.info('Cancel orders complete')
+
+                else:
+                    log.info('Cancel orders N/A', wallet=wallet)
 
     def has_order(self, market):
         client = self.exchange.get_ccxt_client(self)

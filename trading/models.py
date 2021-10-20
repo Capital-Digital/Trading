@@ -328,7 +328,7 @@ class Account(models.Model):
 
     def cancel_orders(self):
         client = self.exchange.get_ccxt_client(account=self)
-        for wallet in self.exchange.wallets:
+        for wallet in self.exchange.get_wallets():
             client.options['defaultType'] = wallet
             client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
             responses = client.fetchOpenOrders()

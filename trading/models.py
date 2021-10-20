@@ -77,6 +77,7 @@ class Account(models.Model):
                           )
         self.balances = df if not hasattr(self, 'balances') else pd.concat([self.balances, df])
         self.balances = self.balances.groupby(level=0).last()
+        print(self.balances)
         return self.balances
 
     # Return a dictionary with balance of a specific wallet
@@ -182,9 +183,7 @@ class Account(models.Model):
             if coin_account != self.exchange.dollar_currency:
                 if coin_account not in target.index:
                     for source in df.columns:
-                        print(df)
                         qty = df.loc[coin_account, source]
-                        print(qty)
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
 

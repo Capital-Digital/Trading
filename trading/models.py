@@ -183,6 +183,7 @@ class Account(models.Model):
                 if coin_account not in target.index:
                     for source in df.columns:
                         qty = df.loc[coin_account, source]
+                        print(qty)
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
 

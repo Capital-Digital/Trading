@@ -188,6 +188,8 @@ class Account(models.Model):
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
 
+        print('Delta')
+        print(self.balances)
         return self.balances
 
     def sell_spot(self):

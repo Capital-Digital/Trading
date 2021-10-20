@@ -92,7 +92,8 @@ class Account(models.Model):
                 balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
                 df = pd.DataFrame(index=balances_qty.index,
                                   data=balances_qty.values,
-                                  columns=pd.MultiIndex.from_product([[wallet], [key], ['value']], names=['l0', 'l1', 'l2'])
+                                  columns=pd.MultiIndex.from_product([[wallet], [key], ['value']],
+                                                                     names=['l0', 'l1', 'l2'])
                                   )
                 self.balances = pd.concat([self.balances, df])
                 self.balances = self.balances.groupby(level=0).last()
@@ -237,7 +238,6 @@ class Account(models.Model):
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
             pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
             if not pos_qty < 0:
-
                 # Select quantities
                 delta = row[('delta', '', '')]
                 amount = abs(delta)
@@ -255,7 +255,6 @@ class Account(models.Model):
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
             target = row[('target', '', '')]
             if target < 0:
-
                 # Select quantities
                 delta = row[('delta', '', '')]
                 amount = delta
@@ -277,7 +276,10 @@ class Account(models.Model):
                                                                       amount,
                                                                       action)
                  )
-        client = self.exchange.get_ccxt_client(self)
+        amount = format_decimal(counting_mode=self.exchange.precision_mode,
+                                precision=market.precision['amount'],
+                                n=amount
+                                )
         args = dict(
             symbol=market.symbol,
             type='limit' if self.limit_order else 'market',
@@ -288,6 +290,7 @@ class Account(models.Model):
         print('order')
         pprint(args)
         # Place order and create object
+        client = self.exchange.get_ccxt_client(self)
         response = client.create_order(**args)
         self.create_update_order(response, action, market)
 
@@ -319,8 +322,6 @@ class Account(models.Model):
             log.info('Order object created')
         else:
             log.info('Order object updated')
-
-
 
     ##############################################################################################
     # Construct a dataframe with wallets balance, positions, exposure and delta

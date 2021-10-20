@@ -102,7 +102,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('id', 'account', 'dt_create', 'market', 'action', 'status', 'side', 'amount', 'get_cost',
                     'get_price', 'filled',  'dt_update')
 
-    readonly_fields = ('orderid', 'account', 'market', 'status',  'type', 'amount', 'side', 'params',
+    readonly_fields = ('orderid', 'user', 'account', 'market', 'status',  'action', 'type', 'amount', 'side', 'params',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
                        'last_trade_timestamp', 'price', 'fee', 'datetime',
                        'response')

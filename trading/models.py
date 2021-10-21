@@ -201,6 +201,8 @@ class Account(models.Model):
             target = row[('target', '', '')]
             delta = row[('delta', '', '')]
 
+            print(row)
+            
             # Determine amount we must sell
             if target < 0:  # short
                 amount = hold

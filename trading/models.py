@@ -297,6 +297,10 @@ class Account(models.Model):
                     amount=amount,
                     price=price
                 )
+
+                if params:
+                    args['params'] = params
+
                 print(market.type, 'order')
                 pprint(args)
 

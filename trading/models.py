@@ -206,9 +206,9 @@ class Account(models.Model):
                 if not np.isnan(hold):
                     amount = hold
                 else:
-                    log.info('You must open a short for {0}'.format(code))
+                    log.info('Please open a short position for {0}'.format(code))
                     return
-                
+
             elif (target > 0) or np.isnan(target):
                 amount = delta
 

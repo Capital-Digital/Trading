@@ -308,6 +308,16 @@ class Account(models.Model):
 
                     log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
                                                                                   amount, action))
+
+                    if 'quoteOrderQty' in params:
+                        params['quoteOrderQty'] = amount
+                        amount = None
+
+                    if reduce_only:
+                        if not params:
+                            params = dict(())
+                        params['reduceonly'] = True
+
                     args = dict(
                         symbol=market.symbol,
                         type='limit' if self.limit_order else 'market',
@@ -316,14 +326,8 @@ class Account(models.Model):
                         price=price
                     )
 
-                    if reduce_only:
-                        if not params:
-                            params = dict(())
-                        params['reduceonly'] = True
-
                     if params:
                         args['params'] = params
-                        args['amount'] = None
 
                     print(market.type, 'order')
                     pprint(args)

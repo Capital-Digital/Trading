@@ -123,13 +123,16 @@ def format_decimal(counting_mode, precision, n):
     # Padding mode
     NO_PADDING = 5  # default for most cases
     PAD_WITH_ZERO = 6  # appends zero characters up to precision
-
-    return float(ccxt.decimal_to_precision(n,
-                                           rounding_mode=0,
-                                           precision=precision,
-                                           counting_mode=counting_mode,
-                                           padding_mode=5
-                                           ))
+    if n:
+        return float(ccxt.decimal_to_precision(n,
+                                               rounding_mode=0,
+                                               precision=precision,
+                                               counting_mode=counting_mode,
+                                               padding_mode=5
+                                               ))
+    else:
+        # Return True if n=None (quoteOrderQty)
+        return True
 
 
 # Return amount limit min or amount limit max if condition is not satisfy

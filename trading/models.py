@@ -355,17 +355,13 @@ class Account(models.Model):
         if created:
             log.info('Create order', id=response['id'])
 
-            if obj.filled:
-                log.info('Filled {0} {1}'.format(obj.filled, market.base.code))
-                self.buy_spot(load=True)
-
         else:
             log.info('Update order', id=response['id'])
 
-            if obj.filled:
-                filled = float(response['filled']) - obj.filled
-                log.info('Filled {0} {1}'.format(filled, market.base.code))
-                self.buy_spot(load=True)
+        if obj.filled:
+            filled = float(response['filled']) - obj.filled
+            log.info('Filled {0} {1}'.format(filled, market.base.code))
+            self.buy_spot(load=True)
 
     def cancel_orders(self, web=False):
         log.info('Cancel orders start')

@@ -300,7 +300,7 @@ class Account(models.Model):
 
                 if params:
                     args['params'] = params
-                    del args['amount']
+                    args['amount'] = None
 
                 print(market.type, 'order')
                 pprint(args)

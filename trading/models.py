@@ -381,8 +381,8 @@ class Account(models.Model):
         else:
             log.info('Update order', id=response['id'])
 
-        if obj.filled:
-            filled = float(response['filled']) - obj.filled
+        filled = float(response['filled']) - obj.filled
+        if filled > 0:
             log.info('Filled {0} {1}'.format(filled, market.base.code))
             self.buy_spot(load=True)
 

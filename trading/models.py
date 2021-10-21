@@ -354,8 +354,18 @@ class Account(models.Model):
 
         if created:
             log.info('Create order', id=response['id'])
+
+            if obj.filled:
+                log.info('Filled {0} {1}'.format(obj.filled, market.base.code))
+                self.buy_spot(load=True)
+
         else:
             log.info('Update order', id=response['id'])
+
+            if obj.filled:
+                filled = float(response['filled']) - obj.filled
+                log.info('Filled {0} {1}'.format(filled, market.base.code))
+                self.buy_spot(load=True)
 
     def cancel_orders(self, web=False):
         log.info('Cancel orders start')
@@ -901,7 +911,8 @@ class Order(models.Model):
     market = models.ForeignKey(Market, on_delete=models.SET_NULL, related_name='order', null=True)
     orderid = models.CharField(max_length=150, null=True)  # order exchange's ID
     status, type = [models.CharField(max_length=150, null=True) for i in range(2)]
-    amount, filled, remaining, max_qty = [models.FloatField(max_length=10, null=True) for i in range(4)]
+    amount, remaining, max_qty = [models.FloatField(max_length=10, null=True) for i in range(3)]
+    filled = models.FloatField(max_length=10, null=True, default=0)
     side = models.CharField(max_length=10, null=True, choices=(('buy', 'buy'), ('sell', 'sell')))
     cost = models.FloatField(null=True)
     action = models.CharField(max_length=20, null=True)

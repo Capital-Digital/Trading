@@ -201,11 +201,14 @@ class Account(models.Model):
             target = row[('target', '', '')]
             delta = row[('delta', '', '')]
 
-            print(row)
-
             # Determine amount we must sell
             if target < 0:  # short
-                amount = hold
+                if not np.isnan(hold):
+                    amount = hold
+                else:
+                    log.info('You must open a short for {0}'.format(code))
+                    return
+                
             elif (target > 0) or np.isnan(target):
                 amount = delta
 
@@ -215,7 +218,7 @@ class Account(models.Model):
                                         exchange=self.exchange,
                                         base__code=code,
                                         type='spot')
-            print('amount', amount)
+
             self.place_order('sell spot', market, 'sell', amount, price)
 
     def close_short(self, load=False):

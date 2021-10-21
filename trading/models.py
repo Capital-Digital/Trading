@@ -202,7 +202,7 @@ class Account(models.Model):
             delta = row[('delta', '', '')]
 
             print(row)
-            
+
             # Determine amount we must sell
             if target < 0:  # short
                 amount = hold
@@ -215,6 +215,7 @@ class Account(models.Model):
                                         exchange=self.exchange,
                                         base__code=code,
                                         type='spot')
+            print('amount', amount)
             self.place_order('sell spot', market, 'sell', amount, price)
 
     def close_short(self, load=False):

@@ -283,6 +283,9 @@ class Account(models.Model):
                 self.place_order('open short', market, 'sell', amount, price)
 
     def place_order(self, action, market, side, raw_amount, price, params=None):
+        if 'quoteOrderQty' in params:
+            raw_amount = params['quoteOrderQty']
+
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
                                 n=raw_amount)
@@ -313,7 +316,8 @@ class Account(models.Model):
             else:
                 log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
         else:
-            log.info("Can't {2} {0} {1} (dust)".format(round(raw_amount, 4), market.base.code, side))
+            code = market.base.code if 'quoteOrderQty' not in params else 'USDT'
+            log.info("Can't {2} {0} {1} (dust)".format(round(raw_amount, 4), code, side))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)

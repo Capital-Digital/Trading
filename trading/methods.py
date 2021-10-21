@@ -179,12 +179,8 @@ def limit_cost(market, cost):
 
 
 # Test MIN_NOTIONAL
-def test_min_notional(market, action, amount, price, params=None):
-    if params:
-        cost = amount
-    else:
-        cost = amount * price
-
+def test_min_notional(market, action, amount, price):
+    cost = amount * price
     min_notional = limit_cost(market, cost)
 
     if market.exchange.exid == 'binance':

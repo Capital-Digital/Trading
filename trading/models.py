@@ -255,14 +255,14 @@ class Account(models.Model):
                 # Determine quantities
                 qty_usdt = df.loc['USDT', ('spot', 'total', 'quantity')]
                 qty_coin = abs(row[('delta', '', '')])
-                params = dict(quoteOrderQty=min(qty_usdt, qty_coin * price))
+                amount = min(qty_coin, qty_usdt / price)
 
                 market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                             exchange=self.exchange,
                                             base__code=code,
                                             type='spot'
                                             )
-                self.place_order('buy spot', market, 'buy', None, price, params)
+                self.place_order('buy spot', market, 'buy', amount, price)
 
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
@@ -282,9 +282,7 @@ class Account(models.Model):
                 price -= (price * self.limit_price_tolerance)
                 self.place_order('open short', market, 'sell', amount, price)
 
-    def place_order(self, action, market, side, raw_amount, price, params=None):
-        if 'quoteOrderQty' in params:
-            raw_amount = params['quoteOrderQty']
+    def place_order(self, action, market, side, raw_amount, price):
 
         # Format decimals
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
@@ -295,7 +293,6 @@ class Account(models.Model):
         print(action)
         print(raw_amount)
         print(amount)
-        print(params)
         print(side)
 
         # Test for amount limit
@@ -303,20 +300,11 @@ class Account(models.Model):
             # Test for open orders
             if not self.has_order(market):
                 # Test min notional
-                min_notional, reduce_only = test_min_notional(market, action, amount, price, params)
+                min_notional, reduce_only = test_min_notional(market, action, amount, price)
                 if min_notional:
 
                     log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
                                                                                   amount, action))
-
-                    if 'quoteOrderQty' in params:
-                        params['quoteOrderQty'] = amount
-                        amount = None
-
-                    if reduce_only:
-                        if not params:
-                            params = dict(())
-                        params['reduceonly'] = True
 
                     args = dict(
                         symbol=market.symbol,
@@ -326,8 +314,8 @@ class Account(models.Model):
                         price=price
                     )
 
-                    if params:
-                        args['params'] = params
+                    if reduce_only:
+                        args['params'] = dict(reduceonly=True)
 
                     print(market.type, 'order')
                     pprint(args)

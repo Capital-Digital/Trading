@@ -255,7 +255,7 @@ class Account(models.Model):
                 # Determine quantities
                 qty_usdt = df.loc['USDT', ('spot', 'total', 'quantity')]
                 qty_coin = abs(row[('delta', '', '')])
-                params = dict(quoteOrderQty=min(qty_usdt, qty_coin / price))
+                params = dict(quoteOrderQty=min(qty_usdt, qty_coin * price))
 
                 market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                             exchange=self.exchange,

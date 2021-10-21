@@ -192,7 +192,7 @@ class Account(models.Model):
         print(self.balances)
         return self.balances
 
-    def sell_spot(self, load=True):
+    def sell_spot(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
@@ -215,7 +215,7 @@ class Account(models.Model):
                                         type='spot')
             self.place_order('sell spot', market, 'sell', amount, price)
 
-    def close_short(self, load=True):
+    def close_short(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
             if 'position' in df.columns.get_level_values(0):
@@ -235,29 +235,34 @@ class Account(models.Model):
             else:
                 log.info('There is actually no {0}/USDT position to close short'.format(code))
 
-    def buy_spot(self, load=True):
+    def buy_spot(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
             pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
-            if not pos_qty < 0:
-                # Select quantities
-                delta = row[('delta', '', '')]
-                amount = abs(delta)
 
+            if not pos_qty < 0:  # no short position
+
+                # Determine buy price
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange)
                 price += (price * float(self.limit_price_tolerance))
+
+                # Determine quantities
+                qty_usdt = df.loc['USDT', ('spot', 'total', 'quantity')]
+                qty_coin = abs(row[('delta', '', '')])
+                params = dict(quoteOrderQty=min(qty_usdt, qty_coin / price))
+
                 market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                             exchange=self.exchange,
                                             base__code=code,
-                                            type='spot')
-                self.place_order('buy spot', market, 'buy', amount, price)
+                                            type='spot'
+                                            )
+                self.place_order('buy spot', market, 'buy', None, price, params)
 
-    def open_short(self, load=True):
+    def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
             target = row[('target', '', '')]
             if target < 0:
-
                 # Select quantities
                 delta = row[('delta', '', '')]
                 amount = delta
@@ -271,7 +276,7 @@ class Account(models.Model):
                 price -= (price * self.limit_price_tolerance)
                 self.place_order('open short', market, 'sell', amount, price)
 
-    def place_order(self, action, market, side, amount, price):
+    def place_order(self, action, market, side, amount, price, params=None):
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
                                 n=amount)
@@ -314,7 +319,8 @@ class Account(models.Model):
                 log.info('Update orders complete', wallet=wallet)
 
             else:
-                log.info('Update order object N/A', wallet=wallet)
+                pass
+                # log.info('Update order object N/A', wallet=wallet)
 
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])

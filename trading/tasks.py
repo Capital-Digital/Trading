@@ -63,8 +63,8 @@ def trade():
         account.self.get_delta()
 
         # Place orders
-        account.sell_spot(load=False)
-        account.close_short(load=False)
+        account.sell_spot()
+        account.close_short()
 
 
 # Fetch past orders for a specific period of time

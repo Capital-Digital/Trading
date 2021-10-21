@@ -178,6 +178,40 @@ def limit_cost(market, cost):
     return True
 
 
+# Test MIN_NOTIONAL
+def test_min_notional(market, action, amount, price, params=None):
+    if params:
+        cost = amount
+    else:
+        cost = amount * price
+
+    min_notional = limit_cost(market, cost)
+
+    if market.exchange.exid == 'binance':
+
+        # If market is spot and if condition is applied to MARKET order
+        if market.type == 'spot':
+            if market.response['info']['filters'][3]['applyToMarket']:
+                if min_notional:
+                    return True, None
+            else:
+                return True, None
+
+        # If market is USDT margined and if verification fails, set reduce_only = True
+        elif not min_notional:
+            if market.type == 'derivative':
+                if market.margined.code == 'USDT':
+                    if action == 'close_short':
+                        return True, True  # Reduce only = True
+        else:
+            return True, None
+    else:
+        if min_notional:
+            return True, None
+
+    # In last resort return False
+    return False, None
+
 # Return last websocket spot price if available else last hourly price
 def get_price_ws(exchange, code, prices):
     if prices is not None:

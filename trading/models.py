@@ -286,32 +286,45 @@ class Account(models.Model):
         if 'quoteOrderQty' in params:
             raw_amount = params['quoteOrderQty']
 
+        # Format decimals
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
                                 n=raw_amount)
-        if amount:
+
+        # Test for amount limit
+        if limit_amount(market, amount):
+            # Test for open orders
             if not self.has_order(market):
-                log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
-                                                                              amount, action))
-                args = dict(
-                    symbol=market.symbol,
-                    type='limit' if self.limit_order else 'market',
-                    side=side,
-                    amount=amount,
-                    price=price
-                )
+                # Test min notional
+                min_notional, reduce_only = test_min_notional(market, action, amount, price, params)
+                if min_notional:
 
-                if params:
-                    args['params'] = params
-                    args['amount'] = None
+                    log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
+                                                                                  amount, action))
+                    args = dict(
+                        symbol=market.symbol,
+                        type='limit' if self.limit_order else 'market',
+                        side=side,
+                        amount=amount,
+                        price=price
+                    )
 
-                print(market.type, 'order')
-                pprint(args)
+                    if reduce_only:
+                        if not params:
+                            params = dict(())
+                        params['reduceonly'] = True
 
-                # Place order and create object
-                client = self.exchange.get_ccxt_client(self)
-                response = client.create_order(**args)
-                self.create_update_order(response, action, market)
+                    if params:
+                        args['params'] = params
+                        args['amount'] = None
+
+                    print(market.type, 'order')
+                    pprint(args)
+
+                    # Place order and create object
+                    client = self.exchange.get_ccxt_client(self)
+                    response = client.create_order(**args)
+                    self.create_update_order(response, action, market)
 
             else:
                 log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))

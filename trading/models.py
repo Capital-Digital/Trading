@@ -282,10 +282,10 @@ class Account(models.Model):
                 price -= (price * self.limit_price_tolerance)
                 self.place_order('open short', market, 'sell', amount, price)
 
-    def place_order(self, action, market, side, amount, price, params=None):
+    def place_order(self, action, market, side, raw_amount, price, params=None):
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
-                                n=amount)
+                                n=raw_amount)
         if amount:
             if not self.has_order(market):
                 log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
@@ -307,6 +307,8 @@ class Account(models.Model):
 
             else:
                 log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
+        else:
+            log.info("Can't create order with dust for {0} {1}".format(raw_amount, market.base.code))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)

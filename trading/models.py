@@ -328,8 +328,7 @@ class Account(models.Model):
             else:
                 log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
         else:
-            code = market.base.code if 'quoteOrderQty' not in params else 'USDT'
-            log.info("Can't {2} {0} {1} (dust)".format(round(raw_amount, 4), code, side))
+            log.info("Can't {2} {0} {1} (dust)".format(round(raw_amount, 4), market.base.code, side))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)
@@ -344,6 +343,9 @@ class Account(models.Model):
                 for order in orders:
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
                     self.create_update_order(responses, action=order.action, market=order.market)
+
+                    if datetime.now().minute == 59:
+                        self.cancel_orders()
 
                 log.info('Update orders complete', wallet=wallet)
 

@@ -291,6 +291,8 @@ class Account(models.Model):
                                 precision=market.precision['amount'],
                                 n=raw_amount)
 
+        print(market.symbol, market.type)
+        
         # Test for amount limit
         if limit_amount(market, amount):
             # Test for open orders

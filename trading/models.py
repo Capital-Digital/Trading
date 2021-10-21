@@ -300,6 +300,7 @@ class Account(models.Model):
 
                 if params:
                     args['params'] = params
+                    del args['amount']
 
                 print(market.type, 'order')
                 pprint(args)

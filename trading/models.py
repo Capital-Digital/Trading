@@ -262,6 +262,9 @@ class Account(models.Model):
                     df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
                     print('after buy', df)
 
+                else:
+                    log.info('Unable to buy spot (no free resource)')
+                
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell

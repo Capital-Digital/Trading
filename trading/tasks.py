@@ -56,9 +56,9 @@ def update_orders():
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
-        
+
         # Delete balance dataframe
-        if not hasattr(account, 'balances'):
+        if hasattr(account, 'balances'):
             del account.balances
 
         # Construct a new dataframe

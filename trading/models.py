@@ -104,7 +104,7 @@ class Account(models.Model):
                 self.balances = self.balances.loc[(mask == True).any(axis=1)]
             else:
                 log.info('Get balances quantity in {0} (no fund)'.format(wallet))
-                
+
         # Get open positions
         self.get_positions_value()
 
@@ -122,19 +122,22 @@ class Account(models.Model):
         if not hasattr(self, 'balances'):
             self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']]))
 
-        for position in opened:
-            market = Market.objects.get(exchange=self.exchange,
-                                        response__id=position['symbol'],
-                                        type='derivative'
-                                        )
-            quantity = float(position['positionAmt'])
-            self.balances.loc[market.base, ('position', 'open', 'quantity')] = quantity
-            self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
-            self.balances.loc[market.base, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
-            self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
-            self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
-            self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
-
+        if opened:
+            for position in opened:
+                market = Market.objects.get(exchange=self.exchange,
+                                            response__id=position['symbol'],
+                                            type='derivative'
+                                            )
+                quantity = float(position['positionAmt'])
+                self.balances.loc[market.base, ('position', 'open', 'quantity')] = quantity
+                self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
+                self.balances.loc[market.base, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
+                self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
+                self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
+                self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+        else:
+            log.info('Get open positions (no position)')
+            
         return self.balances
 
     # Returns a Series with target value

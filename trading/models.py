@@ -166,6 +166,7 @@ class Account(models.Model):
 
         target = self.get_target_qty()
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
+        df = df.loc[:, df.columns.get_level_values(1) == 'total']
         df = df.droplevel([1, 2], axis=1)
 
         for coin_target in target.index:

@@ -94,10 +94,7 @@ class Account(models.Model):
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
                 df.columns.set_levels(['value'], level=1,inplace=True)
                 df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))
-                print(df)
-                print(self.balances)
                 self.balances = pd.concat([self.balances, df], axis=1)
-                return self.balances
                 # Drop coins < $10
                 mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
                 self.balances = self.balances.loc[(mask == True).any(axis=1)]

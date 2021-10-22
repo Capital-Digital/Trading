@@ -81,26 +81,27 @@ class Account(models.Model):
             return self.balances
 
     # Return a dictionary with balance of a specific wallet
-    def get_balances_value(self, key='total'):
+    def get_balances_value(self):
 
         log.info('Get balances value')
 
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
-            balances_qty = self.get_balances_qty(wallet, key)
-            if balances_qty is not None:
-                balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
-                df = pd.DataFrame(index=balances_qty.index,
-                                  data=balances_qty.values,
-                                  columns=pd.MultiIndex.from_product([[wallet], [key], ['value']],
-                                                                     names=['l0', 'l1', 'l2'])
-                                  )
-                self.balances = pd.concat([self.balances, df])
-                self.balances = self.balances.groupby(level=0).last()
+            for key in ['total', 'free']:
+                balances_qty = self.get_balances_qty(wallet, key)
+                if balances_qty is not None:
+                    balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, key, self.exchange), axis=1)
+                    df = pd.DataFrame(index=balances_qty.index,
+                                      data=balances_qty.values,
+                                      columns=pd.MultiIndex.from_product([[wallet], [key], ['value']],
+                                                                         names=['l0', 'l1', 'l2'])
+                                      )
+                    self.balances = pd.concat([self.balances, df])
+                    self.balances = self.balances.groupby(level=0).last()
 
-                # Drop coins < $10
-                mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
-                self.balances = self.balances.loc[(mask == True).any(axis=1)]
+                    # Drop coins < $10
+                    mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
+                    self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
         # Get open positions
         self.get_positions_value()
@@ -207,7 +208,6 @@ class Account(models.Model):
                     amount = hold
                 else:
                     log.info('Please open a short position for {0}'.format(code))
-                    return
 
             elif (target > 0) or np.isnan(target):
                 amount = delta
@@ -253,7 +253,7 @@ class Account(models.Model):
                 price += (price * float(self.limit_price_tolerance))
 
                 # Determine quantities
-                qty_usdt = df.loc['USDT', ('spot', 'total', 'quantity')]
+                qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
                 qty_coin = abs(row[('delta', '', '')])
                 amount = min(qty_coin, qty_usdt / price)
 
@@ -263,6 +263,9 @@ class Account(models.Model):
                                             type='spot'
                                             )
                 self.place_order('buy spot', market, 'buy', amount, price)
+
+                # Remove USDT amount from available fund
+                df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
 
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
@@ -381,10 +384,13 @@ class Account(models.Model):
         else:
             log.info('Update order', id=response['id'])
 
-        filled = float(response['filled']) - obj.filled
-        if filled > 0:
-            log.info('Filled {0} {1}'.format(filled, market.base.code))
-            self.buy_spot(load=True)
+        if action in ['sell_spot', 'close_short']:
+            filled = float(response['filled']) - obj.filled
+            if filled > 0:
+
+                # Trigger buy orders if funds have been released ?
+                log.info('Filled {0} {1}'.format(filled, market.base.code))
+                self.buy_spot(load=True)
 
     def cancel_orders(self, web=False):
         log.info('Cancel orders start')

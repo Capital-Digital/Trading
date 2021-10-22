@@ -217,9 +217,9 @@ class Account(models.Model):
 
     def close_short(self, load=False):
         df = self.get_delta() if load else self.balances
-        for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
+        for code, row in df.loc[df['delta'] < 0].iterrows():  # buy ?
             if 'position' in df.columns.get_level_values(0):
-                if row.position.open.quantity < 0:
+                if row.position.open.quantity < 0:  # short is open ?
                     delta = row[('delta', '', '')]
                     amount = min(abs(delta), abs(row.position.open.quantity))
 
@@ -264,7 +264,7 @@ class Account(models.Model):
 
                 else:
                     log.info('Unable to buy spot (no free resource)')
-                
+
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
@@ -340,8 +340,6 @@ class Account(models.Model):
             orders = Order.objects.filter(account=self, market__wallet=wallet, status='open')
             if orders.exists():
 
-                log.info('Update orders', nb=len(orders), wallet=wallet)
-
                 client.options['defaultType'] = wallet
                 client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
                 for order in orders:
@@ -380,10 +378,10 @@ class Account(models.Model):
         obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
         if created:
-            log.info('Create order', id=response['id'])
+            log.info('Create order {0}'.format(response['id']))
 
         else:
-            log.info('Update order', id=response['id'])
+            log.info('Update order {0}'.format(response['id']))
 
         if action in ['sell_spot', 'close_short']:
             filled = float(response['filled']) - obj.filled

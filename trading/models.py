@@ -93,8 +93,7 @@ class Account(models.Model):
             if balances_qty is not None:
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
                 df.columns.set_levels(['value'], level=1,inplace=True)
-                self.balances = pd.concat([self.balances, df])
-                self.balances = self.balances.groupby(level=0).last()
+                self.balances = pd.concat([self.balances, df], axis=1)
 
                 # Drop coins < $10
                 mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10

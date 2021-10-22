@@ -342,7 +342,7 @@ class Account(models.Model):
             orders = Order.objects.filter(account=self, market__wallet=wallet, status='open')
             if orders.exists():
 
-                log.info('Update orders start', nb=len(orders), wallet=wallet)
+                log.info('Update orders', nb=len(orders), wallet=wallet)
 
                 client.options['defaultType'] = wallet
                 client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
@@ -353,7 +353,7 @@ class Account(models.Model):
                     if datetime.now().minute == 59:
                         self.cancel_orders()
 
-                log.info('Update orders complete', wallet=wallet)
+                    log.info('Update order {0}'.format(order.orderid), wallet=wallet)
 
             else:
                 pass

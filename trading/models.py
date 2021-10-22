@@ -91,6 +91,8 @@ class Account(models.Model):
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
             if balances_qty is not None:
+                print(wallet)
+                print(balances_qty)
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
                 df.columns.set_levels(['value'], level=1,inplace=True)
                 df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))

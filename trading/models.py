@@ -147,7 +147,7 @@ class Account(models.Model):
         tmp = df.loc[:, df.columns.get_level_values(2) == 'value']
         if 'position' in tmp.columns:  # drop open position's value
             tmp = tmp.drop('position', axis=1)
-        balance = tmp.sum().sum()
+        balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
         return balance * self.strategy.get_target_pct()
 
     # Returns a Series with target quantity per coin

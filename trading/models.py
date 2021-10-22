@@ -65,14 +65,13 @@ class Account(models.Model):
 
     def get_balances_qty(self, wallet):
 
-        log.info('Get balances quantity in {0}'.format(wallet))
-
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         for key in ['total', 'free', 'used']:
             dic = {k: v for k, v in response[key].items() if v > 0}
             if dic:
+                log.info('Get balances quantity {0}'.format(wallet))
                 tmp = pd.DataFrame(index=dic.keys(),
                                    data=dic.values(),
                                    columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])

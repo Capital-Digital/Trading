@@ -244,21 +244,23 @@ class Account(models.Model):
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange)
                 price += (price * float(self.limit_price_tolerance))
 
-                # Determine quantities
-                qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
-                qty_coin = abs(row[('delta', '', '')])
-                amount = min(qty_coin, qty_usdt / price)
+                if self.exchange.dollar_currency in df.index:
 
-                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='spot'
-                                            )
-                self.place_order('buy spot', market, 'buy', amount, price)
+                    # Determine quantities
+                    qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
+                    qty_coin = abs(row[('delta', '', '')])
+                    amount = min(qty_coin, qty_usdt / price)
 
-                # Remove USDT amount from available fund
-                df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
-                print('after buy', df)
+                    market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                                                exchange=self.exchange,
+                                                base__code=code,
+                                                type='spot'
+                                                )
+                    self.place_order('buy spot', market, 'buy', amount, price)
+
+                    # Remove USDT amount from available fund
+                    df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
+                    print('after buy', df)
 
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances

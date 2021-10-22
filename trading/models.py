@@ -110,8 +110,6 @@ class Account(models.Model):
 
     def get_positions_value(self):
 
-        log.info('Get open positions')
-
         client = self.exchange.get_ccxt_client(self)
         response = client.fapiPrivateGetPositionRisk()
         opened = [i for i in response if float(i['positionAmt']) != 0]
@@ -121,6 +119,7 @@ class Account(models.Model):
             self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']]))
 
         if opened:
+            log.info('Get open positions')
             for position in opened:
                 market = Market.objects.get(exchange=self.exchange,
                                             response__id=position['symbol'],
@@ -391,6 +390,7 @@ class Account(models.Model):
         if action in ['sell_spot', 'close_short']:
             filled = float(response['filled']) - obj.filled
             if filled > 0:
+
                 # Trigger buy orders if funds have been released ?
                 log.info('Filled {0} {1}'.format(filled, market.base.code))
                 self.buy_spot(load=True)

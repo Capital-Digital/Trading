@@ -351,8 +351,8 @@ class Account(models.Model):
                     self.create_update_order(responses, action=order.action, market=order.market)
 
                     log.info('Update order {0}'.format(order.orderid), wallet=wallet)
-                    
-                    # Cancel order before a strategy update
+
+                    # Cancel order before strategy update
                     if self.strategy.seconds_before_update() < 120:
                         self.cancel_order(wallet, order.symbol, order.orderid)
             else:

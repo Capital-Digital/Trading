@@ -332,11 +332,12 @@ class Account(models.Model):
                     client = self.exchange.get_ccxt_client(self)
                     response = client.create_order(**args)
                     self.create_update_order(response, action, market)
-
+                else:
+                    log.warning('Min notional test failed')
             else:
                 log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
         else:
-            log.info("Can't {2} {0} {1} (dust)".format(round(raw_amount, 4), market.base.code, side))
+            log.info("Unable to {2} {0} {1} (dust)".format(round(raw_amount, 4), market.base.code, side))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)

@@ -79,7 +79,9 @@ class Account(models.Model):
                                    )
                 self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                 self.balances = self.balances.groupby(level=0).last()
-
+            else:
+                self.balances = self.balances if not hasattr(self, 'balances') else pd.DataFrame()
+            
         return self.balances
 
     # Return a dictionary with balance of a specific wallet

@@ -102,6 +102,8 @@ class Account(models.Model):
                 # Drop coins < $10
                 mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
                 self.balances = self.balances.loc[(mask == True).any(axis=1)]
+            else:
+                log.info('No fund in {0}'.format(wallet))
 
         # Get open positions
         self.get_positions_value()

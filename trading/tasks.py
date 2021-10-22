@@ -57,9 +57,6 @@ def update_orders():
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
 
-        # Cancel open orders
-        account.cancel_orders(web=False)
-
         # Construct dataframe
         account.self.get_delta()
 

@@ -71,7 +71,7 @@ class Account(models.Model):
         for key in ['total', 'free', 'used']:
             dic = {k: v for k, v in response[key].items() if v > 0}
             if dic:
-                log.info('Get balances quantity {0}'.format(wallet))
+                log.info('Get balances quantity in {1} ({0})'.format(key, wallet))
                 tmp = pd.DataFrame(index=dic.keys(),
                                    data=dic.values(),
                                    columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])

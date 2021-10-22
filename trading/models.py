@@ -264,6 +264,7 @@ class Account(models.Model):
 
                 # Remove USDT amount from available fund
                 df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
+                print('after buy', df)
 
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances

@@ -238,8 +238,6 @@ class Account(models.Model):
                     price = market.get_latest_price(self.exchange)
                     price -= (price * self.limit_price_tolerance)
                     self.place_order('close short', market, 'buy', amount, price)
-            else:
-                log.info('There is actually no {0}/USDT position to close short'.format(code))
 
     def buy_spot(self, load=False):
         df = self.get_delta() if load else self.balances

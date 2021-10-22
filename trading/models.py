@@ -136,8 +136,6 @@ class Account(models.Model):
     # Returns a Series with target value
     def get_target_value(self):
 
-        log.info('Get target value')
-
         df = self.get_balances_value()
         tmp = df.loc[:, df.columns.get_level_values(2) == 'value']
         if 'position' in tmp.columns:  # drop open position's value
@@ -148,16 +146,12 @@ class Account(models.Model):
     # Returns a Series with target quantity per coin
     def get_target_qty(self):
 
-        log.info('Get target quantity')
-
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
         return target
 
     def get_delta(self):
-
-        log.info('Get delta quantity')
 
         target = self.get_target_qty()
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']

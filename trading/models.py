@@ -350,11 +350,11 @@ class Account(models.Model):
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
                     self.create_update_order(responses, action=order.action, market=order.market)
 
-                    if datetime.now().minute == 59:
-                        self.cancel_orders()
-
                     log.info('Update order {0}'.format(order.orderid), wallet=wallet)
-
+                    
+                    # Cancel order before a strategy update
+                    if self.strategy.seconds_before_update() < 120:
+                        self.cancel_order(wallet, order.symbol, order.orderid)
             else:
                 pass
                 # log.info('Update order object N/A', wallet=wallet)
@@ -395,6 +395,22 @@ class Account(models.Model):
                 log.info('Filled {0} {1}'.format(filled, market.base.code))
                 self.buy_spot(load=True)
 
+    def cancel_order(self, wallet, symbol, orderid):
+        log.info('Cancel order {0}'.format(orderid))
+        client = self.exchange.get_ccxt_client(account=self)
+        client.options['defaultType'] = wallet
+
+        client.cancel_order(id=orderid, symbol=symbol)
+
+        try:
+            obj = Order.objects.get(orderid=orderid)
+        except ObjectDoesNotExist:
+            pass
+        else:
+            obj.status = 'canceled'
+            obj.save()
+
+
     def cancel_orders(self, web=False):
         log.info('Cancel orders start')
         client = self.exchange.get_ccxt_client(account=self)
@@ -408,18 +424,8 @@ class Account(models.Model):
                 responses = client.fetchOpenOrders()
                 if responses:
                     for order in responses:
-                        client.cancel_order(id=order['id'], symbol=order['symbol'])
-                        log.info('Cancel order', orderid=order['id'])
-                        try:
-                            obj = Order.objects.get(orderid=order['id'])
-                        except ObjectDoesNotExist:
-                            pass
-                        else:
-                            obj.status = 'canceled'
-                            obj.save()
-
-                    log.info('Cancel orders complete')
-
+                        self.cancel_order(wallet, order['symbol'], order['id'])
+                    log.info('Cancel all orders complete')
                 else:
                     log.info('Cancel orders N/A', wallet=wallet)
             else:
@@ -430,18 +436,8 @@ class Account(models.Model):
                                               )
                 if orders.exists():
                     for order in orders:
-                        client.cancel_order(id=order['id'], symbol=order['symbol'])
-                        log.info('Cancel order', orderid=order['id'])
-                        try:
-                            obj = Order.objects.get(orderid=order['id'])
-                        except ObjectDoesNotExist:
-                            pass
-                        else:
-                            obj.status = 'canceled'
-                            obj.save()
-
-                    log.info('Cancel orders complete')
-
+                        self.cancel_order(wallet, order.market.symbol, order.orderid)
+                    log.info('Cancel all orders complete')
                 else:
                     log.info('Cancel orders N/A', wallet=wallet)
 

@@ -92,6 +92,7 @@ class Account(models.Model):
             balances_qty = self.get_balances_qty(wallet)
             if balances_qty is not None:
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
+                return df
                 df.columns.set_levels(['value' for i in len(df.columns)], level=1,inplace=True)
                 self.balances = pd.concat([self.balances, df])
                 self.balances = self.balances.groupby(level=0).last()

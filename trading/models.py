@@ -70,7 +70,7 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
-        for key in ['total', 'free']:
+        for key in ['total', 'free', 'used']:
             dic = {k: v for k, v in response[key].items() if v > 0}
             if dic:
                 tmp = pd.DataFrame(index=dic.keys(),

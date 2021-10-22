@@ -149,6 +149,7 @@ class Account(models.Model):
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
+        print(target)
         return target
 
     def get_delta(self):

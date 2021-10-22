@@ -198,7 +198,6 @@ class Account(models.Model):
 
     def sell_spot(self, load=False):
         df = self.get_delta() if load else self.balances
-        print(df)
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
             # Select quantities

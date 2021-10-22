@@ -58,7 +58,7 @@ def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
 
         # Construct dataframe
-        account.self.get_delta()
+        account.get_delta()
 
         # Place orders
         account.sell_spot()

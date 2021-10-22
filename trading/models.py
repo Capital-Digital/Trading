@@ -65,7 +65,7 @@ class Account(models.Model):
 
     def get_balances_qty(self, wallet):
 
-        log.info('Get balances quantity')
+        log.info('Get balances quantity in {0}'.format(wallet))
 
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = wallet
@@ -80,6 +80,7 @@ class Account(models.Model):
                 self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                 self.balances = self.balances.groupby(level=0).last()
             else:
+                log.info('Get balances quantity in {0} (no fund)'.format(wallet))
                 self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
         return self.balances
@@ -102,8 +103,6 @@ class Account(models.Model):
                 # Drop coins < $10
                 mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
                 self.balances = self.balances.loc[(mask == True).any(axis=1)]
-            else:
-                log.info('No fund in {0}'.format(wallet))
 
         # Get open positions
         self.get_positions_value()

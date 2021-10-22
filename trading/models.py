@@ -380,9 +380,6 @@ class Account(models.Model):
         if created:
             log.info('Create order {0}'.format(response['id']))
 
-        else:
-            log.info('Update order {0}'.format(response['id']))
-
         if action in ['sell_spot', 'close_short']:
             filled = float(response['filled']) - obj.filled
             if filled > 0:

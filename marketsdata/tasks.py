@@ -1201,7 +1201,7 @@ def fetch_listing_history():
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert current listing')
 def insert_current_listing():
-    log.info('Start listing insertion')
+    log.info('Insertion of Paprika listing start')
 
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()
@@ -1221,8 +1221,6 @@ def insert_current_listing():
         price = i['quotes']['USD']['price']
         volume_24h = i['quotes']['USD']['volume_24h']
         market_cap = i['quotes']['USD']['market_cap']
-
-        log.info('{0} insertion'.format(code))
 
         # Create timestamp
         timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
@@ -1271,8 +1269,6 @@ def insert_current_listing():
                 # if timestamp_st not in [d['timestamp'] for d in obj.data]:
                 if timestamp_st != obj.data[-1]['timestamp']:
 
-                    log.info('Update {0} {1} {2}'.format(currency.code, year, semester))
-
                     # Concatenate the two lists
                     obj.data.append(record)
                     obj.save()
@@ -1280,3 +1276,5 @@ def insert_current_listing():
                 else:
 
                     log.info('{0} already updated'.format(currency.code))
+
+    log.info('Insertion of Paprika listing complete')

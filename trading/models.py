@@ -87,12 +87,13 @@ class Account(models.Model):
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self):
 
-        log.info('Get balances value')
-
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
             if wallet in balances_qty.columns.get_level_values(0):
+
+                log.info('Get balances value ({0})'.format(wallet))
+
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
                 df.columns.set_levels(['value'], level=1,inplace=True)
                 df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))
@@ -100,8 +101,6 @@ class Account(models.Model):
                 # Drop coins < $10
                 mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
                 self.balances = self.balances.loc[(mask == True).any(axis=1)]
-            else:
-                log.info('Get balances quantity in {0} (no fund)'.format(wallet))
 
         # Get open positions
         self.get_positions_value()
@@ -132,8 +131,6 @@ class Account(models.Model):
                 self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
                 self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
-        else:
-            log.info('Get open positions (no position)')
 
         return self.balances
 

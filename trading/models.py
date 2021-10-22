@@ -92,7 +92,7 @@ class Account(models.Model):
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
-            if balances_qty is not None:
+            if wallet in balances_qty.columns.get_level_values(0):
                 print(wallet)
                 print(balances_qty)
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)

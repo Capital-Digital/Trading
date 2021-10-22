@@ -59,6 +59,8 @@ def trade():
 
         # Delete balance dataframe
         if hasattr(account, 'balances'):
+            print('attr')
+            print(account.balances)
             delattr(account, "balances")
 
         # Construct a new dataframe

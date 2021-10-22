@@ -211,7 +211,7 @@ class Account(models.Model):
                 if not np.isnan(hold):
                     amount = hold
                 else:
-                    log.info('Please open a short position for {0}'.format(code))
+                    log.info('Unable to trade {0} in spot (open a short)'.format(code))
                     continue
 
             elif (target > 0) or np.isnan(target):

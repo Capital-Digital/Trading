@@ -92,6 +92,7 @@ class Account(models.Model):
             balances_qty = self.get_balances_qty(wallet)
             if balances_qty is not None:
                 balances_qty = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
+                print(balances_qty)
                 df = pd.DataFrame(index=balances_qty.index,
                                   data=balances_qty.values,
                                   columns=pd.MultiIndex.from_product([[wallet], [key], ['value']],

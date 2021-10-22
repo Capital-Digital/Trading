@@ -333,13 +333,13 @@ class Account(models.Model):
                     response = client.create_order(**args)
                     self.create_update_order(response, action, market)
                 else:
-                    log.warning('Test failed for min notional ({2} {0} {1})'.format(round(raw_amount, 4),
-                                                                                    market.base.code,
-                                                                                    side))
+                    log.warning('Unable to trade {0} {1} (min notional)'.format(round(raw_amount, 4), market.base.code))
             else:
-                log.warning('An order is open for {0} {1}'.format(market.symbol, market.type))
+                log.warning('Unable to trade {0} {1} in {2} (open order)'.format(round(raw_amount, 4),
+                                                                             market.symbol,
+                                                                             market.type))
         else:
-            log.info("Test failed for limit amount ({2} {0} {1})".format(round(raw_amount, 4), market.base.code, side))
+            log.info("Unable to trade {0} {1} (limit amount)".format(round(raw_amount, 4), market.base.code))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)

@@ -304,8 +304,8 @@ class Account(models.Model):
 
                     tra_amount = min(free_spot, pos_margin) if np.isnan(free_margin) else (pos_margin - free_margin)
 
-                    if self.transfer(code, tra_amount, 'spot', 'future'):
-                        self.place_order('open short', market, 'sell', amount, price)
+                    self.transfer(code, tra_amount, 'spot', 'future')
+                    self.place_order('open short', market, 'sell', amount, price)
 
                 else:
                     log.warning('Unable to trade {0} {1} (open order)'.format(round(amount, 4),

@@ -358,12 +358,13 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(self)
 
         if from_wallet == 'future':
+            if 'position' in self.balances.columns.get_level_values(0):
 
-            # Lower amount to available margin
-            total_margin = self.balances.loc['USDT', ('future', 'total', 'quantity')]
-            notional_values = self.balances[('position', 'open', 'value')].sum()
-            free_margin = total_margin - notional_values
-            amount = min(amount, free_margin)
+                # Lower amount to available margin
+                total_margin = self.balances.loc['USDT', ('future', 'total', 'quantity')]
+                notional_values = self.balances[('position', 'open', 'value')].sum()
+                free_margin = total_margin - notional_values
+                amount = min(amount, free_margin)
 
         try:
             client.transfer(code, amount, from_wallet, to_wallet)

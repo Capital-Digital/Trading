@@ -361,9 +361,16 @@ class Account(models.Model):
 
                 # Lower amount to available margin
                 total_margin = self.balances.loc['USDT', ('future', 'total', 'quantity')]
+                log.info('Total margin = {0} USDT'.format(round(total_margin, 4)))
+
                 notional_values = self.balances[('position', 'open', 'value')].sum()
+                log.info('Total notional value = {0} USDT'.format(round(total_margin, 4)))
+
                 free_margin = total_margin - notional_values
+                log.info('Free margin = {0} USDT'.format(round(free_margin, 4)))
+
                 amount = min(amount, free_margin)
+                log.info('Amount = {0} USDT'.format(round(amount, 4)))
 
         try:
             client.transfer(code, amount, from_wallet, to_wallet)

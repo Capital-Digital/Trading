@@ -285,8 +285,17 @@ class Account(models.Model):
                     # Determine quantities
                     qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
                     qty_coin = abs(row[('delta', '', '')])
-                    amount = min(qty_coin, qty_usdt / price)
 
+                    # Not enough resources ?
+                    if qty_coin > (qty_usdt / price):
+                        if 'position' in df.columns.get_level_values(0):
+
+                            # Move fund from future to spot wallet
+                            trans = (qty_coin * price) - qty_usdt
+                            moved = self.move_fund(code, trans, 'future', 'spot')
+                            qty_usdt += moved
+
+                    amount = min(qty_coin, qty_usdt / price)
                     market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                                 exchange=self.exchange,
                                                 base__code=code,
@@ -347,6 +356,15 @@ class Account(models.Model):
 
     def move_fund(self, code, amount, from_wallet, to_wallet):
         client = self.exchange.get_ccxt_client(self)
+
+        if from_wallet == 'future':
+
+            # Lower amount to available margin
+            total_margin = self.balances.loc['USDT', ('future', 'total', 'quantity')]
+            notional_values = self.balances[('position', 'open', 'value')].sum()
+            free_margin = total_margin - notional_values
+            amount = min(amount, free_margin)
+
         try:
             client.transfer(code, amount, from_wallet, to_wallet)
         except Exception as e:
@@ -358,7 +376,7 @@ class Account(models.Model):
                                                                              from_wallet,
                                                                              to_wallet)
                      )
-            return True
+            return amount
 
     def place_order(self, action, market, side, raw_amount, price):
 

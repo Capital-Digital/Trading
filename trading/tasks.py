@@ -74,3 +74,6 @@ def trade():
         account.buy_spot()
         account.open_short()
 
+        log.info('***')
+        log.info('End trade')
+        log.info('***')

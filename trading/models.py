@@ -421,9 +421,9 @@ class Account(models.Model):
                 self.create_update_order(response, action, market)
 
             else:
-                log.warning('Unable to trade {0} {1} (min notional)'.format(round(raw_amount, 4), market.base.code))
+                log.warning('Unable to trade {0} (min notional)'.format(market.base.code), amount=round(raw_amount, 4))
         else:
-            log.info("Unable to trade {0} {1} (limit amount)".format(round(raw_amount, 4), market.base.code))
+            log.info("Unable to trade {0} (limit amount)".format(market.base.code), amount=round(raw_amount, 4))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)

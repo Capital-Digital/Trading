@@ -196,9 +196,9 @@ class Account(models.Model):
             positions = self.balances.loc[self.balances.position.open.quantity < 0]
             for code, row in positions.iterrows():
                 if code not in target.index:
-                    self.balances.loc[code, 'delta'] = -row.position.open.quantity
+                    self.balances.loc[code, 'delta'] = row.position.open.quantity
                 elif target[code] > 0:
-                    self.balances.loc[code, 'delta'] = -row.position.open.quantity
+                    self.balances.loc[code, 'delta'] = row.position.open.quantity
                 elif target[code] < 0:
 
                     # Format decimals
@@ -212,7 +212,6 @@ class Account(models.Model):
                                             precision=market.precision['amount'],
                                             n=abs(target[code])
                                             )
-                    print(code, target[code], amount)
                     self.balances.loc[code, 'delta'] = - amount - row.position.open.quantity
 
         # self.balances = self.balances.sort_index(axis=1)

@@ -284,19 +284,15 @@ class Account(models.Model):
                     qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
                     qty_usdt = qty_usdt if not np.isnan(qty_usdt) else 0
                     qty_coin = abs(row[('delta', '', '')])
-                                        
+
                     # Not enough resources ?
                     if qty_coin > (qty_usdt / price):
 
-                        print('need resources')
-                        print(qty_coin, (qty_usdt / price))
                         # Move available funds from future to spot wallet
                         trans = (qty_coin * price) - qty_usdt
-                        moved = self.move_fund(code, trans, 'future', 'spot')
+                        log.info('More resources are needed, move funds')
+                        moved = self.move_fund('USDT', trans, 'future', 'spot')
                         qty_usdt += moved
-                    else:
-                        print(qty_coin, qty_usdt, price)
-                        print('ok resources')
 
                     amount = min(qty_coin, qty_usdt / price)
                     market = Market.objects.get(quote__code=self.exchange.dollar_currency,

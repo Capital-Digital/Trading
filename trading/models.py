@@ -291,6 +291,8 @@ class Account(models.Model):
                     price = market.get_latest_price()
                     price -= (price * float(self.limit_price_tolerance))
                     pos_margin = amount * price
+                    free_margin = 0
+                    free_spot = 0
 
                     if 'USDT' in df.index:
 
@@ -299,9 +301,6 @@ class Account(models.Model):
                             free_margin = df.loc['USDT', ('future', 'free', 'quantity')]
                         if 'spot' in df.columns.get_level_values(0):
                             free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
-                    else:
-                        free_margin = 0
-                        free_spot = 0
 
                     tra_amount = min(free_spot, pos_margin) if np.isnan(free_margin) else (pos_margin - free_margin)
 

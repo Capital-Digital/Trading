@@ -1005,7 +1005,7 @@ def insert_current_tickers(exid):
 
         # Recreate dictionaries with desired keys
         data = [data[i] for i in data]
-        data = [{k: d[k] for k in ['symbol', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
+        data = [{k: d[k] for k in ['symbol', 'bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
                 for d in data]
 
         symbols = [i['symbol'] for i in data]

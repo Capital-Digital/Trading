@@ -444,7 +444,7 @@ class Account(models.Model):
             response=response,
             side=response['side'],
             status=response['status'],
-            timestamp=int(response['timestamp']),
+            timestamp=int(response['timestamp']) if response['timestamp'] else None,
             trades=response['trades'],
             type=response['type']
         )

@@ -1035,7 +1035,7 @@ def insert_current_tickers(exid):
                 market = Market.objects.get(**args)
 
             except ObjectDoesNotExist:
-                print('No market', dic['symbol'], wallet)
+                # print('No market', dic['symbol'], wallet)
                 continue
 
             else:
@@ -1059,7 +1059,7 @@ def insert_current_tickers(exid):
                     # Avoid duplicate records
                     if timestamp_st not in [d['timestamp'] for d in obj.data]:
 
-                        log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
+                        # log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
 
                         # Concatenate the two lists
                         obj.data.append(dic)

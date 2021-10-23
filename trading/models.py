@@ -153,7 +153,10 @@ class Account(models.Model):
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
+
         print(target)
+        print('\n')
+
         return target
 
     def get_delta(self):
@@ -188,7 +191,7 @@ class Account(models.Model):
                             self.balances.loc[coin_account, 'delta'] = qty
 
         # self.balances = self.balances.sort_index(axis=1)
-        
+
         print('Delta')
         print(self.balances)
         return self.balances

@@ -185,9 +185,8 @@ class Account(models.Model):
                             self.balances.loc[coin_account, 'delta'] = qty
 
         print('Delta')
-        print(self.balances)
-        print('...\s')
-        return self.balances
+        print(self.balances.sort_index(axis=1, inplace=True))
+        return self.balances.sort_index(axis=1, inplace=True)
 
     def sell_spot(self, load=False):
         df = self.get_delta() if load else self.balances

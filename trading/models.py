@@ -304,7 +304,7 @@ class Account(models.Model):
 
                     tra_amount = min(free_spot, pos_margin) if np.isnan(free_margin) else (pos_margin - free_margin)
 
-                    self.transfert(code, tra_amount, 'spot', 'future')
+                    self.move_fund(code, tra_amount, 'spot', 'future')
                     self.place_order('open short', market, 'sell', amount, price)
 
                 else:
@@ -313,7 +313,7 @@ class Account(models.Model):
                                                                               market.type)
                                 )
 
-    def transfert(self, code, amount, from_wallet, to_wallet):
+    def move_fund(self, code, amount, from_wallet, to_wallet):
 
         client = self.exchange.get_ccxt_client(self)
         try:

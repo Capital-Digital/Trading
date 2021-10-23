@@ -289,7 +289,7 @@ class Account(models.Model):
                 if not self.has_order(market):
 
                     price = market.get_latest_price()
-                    price -= (price * self.limit_price_tolerance)
+                    price -= (price * float(self.limit_price_tolerance))
                     pos_margin = amount * price
 
                     free_margin = row.loc['USDT', ('future', 'free', 'quantity')]

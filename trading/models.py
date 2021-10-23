@@ -184,7 +184,7 @@ class Account(models.Model):
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
 
-        self.balances = self.balances.sort_index(axis=1)
+        self.balances = self.balances.sort_index(axis=0)
         
         print('Delta')
         print(self.balances)

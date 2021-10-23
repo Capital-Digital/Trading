@@ -90,11 +90,10 @@ class Account(models.Model):
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
             if wallet in balances_qty.columns.get_level_values(0):
-
                 log.info('Get balances value ({0})'.format(wallet))
 
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
-                df.columns.set_levels(['value'], level=1,inplace=True)
+                df.columns.set_levels(['value'], level=1, inplace=True)
                 df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))
                 self.balances = pd.concat([self.balances, df], axis=1)
                 # Drop coins < $10
@@ -128,8 +127,10 @@ class Account(models.Model):
                 self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
                 self.balances.loc[market.base, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
                 self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
-                self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
-                self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+                self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(
+                    position['unRealizedProfit'])
+                self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(
+                    position['liquidationPrice'])
 
         return self.balances
 
@@ -272,9 +273,10 @@ class Account(models.Model):
 
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
-        for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
+        for code, row in df.loc[df['delta'] > 0].iterrows():  # is sell ?
             target = row[('target', '', '')]
-            if target < 0:
+            if target < 0:  # is short ?
+
                 # Select quantities
                 delta = row[('delta', '', '')]
                 amount = delta
@@ -284,9 +286,35 @@ class Account(models.Model):
                                             type='derivative',
                                             contract_type='perpetual'
                                             )
-                price = market.get_latest_price(self.exchange)
-                price -= (price * self.limit_price_tolerance)
-                self.place_order('open short', market, 'sell', amount, price)
+                if not self.has_order(market):
+
+                    price = market.get_latest_price(self.exchange)
+                    price -= (price * self.limit_price_tolerance)
+                    pos_margin = amount * price
+
+                    free_margin = row.loc['USDT', ('future', 'free', 'quantity')]
+                    free_spot = row.loc['USDT', ('spot', 'free', 'quantity')]
+
+                    tra_amount = min(free_spot, pos_margin) if np.isnan(free_margin) else (pos_margin - free_margin)
+
+                    if self.transfer('spot', 'future', code, tra_amount):
+                        self.place_order('open short', market, 'sell', amount, price)
+
+                else:
+                    log.warning('Unable to trade {0} {1} (open order)'.format(round(amount, 4),
+                                                                              market.symbol,
+                                                                              market.type)
+                                )
+
+    def transfer(self, from_wallet, to_wallet, code, amount):
+        client = self.exchange.get_ccxt_client(self)
+        try:
+            client.transfer(code, amount, from_wallet, to_wallet)
+        except Exception as e:
+            log.error('Error transferring fund', e=e)
+            print(from_wallet, to_wallet, code, amount)
+        else:
+            return True
 
     def place_order(self, action, market, side, raw_amount, price):
 
@@ -303,39 +331,33 @@ class Account(models.Model):
 
         # Test for amount limit
         if limit_amount(market, amount):
-            # Test for open orders
-            if not self.has_order(market):
-                # Test min notional
-                min_notional, reduce_only = test_min_notional(market, action, amount, price)
-                if min_notional:
+            # Test min notional
+            min_notional, reduce_only = test_min_notional(market, action, amount, price)
+            if min_notional:
 
-                    log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
-                                                                                  amount, action))
+                log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
+                                                                              amount, action))
 
-                    args = dict(
-                        symbol=market.symbol,
-                        type='limit' if self.limit_order else 'market',
-                        side=side,
-                        amount=amount,
-                        price=price
-                    )
+                args = dict(
+                    symbol=market.symbol,
+                    type='limit' if self.limit_order else 'market',
+                    side=side,
+                    amount=amount,
+                    price=price
+                )
 
-                    if reduce_only:
-                        args['params'] = dict(reduceonly=True)
+                if reduce_only:
+                    args['params'] = dict(reduceonly=True)
 
-                    print(market.type, 'order')
-                    pprint(args)
+                print(market.type, 'order')
+                pprint(args)
 
-                    # Place order and create object
-                    client = self.exchange.get_ccxt_client(self)
-                    response = client.create_order(**args)
-                    self.create_update_order(response, action, market)
-                else:
-                    log.warning('Unable to trade {0} {1} (min notional)'.format(round(raw_amount, 4), market.base.code))
+                # Place order and create object
+                client = self.exchange.get_ccxt_client(self)
+                response = client.create_order(**args)
+                self.create_update_order(response, action, market)
             else:
-                log.warning('Unable to trade {0} {1} in {2} (open order)'.format(round(raw_amount, 4),
-                                                                             market.symbol,
-                                                                             market.type))
+                log.warning('Unable to trade {0} {1} (min notional)'.format(round(raw_amount, 4), market.base.code))
         else:
             log.info("Unable to trade {0} {1} (limit amount)".format(round(raw_amount, 4), market.base.code))
 
@@ -388,7 +410,6 @@ class Account(models.Model):
         if action in ['sell_spot', 'close_short']:
             filled = float(response['filled']) - obj.filled
             if filled > 0:
-
                 # Trigger buy orders if funds have been released ?
                 log.info('Filled {0} {1}'.format(filled, market.base.code))
                 self.buy_spot(load=True)

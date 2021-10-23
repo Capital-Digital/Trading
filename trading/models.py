@@ -476,8 +476,8 @@ class Account(models.Model):
                 filled = float(response['filled']) - order.filled
                 if filled > 0:
                     if action in ['sell_spot', 'close_short']:
-                        # Trigger buy orders if funds have been released ?
-                        log.info('Filled {0} {1}'.format(filled, market.base.code))
+
+                        log.info('Order filled at {0}% {1}'.format(round(filled/order.amount, 3)*100, market.base.code))
                         self.buy_spot(load=True)
 
     def cancel_order(self, wallet, symbol, orderid):

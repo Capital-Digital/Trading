@@ -18,7 +18,7 @@ dt = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours
 
 
 def convert_balance(row, wallet, exchange):
-    price = Currency.objects.get(code=row.name).get_latest_price(exchange)
+    price = Currency.objects.get(code=row.name).get_latest_price(exchange, 'last')
     return row[wallet] * price
 
 

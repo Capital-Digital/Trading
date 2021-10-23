@@ -448,6 +448,8 @@ class Account(models.Model):
         args = dict(account=self, market=market, orderid=response['id'])
         try:
             order = Order.objects.get(**args)
+        except ObjectDoesNotExist:
+            pass
         finally:
             defaults = dict(
                 action=action,

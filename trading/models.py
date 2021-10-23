@@ -188,6 +188,7 @@ class Account(models.Model):
                             self.balances.loc[coin_account, 'delta'] = qty
 
         print('Delta')
+        self.balances = self.balances.sort_index(axis=1)
         print(self.balances)
         return self.balances
 

@@ -214,8 +214,6 @@ class Account(models.Model):
                                             )
                     self.balances.loc[code, 'delta'] = - amount - row.position.open.quantity
 
-        # self.balances = self.balances.sort_index(axis=1)
-
         print('Delta')
         print(self.balances)
         return self.balances

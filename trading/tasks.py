@@ -57,23 +57,25 @@ def update_orders():
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
 
-        log.info('***')
-        log.info('Start trade')
-        log.info('***')
+        if datetime.now().hour in account.strategy.execution_hours():
 
-        # Delete balance dataframe
-        if hasattr(account, 'balances'):
-            del account.balances
+            log.info('***')
+            log.info('Start trade')
+            log.info('***')
 
-        # Construct a new dataframe
-        account.get_delta()
+            # Delete balance dataframe
+            if hasattr(account, 'balances'):
+                del account.balances
 
-        # Place orders
-        account.sell_spot()
-        account.close_short()
-        account.buy_spot()
-        account.open_short()
+            # Construct a new dataframe
+            account.get_delta()
 
-        log.info('***')
-        log.info('End trade')
-        log.info('***')
+            # Place orders
+            account.sell_spot()
+            account.close_short()
+            account.buy_spot()
+            account.open_short()
+
+            log.info('***')
+            log.info('End trade')
+            log.info('***')

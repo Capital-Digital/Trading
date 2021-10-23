@@ -296,9 +296,9 @@ class Account(models.Model):
 
                         # Determine free margin and spot resources
                         if 'future' in df.columns.get_level_values(0):
-                            free_margin = row.loc['USDT', ('future', 'free', 'quantity')]
+                            free_margin = df.loc['USDT', ('future', 'free', 'quantity')]
                         if 'spot' in df.columns.get_level_values(0):
-                            free_spot = row.loc['USDT', ('spot', 'free', 'quantity')]
+                            free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
                     else:
                         free_margin = 0
                         free_spot = 0

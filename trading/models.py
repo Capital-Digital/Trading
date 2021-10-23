@@ -446,35 +446,39 @@ class Account(models.Model):
 
     def create_update_order(self, response, action, market):
         args = dict(account=self, market=market, orderid=response['id'])
-        defaults = dict(
-            action=action,
-            amount=response['amount'],
-            average=response['average'],
-            cost=response['cost'],
-            datetime=datetime.now().replace(tzinfo=pytz.UTC),
-            fee=response['fee'],
-            filled=float(response['filled']),
-            last_trade_timestamp=response['lastTradeTimestamp'],
-            price=response['price'],
-            remaining=response['remaining'],
-            response=response,
-            side=response['side'],
-            status=response['status'],
-            timestamp=int(response['timestamp']) if response['timestamp'] else None,
-            trades=response['trades'],
-            type=response['type']
-        )
-        obj, created = Order.objects.update_or_create(**args, defaults=defaults)
+        try:
+            order = Order.objects.get(**args)
+        finally:
+            defaults = dict(
+                action=action,
+                amount=response['amount'],
+                average=response['average'],
+                cost=response['cost'],
+                datetime=datetime.now().replace(tzinfo=pytz.UTC),
+                fee=response['fee'],
+                filled=float(response['filled']),
+                last_trade_timestamp=response['lastTradeTimestamp'],
+                price=response['price'],
+                remaining=response['remaining'],
+                response=response,
+                side=response['side'],
+                status=response['status'],
+                timestamp=int(response['timestamp']) if response['timestamp'] else None,
+                trades=response['trades'],
+                type=response['type']
+            )
+            obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
-        if created:
-            log.info('Create order {0}'.format(response['id']))
+            if created:
+                log.info('Order created with status "{0}"'.format(response['status'], id=response['id']))
 
-        if action in ['sell_spot', 'close_short']:
-            filled = float(response['filled']) - obj.filled
-            if filled > 0:
-                # Trigger buy orders if funds have been released ?
-                log.info('Filled {0} {1}'.format(filled, market.base.code))
-                self.buy_spot(load=True)
+            else:
+                filled = float(response['filled']) - order.filled
+                if filled > 0:
+                    if action in ['sell_spot', 'close_short']:
+                        # Trigger buy orders if funds have been released ?
+                        log.info('Filled {0} {1}'.format(filled, market.base.code))
+                        self.buy_spot(load=True)
 
     def cancel_order(self, wallet, symbol, orderid):
         log.info('Cancel order {0}'.format(orderid))

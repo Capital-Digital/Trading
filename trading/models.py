@@ -196,11 +196,11 @@ class Account(models.Model):
             positions = self.balances.loc[self.balances.position.open.quantity < 0]
             for code, row in positions.iterrows():
                 if code not in target.index:
-                    self.balances.loc[code, 'delta'] = -row.open.quantity
+                    self.balances.loc[code, 'delta'] = -row.position.open.quantity
                 elif target[code] > 0:
-                    self.balances.loc[code, 'delta'] = -row.open.quantity
+                    self.balances.loc[code, 'delta'] = -row.position.open.quantity
                 elif target[code] < 0:
-                    self.balances.loc[code, 'delta'] = target[code] - row.open.quantity
+                    self.balances.loc[code, 'delta'] = target[code] - row.position.open.quantity
 
         # self.balances = self.balances.sort_index(axis=1)
 

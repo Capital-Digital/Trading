@@ -288,7 +288,7 @@ class Account(models.Model):
 
                         # Move available funds from future to spot wallet
                         trans = (qty_coin * price) - qty_usdt
-                        log.info('More resources are needed, move funds')
+                        log.info('Move {0} USDT from future to spot'.format(round(trans, 2)))
                         moved = self.move_fund('USDT', trans, 'future', 'spot')
                         qty_usdt += moved
 
@@ -357,6 +357,8 @@ class Account(models.Model):
         if from_wallet == 'future':
             if 'position' in self.balances.columns.get_level_values(0):
 
+                log.info('A position is open, check margin available')
+
                 # Lower amount to available margin
                 total_margin = self.balances.loc['USDT', ('future', 'total', 'quantity')]
                 notional_values = self.balances[('position', 'open', 'value')].sum()
@@ -366,8 +368,12 @@ class Account(models.Model):
         try:
             client.transfer(code, amount, from_wallet, to_wallet)
         except Exception as e:
-            log.error('Error transferring fund', e=e)
-            print(from_wallet, to_wallet, code, amount)
+            log.error('Error transferring fund',
+                      e=e,
+                      from_=from_wallet,
+                      to=to_wallet,
+                      code=code,
+                      amount=round(amount, 4))
         else:
             log.info('Transfer successful of {0} {1} from {2} to {3}'.format(round(amount, 4),
                                                                              code,
@@ -484,7 +490,7 @@ class Account(models.Model):
                         self.buy_spot(load=True)
 
     def cancel_order(self, wallet, symbol, orderid):
-        log.info('Cancel order {0}'.format(orderid))
+        log.info('Order cancel', id=orderid, symbol=symbol)
         client = self.exchange.get_ccxt_client(account=self)
         client.options['defaultType'] = wallet
 

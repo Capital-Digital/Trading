@@ -186,7 +186,7 @@ class Account(models.Model):
 
         print('Delta')
         print(self.balances)
-        # return self.balances
+        return self.balances
 
     def sell_spot(self, load=False):
         df = self.get_delta() if load else self.balances

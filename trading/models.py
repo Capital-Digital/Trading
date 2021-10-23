@@ -290,7 +290,7 @@ class Account(models.Model):
 
                     price = market.get_latest_price()
                     price -= (price * float(self.limit_price_tolerance))
-                    pos_margin = amount * price
+                    margin = amount * price
                     free_margin = 0
                     free_spot = 0
 
@@ -302,7 +302,7 @@ class Account(models.Model):
                         if 'spot' in df.columns.get_level_values(0):
                             free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
 
-                    tra_amount = min(free_spot, pos_margin) if np.isnan(free_margin) else (pos_margin - free_margin)
+                    tra_amount = min(free_spot, margin) if np.isnan(free_margin) else max(0, (margin - free_margin))
 
                     self.move_fund('USDT', tra_amount, 'spot', 'future')
                     self.place_order('open short', market, 'sell', amount, price)
@@ -364,7 +364,7 @@ class Account(models.Model):
 
                 print(market.type, 'order')
                 pprint(args)
-                
+
                 # Place order and create object
                 client = self.exchange.get_ccxt_client(self)
                 client.options['defaultType'] = market.wallet

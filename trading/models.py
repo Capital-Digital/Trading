@@ -264,7 +264,7 @@ class Account(models.Model):
                                                 contract_type='perpetual'
                                                 )
                     price = market.get_latest_price()
-                    price -= (price * self.limit_price_tolerance)
+                    price -= (price * float(self.limit_price_tolerance))
                     self.place_order('close short', market, 'buy', amount, price)
 
     def buy_spot(self, load=False):

@@ -314,6 +314,11 @@ class Account(models.Model):
             log.error('Error transferring fund', e=e)
             print(from_wallet, to_wallet, code, amount)
         else:
+            log.info('Transfer successful of {0} {1} from {2} to {3}'.format(round(amount, 4),
+                                                                             code,
+                                                                             from_wallet,
+                                                                             to_wallet)
+                     )
             return True
 
     def place_order(self, action, market, side, raw_amount, price):

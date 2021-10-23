@@ -200,7 +200,20 @@ class Account(models.Model):
                 elif target[code] > 0:
                     self.balances.loc[code, 'delta'] = -row.position.open.quantity
                 elif target[code] < 0:
-                    self.balances.loc[code, 'delta'] = target[code] - row.position.open.quantity
+
+                    # Format decimals
+                    market = Market.objects.get(base__code=code,
+                                                exchange=self.exchange,
+                                                quote__code='USDT',
+                                                type='derivative',
+                                                contract_type='perpetual'
+                                                )
+                    amount = format_decimal(counting_mode=self.exchange.precision_mode,
+                                            precision=market.precision['amount'],
+                                            n=abs(target[code])
+                                            )
+                    print(code, target[code], amount)
+                    self.balances.loc[code, 'delta'] = - amount - row.position.open.quantity
 
         # self.balances = self.balances.sort_index(axis=1)
 

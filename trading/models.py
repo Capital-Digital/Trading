@@ -364,11 +364,13 @@ class Account(models.Model):
 
                 print(market.type, 'order')
                 pprint(args)
-
+                
                 # Place order and create object
                 client = self.exchange.get_ccxt_client(self)
+                client.options['defaultType'] = market.wallet
                 response = client.create_order(**args)
                 self.create_update_order(response, action, market)
+
             else:
                 log.warning('Unable to trade {0} {1} (min notional)'.format(round(raw_amount, 4), market.base.code))
         else:

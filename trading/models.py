@@ -240,8 +240,8 @@ class Account(models.Model):
 
             print('buy', code)
 
-            pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else 0
-            if not pos_qty < 0:  # no short position already open
+            pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else None
+            if not pos_qty:  # no short position already open
 
                 # Determine buy price
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange)
@@ -267,6 +267,8 @@ class Account(models.Model):
 
                 else:
                     log.info('Unable to buy spot (no free resource)')
+            else:
+                log.info('Unable to buy spot (position is open)')
 
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances

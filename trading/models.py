@@ -304,7 +304,7 @@ class Account(models.Model):
 
                     tra_amount = min(free_spot, pos_margin) if np.isnan(free_margin) else (pos_margin - free_margin)
 
-                    if self.transfer('spot', 'future', code, tra_amount):
+                    if self.transfer(code, tra_amount, 'spot', 'future'):
                         self.place_order('open short', market, 'sell', amount, price)
 
                 else:

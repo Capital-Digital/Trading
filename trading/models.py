@@ -473,9 +473,9 @@ class Account(models.Model):
                 log.info('Order created with status "{0}"'.format(response['status'], id=response['id']))
 
             else:
-                filled = float(response['filled']) - order.filled
-                if filled > 0:
-                    if action in ['sell_spot', 'close_short']:
+                if action in ['sell_spot', 'close_short']:
+                    filled = float(response['filled']) - order.filled
+                    if filled > 0:
 
                         log.info('Order filled at {0}% {1}'.format(round(filled/order.amount, 3)*100, market.base.code))
                         self.buy_spot(load=True)

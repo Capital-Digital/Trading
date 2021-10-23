@@ -282,8 +282,9 @@ class Account(models.Model):
 
                     # Determine quantities
                     qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
+                    qty_usdt = qty_usdt if not np.isnan(qty_usdt) else 0
                     qty_coin = abs(row[('delta', '', '')])
-
+                                        
                     # Not enough resources ?
                     if qty_coin > (qty_usdt / price):
 
@@ -294,7 +295,7 @@ class Account(models.Model):
                         moved = self.move_fund(code, trans, 'future', 'spot')
                         qty_usdt += moved
                     else:
-                        print(qty_coin, (qty_usdt / price))
+                        print(qty_coin, qty_usdt, price)
                         print('ok resources')
 
                     amount = min(qty_coin, qty_usdt / price)

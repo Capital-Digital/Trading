@@ -313,7 +313,7 @@ class Account(models.Model):
                                                                               market.type)
                                 )
 
-    def transfer(self, from_wallet, to_wallet, code, amount):
+    def transfer(self, code, amount, from_wallet, to_wallet):
         client = self.exchange.get_ccxt_client(self)
         try:
             client.transfer(code, amount, from_wallet, to_wallet)

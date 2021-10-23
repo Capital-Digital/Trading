@@ -435,7 +435,7 @@ class Account(models.Model):
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
                     self.create_update_order(responses, action=order.action, market=order.market)
 
-                    log.info('Update order {0}'.format(order.orderid), wallet=wallet)
+                    log.info('Order update', id=order.orderid, wallet=wallet)
 
                     # Cancel order before strategy update
                     if self.strategy.seconds_before_update() < 120:
@@ -478,7 +478,6 @@ class Account(models.Model):
                 if action in ['sell_spot', 'close_short']:
                     filled = float(response['filled']) - order.filled
                     if filled > 0:
-
                         log.info('Order filled at {0}% {1}'.format(round(filled/order.amount, 3)*100, market.base.code))
                         self.buy_spot(load=True)
 

@@ -68,4 +68,5 @@ def trade():
         account.sell_spot()
         account.close_short()
         account.buy_spot()
+        account.open_short()
 

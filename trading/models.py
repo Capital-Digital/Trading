@@ -186,6 +186,7 @@ class Account(models.Model):
 
         print('Delta')
         print(self.balances)
+        print('...\s')
         return self.balances
 
     def sell_spot(self, load=False):
@@ -314,7 +315,6 @@ class Account(models.Model):
                                 )
 
     def move_fund(self, code, amount, from_wallet, to_wallet):
-
         client = self.exchange.get_ccxt_client(self)
         try:
             client.transfer(code, amount, from_wallet, to_wallet)

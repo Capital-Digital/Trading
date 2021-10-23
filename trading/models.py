@@ -288,7 +288,7 @@ class Account(models.Model):
                                             )
                 if not self.has_order(market):
 
-                    price = market.get_latest_price(self.exchange)
+                    price = market.get_latest_price()
                     price -= (price * self.limit_price_tolerance)
                     pos_margin = amount * price
 

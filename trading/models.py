@@ -154,6 +154,7 @@ class Account(models.Model):
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange)
 
+        print('Target quantity')
         print(target)
         print('\n')
 
@@ -189,6 +190,17 @@ class Account(models.Model):
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
+
+        # Open positions
+        if 'position' in self.balances.columns.get_level_values(0):
+            positions = self.balances.loc[self.balances.position.open.quantity < 0]
+            for code, row in positions.iterrows():
+                if code not in target.index:
+                    self.balances.loc[code, 'delta'] = -row.open.quantity
+                elif target[code] > 0:
+                    self.balances.loc[code, 'delta'] = -row.open.quantity
+                elif target[code] < 0:
+                    self.balances.loc[code, 'delta'] = target[code] - row.open.quantity
 
         # self.balances = self.balances.sort_index(axis=1)
 

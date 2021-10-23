@@ -294,7 +294,7 @@ class Account(models.Model):
                         moved = self.move_fund(code, trans, 'future', 'spot')
                         qty_usdt += moved
                     else:
-
+                        print(qty_coin, (qty_usdt / price))
                         print('ok resources')
 
                     amount = min(qty_coin, qty_usdt / price)

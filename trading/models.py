@@ -21,6 +21,9 @@ import sys
 from timeit import default_timer as timer
 import collections
 
+import warnings
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
 import json
 
 log = structlog.get_logger(__name__)
@@ -183,9 +186,6 @@ class Account(models.Model):
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
-
-        import warnings
-        warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
         print('Delta')
         print(self.balances)

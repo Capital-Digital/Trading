@@ -57,6 +57,10 @@ def update_orders():
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
 
+        log.info('***')
+        log.info('Start trade')
+        log.info('***')
+
         # Delete balance dataframe
         if hasattr(account, 'balances'):
             del account.balances

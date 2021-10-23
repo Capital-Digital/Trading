@@ -375,12 +375,13 @@ class Account(models.Model):
         try:
             client.transfer(code, amount, from_wallet, to_wallet)
         except Exception as e:
+            print(self.balances.loc['USDT', :])
             log.error('Error transferring fund',
                       e=e,
                       from_=from_wallet,
                       to=to_wallet,
                       code=code,
-                      amount=round(amount, 4))
+                      amount=amount)
         else:
             log.info('Transfer successful of {0} {1} from {2} to {3}'.format(round(amount, 4),
                                                                              code,

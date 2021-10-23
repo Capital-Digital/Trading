@@ -263,7 +263,7 @@ class Account(models.Model):
                                                 type='derivative',
                                                 contract_type='perpetual'
                                                 )
-                    price = market.get_latest_price(self.exchange)
+                    price = market.get_latest_price()
                     price -= (price * self.limit_price_tolerance)
                     self.place_order('close short', market, 'buy', amount, price)
 

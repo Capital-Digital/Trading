@@ -271,8 +271,6 @@ class Account(models.Model):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
 
-            print('buy', code)
-
             pos_qty = row.position.open.quantity if 'position' in df.columns.get_level_values(0) else None
             if not pos_qty:  # no short position already open
 
@@ -288,12 +286,11 @@ class Account(models.Model):
 
                     # Not enough resources ?
                     if qty_coin > (qty_usdt / price):
-                        if 'position' in df.columns.get_level_values(0):
 
-                            # Move fund from future to spot wallet
-                            trans = (qty_coin * price) - qty_usdt
-                            moved = self.move_fund(code, trans, 'future', 'spot')
-                            qty_usdt += moved
+                        # Move available funds from future to spot wallet
+                        trans = (qty_coin * price) - qty_usdt
+                        moved = self.move_fund(code, trans, 'future', 'spot')
+                        qty_usdt += moved
 
                     amount = min(qty_coin, qty_usdt / price)
                     market = Market.objects.get(quote__code=self.exchange.dollar_currency,

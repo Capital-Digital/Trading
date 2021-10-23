@@ -287,10 +287,15 @@ class Account(models.Model):
                     # Not enough resources ?
                     if qty_coin > (qty_usdt / price):
 
+                        print('need resources')
+                        print(qty_coin, (qty_usdt / price))
                         # Move available funds from future to spot wallet
                         trans = (qty_coin * price) - qty_usdt
                         moved = self.move_fund(code, trans, 'future', 'spot')
                         qty_usdt += moved
+                    else:
+
+                        print('ok resources')
 
                     amount = min(qty_coin, qty_usdt / price)
                     market = Market.objects.get(quote__code=self.exchange.dollar_currency,

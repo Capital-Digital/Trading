@@ -451,14 +451,14 @@ class Currency(models.Model):
     def __str__(self):
         return self.code if self.code else ''
 
-    def get_latest_price(self, exchange):
+    def get_latest_price(self, exchange, key):
         if self.code != exchange.dollar_currency:
             candles = Tickers.objects.get(market__quote__code=exchange.dollar_currency,
                                           market__base__code=self.code,
                                           market__type='spot',
                                           year=get_year(),
                                           semester=get_semester())
-            return candles.data[-1]['last']
+            return candles.data[-1][key]
         else:
             return 1
 
@@ -514,11 +514,11 @@ class Market(models.Model):
         type = self.type[:4] if self.type == 'derivative' else 'spot'
         return ex + space + type + '__' + self.symbol
 
-    def get_latest_price(self):
+    def get_latest_price(self, key):
         candles = Tickers.objects.get(market=self,
                                       year=get_year(),
                                       semester=get_semester())
-        return candles.data[-1]['last']
+        return candles.data[-1][key]
 
     # Return True if a market has candles
     def is_populated(self):

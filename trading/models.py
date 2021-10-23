@@ -238,7 +238,7 @@ class Account(models.Model):
             elif (target > 0) or np.isnan(target):
                 amount = delta
 
-            price = Currency.objects.get(code=code).get_latest_price(self.exchange)
+            price = Currency.objects.get(code=code).get_latest_price(self.exchange, 'ask')
             price += (price * float(self.limit_price_tolerance))
             market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                         exchange=self.exchange,
@@ -261,7 +261,7 @@ class Account(models.Model):
                                                 type='derivative',
                                                 contract_type='perpetual'
                                                 )
-                    price = market.get_latest_price()
+                    price = market.get_latest_price('bid')
                     price -= (price * float(self.limit_price_tolerance))
                     self.place_order('close short', market, 'buy', amount, price)
 
@@ -273,7 +273,7 @@ class Account(models.Model):
             if not pos_qty:  # no short position already open
 
                 # Determine buy price
-                price = Currency.objects.get(code=code).get_latest_price(self.exchange)
+                price = Currency.objects.get(code=code).get_latest_price(self.exchange, 'bid')
                 price -= (price * float(self.limit_price_tolerance))
 
                 if self.exchange.dollar_currency in df.index:
@@ -326,7 +326,7 @@ class Account(models.Model):
                                             )
                 if not self.has_order(market):
 
-                    price = market.get_latest_price()
+                    price = market.get_latest_price('ask')
                     price -= (price * float(self.limit_price_tolerance))
                     margin = amount * price
                     free_margin = 0

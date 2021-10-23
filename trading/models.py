@@ -438,8 +438,10 @@ class Account(models.Model):
                     log.info('Order update', id=order.orderid, wallet=wallet)
 
                     # Cancel order before strategy update
-                    if self.strategy.seconds_before_update() < 120:
+                    if self.strategy.seconds_before_update() < 240:
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
+                    else:
+                        print('still', self.strategy.seconds_before_update(), 'sec')
             else:
                 pass
                 # log.info('Update order object N/A', wallet=wallet)

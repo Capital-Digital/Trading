@@ -397,7 +397,6 @@ class Account(models.Model):
 
         print('\n', market.symbol, market.type)
         print(action)
-        print(raw_amount)
         print(amount)
         print(side)
 

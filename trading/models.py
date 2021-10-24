@@ -353,7 +353,7 @@ class Account(models.Model):
                     self.place_order('open short', market, 'sell', amount, price)
 
                 else:
-                    log.warning('Unable to trade {0} {1} (open order)'.format(round(amount, 4),
+                    log.warning('Unable to open short {0} {1} (open order)'.format(round(amount, 4),
                                                                               market.symbol,
                                                                               market.type)
                                 )
@@ -430,9 +430,11 @@ class Account(models.Model):
                 self.create_update_order(response, action, market)
 
             else:
-                log.warning('Unable to trade {0} (min notional)'.format(market.base.code), amount=round(raw_amount, 4))
+                log.warning('Unable to {1} {2} {0} (min notional)'.format(market.base.code, side, market.wallet),
+                            amount=round(raw_amount, 4))
         else:
-            log.info("Unable to trade {0} (limit amount)".format(market.base.code), amount=round(raw_amount, 4))
+            log.info("Unable to {1} {2} {0} (limit amount)".format(market.base.code, side, market.wallet),
+                     amount=round(raw_amount, 4))
 
     def update_orders(self):
         client = self.exchange.get_ccxt_client(account=self)

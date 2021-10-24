@@ -96,6 +96,7 @@ class Account(models.Model):
                 log.info('Get balances value ({0})'.format(wallet))
 
                 df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
+                print(df)
                 df.columns.set_levels(['value'], level=1, inplace=True)
                 df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))
                 self.balances = pd.concat([self.balances, df], axis=1)

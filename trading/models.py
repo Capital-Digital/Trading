@@ -176,9 +176,10 @@ class Account(models.Model):
         df = df.loc[:, df.columns.get_level_values(1) == 'total']
         df = df.droplevel([1, 2], axis=1)
 
+        print(target.index)
         self.balances.loc[target.index, 'target'] = target
         print('target', self.balances)
-        
+
         for coin_target in target.index:
 
             # Coins in account

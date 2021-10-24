@@ -272,10 +272,12 @@ class Account(models.Model):
         log.info('*** Buy spot ***')
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
-            print(code)
-            print(row)
-            pos_qty = df.loc[code, row.name] if 'position' in df.columns.get_level_values(0) else np.nan
-            if np.isnan(pos_qty):  # no short position already open
+
+            if 'position' in df.columns.get_level_values(0):
+                pos_qty = df.loc[code, ('position', 'open', 'quantity')]
+
+            # Test if a position is open
+            if np.isnan(pos_qty): 
 
                 # Determine buy price
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, 'bid')

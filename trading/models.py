@@ -273,7 +273,7 @@ class Account(models.Model):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
             print(code)
-            print(row.name)
+            print(row)
             pos_qty = df.loc[code, row.name] if 'position' in df.columns.get_level_values(0) else np.nan
             if np.isnan(pos_qty):  # no short position already open
 

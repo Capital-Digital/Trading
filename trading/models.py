@@ -186,6 +186,7 @@ class Account(models.Model):
                         self.balances.loc[coin_target, 'target'] = target[coin_target]
                         self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
 
+            print('df', df)
             print('bal', coin_target, self.balances)
 
             # Coins not in account

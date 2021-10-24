@@ -56,7 +56,7 @@ def update_orders():
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
-        if datetime.now().hour in account.strategy.execution_hours() + 1:
+        if datetime.now().hour in account.strategy.execution_hours():
 
             log.info('***')
             log.info('Start trade')

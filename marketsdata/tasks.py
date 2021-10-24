@@ -1069,7 +1069,7 @@ def insert_current_tickers(exid):
 
                         log.info('Tickers for {0} updated'.format(market.symbol))
 
-    dt = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     timestamp_st = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     year = dt.year
     semester = 1 if dt.month <= 6 else 2

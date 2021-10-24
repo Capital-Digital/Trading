@@ -250,6 +250,7 @@ class Account(models.Model):
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy ?
             if 'position' in df.columns.get_level_values(0):
                 if row.position.open.quantity < 0:  # short is open ?
+                    print('OK')
                     delta = row[('delta', '', '')]
                     amount = min(abs(delta), abs(row.position.open.quantity))
 
@@ -261,6 +262,7 @@ class Account(models.Model):
                                                 )
 
                     if not self.has_order(market):
+                        print('place order')
                         price = market.get_latest_price('last')  # bid not available
                         price -= (price * float(self.limit_price_tolerance))
                         self.place_order('close short', market, 'buy', amount, price)

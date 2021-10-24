@@ -326,7 +326,7 @@ class Account(models.Model):
                                             )
                 if not self.has_order(market):
 
-                    price = market.get_latest_price('ask')
+                    price = market.get_latest_price('last')  # ask not available
                     price -= (price * float(self.limit_price_tolerance))
                     margin = amount * price
                     free_margin = 0

@@ -176,7 +176,9 @@ class Account(models.Model):
         df = df.loc[:, df.columns.get_level_values(1) == 'total']
         df = df.droplevel([1, 2], axis=1)
 
-
+        self.balances.loc[target.index, 'target'] = target
+        print('target', self.balances)
+        
         for coin_target in target.index:
 
             # Coins in account
@@ -185,12 +187,10 @@ class Account(models.Model):
                     print(coin_target, source)
                     qty = df.loc[coin_target, source]
                     if not np.isnan(qty):
-                        self.balances.loc[coin_target, 'target'] = target[coin_target]
                         self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
 
             # Coins not in account
             if coin_target not in df.index:
-                self.balances.loc[coin_target, 'target'] = target[coin_target]
                 self.balances.loc[coin_target, 'delta'] = -target[coin_target]
 
         # Coins not in target portfolio

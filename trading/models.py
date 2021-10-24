@@ -93,7 +93,7 @@ class Account(models.Model):
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
             if wallet in balances_qty.columns.get_level_values(0):
-                if df.index.nlevels == 2:
+                if balances_qty.columns.nlevels == 2:
                     print(balances_qty)
 
                     log.info('Get balances value ({0})'.format(wallet))

@@ -343,10 +343,11 @@ class Account(models.Model):
                         if 'spot' in df.columns.get_level_values(0):
                             free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
 
-                    tra_amount = min(free_spot, margin) if np.isnan(free_margin) else max(0, (margin - free_margin))
+                    tra_amount = min(free_spot, margin) if free_margin == 0 else max(0, (margin - free_margin))
 
-                    self.move_fund('USDT', tra_amount, 'spot', 'future')
-                    self.place_order('open short', market, 'sell', amount, price)
+                    moved = self.move_fund('USDT', tra_amount, 'spot', 'future')
+                    if moved:
+                        self.place_order('open short', market, 'sell', amount, price)
 
                 else:
                     log.warning('Unable to trade {0} {1} (open order)'.format(round(amount, 4),

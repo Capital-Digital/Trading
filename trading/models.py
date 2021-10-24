@@ -402,9 +402,11 @@ class Account(models.Model):
 
         # Test for amount limit
         if limit_amount(market, amount):
+            print('d')
             # Test min notional
             min_notional, reduce_only = test_min_notional(market, action, amount, price)
             if min_notional:
+                print('dd')
 
                 log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side, market.base.code, market.type,
                                                                               amount, action))

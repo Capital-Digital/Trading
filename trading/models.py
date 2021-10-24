@@ -89,8 +89,9 @@ class Account(models.Model):
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self):
-
-        print('bal value 1', self.balances)
+        
+        if hasattr(self, 'balances'):
+            print('bal value 1', self.balances)
 
         # Get wallets balances
         for wallet in self.exchange.get_wallets():

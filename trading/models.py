@@ -173,10 +173,14 @@ class Account(models.Model):
                         self.balances.loc[coin_target, 'target'] = target[coin_target]
                         self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
 
+            print('bal1', coin_target, self.balances)
+
             # Coins not in account
             if coin_target not in df.index:
                 self.balances.loc[coin_target, 'target'] = target[coin_target]
                 self.balances.loc[coin_target, 'delta'] = -target[coin_target]
+
+            print('bal2', coin_target, self.balances)
 
         # Coins not in target portfolio
         for coin_account in df.index:
@@ -543,7 +547,7 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = market.wallet
         orders = client.fetchOpenOrders(market.symbol)
-        print(orders)
+
         if orders:
             return True
         else:

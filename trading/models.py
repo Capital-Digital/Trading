@@ -147,6 +147,7 @@ class Account(models.Model):
         if 'position' in tmp.columns:  # drop open position's value
             tmp = tmp.drop('position', axis=1)
         balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
+        print('bal', balance)
         return balance * self.strategy.get_target_pct()
 
     # Returns a Series with target quantity per coin
@@ -195,7 +196,7 @@ class Account(models.Model):
 
         print('Delta before')
         print(self.balances)
-        
+
         # Open positions
         if 'position' in self.balances.columns.get_level_values(0):
             positions = self.balances.loc[self.balances.position.open.quantity < 0]

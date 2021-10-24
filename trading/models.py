@@ -171,23 +171,17 @@ class Account(models.Model):
     def get_delta(self):
 
         target = self.get_target_qty()
-        df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']
-        print('df first', df)
-        df = df.loc[:, df.columns.get_level_values(1) == 'total']
-        df = df.droplevel([1, 2], axis=1)
+        df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']  # get spot and position qty
 
         for coin_target in target.index:
 
             # Coins in account
             if coin_target in df.index:
                 for source in df.columns:
-                    print(coin_target, source)
                     qty = df.loc[coin_target, source]
                     if not np.isnan(qty):
                         self.balances.loc[coin_target, 'target'] = target[coin_target]
                         self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
-                    
-
 
             # Coins not in account
             if coin_target not in df.index:

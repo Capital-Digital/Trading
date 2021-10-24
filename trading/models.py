@@ -94,7 +94,6 @@ class Account(models.Model):
             balances_qty = self.get_balances_qty(wallet)
             if wallet in balances_qty.columns.get_level_values(0):
                 if 'value' not in balances_qty.columns.get_level_values(2):
-                    print(balances_qty)
 
                     log.info('Get balances value ({0})'.format(wallet))
 

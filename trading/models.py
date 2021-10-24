@@ -222,6 +222,7 @@ class Account(models.Model):
         return self.balances
 
     def sell_spot(self, load=False):
+        log.info('*** Sell spot ***')
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
@@ -250,6 +251,7 @@ class Account(models.Model):
             self.place_order('sell spot', market, 'sell', amount, price)
 
     def close_short(self, load=False):
+        log.info('*** Close short ***')
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy ?
             if 'position' in df.columns.get_level_values(0):
@@ -268,6 +270,7 @@ class Account(models.Model):
                     self.place_order('close short', market, 'buy', amount, price)
 
     def buy_spot(self, load=False):
+        log.info('*** Buy spot ***')
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
 
@@ -311,6 +314,7 @@ class Account(models.Model):
                 log.info('Unable to buy spot (position is open)')
 
     def open_short(self, load=False):
+        log.info('*** Open short ***')
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # is sell ?
 

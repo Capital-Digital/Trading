@@ -92,6 +92,7 @@ class Account(models.Model):
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
+            print(balances_qty)
             if wallet in balances_qty.columns.get_level_values(0):
                 log.info('Get balances value ({0})'.format(wallet))
 

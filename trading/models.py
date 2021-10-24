@@ -127,14 +127,15 @@ class Account(models.Model):
                                             response__id=position['symbol'],
                                             type='derivative'
                                             )
+                code = market.base.code
                 quantity = float(position['positionAmt'])
-                self.balances.loc[market.base, ('position', 'open', 'quantity')] = quantity
-                self.balances.loc[market.base, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
-                self.balances.loc[market.base, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
-                self.balances.loc[market.base, ('position', 'open', 'leverage')] = float(position['leverage'])
-                self.balances.loc[market.base, ('position', 'open', 'unrealized_pnl')] = float(
+                self.balances.loc[code, ('position', 'open', 'quantity')] = quantity
+                self.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
+                self.balances.loc[code, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
+                self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
+                self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(
                     position['unRealizedProfit'])
-                self.balances.loc[market.base, ('position', 'open', 'liquidation')] = float(
+                self.balances.loc[code, ('position', 'open', 'liquidation')] = float(
                     position['liquidationPrice'])
 
         return self.balances
@@ -162,8 +163,6 @@ class Account(models.Model):
 
         target = self.get_target_qty()
         df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']  # get spot and position qty
-
-        return df
 
         for coin_target in target.index:
 

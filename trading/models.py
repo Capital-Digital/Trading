@@ -175,14 +175,14 @@ class Account(models.Model):
         df = df.loc[:, df.columns.get_level_values(1) == 'total']
         df = df.droplevel([1, 2], axis=1)
 
-        print('Delta before')
-        print(self.balances)
+        print('df', df)
 
         for coin_target in target.index:
 
             # Coins in account
             if coin_target in df.index:
                 for source in df.columns:
+                    print(coin_target, source)
                     qty = df.loc[coin_target, source]
                     if not np.isnan(qty):
                         self.balances.loc[coin_target, 'target'] = target[coin_target]

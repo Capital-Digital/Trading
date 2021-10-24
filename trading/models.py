@@ -22,6 +22,7 @@ from timeit import default_timer as timer
 import collections
 
 import warnings
+
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 import json
@@ -94,7 +95,6 @@ class Account(models.Model):
             balances_qty = self.get_balances_qty(wallet)
             if wallet in balances_qty.columns.get_level_values(0):
                 if 'value' not in balances_qty.columns.get_level_values(2):
-
                     log.info('Get balances value ({0})'.format(wallet))
 
                     df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
@@ -288,7 +288,6 @@ class Account(models.Model):
 
                     # Not enough resources ?
                     if qty_coin > (qty_usdt / price):
-
                         # Move available funds from future to spot wallet
                         trans = (qty_coin * price) - qty_usdt
                         log.info('Move {0} USDT from future to spot'.format(round(trans, 2)))
@@ -358,24 +357,20 @@ class Account(models.Model):
 
     def move_fund(self, code, amount, from_wallet, to_wallet):
         client = self.exchange.get_ccxt_client(self)
+        log.info('Transfer {0} {1} from {2} to {3}'.format(round(amount, 4), code, from_wallet, to_wallet))
 
         if from_wallet == 'future':
             if 'position' in self.balances.columns.get_level_values(0):
 
-                log.info('A position is open, check margin available')
-
-                # Lower amount to available margin
+                # Check total margin and position's notional value in future account
                 total_margin = self.balances.loc['USDT', ('future', 'total', 'quantity')]
-                log.info('Total margin = {0} USDT'.format(round(total_margin, 4)))
-
                 notional_values = self.balances[('position', 'open', 'value')].sum()
-                log.info('Total notional value = {0} USDT'.format(round(total_margin, 4)))
-
                 free_margin = total_margin - notional_values
-                log.info('Free margin = {0} USDT'.format(round(free_margin, 4)))
 
-                amount = min(amount, free_margin)
-                log.info('Amount = {0} USDT'.format(round(amount, 4)))
+                if free_margin < amount:
+                    amount = free_margin
+                    log.info('Lower amount to {0} USDT to preserve 1:1 margin'.format(round(amount, 2)))
+
 
         try:
             client.transfer(code, amount, from_wallet, to_wallet)
@@ -387,11 +382,7 @@ class Account(models.Model):
                       code=code,
                       amount=amount)
         else:
-            log.info('Transfer successful of {0} {1} from {2} to {3}'.format(round(amount, 4),
-                                                                             code,
-                                                                             from_wallet,
-                                                                             to_wallet)
-                     )
+            log.info('Transfer success')
             return amount
 
     def place_order(self, action, market, side, raw_amount, price):
@@ -498,7 +489,8 @@ class Account(models.Model):
                 if action in ['sell_spot', 'close_short']:
                     filled = float(response['filled']) - order.filled
                     if filled > 0:
-                        log.info('Order filled at {0}% {1}'.format(round(filled/order.amount, 3)*100, market.base.code))
+                        log.info(
+                            'Order filled at {0}% {1}'.format(round(filled / order.amount, 3) * 100, market.base.code))
                         self.buy_spot(load=True)
 
     def cancel_order(self, wallet, symbol, orderid):

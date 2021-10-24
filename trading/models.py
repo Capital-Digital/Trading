@@ -265,9 +265,13 @@ class Account(models.Model):
                                                 type='derivative',
                                                 contract_type='perpetual'
                                                 )
-                    price = market.get_latest_price('last')  # bid not available
-                    price -= (price * float(self.limit_price_tolerance))
-                    self.place_order('close short', market, 'buy', amount, price)
+
+                    if not self.has_order(market):
+                        price = market.get_latest_price('last')  # bid not available
+                        price -= (price * float(self.limit_price_tolerance))
+                        self.place_order('close short', market, 'buy', amount, price)
+                    else:
+                        log.info('Unable to close short (open order)')
 
     def buy_spot(self, load=False):
         log.info('*** Buy spot ***')

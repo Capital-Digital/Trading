@@ -89,7 +89,7 @@ class Account(models.Model):
 
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self):
-        
+
         if hasattr(self, 'balances'):
             print('bal value 1', self.balances)
 
@@ -190,6 +190,9 @@ class Account(models.Model):
                 self.balances.loc[coin_target, 'target'] = target[coin_target]
                 self.balances.loc[coin_target, 'delta'] = -target[coin_target]
 
+        print('Delta before')
+        print(self.balances)
+        
         # Coins not in target portfolio
         for coin_account in df.index:
             if coin_account != self.exchange.dollar_currency:
@@ -198,9 +201,6 @@ class Account(models.Model):
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
-
-        print('Delta before')
-        print(self.balances)
 
         # Open positions
         if 'position' in self.balances.columns.get_level_values(0):

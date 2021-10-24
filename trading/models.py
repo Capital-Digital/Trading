@@ -315,11 +315,12 @@ class Account(models.Model):
     def open_short(self, load=False):
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] > 0].iterrows():  # is sell ?
+
             target = row[('target', '', '')]
+            delta = row[('delta', '', '')]
+
             if target < 0:  # is short ?
 
-                # Select quantities
-                delta = row[('delta', '', '')]
                 amount = delta
                 market = Market.objects.get(quote__code=self.exchange.dollar_currency,
                                             exchange=self.exchange,
@@ -330,7 +331,7 @@ class Account(models.Model):
                 if not self.has_order(market):
 
                     price = market.get_latest_price('last')  # ask not available
-                    price -= (price * float(self.limit_price_tolerance))
+                    price += (price * float(self.limit_price_tolerance))
                     margin = amount * price
                     free_margin = 0
                     free_spot = 0
@@ -344,10 +345,10 @@ class Account(models.Model):
                             free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
 
                     tra_amount = min(free_spot, margin) if free_margin == 0 else max(0, (margin - free_margin))
+                    if tra_amount > 0:
+                        self.move_fund('USDT', tra_amount, 'spot', 'future')
 
-                    moved = self.move_fund('USDT', tra_amount, 'spot', 'future')
-                    if moved:
-                        self.place_order('open short', market, 'sell', amount, price)
+                    self.place_order('open short', market, 'sell', amount, price)
 
                 else:
                     log.warning('Unable to trade {0} {1} (open order)'.format(round(amount, 4),
@@ -382,8 +383,8 @@ class Account(models.Model):
             print(self.balances.loc['USDT', :])
             log.error('Error transferring fund',
                       e=e,
-                      from_=from_wallet,
-                      to=to_wallet,
+                      source=from_wallet,
+                      destination=to_wallet,
                       code=code,
                       amount=amount)
         else:

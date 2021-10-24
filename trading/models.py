@@ -90,6 +90,8 @@ class Account(models.Model):
     # Return a dictionary with balance of a specific wallet
     def get_balances_value(self):
 
+        print('bal value 1', self.balances)
+
         # Get wallets balances
         for wallet in self.exchange.get_wallets():
             balances_qty = self.get_balances_qty(wallet)
@@ -106,8 +108,10 @@ class Account(models.Model):
             mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
+        print('bal value 2', self.balances)
         # Get open positions
         self.get_positions_value()
+        print('bal value 3', self.balances)
         return self.balances
 
     def get_positions_value(self):
@@ -147,7 +151,7 @@ class Account(models.Model):
         if 'position' in tmp.columns:  # drop open position's value
             tmp = tmp.drop('position', axis=1)
         balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
-        print('bal', balance)
+        print('target value', balance * self.strategy.get_target_pct())
         return balance * self.strategy.get_target_pct()
 
     # Returns a Series with target quantity per coin

@@ -106,11 +106,8 @@ class Account(models.Model):
             mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
-        print('a', self.balances)
         # Get open positions
         self.get_positions_value()
-
-        print('b', self.balances)
         return self.balances
 
     def get_positions_value(self):
@@ -196,6 +193,9 @@ class Account(models.Model):
                         if not np.isnan(qty):
                             self.balances.loc[coin_account, 'delta'] = qty
 
+        print('Delta before')
+        print(self.balances)
+        
         # Open positions
         if 'position' in self.balances.columns.get_level_values(0):
             positions = self.balances.loc[self.balances.position.open.quantity < 0]

@@ -209,7 +209,7 @@ class Account(models.Model):
                                             precision=market.precision['amount'],
                                             n=abs(target[code])
                                             )
-                    self.balances.loc[code, 'delta'] = abs(row.position.open.quantity) - amount
+                    self.balances.loc[code, 'delta'] = amount - abs(row.position.open.quantity)
 
         print('Delta')
         print(self.balances)

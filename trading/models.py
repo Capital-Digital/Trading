@@ -380,7 +380,6 @@ class Account(models.Model):
         try:
             client.transfer(code, amount, from_wallet, to_wallet)
         except Exception as e:
-            print(self.balances.loc['USDT', :])
             log.error('Error transferring fund',
                       e=e,
                       source=from_wallet,

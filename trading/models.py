@@ -355,8 +355,8 @@ class Account(models.Model):
 
                 else:
                     log.warning('Unable to open short {0} {1} (open order)'.format(round(amount, 4),
-                                                                              market.symbol,
-                                                                              market.type)
+                                                                                   market.symbol,
+                                                                                   market.type)
                                 )
 
     def move_fund(self, code, amount, from_wallet, to_wallet):
@@ -431,7 +431,7 @@ class Account(models.Model):
 
             else:
                 log.info('Unable to {1} {2} {0} (min notional)'.format(market.base.code, side, market.wallet),
-                            amount=round(raw_amount, 4))
+                         amount=round(raw_amount, 4))
         else:
             log.info("Unable to {1} {2} {0} (limit amount)".format(market.base.code, side, market.wallet),
                      amount=round(raw_amount, 4))

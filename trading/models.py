@@ -543,6 +543,7 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = market.wallet
         orders = client.fetchOpenOrders(market.symbol)
+        print(orders)
         if orders:
             return True
         else:

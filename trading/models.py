@@ -177,6 +177,7 @@ class Account(models.Model):
         df = df.droplevel([1, 2], axis=1)
 
         print(target.index)
+        print(self.balances.index)
         self.balances.loc[target.index, 'target'] = target
         print('target', self.balances)
 

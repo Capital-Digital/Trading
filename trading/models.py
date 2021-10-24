@@ -175,6 +175,9 @@ class Account(models.Model):
         df = df.loc[:, df.columns.get_level_values(1) == 'total']
         df = df.droplevel([1, 2], axis=1)
 
+        print('Delta before')
+        print(self.balances)
+
         for coin_target in target.index:
 
             # Coins in account
@@ -190,9 +193,6 @@ class Account(models.Model):
                 self.balances.loc[coin_target, 'target'] = target[coin_target]
                 self.balances.loc[coin_target, 'delta'] = -target[coin_target]
 
-        print('Delta before')
-        print(self.balances)
-        
         # Coins not in target portfolio
         for coin_account in df.index:
             if coin_account != self.exchange.dollar_currency:

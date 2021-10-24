@@ -248,9 +248,7 @@ class Account(models.Model):
         log.info('*** Close short ***')
         df = self.get_delta() if load else self.balances
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy ?
-            print(code)
             if 'position' in df.columns.get_level_values(0):
-                print('OK')
                 if row.position.open.quantity < 0:  # short is open ?
                     delta = row[('delta', '', '')]
                     amount = min(abs(delta), abs(row.position.open.quantity))

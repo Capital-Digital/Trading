@@ -176,11 +176,8 @@ class Account(models.Model):
 
             # Coins not in account
             if coin_target not in df.index:
-                print(coin_target, 'not in ', df.index)
                 self.balances.loc[coin_target, 'target'] = target[coin_target]
                 self.balances.loc[coin_target, 'delta'] = -target[coin_target]
-
-            print('bal2', coin_target, self.balances)
 
         # Coins not in target portfolio
         for coin_account in df.index:

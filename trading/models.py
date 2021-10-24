@@ -235,7 +235,6 @@ class Account(models.Model):
                 if not np.isnan(hold):
                     amount = hold
                 else:
-                    log.info('Unable to trade {0} {1} (trade derivative)'.format(round(delta, 4), code))
                     continue
 
             elif (target > 0) or np.isnan(target):
@@ -343,9 +342,9 @@ class Account(models.Model):
                         if 'spot' in df.columns.get_level_values(0):
                             free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
 
-                    tra_amount = min(free_spot, margin) if free_margin == 0 else max(0, (margin - free_margin))
-                    if tra_amount > 0:
-                        self.move_fund('USDT', tra_amount, 'spot', 'future')
+                    trans = min(free_spot, margin) if free_margin == 0 else max(0, (margin - free_margin))
+                    if trans > 0:
+                        self.move_fund('USDT', trans, 'spot', 'future')
 
                     self.place_order('open short', market, 'sell', amount, price)
 
@@ -370,7 +369,6 @@ class Account(models.Model):
                 if free_margin < amount:
                     amount = free_margin
                     log.info('Lower amount to {0} USDT to preserve 1:1 margin'.format(round(amount, 2)))
-
 
         try:
             client.transfer(code, amount, from_wallet, to_wallet)

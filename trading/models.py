@@ -345,7 +345,7 @@ class Account(models.Model):
                         if 'spot' in df.columns.get_level_values(0):
                             free_spot = df.loc['USDT', ('spot', 'free', 'quantity')]
 
-                    trans = min(free_spot, margin) if free_margin == 0 else max(0, (margin - free_margin))
+                    trans = min(free_spot, margin) if free_margin == 0 else min(free_spot, (margin - free_margin))
                     if trans > 0:
                         self.move_fund('USDT', trans, 'spot', 'future')
 

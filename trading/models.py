@@ -311,7 +311,7 @@ class Account(models.Model):
                 else:
                     log.info('Unable to buy spot (no free resource)')
             else:
-                log.info('Unable to buy spot (position is open)')
+                log.info('Unable to buy spot ({0}/USDT position open)'.format(code))
 
     def open_short(self, load=False):
         log.info('*** Open short ***')

@@ -277,7 +277,7 @@ class Account(models.Model):
                 pos_qty = df.loc[code, ('position', 'open', 'quantity')]
 
             # Test if a position is open
-            if np.isnan(pos_qty): 
+            if np.isnan(pos_qty):
 
                 # Determine buy price
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, 'bid')
@@ -308,7 +308,6 @@ class Account(models.Model):
 
                     # Remove USDT amount from available fund
                     df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
-                    print('after buy', df)
 
                 else:
                     log.info('Unable to buy spot (no free resource)')

@@ -275,6 +275,8 @@ class Account(models.Model):
 
             if 'position' in df.columns.get_level_values(0):
                 pos_qty = df.loc[code, ('position', 'open', 'quantity')]
+            else:
+                pos_qty = np.nan
 
             # Test if a position is open
             if np.isnan(pos_qty):

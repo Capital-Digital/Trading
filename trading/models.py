@@ -74,6 +74,7 @@ class Account(models.Model):
         response = client.fetchBalance()
         for key in ['total', 'free', 'used']:
             dic = {k: v for k, v in response[key].items() if v > 0}
+            pprint(dic)
             if dic:
                 log.info('Get balances quantity in {1} ({0})'.format(key, wallet))
                 tmp = pd.DataFrame(index=dic.keys(),
@@ -96,7 +97,6 @@ class Account(models.Model):
             if wallet in balances_qty.columns.get_level_values(0):
                 if 'value' not in balances_qty.columns.get_level_values(2):
                     log.info('Get balances value ({0})'.format(wallet))
-                    print(balances_qty)
                     df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.exchange), axis=1)
                     df.columns.set_levels(['value'], level=1, inplace=True)
                     df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))

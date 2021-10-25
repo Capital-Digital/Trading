@@ -168,10 +168,11 @@ class Account(models.Model):
             # Coins in account
             if coin_target in df.index:
                 for source in df.columns:
-                    qty = df.loc[coin_target, source]
-                    if not np.isnan(qty):
-                        self.balances.loc[coin_target, 'target'] = target[coin_target]
-                        self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
+                    if 'total' in source:
+                        qty = df.loc[coin_target, source]
+                        if not np.isnan(qty):
+                            self.balances.loc[coin_target, 'target'] = target[coin_target]
+                            self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
 
             # Coins not in account
             if coin_target not in df.index:
@@ -221,14 +222,14 @@ class Account(models.Model):
         for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
             # Select quantities
-            hold = row.spot.total.quantity
+            free = row.spot.free.quantity
             target = row[('target', '', '')]
             delta = row[('delta', '', '')]
 
             # Determine amount we must sell
             if target < 0:  # short
-                if not np.isnan(hold):
-                    amount = hold
+                if not np.isnan(free):
+                    amount = free
                 else:
                     continue
 

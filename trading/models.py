@@ -182,6 +182,7 @@ class Account(models.Model):
         for coin_account in df.index:
             if coin_account != self.exchange.dollar_currency:
                 if coin_account not in target.index:
+                    print('df.columns', df.columns)
                     for source in df.columns:
                         qty = df.loc[coin_account, source]
                         if not np.isnan(qty):

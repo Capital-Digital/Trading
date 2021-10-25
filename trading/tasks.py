@@ -72,7 +72,7 @@ def trade():
             # Place orders
             account.sell_spot()
             account.close_short()
-            account.buy_spot()
+            account.buy_spot(load=True)
             account.open_short()
 
             log.info('***')

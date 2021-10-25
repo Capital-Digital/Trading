@@ -73,8 +73,7 @@ class Account(models.Model):
         client.options['defaultType'] = wallet
         response = client.fetchBalance()
         for key in ['total', 'free', 'used']:
-            dic = {k: v for k, v in response[key].items() if v > 0}
-            pprint(dic)
+            dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
             if dic:
                 log.info('Get balances quantity in {1} ({0})'.format(key, wallet))
                 tmp = pd.DataFrame(index=dic.keys(),

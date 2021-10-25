@@ -55,26 +55,26 @@ def update_orders():
 
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
 def trade():
-    for account in Account.objects.filter(trading=True, exchange__exid='binance', name='Fred'):
-        #if datetime.now().hour in account.strategy.execution_hours():
+    for account in Account.objects.filter(trading=True, exchange__exid='binance'):
+        if datetime.now().hour in account.strategy.execution_hours():
+    
+            log.info('***')
+            log.info('Start trade')
+            log.info('***')
 
-        log.info('***')
-        log.info('Start trade')
-        log.info('***')
+            # Delete balance dataframe
+            if hasattr(account, 'balances'):
+                del account.balances
 
-        # Delete balance dataframe
-        if hasattr(account, 'balances'):
-            del account.balances
+            # Construct a new dataframe
+            account.get_delta()
 
-        # Construct a new dataframe
-        account.get_delta()
+            # Place orders
+            account.sell_spot()
+            account.close_short()
+            account.buy_spot(load=True)
+            account.open_short()
 
-        # Place orders
-        account.sell_spot()
-        account.close_short()
-        account.buy_spot(load=True)
-        account.open_short()
-
-        log.info('***')
-        log.info('End trade')
-        log.info('***')
+            log.info('***')
+            log.info('End trade')
+            log.info('***')

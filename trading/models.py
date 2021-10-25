@@ -312,7 +312,7 @@ class Account(models.Model):
                     df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
 
                 else:
-                    log.info('Unable to buy spot (no free resource)')
+                    log.info('Unable to buy {0} spot (no free resource)'.format(code))
             else:
                 log.info('Unable to buy spot ({0}/USDT position open)'.format(code))
 

@@ -846,7 +846,7 @@ def top_markets(exid):
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
     exchange = Exchange.objects.get(exid=exid)
-    markets = Market.objects.filter(exchange=exchange, trading=True)
+    markets = Market.objects.filter(exchange=exchange, trading=True, quote__code__in=['USDT', 'BUSD'])
 
     if exchange.is_trading():
 
@@ -860,7 +860,7 @@ def fetch_candle_history(exid):
                 now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
                 directive = '%Y-%m-%dT%H:%M:%SZ'
 
-                # Test if an object already exist
+                # Test if an object already exist for this market
                 queryset = Candles.objects.filter(market=market)
                 if queryset:
 

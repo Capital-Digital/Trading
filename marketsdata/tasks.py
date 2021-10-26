@@ -83,71 +83,6 @@ def update_information():
         log.error('Update failed')
 
 
-@shared_task(name='Markets_____Update market prices and execute strategies')
-def update():
-    from marketsdata.models import Exchange
-    from strategy.models import Strategy
-
-    # Create lists of exchanges
-    exchanges = [e.exid for e in Exchange.objects.filter(enable=True)]
-    exchanges_w_strat = list(set(Strategy.objects.filter(production=True).values_list('exchange__exid', flat=True)))
-    exchanges_wo_strat = [e for e in exchanges if e not in exchanges_w_strat]
-
-    if exchanges_w_strat:
-
-        # Create a list of chains
-        chains = [chain(
-            prices.si(exid),
-            top_markets.si(exid),
-            task.strategies.si(exid)
-        ) for exid in exchanges_w_strat]
-
-        result = group(*chains).delay()
-
-        # start by updating exchanges with a strategy
-        # gp1 = group(update_prices.s(exid) for exid in exchanges_w_strat).delay()
-
-        while not result.ready():
-            time.sleep(0.5)
-
-        if result.successful():
-            log.info('Markets and strategies update complete')
-
-            # Then update the rest of our exchanges
-            result = group([prices.s(exid) for exid in exchanges_wo_strat]).delay()
-
-            while not result.ready():
-                time.sleep(0.5)
-
-            if result.successful():
-                log.info('Rest of exchanges update complete')
-
-            else:
-                log.error('Rest of exchanges update failed')
-
-        else:
-            log.error('Markets and strategies update failed')
-
-    else:
-        log.info('There is no strategy in production. Update prices')
-        group(prices.s(exid) for exid in exchanges)()
-
-
-@shared_task(name='Markets_____Update prices', base=BaseTaskWithRetry)
-def update_price():
-    exchanges = Exchange.objects.all().values_list('exid', flat=True)
-    result = group([prices.s(exid) for exid in exchanges]).delay()
-
-    while not result.ready():
-        time.sleep(0.5)
-
-    if result.successful():
-        log.info('Task update price complete')
-
-    else:
-        log.error('Task update price failed')
-
-
 @shared_task(base=BaseTaskWithRetry)
 def properties(exid):
     log.debug('Save exchange properties', exchange=exid)
@@ -626,194 +561,6 @@ def funding(exid):
             # log.info('Update funding complete')
 
 
-@shared_task(base=BaseTaskWithRetry)
-def prices(exid):
-    from marketsdata.models import Exchange, Market, Candle
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
-
-            # Update ticker price and volume
-            def update(response):
-
-                def get_quote_volume():
-
-                    if exid == 'binance':
-                        if 'quoteVolume' in response:
-                            volume = response['quoteVolume']
-                        elif 'baseVolume' in response['info']:
-                            volume = float(response['info']['baseVolume']) * response['last']
-
-                    elif exid == 'bybit':
-                        if market.type == 'derivative':
-                            if market.margined.code == 'USDT':
-                                volume = float(response['info']['turnover_24h'])
-                            else:
-                                volume = float(response['info']['volume_24h'])
-
-                    elif exid == 'okex':
-                        if market.wallet == 'spot':
-                            if 'quote_volume_24h' in response['info']:
-                                volume = float(response['info']['quote_volume_24h'])
-                            else:
-                                volume = response['quoteVolume']
-                        elif market.wallet == 'swap':
-                            if market.margined.code == 'USDT':
-                                volume = float(response['info']['volCcy24h'])
-                            else:
-                                volume = float(response['info']['volCcy24h']) * response['last']
-                        elif market.wallet == 'futures':
-                            if market.margined.code == 'USDT':
-                                volume = float(response['info']['volCcy24h'])
-                            else:
-                                volume = float(response['info']['volCcy24h']) * response['last']
-
-                    elif exid == 'ftx':
-                        volume = float(response['info']['volumeUsd24h'])
-
-                    elif exid == 'huobipro':
-                        if not market.wallet:
-                            volume = float(response['info']['vol'])
-
-                    elif exid == 'bitfinex2':
-                        volume = float(response['baseVolume']) * response['last']
-
-                    if 'volume' in locals():
-                        return volume
-                    else:
-                        pprint(response)
-                        log.warning('Volume not in load_markets()')
-
-                log.bind(wallet=market.wallet, symbol=market.symbol)
-
-                # Select dictionary
-                if market.symbol in response:
-                    response = response[market.symbol]
-                else:
-                    log.warning('Symbol not in load_markets()')
-                    log.info('Delete market')
-                    market.delete()
-                    return
-
-                # Select last price
-                if 'last' in response:
-                    last = response['last']
-                else:
-                    log.warning('Last price not in load_markets()')
-                    market.updated = False
-                    market.save()
-                    return
-
-                # Select trading volume
-                volume = get_quote_volume()
-                if volume is None:
-                    pprint(response)
-                    log.warning('Volume not in load_markets()')
-                    market.updated = False
-                    market.save()
-                    return
-
-                # Create datetime object
-                dt = timezone.now().replace(minute=0,
-                                            second=0,
-                                            microsecond=0) - timedelta(minutes=exchange.update_frequency)
-
-                try:
-                    Candle.objects.get(market=market, exchange=exchange, dt=dt)
-
-                except Candle.DoesNotExist:
-                    Candle.objects.create(market=market,
-                                          exchange=exchange,
-                                          dt=dt,
-                                          close=last,
-                                          volume_avg=volume / 24
-                                          )
-                    market.updated = True
-                    market.save()
-
-                else:
-                    pass
-                    # log.warning('Candle exists', dt=dt)
-
-                finally:
-                    log.unbind('wallet', 'symbol')
-
-            client = exchange.get_ccxt_client()
-            log.info('Prices update start')
-
-            # Create a list of trading markets
-            markets = Market.objects.filter(exchange=exchange,
-                                            quote__code__in=exchange.get_supported_quotes(),
-                                            trading=True)
-
-            if exchange.wallets:
-
-                # Iterate through wallets
-                for wallet in exchange.get_wallets():
-
-                    log.info('Prices update {0}'.format(wallet))
-
-                    client.options['defaultType'] = wallet
-                    if exchange.has_credit(wallet):
-
-                        # Load markets
-                        client.load_markets(True)
-                        exchange.update_credit('load_markets', wallet)
-                        if exchange.has_credit(wallet):
-
-                            # FetchTickers
-                            response = client.fetch_tickers()
-                            exchange.update_credit('fetch_tickers', wallet)
-
-                            for market in markets.filter(wallet=wallet):
-                                update(response)
-
-                                # # Download OHLCV if gap detected
-                                # if market.has_gap():
-                                #     insert_candle_history(exid,
-                                #                           market.wallet,
-                                #                           market.symbol,
-                                #                           recent=True)
-                                # else:
-                                #     # Else select price and volume from response
-                                #     update(response, market)
-
-                    log.info('Prices update {0} complete'.format(wallet))
-
-            else:
-                if exchange.has_credit():
-                    client.load_markets(True)
-                    exchange.update_credit('load_markets')
-
-                    if exchange.has_credit():
-                        response = client.fetch_tickers()
-                        exchange.update_credit('fetch_tickers')
-
-                        for market in markets:
-                            update(response)
-
-                            # # Download OHLCV if gap detected
-                            # if market.has_gap():
-                            #     insert_ohlcv(exid,
-                            #                           market.wallet,
-                            #                           market.symbol,
-                            #                           recent=True)
-                            # else:
-                            #     # Else select price and volume from response
-                            #     update(response)
-
-            # Set exchange last update time
-            exchange.last_price_update_dt = timezone.now()
-            exchange.save()
-
-            # log.info('Prices update complete')
-
-        else:
-            raise ('Exchange {0} does not support FetchTickers()'.format(exid))
-
-
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
@@ -1061,9 +808,9 @@ def insert_current_tickers(exid):
     log.info('Insertion for {0} complete'.format(exid))
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch listing history')
-def fetch_listing_history():
-    log.info('Start fetching records')
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika listing history')
+def fetch_coinpaprika_listing_history():
+    log.info('Start fetching CoinPaprika records')
 
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()
@@ -1168,9 +915,9 @@ def fetch_listing_history():
             log.info('While loop break')
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert current listing')
-def insert_current_listing():
-    log.info('Insertion of Paprika listing start')
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert CoinPaprika current listing')
+def insert_coinpaprika_current_listing():
+    log.info('Insertion of CoinPaprika listing start')
 
     from coinpaprika import client as Coinpaprika
     client = Coinpaprika.Client()

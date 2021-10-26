@@ -166,22 +166,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_status.short_description = "Update status"
 
-    # Flag top markets
-    def flag_top_markets(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.top_markets.s(exchange).set(queue='default') for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Flag top markets complete')
-
-        else:
-            log.error('Flag top markets failed')
-
-    flag_top_markets.short_description = "Flag top markets"
-
 
 @admin.register(Currency)
 class CustomerAdmin(admin.ModelAdmin):
@@ -258,43 +242,6 @@ class CustomerAdmin(admin.ModelAdmin):
     get_precision_price.short_description = "Precision price"
 
 
-@admin.register(Candle)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('get_dt', 'market', 'exchange', 'get_type', 'close', 'get_vol', 'get_vol_avg', 'volume_mcap')
-    readonly_fields = ('exchange', 'market', 'dt', 'close', 'volume', 'dt_created', 'volume_avg', 'mcap', 'volume_mcap')
-    list_filter = ('exchange', 'market__type', 'market__contract_type',
-                   ('market__quote', admin.RelatedOnlyFieldListFilter),
-                   ('market__base', admin.RelatedOnlyFieldListFilter)
-                   )
-    ordering = ('-dt',)
-
-    ###########
-    # Columns #
-    ###########
-
-    def get_vol(self, obj):
-        if obj.volume:
-            return f'{int(obj.volume):n}'
-
-    get_vol.short_description = 'Volume'
-
-    def get_vol_avg(self, obj):
-        if obj.volume_avg:
-            return f'{int(obj.volume_avg):n}'
-
-    get_vol_avg.short_description = 'Volume average'
-
-    def get_type(self, obj):
-        return obj.market.type
-
-    get_type.short_description = 'Type'
-
-    def get_dt(self, obj):
-        return obj.dt
-
-    get_dt.short_description = 'Datetime UTC'
-
-
 @admin.register(CoinPaprika)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('currency', 'year', 'semester', 'count_records', 'latest_timestamp')
@@ -321,7 +268,7 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')
     readonly_fields = ('market', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ('year', 'semester', 'market__base__code',)
+    list_filter = ('year', 'semester', 'market__quote__code', 'market__base__code',)
     ordering = ('-year', '-semester', 'market',)
     save_as = True
     actions = ['update_candles', ]

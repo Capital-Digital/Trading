@@ -154,7 +154,7 @@ class Account(models.Model):
 
         target = self.get_target_value()
         for code in target.index:
-            target[code] /= Currency.objects.get(code=code).get_latest_price(self.exchange, 'last')
+            target[code] /= Currency.objects.get(code=code).get_latest_price(self, 'last')
 
         return target
 
@@ -181,7 +181,7 @@ class Account(models.Model):
 
         # Coins not in target portfolio
         for coin_account in df.index:
-            if coin_account != self.exchange.dollar_currency:
+            if coin_account != self.strategy.params['CODE_QUOTE']:
                 if coin_account not in target.index:
                     for source in df.columns:
                         if 'total' in source:
@@ -236,9 +236,9 @@ class Account(models.Model):
             elif (target > 0) or np.isnan(target):
                 amount = delta
 
-            price = Currency.objects.get(code=code).get_latest_price(self.exchange, 'ask')
+            price = Currency.objects.get(code=code).get_latest_price(self, 'ask')
             price += (price * float(self.limit_price_tolerance))
-            market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+            market = Market.objects.get(quote__code=self.strategy.params['CODE_QUOTE'],
                                         exchange=self.exchange,
                                         base__code=code,
                                         type='spot')
@@ -254,7 +254,7 @@ class Account(models.Model):
                     delta = row[('delta', '', '')]
                     amount = min(abs(delta), abs(row.position.open.quantity))
 
-                    market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                    market = Market.objects.get(quote__code=self.strategy.params['CODE_QUOTE'],
                                                 exchange=self.exchange,
                                                 base__code=code,
                                                 type='derivative',
@@ -283,10 +283,10 @@ class Account(models.Model):
             if np.isnan(pos_qty):
 
                 # Determine buy price
-                price = Currency.objects.get(code=code).get_latest_price(self.exchange, 'bid')
+                price = Currency.objects.get(code=code).get_latest_price(self, 'bid')
                 price -= (price * float(self.limit_price_tolerance))
 
-                if self.exchange.dollar_currency in df.index:
+                if self.strategy.params['CODE_QUOTE'] in df.index:
 
                     # Determine quantities
                     qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
@@ -302,7 +302,7 @@ class Account(models.Model):
                         qty_usdt += moved
 
                     amount = min(qty_coin, qty_usdt / price)
-                    market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                    market = Market.objects.get(quote__code=self.strategy.params['CODE_QUOTE'],
                                                 exchange=self.exchange,
                                                 base__code=code,
                                                 type='spot'
@@ -328,7 +328,7 @@ class Account(models.Model):
             if target < 0:  # is short ?
 
                 amount = delta
-                market = Market.objects.get(quote__code=self.exchange.dollar_currency,
+                market = Market.objects.get(quote__code=self.strategy.params['CODE_QUOTE'],
                                             exchange=self.exchange,
                                             base__code=code,
                                             type='derivative',

@@ -19,7 +19,6 @@ class Exchange(models.Model):
     objects = models.Manager()
     exid = models.CharField(max_length=12, blank=True, null=True)
     wallets = models.CharField(max_length=50, blank=True, null=True)
-    dollar_currency = models.CharField(max_length=4, blank=False, null=True)
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
     api, countries, urls, has, timeframes, credentials, options = [models.JSONField(blank=True, null=True) for i in
                                                                    range(7)]
@@ -451,9 +450,9 @@ class Currency(models.Model):
     def __str__(self):
         return self.code if self.code else ''
 
-    def get_latest_price(self, exchange, key):
-        if self.code != exchange.dollar_currency:
-            candles = Tickers.objects.get(market__quote__code=exchange.dollar_currency,
+    def get_latest_price(self, strategy, key):
+        if self.code != strategy.params['CODE_QUOTE']:
+            candles = Tickers.objects.get(market__quote__code=strategy.params['CODE_QUOTE'],
                                           market__base__code=self.code,
                                           market__type='spot',
                                           year=get_year(),

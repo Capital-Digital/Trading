@@ -814,34 +814,6 @@ def prices(exid):
             raise ('Exchange {0} does not support FetchTickers()'.format(exid))
 
 
-@shared_task(base=BaseTaskWithRetry)
-def top_markets(exid):
-    import operator
-    exchange = Exchange.objects.get(exid=exid)
-
-    if exid == 'binance':
-
-        for wallet in exchange.get_wallets():
-
-            log.info('Set top = True')
-            markets = Market.objects.filter(exchange__exid=exid,
-                                            quote__code=exchange.dollar_currency,
-                                            wallet=wallet,
-                                            updated=True,
-                                            trading=True)
-
-            v = [[m.candle.first().volume_avg, m.candle.first().id] for m in markets if m.candle.first().volume_avg]
-
-            top = sorted(v, key=operator.itemgetter(0))[-20:]
-
-            for pk in [pk for pk in [t[1] for t in top]]:
-                market = Candle.objects.get(pk=pk).market
-                market.top = True
-                market.save()
-
-            log.info('Set top complete')
-
-
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):

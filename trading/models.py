@@ -96,7 +96,7 @@ class Account(models.Model):
             if wallet in balances_qty.columns.get_level_values(0):
                 if 'value' not in balances_qty.columns.get_level_values(2):
                     log.info('Get balances value ({0})'.format(wallet))
-                    df = balances_qty.apply(lambda row: convert_balance(row, wallet, self), axis=1)
+                    df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.strategy), axis=1)
                     df.columns.set_levels(['value'], level=1, inplace=True)
                     df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))
                     self.balances = pd.concat([self.balances, df], axis=1)
@@ -154,7 +154,7 @@ class Account(models.Model):
 
         target = self.get_target_value()
         for code in target.index:
-            target[code] /= Currency.objects.get(code=code).get_latest_price(self, 'last')
+            target[code] /= Currency.objects.get(code=code).get_latest_price(self.strategy, 'last')
 
         return target
 
@@ -236,7 +236,7 @@ class Account(models.Model):
             elif (target > 0) or np.isnan(target):
                 amount = delta
 
-            price = Currency.objects.get(code=code).get_latest_price(self, 'ask')
+            price = Currency.objects.get(code=code).get_latest_price(self.strategy, 'ask')
             price += (price * float(self.limit_price_tolerance))
             market = Market.objects.get(quote__code=self.strategy.params['CODE_QUOTE'],
                                         exchange=self.exchange,
@@ -283,7 +283,7 @@ class Account(models.Model):
             if np.isnan(pos_qty):
 
                 # Determine buy price
-                price = Currency.objects.get(code=code).get_latest_price(self, 'bid')
+                price = Currency.objects.get(code=code).get_latest_price(self.strategy, 'bid')
                 price -= (price * float(self.limit_price_tolerance))
 
                 if self.strategy.params['CODE_QUOTE'] in df.index:

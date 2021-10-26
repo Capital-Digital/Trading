@@ -852,7 +852,7 @@ def fetch_candle_history(exid):
     if exchange.is_trading():
 
         for market in markets:
-            
+
             log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             directive = '%Y-%m-%dT%H:%M:%SZ'
@@ -867,7 +867,7 @@ def fetch_candle_history(exid):
 
                 if dt == now:
                     log.info('Market {0} {1} is updated'.format(market.symbol, market.wallet))
-                    return
+                    continue
 
             else:
                 # Set datetime

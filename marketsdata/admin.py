@@ -84,7 +84,7 @@ class CustomerAdmin(admin.ModelAdmin):
         else:
             log.error('Fetch markets history error')
 
-    fetch_candle_history.short_description = "Fetch markets history"
+    fetch_candle_history.short_description = "Fetch candles history"
 
     # Fetch markets history
     def update_currencies(self, request, queryset):

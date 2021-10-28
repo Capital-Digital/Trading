@@ -58,27 +58,8 @@ def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
         if datetime.now().hour in account.strategy.execution_hours():
 
-            log.info('***')
-            log.info('Start trade')
-            log.info('***')
-
-            # Delete balance dataframe
-            if hasattr(account, 'balances'):
-                del account.balances
-
-            # Construct a new dataframe
-            account.get_delta()
-
-            # Place orders
-            account.sell_spot()
-            account.close_short()
-            account.buy_spot(load=True)
-            account.open_short()
-
-            log.info('***')
-            log.info('End trade')
-            log.info('***')
+            account.trade()
 
         else:
             sec = round(account.strategy.seconds_before_update(), 0)
-            log.info('Strategy will be executed in {0} seconds'.format(sec))
+            log.info('Update will be executed in {0} seconds'.format(sec))

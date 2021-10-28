@@ -577,6 +577,29 @@ class Account(models.Model):
         finally:
             self.save()
 
+    def trade(self):
+
+        log.info('***')
+        log.info('Start trade')
+        log.info('***')
+
+        # Delete balance dataframe
+        if hasattr(self, 'balances'):
+            del self.balances
+
+        # Construct a new dataframe
+        self.get_delta()
+
+        # Place orders
+        self.sell_spot()
+        self.close_short()
+        self.buy_spot(load=True)
+        self.open_short()
+
+        log.info('***')
+        log.info('End trade')
+        log.info('***')
+
 
 class Fund(models.Model):
     objects = models.Manager()

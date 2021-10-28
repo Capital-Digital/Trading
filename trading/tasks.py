@@ -63,3 +63,8 @@ def trade():
         else:
             sec = round(account.strategy.seconds_before_update(), 0)
             log.info('Update will be executed in {0} seconds'.format(sec))
+
+
+@shared_task(name='Trading_____Trade single account', base=BaseTaskWithRetry)
+def trade_single(pk):
+    Account.objects.get(pk=pk).trade()

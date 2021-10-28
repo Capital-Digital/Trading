@@ -20,7 +20,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'user', 'exchange', 'trading', 'updated', 'valid_credentials', 'strategy',
                     'get_limit_price_tolerance', 'limit_order','updated_at',)
     readonly_fields = ('valid_credentials', 'user')
-    actions = ['update_credentials', 'update_fund', 'update_positions', 'fetch_order_open_all', 'rebalance']
+    actions = ['update_credentials', 'trade']
     save_as = True
     save_on_top = True
 
@@ -38,15 +38,15 @@ class CustomerAdmin(admin.ModelAdmin):
 
     # Actions
 
-    def rebalance(self, request, queryset):
+    def trade(self, request, queryset):
 
         chains = [chain(
-            tasks.rebalance.s(account.strategy.id, account.id).set(queue='default')
+            tasks.trade_single.s(account.id).set(queue='default')
         ) for account in queryset]
 
         result = group(*chains).delay()
 
-    rebalance.short_description = "Rebalance"
+    trade.short_description = "Trade"
 
     def update_credentials(self, request, queryset):
         for account in queryset:

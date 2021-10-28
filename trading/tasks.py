@@ -78,3 +78,7 @@ def trade():
             log.info('***')
             log.info('End trade')
             log.info('***')
+
+        else:
+            sec = round(account.strategy.seconds_before_update(), 0)
+            log.info('Strategy will be executed in {0} seconds'.format(sec))

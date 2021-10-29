@@ -144,7 +144,7 @@ class Account(models.Model):
         if self.strategies.all().count() == 1:
             return self.strategies.all()[0].get_target_pct()
         else:
-
+            pass
 
     # Returns a Series with target value
     def get_target_value(self):

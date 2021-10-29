@@ -36,7 +36,7 @@ class Account(models.Model):
     objects = models.Manager()
     name = models.CharField(max_length=100, null=True, blank=False)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='account', blank=True, null=True)
-    strategies = models.ManyToManyField(Strategy, related_name='account', null=True)
+    strategies = models.ManyToManyField(Strategy, related_name='account')
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     trading = models.BooleanField(null=True, blank=False, default=False)

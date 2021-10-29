@@ -36,7 +36,7 @@ class Account(models.Model):
     objects = models.Manager()
     name = models.CharField(max_length=100, null=True, blank=False)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='account', blank=True, null=True)
-    strategy = models.ManyToManyField(Strategy, related_name='account', null=True)
+    strategies = models.ManyToManyField(Strategy, related_name='account', null=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     trading = models.BooleanField(null=True, blank=False, default=False)
     updated = models.BooleanField(null=True, blank=False)
@@ -139,6 +139,10 @@ class Account(models.Model):
 
         return self.balances
 
+    def get_target_pct(self):
+        if self.strategy:
+            pass
+
     # Returns a Series with target value
     def get_target_value(self):
 
@@ -147,7 +151,7 @@ class Account(models.Model):
         if 'position' in tmp.columns:  # drop open position's value
             tmp = tmp.drop('position', axis=1)
         balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
-        return balance * self.strategy.get_target_pct()
+        return balance * self.get_target_pct()
 
     # Returns a Series with target quantity per coin
     def get_target_qty(self):

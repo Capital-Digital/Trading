@@ -37,6 +37,7 @@ class Account(models.Model):
     name = models.CharField(max_length=100, null=True, blank=False)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='account', blank=True, null=True)
     strategies = models.ManyToManyField(Strategy, related_name='account', null=True)
+    params = models.JSONField(null=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     trading = models.BooleanField(null=True, blank=False, default=False)
     updated = models.BooleanField(null=True, blank=False)
@@ -140,8 +141,10 @@ class Account(models.Model):
         return self.balances
 
     def get_target_pct(self):
-        if self.strategy:
-            pass
+        if self.strategies.all().count() == 1:
+            return self.strategies.all()[0].get_target_pct()
+        else:
+
 
     # Returns a Series with target value
     def get_target_value(self):

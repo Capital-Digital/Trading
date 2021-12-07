@@ -473,6 +473,7 @@ class Market(models.Model):
 
     delivery_date = models.DateTimeField(null=True, blank=True)
     onboard_date = models.DateTimeField(null=True, blank=True)
+    dt_created = models.DateTimeField(auto_now=True)
 
     margined = models.ForeignKey(Currency, on_delete=models.CASCADE,
                                  related_name='market_margined',

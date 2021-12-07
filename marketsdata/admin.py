@@ -194,7 +194,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Market)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('symbol', 'exchange', 'type', 'trading', 'updated', 'margined', 'contract_value',
-                    'contract_currency')
+                    'contract_currency', 'dt_created')
     readonly_fields = ('symbol', 'exchange', 'top', 'trading', 'updated', 'type', 'wallet', 'contract_type', 'status',
                        'quote', 'base', 'funding_rate', 'margined',
                        'contract_currency', 'listing_date', 'delivery_date', 'contract_value', 'amount_min',

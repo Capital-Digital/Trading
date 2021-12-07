@@ -583,6 +583,7 @@ def fetch_candle_history(exid):
                 # Get latest timestamp
                 end = queryset.order_by('-year', '-semester')[0].data[-1][0]
                 dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+                print('dt last', dt)
 
                 if dt == now:
                     log.info('Market {0} {1} is updated'.format(market.symbol, market.wallet))

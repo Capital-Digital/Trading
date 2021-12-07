@@ -599,6 +599,7 @@ def fetch_candle_history(exid):
             if dt < now:
 
                 # Add 1 hour and convert to milliseconds
+                print('dt', dt)
                 since = int((dt + timedelta(hours=1)).timestamp() * 1000)
 
                 while dt < now:
@@ -688,6 +689,7 @@ def fetch_candle_history(exid):
 
                         else:
                             since += 30 * 24 * (60 * 60 * 1000)
+                            print('since', since)
                             log.info('Empty array, set since to {0}'.format(since))
 
             else:

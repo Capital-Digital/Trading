@@ -610,6 +610,7 @@ def fetch_candle_history(exid):
                 while dt < now:
 
                     try:
+                        print(dt)
                         print(since)
                         print(limit)
                         print('\n')

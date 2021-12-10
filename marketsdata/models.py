@@ -525,11 +525,11 @@ class Market(models.Model):
         if Candle.objects.filter(market=self).exists():
             return True
         else:
-            log.info('Market not populated',
-                     wallet=self.wallet,
-                     symbol=self.symbol,
-                     exchange=self.exchange.exid
-                     )
+            # log.info('Market not populated',
+            #          wallet=self.wallet,
+            #          symbol=self.symbol,
+            #          exchange=self.exchange.exid
+            #          )
             return False
 
     # Return True if a market is updated

@@ -610,6 +610,9 @@ def fetch_candle_history(exid):
                 while dt < now:
 
                     try:
+                        print(since)
+                        print(limit)
+                        print('\n')
                         data = client.fetchOHLCV(market.symbol, '1h', since, limit)
 
                     except ccxt.BadSymbol as e:

@@ -572,6 +572,9 @@ def fetch_candle_history(exid):
 
         for market in markets:
 
+            if not market.type == 'spot' and not market.symbol == 'BTC/USDT':
+                continue
+
             log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             directive = '%Y-%m-%dT%H:%M:%SZ'
@@ -582,8 +585,8 @@ def fetch_candle_history(exid):
 
                 # Get latest timestamp
                 end = queryset.order_by('-year', '-semester')[0].data[-1][0]
-                dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
-                print('dt last', dt)
+                # dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+                dt = exchange.start_date
 
                 if dt == now:
                     log.info('Market {0} {1} is updated'.format(market.symbol, market.wallet))

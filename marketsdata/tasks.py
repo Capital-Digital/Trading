@@ -685,7 +685,9 @@ def fetch_candle_history(exid):
 
                                             # Remove duplicate records
                                             diff = list(set(var) - set(obj.data))
-                                            log.info('length diff {0}'.format(len(diff)))
+
+                                            if diff:
+                                                log.info('length diff {0}'.format(len(diff)))
 
                                             # diff = [c for c in var if c not in obj.data]
 

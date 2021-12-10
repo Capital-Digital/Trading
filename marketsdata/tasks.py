@@ -572,11 +572,6 @@ def fetch_candle_history(exid):
 
         for market in markets:
 
-            if not market.type == 'spot':
-                continue
-            if not market.symbol == 'BTC/USDT':
-                continue
-
             log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             directive = '%Y-%m-%dT%H:%M:%SZ'
@@ -678,22 +673,11 @@ def fetch_candle_history(exid):
                                         else:
 
                                             for c in var:
-                                                if c in obj.data:
-                                                    pass
-                                                else:
+                                                if c not in obj.data:
                                                     log.info('not found')
 
                                             # Remove duplicate records
-                                            if obj.data:
-                                                # diff = list(set(var) - set(obj.data))
-                                                diff = [c for c in var if c not in obj.data]
-                                            else:
-                                                diff = None
-
-                                            if diff:
-                                                log.info('length diff {0}'.format(len(diff)))
-
-                                            # diff = [c for c in var if c not in obj.data]
+                                            diff = [c for c in var if c not in obj.data]
 
                                             if diff:
 

@@ -688,7 +688,8 @@ def fetch_candle_history(exid):
                                             if obj.data:
                                                 print('\n\n\n')
                                                 print('obj.data', obj.data)
-                                                diff = list(set(var) - set(obj.data))
+                                                # diff = list(set(var) - set(obj.data))
+                                                diff = [c for c in var if c not in obj.data]
                                             else:
                                                 diff = None
 

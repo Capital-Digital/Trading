@@ -572,7 +572,9 @@ def fetch_candle_history(exid):
 
         for market in markets:
 
-            if not market.type == 'spot' and not market.symbol == 'BTC/USDT':
+            if not market.type == 'spot':
+                continue
+            if not market.symbol == 'BTC/USDT':
                 continue
 
             log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)

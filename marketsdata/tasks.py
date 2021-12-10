@@ -676,10 +676,18 @@ def fetch_candle_history(exid):
                                                                    market=market,
                                                                    data=var)
                                         else:
+
                                             for c in var:
-                                                log.info(c)
+                                                if c in obj.data:
+                                                    log.info(c)
+                                                else:
+                                                    log.info('not found')
+
                                             # Remove duplicate records
-                                            diff = [c for c in var if c not in obj.data]
+                                            diff = list(set(var) - set(obj.data))
+                                            log.info('length diff {0}'.format(len(diff)))
+
+                                            # diff = [c for c in var if c not in obj.data]
 
                                             if diff:
 

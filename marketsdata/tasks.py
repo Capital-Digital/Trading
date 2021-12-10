@@ -679,7 +679,7 @@ def fetch_candle_history(exid):
 
                                             for c in var:
                                                 if c in obj.data:
-                                                    log.info(c)
+                                                    pass
                                                 else:
                                                     log.info('not found')
 

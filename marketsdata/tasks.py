@@ -613,7 +613,7 @@ def fetch_candle_history(exid):
                         log.info(dt)
                         log.info(since)
                         log.info(limit)
-                        
+
                         data = client.fetchOHLCV(market.symbol, '1h', since, limit)
 
                     except ccxt.BadSymbol as e:
@@ -677,6 +677,8 @@ def fetch_candle_history(exid):
                                                                    data=var)
                                         else:
                                             # Remove duplicate records
+                                            log.info('length obj.data is '.format(len(obj.data)))
+                                            log.info('length var is '.format(len(var)))
                                             diff = [c for c in var if c not in obj.data]
 
                                             if diff:

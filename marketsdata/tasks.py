@@ -684,6 +684,9 @@ def fetch_candle_history(exid):
                                                     log.info('not found')
 
                                             # Remove duplicate records
+                                            print('var', var)
+                                            print('obj.data', obj.data)
+
                                             diff = list(set(var) - set(obj.data))
 
                                             if diff:

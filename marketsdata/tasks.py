@@ -633,7 +633,7 @@ def fetch_candle_history(exid):
 
                         if data:
 
-                            print('Fetch {0} candles'.format(len(data)))
+                            log.info('Fetch {0} candles'.format(len(data)))
 
                             # Remove record of current hour
                             end_ts = data[-1][0]

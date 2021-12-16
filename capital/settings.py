@@ -252,4 +252,20 @@ def clean_metadata(request, logger, **kwargs):
     # logger.bind(user_email=getattr(request.user, 'email', ''))
     logger.unbind('request_id', 'ip', 'user_id')
 
+
 DEFAULT_AUTO_FIELD='django.db.models.AutoField'
+
+
+SHELL_PLUS_IMPORTS = [
+    'import django',
+    'import ccxt, ccxtpro',
+    'import time',
+    'import matplotlib.pyplot as plt',
+    'import pandas as pd',
+    'from capital.methods import *',
+    'from strategy.models import Strategy'
+]
+
+NOTEBOOK_ARGUMENTS = [
+    '--NotebookApp.max_buffer_size', '536870912'
+]

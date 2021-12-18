@@ -457,7 +457,7 @@ class Exchange(models.Model):
 
         elif source == 'tickers':
 
-            print('Load data from tickers')
+            log.info('Load data from tickers')
 
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
             start = now - timedelta(hours=length)
@@ -523,7 +523,7 @@ class Exchange(models.Model):
 
         # Reorder columns by name
         df = df.reindex(sorted(df.columns), axis=1)
-        print('Load data from tickers complete')
+        log.info('Load data complete')
 
         if volume:
             vo = vo.reindex(sorted(vo.columns), axis=1)

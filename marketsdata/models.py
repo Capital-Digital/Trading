@@ -437,6 +437,8 @@ class Exchange(models.Model):
     # Create prices and volumes dataframe from candles or tickers
     def load_data(self, source, length, start=None, volume=False, multiplier=True):
 
+        print(source, length)
+        
         if source == 'candles':
 
             # Load candles from csv file

@@ -450,7 +450,8 @@ class Exchange(models.Model):
             # Filter rows by datetime
             since = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
             df = df.loc[(df.index >= since) & (df.index <= since + pd.DateOffset(**dict(hours=length)))]
-            vo = vo.loc[(vo.index >= since) & (vo.index <= since + pd.DateOffset(**dict(hours=length)))]
+            if volume:
+                vo = vo.loc[(vo.index >= since) & (vo.index <= since + pd.DateOffset(**dict(hours=length)))]
 
         elif source == 'tickers':
 

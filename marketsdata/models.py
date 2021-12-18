@@ -434,6 +434,96 @@ class Exchange(models.Model):
                                            )
             self.save()
 
+    # Create prices and volumes dataframe from candles or tickers
+    def load_data(self, source, length, volume=False, start=None, multiplier=True):
+
+        if source == 'candles':
+
+            # Load candles from csv file
+            df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
+            df.index = pd.to_datetime(df.index)
+
+            if volume:
+                vo = pd.read_csv('df_' + 'USDT' + '_' + 'volumes' + '.csv', sep=',', encoding='utf-8').set_index('index')
+                vo.index = pd.to_datetime(vo.index)
+
+            # Filter rows by datetime
+            since = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
+            df = df.loc[(df.index >= since) & (df.index <= since + pd.DateOffset(**dict(hours=length)))]
+            vo = vo.loc[(vo.index >= since) & (vo.index <= since + pd.DateOffset(**dict(hours=length)))]
+
+        elif source == 'tickers':
+
+            now = datetime.now().replace(minute=0, second=0, microsecond=0)
+            start = now - timedelta(hours=length)
+            years = get_years(start)
+            semester = get_semesters(start)
+            df = pd.DataFrame()
+            vo = pd.DataFrame()
+
+            # Query tickers from all spot markets
+            currencies = Currency.objects.filter(exchange=self)
+            qs = Tickers.objects.filter(market__base__in=currencies)
+            qs = qs.filter(year__in=years,
+                           semester__in=semester,
+                           market__type='spot',
+                           market__quote__code='USDT')
+
+            for i in qs.iterator(10):
+
+                # Filter timestamps
+                timestamps = [e['timestamp'] for e in i.data if e['timestamp'] >= int(start.timestamp())]
+                data = [e for e in i.data if e['timestamp'] in timestamps]
+
+                # Select data and create dataframes
+                last = [e['last'] for e in data]
+                tmp_l = pd.DataFrame(last, index=timestamps, columns=[i.market.base.code])
+                tmp_l.index = pd.to_datetime(tmp_l.index, unit='s')
+
+                # Append row if code in dataframe else create new column
+                axis = 0 if i.market.base.code in list(df.columns) else 1
+                df = pd.concat([df, tmp_l], axis=axis)
+                df = df.groupby(level=0).mean()
+
+                if volume:
+                    vol = [e['quoteVolume'] * e['last'] for e in data]
+                    tmp_v = pd.DataFrame(vol, index=timestamps, columns=[i.market.base.code])
+                    tmp_v.index = pd.to_datetime(tmp_v.index, unit='s')
+
+                    # Append row if code in dataframe else create new column
+                    axis = 0 if i.market.base.code in list(df.columns) else 1
+                    vo = pd.concat([vo, tmp_v], axis=axis)
+                    vo = vo.groupby(level=0).mean()
+
+        # Fill missing values and zero with previous data
+        df = df.replace(to_replace=0, method='ffill')
+        df = df.resample('H').fillna('ffill')
+        df = df.fillna(method='ffill')
+
+        if volume:
+            vo = vo.resample('H').fillna('ffill')
+            vo = vo.fillna(method='ffill')
+            vo = vo * df
+
+        # Apply multiplier to extreme values
+        if multiplier:
+            df.loc[:, df.min() < 0.00001] = df.loc[:, df.min() < 0.00001] * 1000000
+            df.loc[:, df.min() < 0.0001] = df.loc[:, df.min() < 0.0001] * 100000
+            df.loc[:, df.min() < 0.001] = df.loc[:, df.min() < 0.001] * 10000
+            df.loc[:, df.min() < 0.01] = df.loc[:, df.min() < 0.01] * 1000
+            df.loc[:, df.min() < 0.1] = df.loc[:, df.min() < 0.1] * 100
+            df.loc[:, df.min() < 1] = df.loc[:, df.min() < 1] * 10
+            df.loc[:, df.max() > 1000000] = df.loc[:, df.max() > 1000000] / 100
+            df.loc[:, df.max() > 100000] = df.loc[:, df.max() > 100000] / 1000
+
+        # Reorder columns by name
+        df = df.reindex(sorted(df.columns), axis=1)
+        vo = vo.reindex(sorted(vo.columns), axis=1)
+
+        log.info('Dataframes loaded')
+
+        return df, vo
+
 
 class Currency(models.Model):
     name, code = [models.CharField(max_length=100, blank=True, null=True) for i in range(2)]

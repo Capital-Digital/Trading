@@ -435,7 +435,7 @@ class Exchange(models.Model):
             self.save()
 
     # Create prices and volumes dataframe from candles or tickers
-    def load_data(self, source, length, start=None, volume=False, multiplier=True):
+    def load_data(self, source, length, start, volume=False, multiplier=True):
 
         if source == 'candles':
 

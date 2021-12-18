@@ -436,8 +436,7 @@ class Exchange(models.Model):
 
     # Create prices and volumes dataframe from candles or tickers
     def load_data(self, source, length, start=None, volume=False, multiplier=True):
-        
-        print('exchange', source, length, start)
+
         if source == 'candles':
 
             # Load candles from csv file
@@ -526,7 +525,7 @@ class Exchange(models.Model):
             vo = vo.reindex(sorted(vo.columns), axis=1)
             return df, vo
 
-        return df
+        return df, None
 
 
 class Currency(models.Model):

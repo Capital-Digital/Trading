@@ -435,7 +435,7 @@ class Exchange(models.Model):
             self.save()
 
     # Create prices and volumes dataframe from candles or tickers
-    def load_data(self, source, length, s, volume=False, multiplier=True):
+    def load_data(self, source, length, start=None, volume=False, multiplier=True):
 
         if source == 'candles':
 
@@ -448,7 +448,7 @@ class Exchange(models.Model):
                 vo.index = pd.to_datetime(vo.index)
 
             # Filter rows by datetime
-            since = datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
+            since = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
             df = df.loc[(df.index >= since) & (df.index <= since + pd.DateOffset(**dict(hours=length)))]
             if volume:
                 vo = vo.loc[(vo.index >= since) & (vo.index <= since + pd.DateOffset(**dict(hours=length)))]

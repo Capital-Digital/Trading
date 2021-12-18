@@ -439,6 +439,8 @@ class Exchange(models.Model):
 
         if source == 'candles':
 
+            log.info('Load data from candles')
+
             # Load candles from csv file
             df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
             df.index = pd.to_datetime(df.index)
@@ -454,6 +456,8 @@ class Exchange(models.Model):
                 vo = vo.loc[(vo.index >= since) & (vo.index <= since + pd.DateOffset(**dict(hours=length)))]
 
         elif source == 'tickers':
+
+            print('Load data from tickers')
 
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
             start = now - timedelta(hours=length)
@@ -519,7 +523,7 @@ class Exchange(models.Model):
 
         # Reorder columns by name
         df = df.reindex(sorted(df.columns), axis=1)
-        log.info('Dataframes loaded')
+        print('Load data from tickers complete')
 
         if volume:
             vo = vo.reindex(sorted(vo.columns), axis=1)

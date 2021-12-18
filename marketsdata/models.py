@@ -519,11 +519,13 @@ class Exchange(models.Model):
 
         # Reorder columns by name
         df = df.reindex(sorted(df.columns), axis=1)
-        vo = vo.reindex(sorted(vo.columns), axis=1)
-
         log.info('Dataframes loaded')
+        
+        if volume:
+            vo = vo.reindex(sorted(vo.columns), axis=1)
+            return df, vo
 
-        return df, vo
+        return df
 
 
 class Currency(models.Model):

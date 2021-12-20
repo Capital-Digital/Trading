@@ -507,6 +507,7 @@ class Exchange(models.Model):
 
             # Set timestamp at the end of the period
             df.index = df.index - pd.DateOffset(hour=1)
+            df.drop_duplicates(inplace=True)
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

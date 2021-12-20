@@ -492,7 +492,7 @@ class Exchange(models.Model):
                 df = df.groupby(level=0).mean()
 
                 if volume:
-                    vol = [e['quoteVolume'] for e in data]  #  * e['last']
+                    vol = [e['quoteVolume'] for e in data]
                     tmp_v = pd.DataFrame(vol, index=timestamps, columns=[i.market.base.code])
                     tmp_v.index = pd.to_datetime(tmp_v.index, unit='s')
 

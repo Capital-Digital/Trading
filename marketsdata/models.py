@@ -488,6 +488,9 @@ class Exchange(models.Model):
 
                 # Append row if code in dataframe else create new column
                 axis = 0 if i.market.base.code in list(df.columns) else 1
+                print('\n')
+                print(df.index)
+                print(tmp_l.index)
                 df = pd.concat([df, tmp_l], axis=axis)
                 df = df.groupby(level=0).mean()
 

@@ -491,6 +491,7 @@ class Exchange(models.Model):
                 print('\n')
                 print(df.index)
                 print(tmp_l.index)
+                tmp_l.drop_duplicates(inplace=True)
                 df = pd.concat([df, tmp_l], axis=axis)
                 df = df.groupby(level=0).mean()
 

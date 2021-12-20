@@ -501,6 +501,9 @@ class Exchange(models.Model):
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
+                # Set timestamp at the end of the period
+                df = df.shift(1)
+
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')
         df = df.resample('H').fillna('ffill')

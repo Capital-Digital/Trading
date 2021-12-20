@@ -501,8 +501,7 @@ class Exchange(models.Model):
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
-            # Set timestamp at the end of the period
-            # df.index = df.index - pd.DateOffset(hour=1)
+            # Set timestamp at the end of the period (same as candles)
             df = df.shift(-1, freq='H')
 
         # Fill missing values and zero with previous data

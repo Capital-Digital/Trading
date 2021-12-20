@@ -489,6 +489,7 @@ class Exchange(models.Model):
                 axis = 0 if i.market.base.code in list(df.columns) else 1
                 print(df)
                 print(tmp_l)
+                print(tmp_l.index)
                 df = pd.concat([df, tmp_l], axis=axis)
                 df = df.groupby(level=0).mean()
 

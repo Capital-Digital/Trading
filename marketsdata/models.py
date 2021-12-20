@@ -510,7 +510,6 @@ class Exchange(models.Model):
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')
-        df.drop_duplicates(inplace=True)
         df = df.resample('H').fillna('ffill')
         df = df.fillna(method='ffill')
 

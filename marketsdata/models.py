@@ -492,7 +492,7 @@ class Exchange(models.Model):
                 df = df.groupby(level=0).mean()
 
                 # Set timestamp at the end of the period
-                df = df.shift(1)
+                df.index = df.index - pd.DateOffset(hour=1)
 
                 if volume:
                     vol = [e['quoteVolume'] * e['last'] for e in data]

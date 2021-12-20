@@ -483,7 +483,6 @@ class Exchange(models.Model):
                 # Select data and create dataframes
                 last = [e['last'] for e in data]
                 tmp_l = pd.DataFrame(last, index=timestamps, columns=[i.market.base.code])
-                tmp_l.drop_duplicates(inplace=True)
                 tmp_l.index = pd.to_datetime(tmp_l.index, unit='s')
                 tmp_l = tmp_l.groupby(tmp_l.index).first().resample('H').fillna('ffill')
 

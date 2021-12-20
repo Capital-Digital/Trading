@@ -484,12 +484,10 @@ class Exchange(models.Model):
                 last = [e['last'] for e in data]
                 tmp_l = pd.DataFrame(last, index=timestamps, columns=[i.market.base.code])
                 tmp_l.index = pd.to_datetime(tmp_l.index, unit='s')
+                tmp_l = tmp_l.resample('H').fillna('ffill')
 
                 # Append row if code in dataframe else create new column
                 axis = 0 if i.market.base.code in list(df.columns) else 1
-                print(df)
-                print(tmp_l)
-                print(tmp_l.index)
                 df = pd.concat([df, tmp_l], axis=axis)
                 df = df.groupby(level=0).mean()
 

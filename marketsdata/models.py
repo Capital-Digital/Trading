@@ -499,7 +499,9 @@ class Exchange(models.Model):
                     # Append row if code in dataframe else create new column
                     axis = 0 if i.market.base.code in list(df.columns) else 1
                     vo = pd.concat([vo, tmp_v], axis=axis)
+                    print('vo1\n', vo)
                     vo = vo.groupby(level=0).mean()
+                    print('vo2\n', vo)
 
             # Set timestamp at the end of the period (same as candles)
             df = df.shift(-1, freq='H')

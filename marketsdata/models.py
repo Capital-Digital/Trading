@@ -502,7 +502,7 @@ class Exchange(models.Model):
                     vo = vo.groupby(level=0).mean()
 
             # Set timestamp at the end of the period (same as candles)
-            df = df.shift(-1, freq='H')
+            df = df.shift(-10, freq='H')
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

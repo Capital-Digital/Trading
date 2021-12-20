@@ -489,10 +489,6 @@ class Exchange(models.Model):
                 # Append row if code in dataframe else create new column
                 axis = 0 if i.market.base.code in list(df.columns) else 1
 
-                print('\n')
-                print(df.index)
-                print(tmp_l.index)
-
                 tmp_l.drop_duplicates(inplace=True)
                 df.drop_duplicates(inplace=True)
 
@@ -514,6 +510,7 @@ class Exchange(models.Model):
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')
+        df.drop_duplicates(inplace=True)
         df = df.resample('H').fillna('ffill')
         df = df.fillna(method='ffill')
 

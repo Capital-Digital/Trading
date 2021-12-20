@@ -491,6 +491,9 @@ class Exchange(models.Model):
                 df = pd.concat([df, tmp_l], axis=axis)
                 df = df.groupby(level=0).mean()
 
+                # Set timestamp at the end of the period
+                df = df.shift(-1)
+
                 if volume:
                     vol = [e['quoteVolume'] * e['last'] for e in data]
                     tmp_v = pd.DataFrame(vol, index=timestamps, columns=[i.market.base.code])
@@ -500,9 +503,6 @@ class Exchange(models.Model):
                     axis = 0 if i.market.base.code in list(df.columns) else 1
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
-
-                # Set timestamp at the end of the period
-                df = df.shift(1)
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

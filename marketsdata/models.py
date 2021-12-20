@@ -502,7 +502,7 @@ class Exchange(models.Model):
                     vo = vo.groupby(level=0).mean()
 
             # Set timestamp at the end of the period
-            df.index = df.index - pd.DateOffset(hour=1)
+            # df.index = df.index - pd.DateOffset(hour=1)
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

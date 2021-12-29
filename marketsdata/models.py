@@ -529,33 +529,36 @@ class Exchange(models.Model):
             # Set timestamp at the end of the period (same as candles)
             df = df.shift(-1, freq='H')
 
-        # Fill missing values and zero with previous data
-        df = df.replace(to_replace=0, method='ffill')
-        df = df.resample('H').fillna('ffill')
-        df = df.fillna(method='ffill')
+        if price:
+            # Fill missing values and zero with previous data
+            df = df.replace(to_replace=0, method='ffill')
+            df = df.resample('H').fillna('ffill')
+            df = df.fillna(method='ffill')
+
+            # Apply multiplier to extreme values
+            if multiplier:
+                df.loc[:, df.min() < 0.00001] = df.loc[:, df.min() < 0.00001] * 1000000
+                df.loc[:, df.min() < 0.0001] = df.loc[:, df.min() < 0.0001] * 100000
+                df.loc[:, df.min() < 0.001] = df.loc[:, df.min() < 0.001] * 10000
+                df.loc[:, df.min() < 0.01] = df.loc[:, df.min() < 0.01] * 1000
+                df.loc[:, df.min() < 0.1] = df.loc[:, df.min() < 0.1] * 100
+                df.loc[:, df.min() < 1] = df.loc[:, df.min() < 1] * 10
+                df.loc[:, df.max() > 1000000] = df.loc[:, df.max() > 1000000] / 100
+                df.loc[:, df.max() > 100000] = df.loc[:, df.max() > 100000] / 1000
+
+            # Reorder columns by name
+            df = df.reindex(sorted(df.columns), axis=1)
 
         if volume:
+            # Fill missing values with previous data
             vo = vo.resample('H').fillna('ffill')
             vo = vo.fillna(method='ffill')
+
+            # Convert volumes into dollar currency
             if source == 'candles':
                 vo = vo * df
 
-        # Apply multiplier to extreme values
-        if multiplier:
-            df.loc[:, df.min() < 0.00001] = df.loc[:, df.min() < 0.00001] * 1000000
-            df.loc[:, df.min() < 0.0001] = df.loc[:, df.min() < 0.0001] * 100000
-            df.loc[:, df.min() < 0.001] = df.loc[:, df.min() < 0.001] * 10000
-            df.loc[:, df.min() < 0.01] = df.loc[:, df.min() < 0.01] * 1000
-            df.loc[:, df.min() < 0.1] = df.loc[:, df.min() < 0.1] * 100
-            df.loc[:, df.min() < 1] = df.loc[:, df.min() < 1] * 10
-            df.loc[:, df.max() > 1000000] = df.loc[:, df.max() > 1000000] / 100
-            df.loc[:, df.max() > 100000] = df.loc[:, df.max() > 100000] / 1000
-
-        # Reorder columns by name
-        df = df.reindex(sorted(df.columns), axis=1)
-        log.info('Load data complete')
-
-        if volume:
+            # Reorder columns by name
             vo = vo.reindex(sorted(vo.columns), axis=1)
 
             if price:
@@ -563,7 +566,8 @@ class Exchange(models.Model):
             else:
                 return vo
 
-        return df, None
+        else:
+            return df, None
 
 
 class Currency(models.Model):

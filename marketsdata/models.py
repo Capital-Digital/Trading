@@ -450,7 +450,7 @@ class Exchange(models.Model):
                 vo.index = pd.to_datetime(vo.index)
 
             # Filter rows by datetime
-            since = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
+            since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
             end = since + pd.DateOffset(**dict(hours=length))
             df = df.loc[(df.index >= since) & (df.index <= end)]
             if volume:

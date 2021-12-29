@@ -451,9 +451,10 @@ class Exchange(models.Model):
 
             # Filter rows by datetime
             since = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
-            df = df.loc[(df.index >= since) & (df.index <= since + pd.DateOffset(**dict(hours=length)))]
+            end = since + pd.DateOffset(**dict(hours=length))
+            df = df.loc[(df.index >= since) & (df.index <= end)]
             if volume:
-                vo = vo.loc[(vo.index >= since) & (vo.index <= since + pd.DateOffset(**dict(hours=length)))]
+                vo = vo.loc[(vo.index >= since) & (vo.index <= end)]
 
         elif source == 'tickers':
 
@@ -492,7 +493,7 @@ class Exchange(models.Model):
                 df = df.groupby(level=0).mean()
 
                 if volume:
-                    vol = [e['quoteVolume'] for e in data]
+                    vol = [e['quoteVolume'] for e in data]  # 24h volumes
                     tmp_v = pd.DataFrame(vol, index=timestamps, columns=[i.market.base.code])
                     tmp_v.index = pd.to_datetime(tmp_v.index, unit='s')
 
@@ -504,7 +505,10 @@ class Exchange(models.Model):
             # Set timestamp at the end of the period (same as candles)
             df = df.shift(-1, freq='H')
             if volume:
-                vo = vo.shift(-1, freq='H')
+                pass
+                # vo = vo.shift(-1, freq='H')
+
+                # Determine hourly volumes
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

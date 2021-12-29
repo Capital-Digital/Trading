@@ -435,16 +435,16 @@ class Exchange(models.Model):
             self.save()
 
     # Create prices and volumes dataframe from candles or tickers
-    def load_data(self, source, length, start=None, volume=False, multiplier=True):
+    def load_data(self, source, length, start=None, price=True, volume=False, hourly=True, multiplier=True):
 
         if source == 'candles':
 
             log.info('Load data from candles')
 
             # Load candles from csv file
-            df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
-            df.index = pd.to_datetime(df.index)
-
+            if price:
+                df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
+                df.index = pd.to_datetime(df.index)
             if volume:
                 vo = pd.read_csv('df_' + 'USDT' + '_' + 'volumes' + '.csv', sep=',', encoding='utf-8').set_index('index')
                 vo.index = pd.to_datetime(vo.index)
@@ -452,7 +452,9 @@ class Exchange(models.Model):
             # Filter rows by datetime
             since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
             end = since + pd.DateOffset(**dict(hours=length))
-            df = df.loc[(df.index >= since) & (df.index <= end)]
+
+            if price:
+                df = df.loc[(df.index >= since) & (df.index <= end)]
             if volume:
                 vo = vo.loc[(vo.index >= since) & (vo.index <= end)]
 
@@ -492,8 +494,9 @@ class Exchange(models.Model):
                 df = pd.concat([df, tmp_l], axis=axis)
                 df = df.groupby(level=0).mean()
 
+                # Select 24h volumes
                 if volume:
-                    vol = [e['quoteVolume'] for e in data]  # 24h volumes
+                    vol = [e['quoteVolume'] for e in data]
                     tmp_v = pd.DataFrame(vol, index=timestamps, columns=[i.market.base.code])
                     tmp_v.index = pd.to_datetime(tmp_v.index, unit='s')
 
@@ -502,13 +505,30 @@ class Exchange(models.Model):
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
+                    # Determine hourly volumes
+                    if hourly:
+
+                        # Create a dataframe with hourly volumes
+                        start = vo.head(1).index.strftime("%Y-%m-%d %H:%M:%S")
+                        vol_1h = self.load_data('candles', length, start=start, price=False, volume=True)
+
+                        # Select series of the desired datetime
+                        dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+                        s = vol_1h.loc[dt]
+
+                        # Determine last hourly volume
+                        s_prev = vo.tail(2).head(1)
+                        s_last = vo.tail(1)
+                        s_last_1h = (s_last + s) - s_prev
+
+                        # Append series to dataframe
+                        vo = pd.concat([vol_1h, s_last_1h], axis=0)
+
+                    vo = vo.shift(-1, freq='H')
+                    return vo
+
             # Set timestamp at the end of the period (same as candles)
             df = df.shift(-1, freq='H')
-            if volume:
-                pass
-                # vo = vo.shift(-1, freq='H')
-
-                # Determine hourly volumes
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

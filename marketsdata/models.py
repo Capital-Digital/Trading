@@ -509,7 +509,7 @@ class Exchange(models.Model):
                     if hourly:
 
                         # Create a dataframe with hourly volumes
-                        start = vo.head(1).index.strftime("%Y-%m-%d %H:%M:%S")
+                        start = vo.head(1).index[0].strftime("%Y-%m-%d %H:%M:%S")
                         vol_1h = self.load_data('candles', length, start=start, price=False, volume=True)
 
                         # Select series of the desired datetime

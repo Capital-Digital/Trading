@@ -442,9 +442,8 @@ class Exchange(models.Model):
             log.info('Load data from candles')
 
             # Load candles from csv file
-            if price:
-                df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
-                df.index = pd.to_datetime(df.index)
+            df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
+            df.index = pd.to_datetime(df.index)
             if volume:
                 vo = pd.read_csv('df_' + 'USDT' + '_' + 'volumes' + '.csv', sep=',', encoding='utf-8').set_index('index')
                 vo.index = pd.to_datetime(vo.index)
@@ -453,8 +452,7 @@ class Exchange(models.Model):
             since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
             end = since + pd.DateOffset(**dict(hours=length))
 
-            if price:
-                df = df.loc[(df.index >= since) & (df.index <= end)]
+            df = df.loc[(df.index >= since) & (df.index <= end)]
             if volume:
                 vo = vo.loc[(vo.index >= since) & (vo.index <= end)]
 
@@ -510,7 +508,8 @@ class Exchange(models.Model):
 
                         # Create a dataframe with hourly volumes
                         start = vo.head(1).index[0].strftime("%Y-%m-%d %H:%M:%S")
-                        vol_1h = self.load_data('candles', length, start=start, price=False, volume=True)
+                        vol_1h = self.load_data('candles', length, start=start, volume=True)[1]
+                        print('vol_1h', vol_1h)
 
                         # Select series of the desired datetime
                         dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
@@ -523,31 +522,32 @@ class Exchange(models.Model):
 
                         # Append series to dataframe
                         vo = pd.concat([vol_1h, s_last_1h], axis=0)
+                        print('vo', vo)
 
+                    # Set timestamp at the beginning of the period
                     vo = vo.shift(-1, freq='H')
 
-            # Set timestamp at the end of the period (same as candles)
+            # Set timestamp at the beginning of the period
             df = df.shift(-1, freq='H')
 
-        if price:
-            # Fill missing values and zero with previous data
-            df = df.replace(to_replace=0, method='ffill')
-            df = df.resample('H').fillna('ffill')
-            df = df.fillna(method='ffill')
+        # Fill missing values and zero with previous data
+        df = df.replace(to_replace=0, method='ffill')
+        df = df.resample('H').fillna('ffill')
+        df = df.fillna(method='ffill')
 
-            # Apply multiplier to extreme values
-            if multiplier:
-                df.loc[:, df.min() < 0.00001] = df.loc[:, df.min() < 0.00001] * 1000000
-                df.loc[:, df.min() < 0.0001] = df.loc[:, df.min() < 0.0001] * 100000
-                df.loc[:, df.min() < 0.001] = df.loc[:, df.min() < 0.001] * 10000
-                df.loc[:, df.min() < 0.01] = df.loc[:, df.min() < 0.01] * 1000
-                df.loc[:, df.min() < 0.1] = df.loc[:, df.min() < 0.1] * 100
-                df.loc[:, df.min() < 1] = df.loc[:, df.min() < 1] * 10
-                df.loc[:, df.max() > 1000000] = df.loc[:, df.max() > 1000000] / 100
-                df.loc[:, df.max() > 100000] = df.loc[:, df.max() > 100000] / 1000
+        # Apply multiplier to extreme values
+        if multiplier:
+            df.loc[:, df.min() < 0.00001] = df.loc[:, df.min() < 0.00001] * 1000000
+            df.loc[:, df.min() < 0.0001] = df.loc[:, df.min() < 0.0001] * 100000
+            df.loc[:, df.min() < 0.001] = df.loc[:, df.min() < 0.001] * 10000
+            df.loc[:, df.min() < 0.01] = df.loc[:, df.min() < 0.01] * 1000
+            df.loc[:, df.min() < 0.1] = df.loc[:, df.min() < 0.1] * 100
+            df.loc[:, df.min() < 1] = df.loc[:, df.min() < 1] * 10
+            df.loc[:, df.max() > 1000000] = df.loc[:, df.max() > 1000000] / 100
+            df.loc[:, df.max() > 100000] = df.loc[:, df.max() > 100000] / 1000
 
-            # Reorder columns by name
-            df = df.reindex(sorted(df.columns), axis=1)
+        # Reorder columns by name
+        df = df.reindex(sorted(df.columns), axis=1)
 
         if volume:
             # Fill missing values with previous data
@@ -561,10 +561,7 @@ class Exchange(models.Model):
             # Reorder columns by name
             vo = vo.reindex(sorted(vo.columns), axis=1)
 
-            if price:
-                return df, vo
-            else:
-                return vo
+            return df, vo
 
         else:
             return df, None

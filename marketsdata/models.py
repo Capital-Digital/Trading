@@ -525,7 +525,6 @@ class Exchange(models.Model):
                         vo = pd.concat([vol_1h, s_last_1h], axis=0)
 
                     vo = vo.shift(-1, freq='H')
-                    return vo
 
             # Set timestamp at the end of the period (same as candles)
             df = df.shift(-1, freq='H')
@@ -558,7 +557,11 @@ class Exchange(models.Model):
 
         if volume:
             vo = vo.reindex(sorted(vo.columns), axis=1)
-            return df, vo
+
+            if price:
+                return df, vo
+            else:
+                return vo
 
         return df, None
 

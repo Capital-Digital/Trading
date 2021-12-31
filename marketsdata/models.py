@@ -499,8 +499,7 @@ class Exchange(models.Model):
 
         print('After update')
         print(df['BTC'].tail(20))
-        return
-        
+
         # Save dataframe to file
         df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)
         log.info("Update complete")

@@ -498,7 +498,7 @@ class Exchange(models.Model):
                 df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
 
         print('After update')
-        print(df['BTC'].tail(20))
+        print(df.tail(20))
 
         # Save dataframe to file
         df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)

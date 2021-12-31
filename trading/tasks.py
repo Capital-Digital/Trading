@@ -56,13 +56,14 @@ def update_orders():
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
-        if datetime.now().hour in account.strategy.execution_hours():
-
-            account.trade()
-
-        else:
-            sec = round(account.strategy.seconds_before_update(), 0)
-            log.info('Update will be executed in {0} seconds'.format(sec))
+        pass
+        # if datetime.now().hour in account.strategy.execution_hours():
+        #
+        #     account.trade()
+        #
+        # else:
+        #     sec = round(account.strategy.seconds_before_update(), 0)
+        #     log.info('Update will be executed in {0} seconds'.format(sec))
 
 
 @shared_task(name='Trading_____Trade single account', base=BaseTaskWithRetry)

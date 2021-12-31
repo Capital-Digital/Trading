@@ -472,6 +472,7 @@ class Exchange(models.Model):
 
         # Create empty dataframe
         else:
+            start = datetime(2018, 1, 1, 0, 0)
             df = pd.DataFrame()
             qs = Candles.objects.filter(market__quote__code=quote,
                                         market__type='spot',
@@ -489,8 +490,6 @@ class Exchange(models.Model):
                 temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
                 axis = 0 if i.market.base.code in df.columns else 1
                 df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
-            else:
-                print('no data')
 
         # Save dataframe to file
         df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)

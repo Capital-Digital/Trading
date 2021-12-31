@@ -673,7 +673,6 @@ def fetch_candle_history(exid):
                                             for c in var:
                                                 if c not in obj.data:
                                                     pass
-                                                    # log.info('not found')
 
                                             # Remove duplicate records
                                             diff = [c for c in var if c not in obj.data]
@@ -696,11 +695,17 @@ def fetch_candle_history(exid):
                             dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
 
                         else:
-                            since += 30 * 24 * (60 * 60 * 1000)
-                            log.info('Empty array, set since to {0}'.format(since))
+                            if 'empty' not in locals():
+                                since += 30 * 24 * (60 * 60 * 1000)
+                                log.info('Empty array, set since to {0}'.format(since))
+                                empty = True
+                            else:
+                                log.warning('Empty object returned by exchange')
+                                del empty
+                                break
 
             else:
-                log.info('There is no candle to download')
+                log.warning('There is no candle to download')
     else:
 
         log.warning('Exchange {0} is not trading'.format(exchange.exid))

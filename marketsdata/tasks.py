@@ -610,9 +610,8 @@ def fetch_candle_history(exid):
                         data = client.fetchOHLCV(market.symbol, '1h', since, 100)
 
                     except ccxt.BadSymbol as e:
-                        market.delete()
-                        log.exception('Bad symbol', exception=e)
-                        return
+                        log.warning('Unknown symbol {0}, break while loop'.format(market.symbol))
+                        break
 
                     except ccxt.ExchangeError as e:
                         log.exception('Exchange error', exception=e)

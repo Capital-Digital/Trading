@@ -494,14 +494,17 @@ class Exchange(models.Model):
             if data:
 
                 temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
+                temp.index = pd.to_datetime(temp.index)
                 axis = 0 if i.market.base.code in df.columns else 1
                 df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
 
         print('After update')
         print(df.tail(20))
 
+        df = df.reset_index()
+
         # Save dataframe to file
-        df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)
+        df.to_csv(filename, sep=',', encoding='utf-8', index=False)
         log.info("Update complete")
 
     # Create prices and volumes dataframe from candles or tickers
@@ -521,7 +524,6 @@ class Exchange(models.Model):
             # Filter rows by datetime
             since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
             end = since + pd.DateOffset(**dict(hours=length))
-
             df = df.loc[(df.index >= since) & (df.index <= end)]
             if volume:
                 vo = vo.loc[(vo.index >= since) & (vo.index <= end)]

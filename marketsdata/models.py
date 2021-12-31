@@ -482,7 +482,7 @@ class Exchange(models.Model):
 
             # Filter data based on timestamps
             directive = '%Y-%m-%dT%H:%M:%SZ'
-            ts = [e[0] for e in i.data if convert_string_to_date(e[0], directive) >= int(start.timestamp())]
+            ts = [e[0] for e in i.data if convert_string_to_date(e[0], directive) >= start]
             data = [i[indice] for i in i.data if i[0] in ts]
 
             if data:

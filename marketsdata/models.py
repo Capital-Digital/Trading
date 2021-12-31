@@ -443,9 +443,9 @@ class Exchange(models.Model):
         file = Path(filename)
 
         # Determine indice
-        if dtype == 'price':
+        if dtype == 'prices':
             indice = 4
-        elif dtype == 'volume':
+        elif dtype == 'volumes':
             indice = 5
         else:
             raise Exception("Data type must be 'price' or 'volume'")

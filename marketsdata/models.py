@@ -486,9 +486,12 @@ class Exchange(models.Model):
             ts = [e[0] for e in i.data if convert_string_to_date(e[0], directive) >= int(start.timestamp())]
             data = [i[indice] for i in i.data if i[0] in ts]
 
-            temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
-            axis = 0 if i.market.base.code in df.columns else 1
-            df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
+            if data:
+                temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
+                axis = 0 if i.market.base.code in df.columns else 1
+                df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
+            else:
+                print('no data')
 
         # Save dataframe to file
         df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)

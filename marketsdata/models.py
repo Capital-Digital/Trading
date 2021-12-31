@@ -6,8 +6,10 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django_pandas.managers import DataFrameManager
 from marketsdata.methods import *
+from marketsdata.tasks import insert_candle_history
 from capital.methods import *
 import pandas as pd
+from tqdm import tqdm
 from pprint import pprint
 import json
 import cloudscraper
@@ -434,6 +436,64 @@ class Exchange(models.Model):
                                            )
             self.save()
 
+    # Save spot prices and volume to CSV files
+    def save_data(self, quote, dtype):
+
+        from pathlib import Path
+        filename = 'df_' + quote + '_' + dtype + '.csv'
+        file = Path(filename)
+
+        # Determine indice
+        if dtype == 'price':
+            indice = 4
+        elif dtype == 'volume':
+            indice = 5
+        else:
+            raise Exception("Data type must be 'price' or 'volume'")
+
+        # Update CSV file
+        if file.exists():
+
+            log.info('Update {0} candles dataframe for {1}'.format(dtype, quote))
+
+            # Load file and determine datetime for the update
+            df = pd.read_csv(filename, sep=',', encoding='utf-8').set_index('index')
+            df.index = pd.to_datetime(df.index)
+            start = df.tail(1).index[0] + timedelta(hours=1)
+            years = get_years(start)
+            semester = get_semesters(start)
+
+            # Query candles from all spot markets
+            qs = Candles.objects.filter(market__quote__code=quote,
+                                        market__type='spot',
+                                        market__exchange=self,
+                                        year__in=years,
+                                        semester__in=semester
+                                        )
+
+        # Create empty dataframe
+        else:
+            df = pd.DataFrame()
+            qs = Candles.objects.filter(market__quote__code=quote,
+                                        market__type='spot',
+                                        market__exchange=self
+                                        )
+
+        for i in qs.iterator(10):
+
+            # Filter data based on timestamps
+            directive = '%Y-%m-%dT%H:%M:%SZ'
+            ts = [e[0] for e in i.data if convert_string_to_date(e[0], directive) >= int(start.timestamp())]
+            data = [i[indice] for i in i.data if i[0] in ts]
+
+            temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
+            axis = 0 if i.market.base.code in df.columns else 1
+            df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
+
+        # Save dataframe to file
+        df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)
+        log.info("Update complete")
+
     # Create prices and volumes dataframe from candles or tickers
     def load_data(self, source, length, start=None, price=True, volume=False, hourly=True, multiplier=True):
 
@@ -503,26 +563,34 @@ class Exchange(models.Model):
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
-                    # Determine hourly volumes
+                    # Determine volumes of the last hour
                     if hourly:
 
-                        # Create a dataframe with hourly volumes
+                        # Create a dataframe with available hourly volumes
                         start = vo.head(1).index[0].strftime("%Y-%m-%d %H:%M:%S")
                         vol_1h = self.load_data('candles', length, start=start, volume=True)[1]
-                        print('vol_1h', vol_1h)
 
-                        # Select series of the desired datetime
-                        dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
-                        s = vol_1h.loc[dt]
+                        try:
+                            # Select datetime of the 1st hour in the 24h rolling period (EOP)
+                            # and select hourly volumes in us dollar
+                            dt = (now - timedelta(hours=23)).strftime("%Y-%m-%d %H:%M:%S")
+                            s = vol_1h.loc[dt]
 
-                        # Determine last hourly volume
-                        s_prev = vo.tail(2).head(1)
-                        s_last = vo.tail(1)
-                        s_last_1h = (s_last + s) - s_prev
+                        except KeyError:
+                            log.warning('Candles not updated. Unable to fetch hourly volumes at {0]'.format(dt))
+                            insert_candle_history(self.exid)
+                            self.create_df_from_candles(indice, write=True)
+                            s = vol_1h.loc[dt]
 
-                        # Append series to dataframe
-                        vo = pd.concat([vol_1h, s_last_1h], axis=0)
-                        print('vo', vo)
+                        finally:
+                            # Determine last hourly volume from 24h rolling volume average
+                            s_prev = vo.tail(2).head(1)
+                            s_last = vo.tail(1)
+                            s_last_1h = (s_last + s) - s_prev
+
+                            # Append series to dataframe
+                            vo = pd.concat([vol_1h, s_last_1h], axis=0)
+                            print('vo', vo)
 
                     # Set timestamp at the beginning of the period
                     vo = vo.shift(-1, freq='H')

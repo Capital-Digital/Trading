@@ -458,6 +458,10 @@ class Exchange(models.Model):
             # Load file and determine datetime for the update
             df = pd.read_csv(filename, sep=',', encoding='utf-8').set_index('index')
             df.index = pd.to_datetime(df.index)
+
+            print('Before update')
+            print(df['BTC'].tail(20))
+
             start = df.tail(1).index[0] + timedelta(hours=1)
             years = get_years(start)
             semester = get_semesters(start)
@@ -488,10 +492,15 @@ class Exchange(models.Model):
             data = [i[indice] for i in i.data if i[0] in ts]
 
             if data:
+
                 temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
                 axis = 0 if i.market.base.code in df.columns else 1
                 df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
 
+        print('After update')
+        print(df['BTC'].tail(20))
+        return
+        
         # Save dataframe to file
         df.reset_index().to_csv(filename, sep=',', encoding='utf-8', index=False)
         log.info("Update complete")

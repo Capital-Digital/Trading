@@ -20,9 +20,8 @@ from django.utils import timezone
 
 import capital.celery as celery
 from capital.methods import *
-from marketsdata.error import *
 from marketsdata.methods import *
-from marketsdata.models import Exchange, Candle, Market, Currency, CoinPaprika, Candles, Tickers
+from marketsdata.models import Exchange, Market, Currency, CoinPaprika, Candles, Tickers
 import strategy.tasks as task
 
 log = structlog.get_logger(__name__)

@@ -477,7 +477,7 @@ class Exchange(models.Model):
         # Create empty dataframe
         else:
             log.info('Create {0} candles dataframe for {1}'.format(dtype, quote))
-            start = datetime(2018, 1, 1, 0, 0)
+            start = datetime(2018, 1, 1, 0, 0).replace(tzinfo=pytz.UTC)
             df = pd.DataFrame()
             qs = Candles.objects.filter(market__quote__code=quote,
                                         market__type='spot',

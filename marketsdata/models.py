@@ -6,7 +6,6 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django_pandas.managers import DataFrameManager
 from marketsdata.methods import *
-from marketsdata.tasks import insert_candle_history
 from capital.methods import *
 import pandas as pd
 from tqdm import tqdm
@@ -581,6 +580,7 @@ class Exchange(models.Model):
 
                         except KeyError:
                             log.warning('Candles not updated. Unable to fetch hourly volumes at {0]'.format(dt))
+                            from marketsdata.tasks import insert_candle_history
                             insert_candle_history(self.exid)
                             self.create_df_from_candles(indice, write=True)
                             s = vol_1h.loc[dt]

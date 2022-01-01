@@ -636,17 +636,18 @@ def fetch_candle_history(exid):
 
                             # Convert timestamp from ms to string
                             for idx, i in enumerate(data):
-                                dt = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
-                                ts = dt.strftime(directive)
-                                data[idx][0] = ts
+                                dt_aware = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
+                                str = dt_aware.strftime(directive)
+                                data[idx][0] = str
 
                             # Iterate through years
                             for year in list(range(dt.year, timezone.now().year + 1)):
 
+                                # Create lists of string '2022-01', '2022-02', '2022-03', etc.
                                 filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
                                 filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
 
-                                # Filter records by semester
+                                # Filter records by semester 1 (January to July) and 2 (August to December)
                                 data_1 = [i for i in data if i[0][:7] in filter_1]
                                 data_2 = [i for i in data if i[0][:7] in filter_2]
 

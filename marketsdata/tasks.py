@@ -637,14 +637,13 @@ def fetch_candle_history(exid):
                             # Convert timestamp from ms to string
                             for idx, i in enumerate(data):
                                 dt_aware = timezone.make_aware(datetime.fromtimestamp(i[0] / 1000))
-                                str = dt_aware.strftime(directive)
-                                data[idx][0] = str
+                                st = dt_aware.strftime(directive)
+                                data[idx][0] = st
 
                             # Iterate through years
                             for year in list(range(dt.year, timezone.now().year + 1)):
 
                                 print('year', year)
-                                print('type year', type(year))
 
                                 # Create lists of string '2022-01', '2022-02', '2022-03', etc.
                                 filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]

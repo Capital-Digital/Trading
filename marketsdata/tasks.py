@@ -653,9 +653,13 @@ def fetch_candle_history(exid):
 
                                 for i in range(1, 3):
 
+                                    print('year', year)
+
                                     var = eval('data_' + str(i))
                                     if var:
 
+                                        print('data:', 'data_' + str(i))
+                                        
                                         try:
                                             obj = Candles.objects.get(year=year, semester=i, market=market)
 

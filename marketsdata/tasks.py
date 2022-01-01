@@ -643,6 +643,9 @@ def fetch_candle_history(exid):
                             # Iterate through years
                             for year in list(range(dt.year, timezone.now().year + 1)):
 
+                                print('year', year)
+                                print('type year', type(year))
+
                                 # Create lists of string '2022-01', '2022-02', '2022-03', etc.
                                 filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
                                 filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
@@ -653,13 +656,11 @@ def fetch_candle_history(exid):
 
                                 for i in range(1, 3):
 
-                                    print('year', year)
-
                                     var = eval('data_' + str(i))
                                     if var:
 
                                         print('data:', 'data_' + str(i))
-                                        
+
                                         try:
                                             obj = Candles.objects.get(year=year, semester=i, market=market)
 

@@ -508,11 +508,12 @@ class Exchange(models.Model):
         log.info("Update complete")
 
     # Create prices and volumes dataframe from candles or tickers
-    def load_data(self, source, length, start=None, volume=False, hourly=True, multiplier=False):
+    def load_data(self, source, length, start=None, volume=False, multiplier=False):
+
+        log.info('Load data from csv file')
+        log.info('source = {0}'.format(source))
 
         if source == 'candles':
-
-            log.info('Load data from candles')
 
             # Load candles from csv file
             df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
@@ -529,8 +530,6 @@ class Exchange(models.Model):
                 vo = vo.loc[(vo.index >= since) & (vo.index <= end)]
 
         elif source == 'tickers':
-
-            log.info('Load data from tickers')
 
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
             start = now - timedelta(hours=length)
@@ -575,10 +574,6 @@ class Exchange(models.Model):
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
-                    # Determine volumes of the last hour
-                    if hourly:
-                        vo = self.get_tickers_hourly_volumes(vo, now, length)
-
                     # Set timestamp at the beginning of the period
                     vo = vo.shift(-1, freq='H')
 
@@ -615,7 +610,7 @@ class Exchange(models.Model):
                 # Convert to USD
                 vo = vo * df
 
-                # Convert hourly volume to 24h average
+                # Sum hourly volume over a 24 hours period
                 vo = vo.rolling(min_periods=1, window=24).sum()
 
             elif source == 'tickers':
@@ -628,42 +623,6 @@ class Exchange(models.Model):
 
         else:
             return df, None
-
-    def get_tickers_hourly_volumes(self, vo, now, length):
-
-        # Select hourly volumes from candles (in USD)
-        start = vo.head(1).index[0].strftime("%Y-%m-%d %H:%M:%S")
-        vol_1h = self.load_data('candles', length, start=start, volume=True)[1]
-
-        try:
-            # Select datetime of the 1st hour in the 24h rolling period (EOP) and select hourly volumes (in USD)
-            hour_dt = (now - timedelta(hours=23)).strftime("%Y-%m-%d %H:%M:%S")
-            log.info('Select volume at {0} to determine last hourly volume'.format(hour_dt))
-            s = vol_1h.loc[hour_dt]
-
-        except KeyError:
-            log.error('Candles not updated. Unable to fetch hourly volumes at {0]'.format(hour_dt))
-
-            # Fetch last hourly candles
-            from marketsdata.tasks import fetch_candle_history
-            fetch_candle_history(self.exid)
-
-            # Update CSV file
-            self.save_data('USDT', 'volumes')
-
-            # Select row containing the desired volume
-            s = vol_1h.loc[hour_dt]
-
-        finally:
-            # Determine last hourly volume from 24h rolling volume average
-            s_prev = vo.tail(2).head(1)
-            s_last = vo.tail(1)
-            s_last_1h = (s_last + s) - s_prev
-
-            # Append series to dataframe
-            vo = pd.concat([vol_1h, s_last_1h], axis=0)
-            print('vo', vo)
-
 
 
 class Currency(models.Model):

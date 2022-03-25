@@ -519,6 +519,7 @@ class Exchange(models.Model):
             df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
             df.index = pd.to_datetime(df.index)
             if volume:
+                length += 24  # Add 24h to allow conversion of hourly to daily volume
                 vo = pd.read_csv('df_' + 'USDT' + '_' + 'volumes' + '.csv', sep=',', encoding='utf-8').set_index('index')
                 vo.index = pd.to_datetime(vo.index)
 

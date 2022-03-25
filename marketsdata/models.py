@@ -575,12 +575,11 @@ class Exchange(models.Model):
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
-                    # Set timestamp at the beginning of the period
-                    vo = vo.shift(-1, freq='H')
-
                     # Make index timezone aware
                     vo.index = vo.index.tz_localize("UTC")
 
+            # Set timestamp at the beginning of the period
+            vo = vo.shift(-1, freq='H')
             # Set timestamp at the beginning of the period
             df = df.shift(-1, freq='H')
 

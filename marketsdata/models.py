@@ -569,17 +569,13 @@ class Exchange(models.Model):
                     vol = [e['quoteVolume'] for e in data]
                     tmp_v = pd.DataFrame(vol, index=timestamps, columns=[i.market.base.code])
                     tmp_v.index = pd.to_datetime(tmp_v.index, unit='s')
+                    tmp_v.tz_localize(tz='UTC')
 
                     # Append row if code in dataframe else create new column
                     axis = 0 if i.market.base.code in list(df.columns) else 1
                     vo = pd.concat([vo, tmp_v], axis=axis)
                     vo = vo.groupby(level=0).mean()
 
-                    # Make index timezone aware
-                    vo.index = vo.index.tz_localize("UTC")
-
-            # Set timestamp at the beginning of the period
-            vo = vo.shift(-1, freq='H')
             # Set timestamp at the beginning of the period
             df = df.shift(-1, freq='H')
 

@@ -578,6 +578,8 @@ class Exchange(models.Model):
 
             # Set timestamp at the beginning of the period
             df = df.shift(-1, freq='H')
+            if volume:
+                vo = vo.shift(-1, freq='H')
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')

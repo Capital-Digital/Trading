@@ -6,6 +6,7 @@ import pytz
 log = structlog.get_logger(__name__)
 
 datetime_directive_s = "%Y-%m-%d %H:%M:%S"
+datetime_directive_s_UTC = "%Y-%m-%dT%H:%M:%SZ"
 datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
 directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'

@@ -141,14 +141,7 @@ class Account(models.Model):
         return self.balances
 
     def get_target_pct(self):
-        nb = self.strategies.all().count()
-        if nb == 1:
-            return self.strategies.all()[0].get_target_pct()
-        else:
-            weights = pd.DataFrame()
-            for strategy in self.strategies.all():
-                weights = pd.concat([weights, strategy.get_target_pct()], axis=1)
-            return weights.sum(axis=1)/nb
+        return self.strategy.get_target_pct()
 
     # Returns a Series with target value
     def get_target_value(self):

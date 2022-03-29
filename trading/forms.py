@@ -12,7 +12,7 @@ class CustomUserCreationForm(UserCreationForm):
 class AccountForm(ModelForm):
     class Meta:
         model = Account
-        fields = ['name', 'exchange', 'strategies', 'api_key', 'password', 'trading', 'limit_order', 'email']
+        fields = ['name', 'exchange', 'strategy', 'api_key', 'password', 'trading', 'limit_order', 'email']
 
 
 class AccountDeleteForm(ModelForm):

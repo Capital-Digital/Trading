@@ -227,15 +227,13 @@ class Account(models.Model):
         codes = [i for i in df.loc[df['delta'] > 0].index if i != self.quote]  # Don't sell quote currency
 
         if codes:
-
-            log.info('Sell spot {0} currencies'.format(len(codes)))
-
-            for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
+            log.info('Sell spot {0} base currencies'.format(len(codes)))
+            for code in codes:
 
                 # Select quantities
-                free = row.spot.free.quantity
-                target = row[('target', '', '')]
-                delta = row[('delta', '', '')]
+                free = df.spot.free.quantity[code]
+                target = df.target[code]
+                delta = df.delta[code]
 
                 log.info('Sell spot {0} {1}'.format(round(delta, 3), code))
 
@@ -259,7 +257,7 @@ class Account(models.Model):
                 self.place_order('sell spot', market, 'sell', amount, price)
 
         else:
-            log.info('No code to sell spot')
+            log.info('No base currency to sell spot')
 
     def close_short(self, load=False):
         log.info('*** Close short ***')
@@ -288,50 +286,62 @@ class Account(models.Model):
     def buy_spot(self, load=False):
         log.info('*** Buy spot ***')
         df = self.get_delta() if load else self.balances
-        for code, row in df.loc[df['delta'] < 0].iterrows():  # buy
+        codes = [i for i in df.loc[df['delta'] < 0].index if i != self.quote]  # Don't buy quote currency
 
-            if 'position' in df.columns.get_level_values(0):
-                pos_qty = df.loc[code, ('position', 'open', 'quantity')]
-            else:
-                pos_qty = np.nan
+        if codes:
+            log.info('Buy spot {0} base currencies'.format(len(codes)))
+            for code in codes:
 
-            # Test if a position is open
-            if np.isnan(pos_qty):
-
-                # Determine buy price
-                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
-                price -= (price * float(self.limit_price_tolerance))
-
-                if self.quote in df.index:
-
-                    # Determine quantities
-                    qty_usdt = df.loc['USDT', ('spot', 'free', 'quantity')]
-                    qty_usdt = qty_usdt if not np.isnan(qty_usdt) else 0
-                    qty_coin = abs(row[('delta', '', '')])
-
-                    # Not enough resources ?
-                    if qty_coin > (qty_usdt / price):
-                        # Move available funds from future to spot wallet
-                        trans = (qty_coin * price) - qty_usdt
-                        log.info('Move {0} USDT from future to spot'.format(round(trans, 2)))
-                        moved = self.move_fund('USDT', trans, 'future', 'spot')
-                        qty_usdt += moved
-
-                    amount = min(qty_coin, qty_usdt / price)
-                    market = Market.objects.get(quote__code=self.quote,
-                                                exchange=self.exchange,
-                                                base__code=code,
-                                                type='spot'
-                                                )
-                    self.place_order('buy spot', market, 'buy', amount, price)
-
-                    # Remove USDT amount from available fund
-                    df.loc['USDT', ('spot', 'free', 'quantity')] -= amount * price
-
+                if 'position' in df.columns.get_level_values(0):
+                    pos_qty = df.loc[code, ('position', 'open', 'quantity')]
                 else:
-                    log.info('Unable to buy {0} spot (no free resource)'.format(code))
-            else:
-                log.info('Unable to buy spot ({0}/USDT position open)'.format(code))
+                    pos_qty = np.nan
+
+                # Test if a position is open
+                if np.isnan(pos_qty):
+
+                    if self.quote in df.index:
+
+                        # Determine quantities
+                        qty_coin = abs(df.delta[code])
+                        qty_cash = df.spot.free.quantity[self.quote]
+
+                        # Check if cash is available
+                        if not np.isnan(qty_cash) and qty_cash > 0:
+
+                            # Determine buy price
+                            price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                            price -= (price * float(self.limit_price_tolerance))
+
+                            # Not enough resources ?
+                            if qty_coin > (qty_cash / price):
+
+                                # Move available funds from future to spot wallet
+                                qty_move = (qty_coin * price) - qty_cash
+                                log.info('Move {0} {1} from future to spot'.format(round(qty_move, 2), self.quote))
+                                qty_moved = self.move_fund(self.quote, qty_move, 'future', 'spot')
+                                qty_cash += qty_moved
+
+                            amount = min(qty_coin, qty_cash / price)
+                            market = Market.objects.get(quote__code=self.quote,
+                                                        exchange=self.exchange,
+                                                        base__code=code,
+                                                        type='spot'
+                                                        )
+                            self.place_order('buy spot', market, 'buy', amount, price)
+
+                            # Remove cash amount from available fund
+                            df.loc[self.quote, ('spot', 'free', 'quantity')] -= amount * price
+
+                        else:
+                            log.info('Unable to buy spot base currency {0} (no free resource)'.format(code))
+                    else:
+                        log.info('Unable to buy spot base currency {0} (no cash)'.format(code))
+                else:
+                    log.info('Unable to buy spot base currency {0} (position is open)'.format(code))
+
+        else:
+            log.info('No base currency to buy spot')
 
     def open_short(self, load=False):
         log.info('*** Open short ***')

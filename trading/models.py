@@ -224,33 +224,42 @@ class Account(models.Model):
     def sell_spot(self, load=False):
         log.info('*** Sell spot ***')
         df = self.get_delta() if load else self.balances
-        for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
+        codes = [i for i in df.loc[df['delta'] > 0].index if i != self.quote]  # Don't sell quote currency
 
-            # Select quantities
-            free = row.spot.free.quantity
-            target = row[('target', '', '')]
-            delta = row[('delta', '', '')]
+        if codes:
 
-            log.info('Sell spot {0} {1}'.format(round(delta, 3), code))
+            log.info('Sell spot {0} currencies'.format(len(codes)))
 
-            # Determine amount we must sell
-            if target < 0:  # short
-                if not np.isnan(free):
-                    amount = free
-                else:
-                    continue
+            for code, row in df.loc[df['delta'] > 0].iterrows():  # sell
 
-            elif (target > 0) or np.isnan(target):
-                amount = delta
+                # Select quantities
+                free = row.spot.free.quantity
+                target = row[('target', '', '')]
+                delta = row[('delta', '', '')]
 
-            price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
-            price += (price * float(self.limit_price_tolerance))
-            market = Market.objects.get(quote__code=self.quote,
-                                        exchange=self.exchange,
-                                        base__code=code,
-                                        type='spot')
+                log.info('Sell spot {0} {1}'.format(round(delta, 3), code))
 
-            self.place_order('sell spot', market, 'sell', amount, price)
+                # Determine amount we must sell
+                if target < 0:  # short
+                    if not np.isnan(free):
+                        amount = free
+                    else:
+                        continue
+
+                elif (target > 0) or np.isnan(target):
+                    amount = delta
+
+                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                price += (price * float(self.limit_price_tolerance))
+                market = Market.objects.get(quote__code=self.quote,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='spot')
+
+                self.place_order('sell spot', market, 'sell', amount, price)
+
+        else:
+            log.info('No code to sell spot')
 
     def close_short(self, load=False):
         log.info('*** Close short ***')

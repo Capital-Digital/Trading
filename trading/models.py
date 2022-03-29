@@ -159,7 +159,7 @@ class Account(models.Model):
 
         target = self.get_target_value()
         for code in target.index:
-            target[code] /= Currency.objects.get(code=code).get_latest_price(self.strategy, 'last')
+            target[code] /= Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
 
         return target
 
@@ -241,7 +241,7 @@ class Account(models.Model):
             elif (target > 0) or np.isnan(target):
                 amount = delta
 
-            price = Currency.objects.get(code=code).get_latest_price(self.strategy, 'ask')
+            price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
             price += (price * float(self.limit_price_tolerance))
             market = Market.objects.get(quote__code=self.strategy.params['CODE_QUOTE'],
                                         exchange=self.exchange,
@@ -288,7 +288,7 @@ class Account(models.Model):
             if np.isnan(pos_qty):
 
                 # Determine buy price
-                price = Currency.objects.get(code=code).get_latest_price(self.strategy, 'bid')
+                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
                 price -= (price * float(self.limit_price_tolerance))
 
                 if self.strategy.params['CODE_QUOTE'] in df.index:

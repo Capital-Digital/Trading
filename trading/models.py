@@ -151,8 +151,8 @@ class Account(models.Model):
         balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
         target_pct = self.strategy.get_target_pct()
 
-        print('balance\n', balance)
-        print('target_pct\n', target_pct)
+        # print('balance\n', balance)
+        # print('target_pct\n', target_pct)
 
         return balance * target_pct
 
@@ -219,8 +219,9 @@ class Account(models.Model):
                                             )
                     self.balances.loc[code, 'delta'] = amount - abs(row.position.open.quantity)
 
-        print('Delta')
-        print(self.balances)
+        # print('Delta')
+        # print(self.balances)
+        
         return self.balances
 
     def sell_spot(self, load=False):

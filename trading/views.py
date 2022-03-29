@@ -40,13 +40,13 @@ def dashboard(request):
     return render(request, "dashboard.html", data)
 
 
-def strategies(request):
-
-    data = {
-        "strategies": Strategy.objects.all()
-    }
-
-    return render(request, "strategies.html", data)
+# def strategies(request):
+#
+#     data = {
+#         "strategies": Strategy.objects.all()
+#     }
+#
+#     return render(request, "strategies.html", data)
 
 
 def accounts(request):

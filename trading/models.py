@@ -149,7 +149,12 @@ class Account(models.Model):
         if 'position' in tmp.columns:  # drop open position's value
             tmp = tmp.drop('position', axis=1)
         balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
-        return balance * self.strategy.get_target_pct()
+        target_pct = self.strategy.get_target_pct()
+
+        print('balance\n', balance)
+        print('target_pct\n', target_pct)
+
+        return balance * target_pct
 
     # Returns a Series with target quantity per coin
     def get_target_qty(self):
@@ -538,7 +543,8 @@ class Account(models.Model):
             obj.status = 'canceled'
             obj.save()
 
-    def cancel_orders(self, web=False):
+    # Cancel all open orders
+    def cancel_orders(self, user_orders=False):
         log.info('Cancel orders start')
         client = self.exchange.get_ccxt_client(account=self)
 
@@ -546,7 +552,7 @@ class Account(models.Model):
             client.options['defaultType'] = wallet
             client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
-            if web:
+            if user_orders:
                 # Fetch all open orders from exchange
                 responses = client.fetchOpenOrders()
                 if responses:
@@ -600,11 +606,15 @@ class Account(models.Model):
         finally:
             self.save()
 
+    # Cancel open orders and rebalance portfolio
     def trade(self):
 
         log.info('***')
         log.info('Start trade')
         log.info('***')
+
+        # Cancel orders
+        self.cancel_orders()
 
         # Delete balance dataframe
         if hasattr(self, 'balances'):

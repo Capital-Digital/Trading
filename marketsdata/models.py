@@ -641,9 +641,9 @@ class Currency(models.Model):
     def __str__(self):
         return self.code if self.code else ''
 
-    def get_latest_price(self, strategy, key):
-        if self.code != strategy.params['CODE_QUOTE']:
-            candles = Tickers.objects.get(market__quote__code=strategy.params['CODE_QUOTE'],
+    def get_latest_price(self, quote, key):
+        if self.code != quote:
+            candles = Tickers.objects.get(market__quote__code=quote,
                                           market__base__code=self.code,
                                           market__type='spot',
                                           year=get_year(),

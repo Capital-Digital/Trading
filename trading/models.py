@@ -230,6 +230,8 @@ class Account(models.Model):
             free = row.spot.free.quantity
             target = row[('target', '', '')]
             delta = row[('delta', '', '')]
+            
+            log.indo('Sell spot {0} {1}'.format(round(delta, 3), code))
 
             # Determine amount we must sell
             if target < 0:  # short

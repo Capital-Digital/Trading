@@ -16,7 +16,7 @@ urlpatterns = [
     url(r"^register/", register, name="register"),
     url(r"^login/", login, name='login'),
 
-    path("strategies/", strategies, name="strategies"),
+    # path("strategies/", strategies, name="strategies"),
     url(r"^accounts/", include("django.contrib.auth.urls")),
 
     path("allocations/<int:strategy_id>/", allocations, name="allocations"),

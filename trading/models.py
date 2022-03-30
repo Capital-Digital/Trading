@@ -157,6 +157,10 @@ class Account(models.Model):
         val = []
         for level in list(set(self.balances.columns.get_level_values(0))):
             if level != 'position':
+                
+                print(level)
+                print(self.balances)
+
                 val.append(self.balances[level].total.value)
         return sum(val)
 
@@ -176,8 +180,6 @@ class Account(models.Model):
     def get_delta(self):
 
         target = self.get_target_qty()
-        print('target\n', target)
-        print('index\n', target.index)
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
@@ -190,8 +192,6 @@ class Account(models.Model):
         # Iterate through target coins
         for coin in target.index.values.tolist():
 
-            print('coin', coin)
-
             # Coins already in account ?
             if coin in df.index.values.tolist():
                 qty = self.balances.loc[coin, ('account', 'net', 'quantity')]
@@ -202,7 +202,6 @@ class Account(models.Model):
 
             # Coins not in account ?
             else:
-                print('missing', target[coin])
                 self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
                 self.balances.loc[coin, ('account', 'trade', 'delta')] = -target[coin]
 

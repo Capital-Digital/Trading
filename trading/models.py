@@ -175,6 +175,7 @@ class Account(models.Model):
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
+        return df
         df = df.loc[:, (self.balances.columns.get_level_values(1) == 'total') |
                        (self.balances.columns.get_level_values(1) == 'open')]
 
@@ -206,7 +207,7 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'trade', 'delta')] = qty
 
         self.save()
-        
+
         # # Open positions
         # if 'position' in self.balances.columns.get_level_values(0):
         #     positions = self.balances.loc[self.balances.position.open.quantity < 0]

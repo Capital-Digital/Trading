@@ -204,11 +204,9 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'trade', 'delta')] = -target_value
 
         # Iterate through coins in account
-        for coin in [df.index]:
-            
-            print(list(target.index.values))
-            print(target.index)
-            print(target.index.values.tolist())
+        for coin in df.index.values.tolist():
+
+            print(coin)
 
             # Coin not in target ?
             if coin not in target.index.values.tolist():

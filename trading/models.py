@@ -188,20 +188,20 @@ class Account(models.Model):
         self.balances.loc[:, ('account', 'net', 'quantity')] = df.sum(axis=1)
 
         # Iterate through target coins
-        for coin in target.index:
+        for coin, target_value in target.items():
 
             # Coins already in account ?
             if coin in df.index:
                 qty = self.balances.loc[coin, ('account', 'net', 'quantity')]
 
                 # if not np.isnan(qty):
-                self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
-                self.balances.loc[coin, ('account', 'trade', 'delta')] = qty - target[coin]
+                self.balances.loc[coin, ('account', 'trade', 'target')] = target_value
+                self.balances.loc[coin, ('account', 'trade', 'delta')] = qty - target_value
 
             # Coins not in account ?
             else:
-                self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
-                self.balances.loc[coin, ('account', 'trade', 'delta')] = -target[coin]
+                self.balances.loc[coin, ('account', 'trade', 'target')] = target_value
+                self.balances.loc[coin, ('account', 'trade', 'delta')] = -target_value
 
         # Iterate through coins in account
         for coin in [df.index]:

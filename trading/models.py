@@ -75,6 +75,10 @@ class Account(models.Model):
         log.info('*** Fetch account balances ***')
         client = self.exchange.get_ccxt_client(self)
 
+        # Del attribute
+        if hasattr(self, 'balances'):
+            del self.balances
+
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
 

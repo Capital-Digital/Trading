@@ -95,29 +95,23 @@ class Account(models.Model):
                 else:
                     self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
-    # Convert coins quantity to dollar value
+    # Convert balances in dollar value
     def get_balances_value(self):
 
-        # Iterate through exchange wallets
-        for wallet in self.exchange.get_wallets():
+        # Iterate through wallets, free, used and total quantities
+        for wallet in list(set(self.balances.columns.get_level_values(0))):
+            for state in self.balances.columns.get_level_values(1):
+                funds = self.balances[wallet][state]['quantity']
+                for coin in funds.index:
+                    price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+                    value = price * funds[coin]
+                    self.balances.loc[coin, (wallet, state, 'value')] = value
 
-            balances_qty = self.get_balances_qty(wallet)
-            if wallet in balances_qty.columns.get_level_values(0):
-                if 'value' not in balances_qty.columns.get_level_values(2):
-                    log.info('Get balances value ({0})'.format(wallet))
-                    df = balances_qty.apply(lambda row: convert_balance(row, wallet, self.quote), axis=1)
-                    df.columns.set_levels(['value'], level=1, inplace=True)
-                    df.columns = pd.MultiIndex.from_tuples(map(lambda x: (wallet, x[0], x[1]), df.columns))
-                    self.balances = pd.concat([self.balances, df], axis=1)
-
-            # Drop coins < $10
+            # Drop dust < $10
             mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
-        # Get open positions
-        self.get_positions_value()
-        return self.balances
-
+    # Fetch open positions
     def get_positions_value(self):
 
         client = self.exchange.get_ccxt_client(self)

@@ -69,31 +69,38 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    def get_balances_qty(self, wallet):
+    # Fetch total/free/used coins and create dataframe self.balances
+    def get_balances_qty(self):
 
         client = self.exchange.get_ccxt_client(self)
-        client.options['defaultType'] = wallet
-        response = client.fetchBalance()
-        for key in ['total', 'free', 'used']:
-            dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
-            if dic:
-                log.info('Get balances quantity in {1} ({0})'.format(key, wallet))
-                tmp = pd.DataFrame(index=dic.keys(),
-                                   data=dic.values(),
-                                   columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
-                                   )
-                self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
-                self.balances = self.balances.groupby(level=0).last()
-            else:
-                self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
-        return self.balances
+        # Iterate through exchange's wallets
+        for wallet in self.exchange.get_wallets():
 
-    # Return a dictionary with balance of a specific wallet
+            client.options['defaultType'] = wallet
+            response = client.fetchBalance()
+            for key in ['total', 'free', 'used']:
+
+                # Exclude LBTC from dictionary (staking or earning account)
+                dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
+
+                if dic:
+                    log.info('Get balances quantity in {1} ({0})'.format(key, wallet))
+                    tmp = pd.DataFrame(index=dic.keys(),
+                                       data=dic.values(),
+                                       columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
+                                       )
+                    self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
+                    self.balances = self.balances.groupby(level=0).last()
+                else:
+                    self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
+
+    # Convert coins quantity to dollar value
     def get_balances_value(self):
 
-        # Get wallets balances
+        # Iterate through exchange wallets
         for wallet in self.exchange.get_wallets():
+
             balances_qty = self.get_balances_qty(wallet)
             if wallet in balances_qty.columns.get_level_values(0):
                 if 'value' not in balances_qty.columns.get_level_values(2):
@@ -221,13 +228,18 @@ class Account(models.Model):
 
         # print('Delta')
         # print(self.balances)
-        
+
         return self.balances
 
-    def sell_spot(self, load=False):
+    def sell_spot(self, force_update=False):
+
         log.info('*** Sell spot ***')
-        df = self.get_delta() if load else self.balances
-        codes = [i for i in df.loc[df['delta'] > 0].index if i != self.quote]  # Don't sell quote currency
+
+        # Create balance dataframe
+        df = self.get_delta() if force_update else self.balances
+
+        # Select codes. Don't sell quote currency
+        codes = [i for i in df.loc[df['delta'] > 0].index if i != self.quote]
 
         if codes:
             log.info('Sell spot {0} base currencies'.format(len(codes)))
@@ -262,9 +274,12 @@ class Account(models.Model):
         else:
             log.info('No base currency to sell spot')
 
-    def close_short(self, load=False):
+    def close_short(self, force_update=False):
+
         log.info('*** Close short ***')
-        df = self.get_delta() if load else self.balances
+
+        df = self.get_delta() if force_update else self.balances
+
         for code, row in df.loc[df['delta'] < 0].iterrows():  # buy ?
             if 'position' in df.columns.get_level_values(0):
                 if row.position.open.quantity < 0:  # short is open ?
@@ -286,9 +301,12 @@ class Account(models.Model):
                     else:
                         log.info('Unable to close short (open order)')
 
-    def buy_spot(self, load=False):
+    def buy_spot(self, force_update=False):
+
         log.info('*** Buy spot ***')
-        df = self.get_delta() if load else self.balances
+
+        df = self.get_delta() if force_update else self.balances
+
         codes = [i for i in df.loc[df['delta'] < 0].index if i != self.quote]  # Don't buy quote currency
 
         if codes:
@@ -346,9 +364,12 @@ class Account(models.Model):
         else:
             log.info('No base currency to buy spot')
 
-    def open_short(self, load=False):
+    def open_short(self, force_update=False):
+
         log.info('*** Open short ***')
-        df = self.get_delta() if load else self.balances
+
+        df = self.get_delta() if force_update else self.balances
+
         for code, row in df.loc[df['delta'] > 0].iterrows():  # is sell ?
 
             target = row[('target', '', '')]
@@ -617,17 +638,15 @@ class Account(models.Model):
         # Cancel orders
         self.cancel_orders()
 
-        # Delete balance dataframe
-        if hasattr(self, 'balances'):
-            del self.balances
-
         # Construct a new dataframe
         self.get_delta()
 
-        # Place orders
-        self.sell_spot()
+        # Free resources
+        self.sell_spot(force_update=True)
         self.close_short()
-        self.buy_spot(load=True)
+
+        # Allocate funds
+        self.buy_spot(force_update=True)
         self.open_short()
 
         log.info('***')

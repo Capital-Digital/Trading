@@ -69,7 +69,7 @@ class Account(models.Model):
     def __str__(self):
         return self.name
 
-    # Fetch total/free/used coins and create dataframe self.balances
+    # Fetch coins and create balances dataframe
     def get_balances_qty(self):
 
         log.info('*** Fetch account balances ***')
@@ -96,7 +96,7 @@ class Account(models.Model):
                 else:
                     self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
-    # Convert balances in dollar value
+    # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
 
         log.info('Calculate dollar values')
@@ -115,7 +115,7 @@ class Account(models.Model):
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
             self.save()
 
-    # Fetch open positions
+    # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
 
         log.info('*** Fetch account positions ***')
@@ -127,14 +127,14 @@ class Account(models.Model):
         closed = [i for i in response if float(i['positionAmt']) == 0]
 
         if opened:
+
+            log.info('There is {0} position(s) open in futures market'.format(len(opened)))
+
             for position in opened:
 
-                log.info('Insert positions {0}'.format(position['symbol']))
+                log.info('Update positions {0}'.format(position['symbol']))
 
-                market = Market.objects.get(exchange=self.exchange,
-                                            response__id=position['symbol'],
-                                            type='derivative'
-                                            )
+                market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
                 code = market.base.code
                 quantity = float(position['positionAmt'])
                 self.balances.loc[code, ('position', 'open', 'quantity')] = quantity
@@ -145,88 +145,92 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
                 self.save()
 
+        else:
+            log.info('There is no position open in futures market')
+
+    # Return account total value
+    def account_value(self):
+        val = []
+        for level in list(set(self.balances.columns.get_level_values(0))):
+            if level != 'position':
+                val.append(self.balances[level].total.value)
+        return sum(val)
+
     # Returns a Series with target value
     def get_target_value(self):
-
-        df = self.get_balances_value()
-        tmp = df.loc[:, df.columns.get_level_values(2) == 'value']
-        if 'position' in tmp.columns:  # drop open position's value
-            tmp = tmp.drop('position', axis=1)
-        balance = tmp.loc[:, tmp.columns.get_level_values(1) == 'total'].sum().sum()
+        account_value = self.account_value()
         target_pct = self.strategy.get_target_pct()
+        return account_value * target_pct
 
-        # print('balance\n', balance)
-        # print('target_pct\n', target_pct)
-
-        return balance * target_pct
-
-    # Returns a Series with target quantity per coin
+    # Returns a Series with target quantity
     def get_target_qty(self):
-
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
-
         return target
 
     def get_delta(self):
 
         target = self.get_target_qty()
-        df = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'quantity']  # get spot and position qty
 
-        for coin_target in target.index:
+        #  Select quantities from wallet total balances and open positions
+        df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
+        df = df.loc[:, (self.balances.columns.get_level_values(1) == 'total') |
+                       (self.balances.columns.get_level_values(1) == 'open')]
 
-            # Coins in account
-            if coin_target in df.index:
-                for source in df.columns:
-                    if 'total' in source:
-                        qty = df.loc[coin_target, source]
-                        if not np.isnan(qty):
-                            self.balances.loc[coin_target, 'target'] = target[coin_target]
-                            self.balances.loc[coin_target, 'delta'] = qty - target[coin_target]
+        # Determine total exposure
+        self.balances.loc[:, ('account', 'net', 'quantity')] = df.sum(axis=1)
 
-            # Coins not in account
-            if coin_target not in df.index:
-                self.balances.loc[coin_target, 'target'] = target[coin_target]
-                self.balances.loc[coin_target, 'delta'] = -target[coin_target]
+        # Iterate through target coins
+        for coin in target.index:
 
-        # Coins not in target portfolio
-        for coin_account in df.index:
-            if coin_account != self.quote:
-                if coin_account not in target.index:
-                    for source in df.columns:
-                        if 'total' in source:
-                            qty = df.loc[coin_account, source]
-                            if not np.isnan(qty):
-                                self.balances.loc[coin_account, 'delta'] = qty
+            # Coins already in account ?
+            if coin in df.index:
+                qty = self.balances.loc[coin, ('account', 'net', 'quantity')]
 
-        # Open positions
-        if 'position' in self.balances.columns.get_level_values(0):
-            positions = self.balances.loc[self.balances.position.open.quantity < 0]
-            for code, row in positions.iterrows():
-                if code not in target.index:
-                    self.balances.loc[code, 'delta'] = row.position.open.quantity
-                elif target[code] > 0:
-                    self.balances.loc[code, 'delta'] = row.position.open.quantity
-                elif target[code] < 0:
+                # if not np.isnan(qty):
+                self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
+                self.balances.loc[coin, ('account', 'trade', 'delta')] = qty - target[coin]
 
-                    # Format decimals
-                    market = Market.objects.get(base__code=code,
-                                                exchange=self.exchange,
-                                                quote__code='USDT',
-                                                type='derivative',
-                                                contract_type='perpetual'
-                                                )
-                    amount = format_decimal(counting_mode=self.exchange.precision_mode,
-                                            precision=market.precision['amount'],
-                                            n=abs(target[code])
-                                            )
-                    self.balances.loc[code, 'delta'] = amount - abs(row.position.open.quantity)
+            # Coins not in account ?
+            else:
+                self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
+                self.balances.loc[coin, ('account', 'trade', 'delta')] = -target[coin]
 
+        # Iterate through coins in account
+        for coin in [df.index]:
+
+            # Coin not in target ?
+            if coin not in target.index:
+                qty = self.balances.loc[coin, ('account', 'net', 'quantity')]
+                self.balances.loc[coin, ('account', 'trade', 'delta')] = qty
+
+        self.save()
+        
+        # # Open positions
+        # if 'position' in self.balances.columns.get_level_values(0):
+        #     positions = self.balances.loc[self.balances.position.open.quantity < 0]
+        #     for code, row in positions.iterrows():
+        #         if code not in target.index:
+        #             self.balances.loc[code, 'delta'] = row.position.open.quantity
+        #         elif target[code] > 0:
+        #             self.balances.loc[code, 'delta'] = row.position.open.quantity
+        #         elif target[code] < 0:
+        #
+        #             # Format decimals
+        #             market = Market.objects.get(base__code=code,
+        #                                         exchange=self.exchange,
+        #                                         quote__code='USDT',
+        #                                         type='derivative',
+        #                                         contract_type='perpetual'
+        #                                         )
+        #             amount = format_decimal(counting_mode=self.exchange.precision_mode,
+        #                                     precision=market.precision['amount'],
+        #                                     n=abs(target[code])
+        #                                     )
+        #             self.balances.loc[code, 'delta'] = amount - abs(row.position.open.quantity)
         # print('Delta')
         # print(self.balances)
-
-        return self.balances
 
     def sell_spot(self, force_update=False):
 

@@ -176,7 +176,7 @@ class Account(models.Model):
     def get_delta(self):
 
         target = self.get_target_qty()
-        print('target\n', target.name)
+        print('target\n', target)
         print(type(target))
 
         #  Select quantities from wallet total balances and open positions

@@ -172,7 +172,8 @@ class Account(models.Model):
     def get_delta(self):
 
         target = self.get_target_qty()
-        print('traget\n', target)
+        print('target\n', target.name)
+        print(type(target))
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]

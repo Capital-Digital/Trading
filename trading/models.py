@@ -72,6 +72,7 @@ class Account(models.Model):
     # Fetch total/free/used coins and create dataframe self.balances
     def get_balances_qty(self):
 
+        log.info('*** Fetch account balances ***')
         client = self.exchange.get_ccxt_client(self)
 
         # Iterate through exchange's wallets
@@ -98,6 +99,8 @@ class Account(models.Model):
     # Convert balances in dollar value
     def get_balances_value(self):
 
+        log.info('Calculate dollar values')
+
         # Iterate through wallets, free, used and total quantities
         for wallet in list(set(self.balances.columns.get_level_values(0))):
             for state in self.balances.columns.get_level_values(1):
@@ -114,17 +117,19 @@ class Account(models.Model):
     # Fetch open positions
     def get_positions_value(self):
 
+        log.info('*** Fetch account positions ***')
+
+        # Client client and query all futures positions
         client = self.exchange.get_ccxt_client(self)
         response = client.fapiPrivateGetPositionRisk()
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
 
-        if not hasattr(self, 'balances'):
-            self.balances = pd.DataFrame(columns=pd.MultiIndex.from_product([['position'], ['open'], ['value']]))
-
         if opened:
-            log.info('Get open positions')
             for position in opened:
+
+                log.info('Insert positions {0}'.format(position['symbol']))
+
                 market = Market.objects.get(exchange=self.exchange,
                                             response__id=position['symbol'],
                                             type='derivative'
@@ -139,8 +144,6 @@ class Account(models.Model):
                     position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(
                     position['liquidationPrice'])
-
-        return self.balances
 
     # Returns a Series with target value
     def get_target_value(self):

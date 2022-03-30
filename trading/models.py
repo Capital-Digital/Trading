@@ -205,6 +205,10 @@ class Account(models.Model):
 
         # Iterate through coins in account
         for coin in [df.index]:
+            
+            print(list(target.index.values))
+            print(target.index)
+            print(target.index.values.tolist())
 
             # Coin not in target ?
             if coin not in target.index.values.tolist():

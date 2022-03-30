@@ -113,6 +113,7 @@ class Account(models.Model):
             # Drop dust < $10
             mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
+            self.save()
 
     # Fetch open positions
     def get_positions_value(self):
@@ -140,10 +141,9 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
                 self.balances.loc[code, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
                 self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
-                self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(
-                    position['unRealizedProfit'])
-                self.balances.loc[code, ('position', 'open', 'liquidation')] = float(
-                    position['liquidationPrice'])
+                self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
+                self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+                self.save()
 
     # Returns a Series with target value
     def get_target_value(self):

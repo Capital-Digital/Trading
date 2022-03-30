@@ -164,6 +164,9 @@ class Account(models.Model):
     def get_target_value(self):
         account_value = self.account_value()
         target_pct = self.strategy.get_target_pct()
+
+        print('\ntarget_pct\n', target_pct)
+
         return account_value * target_pct
 
     # Returns a Series with target quantity

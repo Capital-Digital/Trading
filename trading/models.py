@@ -154,15 +154,14 @@ class Account(models.Model):
 
     # Return account total value
     def account_value(self):
-        val = []
+        wallets = []
         for level in list(set(self.balances.columns.get_level_values(0))):
             if level != 'position':
-                
-                print(level)
-                print(self.balances)
+                # Sum value of all coins
+                wallets.append(self.balances[level].total.value.sum())
 
-                val.append(self.balances[level].total.value)
-        return sum(val)
+        # Sum value of all wallet
+        return sum(wallets)
 
     # Returns a Series with target value
     def get_target_value(self):

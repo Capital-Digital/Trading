@@ -190,6 +190,8 @@ class Account(models.Model):
         # Iterate through target coins
         for coin in target.index.values.tolist():
 
+            print('coin', coin)
+
             # Coins already in account ?
             if coin in df.index.values.tolist():
                 qty = self.balances.loc[coin, ('account', 'net', 'quantity')]
@@ -200,6 +202,7 @@ class Account(models.Model):
 
             # Coins not in account ?
             else:
+                print('missing', target[coin])
                 self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
                 self.balances.loc[coin, ('account', 'trade', 'delta')] = -target[coin]
 

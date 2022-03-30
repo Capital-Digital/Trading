@@ -207,7 +207,7 @@ class Account(models.Model):
         for coin in [df.index]:
 
             # Coin not in target ?
-            if coin not in list(target.index):
+            if coin not in target.index.values.tolist():
                 qty = self.balances.loc[coin, ('account', 'net', 'quantity')]
                 self.balances.loc[coin, ('account', 'trade', 'delta')] = qty
 

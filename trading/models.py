@@ -177,7 +177,7 @@ class Account(models.Model):
 
         target = self.get_target_qty()
         print('target\n', target)
-        print(type(target))
+        print('index\n', target.index)
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]

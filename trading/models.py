@@ -174,10 +174,9 @@ class Account(models.Model):
         target = self.get_target_qty()
 
         #  Select quantities from wallet total balances and open positions
+        mask = self.balances.columns.get_level_values(1).isin(['total', 'open'])
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
-        return df
-        df = df.loc[:, (self.balances.columns.get_level_values(1) == 'total') |
-                       (self.balances.columns.get_level_values(1) == 'open')]
+        df = df.loc[:, mask]
 
         # Determine total exposure
         self.balances.loc[:, ('account', 'net', 'quantity')] = df.sum(axis=1)

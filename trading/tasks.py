@@ -57,7 +57,6 @@ def update_orders():
 def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
         if datetime.now().hour in account.strategy.execution_hours():
-
             account.trade()
 
         else:

@@ -230,12 +230,12 @@ class Account(models.Model):
                 # Select quantities
                 free = self.balances.spot.free.quantity[code]
                 target = self.balances.account.trade.target[code]
-                delta = delta[code]
+                qty_delta = delta[code]
 
                 # Spot resources could be released ?
                 if not np.isnan(free):
 
-                    log.info('Sell spot {0} {1}'.format(round(delta, 3), code))
+                    log.info('Sell spot {0} {1}'.format(round(qty_delta, 3), code))
 
                     # Sell all resources available if coin must be shorted
                     if target < 0:
@@ -246,7 +246,7 @@ class Account(models.Model):
                         amount = free
 
                     else:
-                        amount = delta
+                        amount = qty_delta
 
                     # Place sell order
                     price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')

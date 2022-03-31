@@ -413,6 +413,7 @@ class Account(models.Model):
                             log.error('Authentication error, can not move fund')
                             return
                         except Exception as e:
+                            print(code, move, wallet, to_wallet)
                             log.error('Transfer error: {0}'.format(e))
                             return
                         else:
@@ -451,7 +452,7 @@ class Account(models.Model):
 
                 # Else return
                 if not reduce_only:
-                    log.info('Cost conditions not satisfied to {0} {1} in {2}'.format(action,
+                    log.info('Cost not satisfied to {0} {1} in {2}'.format(action,
                                                                                       market.base.code,
                                                                                       market.type))
                     return
@@ -498,7 +499,7 @@ class Account(models.Model):
             pprint(args)
 
         else:
-            log.info('Limit conditions not satisfied to {0} {1}'.format(action, market.base.code))
+            log.info('Limit not satisfied to {0} {1}'.format(action, market.base.code))
 
     # Query exchange and update open orders
     def update_orders(self):

@@ -359,14 +359,16 @@ class Account(models.Model):
                     free_margin = self.balances.future.free.quantity[self.quote]
                     if free_margin < pos_value:
                         log.warning('Free margin is needed to open {0} short'.format(code))
-                        res = self.move_fund(self.quote, pos_value, 'spot')
+                        res = self.move_fund(self.quote, pos_value, 'future')
                         if not res:
+                            log.error('Transfer failed')
                             return
 
                 else:
                     log.warning('Free margin is needed to open {0} short'.format(code))
-                    res = self.move_fund(self.quote, pos_value, 'spot')
+                    res = self.move_fund(self.quote, pos_value, 'future')
                     if not res:
+                        log.error('Transfer failed')
                         return
 
                 # Place order

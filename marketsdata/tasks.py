@@ -563,9 +563,13 @@ def funding(exid):
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
+    
     exchange = Exchange.objects.get(exid=exid)
-    markets = Market.objects.filter(exchange=exchange, trading=True, quote__code__in=['USDT', 'BUSD'])
-    markets = markets.order_by('base')
+    markets = Market.objects.filter(exchange=exchange,
+                                    trading=True,
+                                    symbol='ACA/USDT',
+                                    quote__code__in=['USDT', 'BUSD']
+                                    ).order_by('base')
 
     if exchange.is_trading():
 

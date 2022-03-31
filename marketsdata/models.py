@@ -502,12 +502,7 @@ class Exchange(models.Model):
                 axis = 0 if i.market.base.code in df.columns else 1
                 df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
 
-        print(df['ACA'], "\n")
-
         df = df.reset_index()
-
-        print(df['ACA'], "\n")
-        print(df['ACA'].to_string(), "\n")
 
         # Save dataframe to file
         df.to_csv(filename, sep=',', encoding='utf-8', index=False)
@@ -524,6 +519,9 @@ class Exchange(models.Model):
 
             # Load candles from csv file
             df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
+            
+            print(df['ACA'])
+
             df.index = pd.to_datetime(df.index)
             if volume:
                 length += 24  # Add 24h to allow conversion of hourly to daily volume

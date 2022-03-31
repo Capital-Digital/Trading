@@ -593,16 +593,17 @@ def fetch_candle_history(exid):
                 # Get latest timestamp
                 end = queryset.order_by('-year', '-semester')[0].data[-1][0]
                 dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
-                log.info('Market {0} {1} latest candle at {2} found'.format(market.symbol, market.wallet, end))
 
                 if dt == now:
-                    log.info('Market {0} {1} is updated'.format(market.symbol, market.wallet))
+                    log.info('Market is updated')
                     continue
+                else:
+                    log.info('Market need an update')
 
             else:
                 # Set datetime
                 dt = exchange.start_date
-                log.info('Market {0} {1} is new'.format(market.symbol, market.wallet))
+                log.info('Market is new')
 
             # timestamp not updated ?
             if dt < now:
@@ -610,13 +611,10 @@ def fetch_candle_history(exid):
                 # Add 1 hour and convert to milliseconds
                 since = int((dt + timedelta(hours=1)).timestamp() * 1000)
 
-                while dt < now:
+                while True:
 
                     try:
-                        log.info(dt)
-                        log.info(since)
-                        log.info(limit)
-
+                        # Fetch candles data
                         data = client.fetchOHLCV(market.symbol, '1h', since, 100)
 
                     except ccxt.BadSymbol as e:
@@ -635,14 +633,15 @@ def fetch_candle_history(exid):
 
                         if data:
 
-                            log.info('Fetch {0} candles'.format(len(data)))
+                            log.info('{0} candles returned'.format(len(data)))
 
-                            # Remove record of current hour
-                            end_ts = data[-1][0]
-                            end_dt = timezone.make_aware(datetime.fromtimestamp(end_ts / 1000))
+                            # Drop the last candle if it's timestamp of the current hour
+                            unix_time_last = data[-1][0]
+                            end_dt = timezone.make_aware(datetime.fromtimestamp(unix_time_last / 1000))
                             if end_dt > now:
-                                print('Delete incomplete (current) record', end_dt)
+                                log.info('Drop candle of the current hour')
                                 del data[-1]
+                                unix_time_last = data[-1][0]
 
                             # Convert timestamp from ms to string
                             for idx, i in enumerate(data):
@@ -653,8 +652,6 @@ def fetch_candle_history(exid):
                             # Iterate through years
                             for year in list(range(dt.year, timezone.now().year + 1)):
 
-                                print('year', year)
-
                                 # Create lists of string '2022-01', '2022-02', '2022-03', etc.
                                 filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
                                 filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
@@ -664,62 +661,59 @@ def fetch_candle_history(exid):
                                 data_2 = [i for i in data if i[0][:7] in filter_2]
 
                                 for i in range(1, 3):
-
                                     var = eval('data_' + str(i))
                                     if var:
-
-                                        print('data:', 'data_' + str(i))
 
                                         try:
                                             obj = Candles.objects.get(year=year, semester=i, market=market)
 
                                         except ObjectDoesNotExist:
 
-                                            log.info('Create object {0} {1} {2}'.format(market.symbol, year, i))
-
                                             # Create new object for semester 1
                                             Candles.objects.create(year=year,
                                                                    semester=i,
                                                                    market=market,
                                                                    data=var)
-                                        else:
 
-                                            for c in var:
-                                                if c not in obj.data:
-                                                    pass
+                                            log.info('Create object for {0} {1} {2}'.format(market.symbol, year, i))
+
+                                        else:
 
                                             # Remove duplicate records
                                             diff = [c for c in var if c not in obj.data]
 
+                                            # Concatenate the two lists if new candle is found
                                             if diff:
-
-                                                log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
-
-                                                # Concatenate the two lists
                                                 obj.data += diff
                                                 obj.save()
+                                                log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
 
                                             else:
+                                                log.info('No new candles received')
 
-                                                log.info(
-                                                    'Object {0} {1} {2} is up to date'.format(market.symbol, year, i))
-
-                            # Update since and dt
-                            since = end_ts + (60 * 60 * 1000)
+                            # Convert the latest timestamp to Python datetime object
+                            # and break the while loop when the last candle is collected
                             dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
-
-                        else:
-                            if 'empty' not in locals():
-                                since += 30 * 24 * (60 * 60 * 1000)
-                                log.info('Empty array, set since to {0}'.format(since))
-                                empty = True
-                            else:
-                                log.warning('Empty object returned by exchange')
-                                del empty
+                            if dt >= now:
                                 break
 
-            else:
-                log.warning('There is no candle to download')
+                            else:
+                                # Else add 1000 hours to since and restart loop
+                                since = unix_time_last + (60 * 60 * 1000)
+
+                        else:
+
+                            # if an empty object is returned by exchange return 30 day in the past
+                            if 'empty' not in locals():
+                                since = now - timedelta(days=30)
+                                since = time.mktime(since.timetuple())
+                                log.info('Empty array received, return 30 days in the past')
+                                empty = True
+
+                            else:
+                                log.warning('Empty array')
+                                del empty
+                                break
     else:
 
         log.warning('Exchange {0} is not trading'.format(exchange.exid))

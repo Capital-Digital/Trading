@@ -490,7 +490,7 @@ class Account(models.Model):
             pprint(args)
 
         else:
-            log.info('Limit conditions not satisfied to {0} {1} in {2}'.format(action, market.base.code, market.type))
+            log.info('Limit conditions not satisfied to {0} {1}'.format(action, market.base.code))
 
     # Query exchange and update open orders
     def update_orders(self):

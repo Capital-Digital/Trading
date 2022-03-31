@@ -478,10 +478,14 @@ class Exchange(models.Model):
         else:
             log.info('Create {0} candles dataframe for {1}'.format(dtype, quote))
             start = datetime(2018, 1, 1, 0, 0).replace(tzinfo=pytz.UTC)
+            years = get_years(start)
+            semester = get_semesters(start)
             df = pd.DataFrame()
             qs = Candles.objects.filter(market__quote__code=quote,
                                         market__type='spot',
-                                        market__exchange=self
+                                        market__exchange=self,
+                                        year__in=years,
+                                        semester__in=semester
                                         )
 
         for i in qs.iterator(10):
@@ -491,6 +495,9 @@ class Exchange(models.Model):
             ts = [e[0] for e in i.data if convert_string_to_date(e[0], directive) >= start]
             data = [i[indice] for i in i.data if i[0] in ts]
 
+            if i.market.symbol == 'ACA/USDT':
+                print('ACA\n', data)
+            
             if data:
 
                 temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
@@ -510,10 +517,11 @@ class Exchange(models.Model):
     # Create prices and volumes dataframe from candles or tickers
     def load_data(self, source, length, start=None, volume=False, multiplier=False):
 
-        log.info('Load data from csv file')
         log.info('source = {0}'.format(source))
 
         if source == 'candles':
+
+            log.info('Load candles data from file')
 
             # Load candles from csv file
             df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
@@ -531,6 +539,8 @@ class Exchange(models.Model):
                 vo = vo.loc[(vo.index >= since) & (vo.index <= end)]
 
         elif source == 'tickers':
+
+            log.info('Load tickers data from database')
 
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
             start = now - timedelta(hours=length)

@@ -478,14 +478,10 @@ class Exchange(models.Model):
         else:
             log.info('Create {0} candles dataframe for {1}'.format(dtype, quote))
             start = datetime(2018, 1, 1, 0, 0).replace(tzinfo=pytz.UTC)
-            years = get_years(start)
-            semester = get_semesters(start)
             df = pd.DataFrame()
             qs = Candles.objects.filter(market__quote__code=quote,
                                         market__type='spot',
-                                        market__exchange=self,
-                                        year__in=years,
-                                        semester__in=semester
+                                        market__exchange=self
                                         )
 
         for i in qs.iterator(10):
@@ -497,7 +493,7 @@ class Exchange(models.Model):
 
             if i.market.symbol == 'ACA/USDT':
                 print('ACA\n', data)
-            
+
             if data:
 
                 temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])

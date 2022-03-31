@@ -217,6 +217,7 @@ class Account(models.Model):
 
         self.save()
 
+    # Sell in spot market
     def sell_spot(self):
 
         # Select codes to sell (exclude quote currency)
@@ -260,6 +261,7 @@ class Account(models.Model):
 
                     self.place_order('sell spot', market, 'sell', amount, price)
 
+    # Sell in derivative market
     def close_short(self):
 
         # Select codes to buy (exclude quote currency)
@@ -288,6 +290,7 @@ class Account(models.Model):
                                                 )
                     self.place_order('close short', market, 'buy', amount, price, reduce_only=True)
 
+    # Buy in spot market
     def buy_spot(self):
 
         # Select codes to buy (exclude quote currency)
@@ -327,6 +330,7 @@ class Account(models.Model):
                                                     )
                         self.place_order('buy spot', market, 'buy', amount, price, quote_order_qty=True)
 
+    # Sell in derivative market
     def open_short(self):
 
         # Select codes to sell (exclude quote currency)

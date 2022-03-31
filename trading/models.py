@@ -276,7 +276,7 @@ class Account(models.Model):
 
                     # Get quantities
                     delta = abs(delta[code])
-                    shorted = abs(self.balances.position.open.quantity)
+                    shorted = abs(self.balances.position.open.quantity[code])
                     amount = min(delta, shorted)
 
                     # Place buy order

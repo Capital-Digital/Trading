@@ -393,13 +393,13 @@ class Account(models.Model):
     def move_fund(self, code, amount, to_wallet):
 
         client = self.exchange.get_ccxt_client(self)
-        log.info('Transfer {0} {1} to {2}'.format(round(amount, 4), code, to_wallet))
+        log.info('Transfer {0} {1} to {2} is needed'.format(round(amount, 4), code, to_wallet))
 
         # Determine candidate source wallets
         candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
 
         # Iterate through wallets and move available funds
-        for wallet in self.balances.columns.get_level_values(0):
+        for wallet in list(set(self.balances.columns.get_level_values(0))):
             if wallet in candidates:
 
                 # Determine quantities

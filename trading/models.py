@@ -423,7 +423,7 @@ class Account(models.Model):
                         log.error('Transfer error: {0}'.format(e))
                         return
                     else:
-                        log.info('{0} {1} moved from {2} to {3}'.format(round(amount, 2), code, wallet, to_wallet))
+                        log.info('Transfer of {0} {1} from {2} to {3} done!'.format(round(amount, 2), code, wallet, to_wallet))
 
                     # Update amount
                     amount -= move

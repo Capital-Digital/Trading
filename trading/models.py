@@ -406,30 +406,32 @@ class Account(models.Model):
                 total = self.balances.loc[code, (wallet, 'total', 'quantity')]
                 free = self.balances.loc[code, (wallet, 'free', 'quantity')]
 
-                print('free', free)
-                
-                # Preserve 1:1 margin if a position is open
-                if 'position' in self.balances.columns.get_level_values(0):
-                    notional_values = self.balances[('position', 'open', 'value')].sum()
-                    free = total - notional_values
+                if not np.isnan(free):
 
-                if amount:
-                    print('amount', amount)
-                    move = min(free, amount)
+                    # Preserve 1:1 margin if a position is open
+                    if 'position' in self.balances.columns.get_level_values(0):
+                        notional_values = self.balances[('position', 'open', 'value')].sum()
+                        free = total - notional_values
 
-                    try:
-                        client.transfer(code, move, wallet, to_wallet)
-                    except ccxt.AuthenticationError:
-                        log.error('Authentication error, can not move fund')
-                        return
-                    except Exception as e:
-                        log.error('Transfer error: {0}'.format(e))
-                        return
-                    else:
-                        log.info('Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
+                    if amount:
+                        move = min(free, amount)
 
-                    # Update amount
-                    amount -= move
+                        try:
+                            client.transfer(code, move, wallet, to_wallet)
+                        except ccxt.AuthenticationError:
+                            log.error('Authentication error, can not move fund')
+                            return
+                        except Exception as e:
+                            log.error('Transfer error: {0}'.format(e))
+                            return
+                        else:
+                            log.info('Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
+
+                        # Update amount
+                        amount -= move
+
+                else:
+                    log.error('Transfer not possible from wallet {0}'.format(wallet))
 
         log.info('Transfer complete')
         return True

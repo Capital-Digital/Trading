@@ -526,6 +526,8 @@ class Exchange(models.Model):
                 vo = pd.read_csv('df_' + 'USDT' + '_' + 'volumes' + '.csv', sep=',', encoding='utf-8').set_index('index')
                 vo.index = pd.to_datetime(vo.index)
 
+            print(df['ACA'])
+
             # Filter rows by datetime
             since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
             end = since + pd.DateOffset(**dict(hours=length))
@@ -591,16 +593,8 @@ class Exchange(models.Model):
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')
-
-        print('EE', df['ACA'])
-
         df = df.resample('H').fillna('ffill')
-
-        print('FF', df['ACA'])
-
         df = df.fillna(method='ffill')
-
-        print('AA', df['ACA'])
 
         # Apply multiplier to extreme values
         if multiplier:

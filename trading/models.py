@@ -215,8 +215,6 @@ class Account(models.Model):
 
     def sell_spot(self):
 
-        log.info('*** Sell spot ***')
-
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
@@ -258,12 +256,7 @@ class Account(models.Model):
 
                     self.place_order('sell spot', market, 'sell', amount, price)
 
-        else:
-            log.info('Nothing to sell in spot market')
-
     def close_short(self):
-
-        log.info('*** Close short ***')
 
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
@@ -299,8 +292,6 @@ class Account(models.Model):
 
         if codes_to_buy:
 
-            log.info('Buy spot {0} currencies'.format(len(codes_to_buy)))
-
             for code in codes_to_buy:
 
                 # Determine missing quantity and it's dollar value
@@ -332,12 +323,7 @@ class Account(models.Model):
                                                     )
                         self.place_order('buy spot', market, 'buy', amount, price, quote_order_qty=True)
 
-        else:
-            log.info('Nothing to buy in spot market')
-
     def open_short(self):
-
-        log.info('*** Open short ***')
 
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
@@ -385,9 +371,6 @@ class Account(models.Model):
                                             )
 
                 self.place_order('open short', market, 'sell', amount, price)
-
-        else:
-            log.info('Nothing to short in derivative market')
 
     # Move funds between account wallets
     def move_fund(self, code, amount, to_wallet):
@@ -443,11 +426,6 @@ class Account(models.Model):
                                 precision=market.precision['amount'],
                                 n=raw_amount)
 
-        print('\n', market.symbol, market.type)
-        print(action)
-        print(amount)
-        print(side)
-
         # Test amount limits MIN and MAX
         if limit_amount(market, amount):
 
@@ -465,7 +443,9 @@ class Account(models.Model):
 
                 # Else return
                 if not reduce_only:
-                    log.info('Cost conditions not satisfied to {1} {0}'.format(market.symbol, action))
+                    log.info('Cost conditions not satisfied to {0} {1} in {2}'.format(action,
+                                                                                      market.base.code,
+                                                                                      market.type))
                     return
 
             # Prepare order
@@ -490,9 +470,6 @@ class Account(models.Model):
                 else:
                     args['params']['reduceonly'] = True
 
-            print(market.type, 'order')
-            pprint(args)
-
             # Place order
             client = self.exchange.get_ccxt_client(self)
             client.options['defaultType'] = market.wallet
@@ -508,6 +485,12 @@ class Account(models.Model):
                                                                           action
                                                                           )
                      )
+
+            print(market.type, 'order')
+            pprint(args)
+
+        else:
+            log.info('Limit conditions not satisfied to {0} {1} in {2}'.format(action, market.base.code, market.type))
 
     # Query exchange and update open orders
     def update_orders(self):

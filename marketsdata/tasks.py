@@ -567,7 +567,6 @@ def fetch_candle_history(exid):
     exchange = Exchange.objects.get(exid=exid)
     markets = Market.objects.filter(exchange=exchange,
                                     trading=True,
-                                    symbol='GMT/USDT',
                                     quote__code__in=['USDT', 'BUSD']
                                     ).order_by('base')
 

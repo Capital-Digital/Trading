@@ -567,7 +567,6 @@ def fetch_candle_history(exid):
     exchange = Exchange.objects.get(exid=exid)
     markets = Market.objects.filter(exchange=exchange,
                                     trading=True,
-                                    symbol='ACA/USDT',
                                     quote__code__in=['USDT', 'BUSD']
                                     ).order_by('base')
 
@@ -576,7 +575,6 @@ def fetch_candle_history(exid):
         for market in markets:
 
             log.info('Fetch candles for {0} {1}'.format(market.symbol, market.type))
-            log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)
 
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             directive = '%Y-%m-%dT%H:%M:%SZ'

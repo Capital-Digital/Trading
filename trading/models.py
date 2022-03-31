@@ -421,7 +421,7 @@ class Account(models.Model):
                         return
                     except Exception as e:
                         log.error('Transfer error: {0}'.format(e))
-                        return                        
+                        return
                     else:
                         log.info('{0} {1} moved from {2} to {3}'.format(round(amount, 2), code, wallet, to_wallet))
 
@@ -572,7 +572,6 @@ class Account(models.Model):
 
     # Cancel an order by it's ID
     def cancel_order(self, wallet, symbol, orderid):
-        log.info('Order cancel', id=orderid, symbol=symbol)
         client = self.exchange.get_ccxt_client(account=self)
         client.options['defaultType'] = wallet
 
@@ -583,6 +582,7 @@ class Account(models.Model):
         except ObjectDoesNotExist:
             pass
         else:
+            log.info('Cancel order {0}'.format(orderid))
             obj.status = 'canceled'
             obj.save()
 
@@ -607,7 +607,6 @@ class Account(models.Model):
                     log.info('Cancel {0} order(s)'.format(len(responses)))
                     for order in responses:
                         self.cancel_order(wallet, order['symbol'], order['id'])
-                        log.info('Cancel order {0}'.format(order['id']))
 
                 else:
                     log.info('No order to cancel in wallet {0}'.format(wallet))
@@ -623,7 +622,6 @@ class Account(models.Model):
                     log.info('Cancel {0} order(s)'.format(len(orders)))
                     for order in orders:
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
-                        log.info('Cancel order {0}'.format(order.orderid))
 
                 else:
                     log.info('No order to cancel in wallet {0}'.format(wallet))

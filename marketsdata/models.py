@@ -519,10 +519,8 @@ class Exchange(models.Model):
 
             # Load candles from csv file
             df = pd.read_csv('df_' + 'USDT' + '_' + 'prices' + '.csv', sep=',', encoding='utf-8').set_index('index')
-            
-            print(df['ACA'])
-
             df.index = pd.to_datetime(df.index)
+
             if volume:
                 length += 24  # Add 24h to allow conversion of hourly to daily volume
                 vo = pd.read_csv('df_' + 'USDT' + '_' + 'volumes' + '.csv', sep=',', encoding='utf-8').set_index('index')
@@ -532,6 +530,9 @@ class Exchange(models.Model):
             since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
             end = since + pd.DateOffset(**dict(hours=length))
             df = df.loc[(df.index >= since) & (df.index <= end)]
+
+            print(df['ACA'])
+
             if volume:
                 vo = vo.loc[(vo.index >= since) & (vo.index <= end)]
 
@@ -590,8 +591,16 @@ class Exchange(models.Model):
 
         # Fill missing values and zero with previous data
         df = df.replace(to_replace=0, method='ffill')
+
+        print('EE', df['ACA'])
+
         df = df.resample('H').fillna('ffill')
+
+        print('FF', df['ACA'])
+
         df = df.fillna(method='ffill')
+
+        print('AA', df['ACA'])
 
         # Apply multiplier to extreme values
         if multiplier:

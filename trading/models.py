@@ -483,10 +483,6 @@ class Account(models.Model):
             # Place order
             client = self.exchange.get_ccxt_client(self)
             client.options['defaultType'] = market.wallet
-            response = client.create_order(**args)
-
-            # And create object
-            self.create_update_order(response, action, market)
 
             log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
                                                                           market.base.code,
@@ -498,6 +494,11 @@ class Account(models.Model):
 
             print(market.type, 'order')
             pprint(args)
+
+            response = client.create_order(**args)
+
+            # And create object
+            self.create_update_order(response, action, market)
 
         else:
             log.info('Limit not satisfied to {0} {1}'.format(action, market.base.code))

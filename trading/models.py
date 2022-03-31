@@ -650,6 +650,15 @@ class Account(models.Model):
         finally:
             self.save()
 
+    # Construct a fresh self.balances dataframe
+    def create_balances(self):
+
+        self.get_balances_qty()
+        self.get_balances_value()
+        self.get_positions_value()
+        self.get_target_qty()
+        self.get_delta()
+
     # Rebalance portfolio
     def trade(self):
 
@@ -657,22 +666,31 @@ class Account(models.Model):
         log.info('Start trade')
         log.info('***')
 
-        # Cancel orders
+        # Cancel orders and create dataframe
         self.cancel_orders()
+        self.create_balances()
 
-        # Construct self.balances dataframe
-        self.get_balances_qty()
-        self.get_balances_value()
-        self.get_positions_value()
-        self.get_target_qty()
-        self.get_delta()
+        log.info('***')
+        log.info('Free resources')
+        log.info('***')
 
         # Free resources
-        self.sell_spot(force_update=True)
+        self.sell_spot()
         self.close_short()
 
+        log.info('***')
+        log.info('Update balances')
+        log.info('***')
+
+        # Update dataframe
+        self.create_balances()
+
+        log.info('***')
+        log.info('Allocate funds')
+        log.info('***')
+
         # Allocate funds
-        self.buy_spot(force_update=True)
+        self.buy_spot()
         self.open_short()
 
         log.info('***')

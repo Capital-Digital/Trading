@@ -406,6 +406,8 @@ class Account(models.Model):
                 total = self.balances.loc[code, (wallet, 'total', 'quantity')]
                 free = self.balances.loc[code, (wallet, 'free', 'quantity')]
 
+                print('free', free)
+                
                 # Preserve 1:1 margin if a position is open
                 if 'position' in self.balances.columns.get_level_values(0):
                     notional_values = self.balances[('position', 'open', 'value')].sum()

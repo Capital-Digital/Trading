@@ -401,7 +401,7 @@ class Account(models.Model):
 
                     # Preserve 1:1 margin if a position is open
                     if 'position' in self.balances.columns.get_level_values(0):
-                        notional_values = self.balances[('position', 'open', 'value')].sum()
+                        notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
                         free = total - notional_values
 
                     if amount:
@@ -413,6 +413,7 @@ class Account(models.Model):
                             log.error('Authentication error, can not move fund')
                             return
                         except Exception as e:
+                            print(free, amount)
                             print(code, move, wallet, to_wallet)
                             log.error('Transfer error: {0}'.format(e))
                             return

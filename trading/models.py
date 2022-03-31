@@ -433,7 +433,6 @@ class Account(models.Model):
                 else:
                     log.error('Transfer not possible from wallet {0}'.format(wallet))
 
-        log.info('Transfer complete')
         return True
 
     # Send order to an exchange and create order object

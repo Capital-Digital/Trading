@@ -492,7 +492,8 @@ class Exchange(models.Model):
             data = [i[indice] for i in i.data if i[0] in ts]
 
             if i.market.symbol == 'ACA/USDT':
-                print('ACA\n', data)
+                print('ACA\n', len(data))
+                print('ACA\n', len(ts))
 
             if data:
 
@@ -501,11 +502,12 @@ class Exchange(models.Model):
                 axis = 0 if i.market.base.code in df.columns else 1
                 df = pd.concat([df, temp], axis=axis).groupby(level=0).first()
 
-        print('After update')
-        print(df.tail(20))
-        print(df['ACA'])
+        print(df['ACA'], "\n")
 
         df = df.reset_index()
+
+        print(df['ACA'], "\n")
+        print(df['ACA'].to_string(), "\n")
 
         # Save dataframe to file
         df.to_csv(filename, sep=',', encoding='utf-8', index=False)

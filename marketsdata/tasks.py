@@ -675,7 +675,7 @@ def fetch_candle_history(exid):
                                                                    market=market,
                                                                    data=var)
 
-                                            log.info('Create object for {0} {1} {2}'.format(market.symbol, year, i))
+                                            log.info('Create object for {0} {1}-S{2}'.format(market.symbol, year, i))
 
                                         else:
 
@@ -686,7 +686,7 @@ def fetch_candle_history(exid):
                                             if diff:
                                                 obj.data += diff
                                                 obj.save()
-                                                log.info('Update object {0} {1} {2}'.format(market.symbol, year, i))
+                                                log.info('Update object {0} {1}-S{2}'.format(market.symbol, year, i))
 
                                             else:
                                                 log.info('No new candles received')
@@ -705,8 +705,8 @@ def fetch_candle_history(exid):
 
                             # if an empty object is returned by exchange return 30 day in the past
                             if 'empty' not in locals():
-                                since = int((now - timedelta(days=30)).timestamp() * 1000)
-                                log.info('Empty array received, try to offset 30 days')
+                                since = int((now - timedelta(days=60)).timestamp() * 1000)
+                                log.info('Empty array received, try to offset 60 days')
                                 empty = True
 
                             else:

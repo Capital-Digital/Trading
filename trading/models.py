@@ -524,7 +524,8 @@ class Account(models.Model):
                     log.info('Order update', id=order.orderid, wallet=wallet)
 
             else:
-                log.info('No order to update in wallet {0}'.format(wallet))
+                pass
+                # log.info('No order to update in wallet {0}'.format(wallet))
 
     # Update order object
     def create_update_order(self, response, action, market):

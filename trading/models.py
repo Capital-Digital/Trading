@@ -293,8 +293,6 @@ class Account(models.Model):
 
     def buy_spot(self):
 
-        log.info('*** Buy spot ***')
-
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
@@ -367,11 +365,15 @@ class Account(models.Model):
                     free_margin = self.balances.future.free.quantity[self.quote]
                     if free_margin < pos_value:
                         log.warning('Free margin is needed to open {0} short'.format(code))
-                        self.move_fund(self.quote, pos_value, 'spot')
+                        res = self.move_fund(self.quote, pos_value, 'spot')
+                        if not res:
+                            return
 
                 else:
                     log.warning('Free margin is needed to open {0} short'.format(code))
-                    self.move_fund(self.quote, pos_value, 'spot')
+                    res = self.move_fund(self.quote, pos_value, 'spot')
+                    if not res:
+                        return
 
                 # Place order
                 price -= (price * float(self.limit_price_tolerance))
@@ -411,14 +413,23 @@ class Account(models.Model):
 
                 if amount:
                     move = min(free, amount)
-                    client.transfer(code, move, wallet, to_wallet)
-                    log.info('{0} {1} moved from {2} to {3}'.format(round(amount, 2), code, wallet, to_wallet))
+
+                    try:
+                        client.transfer(code, move, wallet, to_wallet)
+                    except ccxt.AuthenticationError:
+                        log.error('Authentication error, can not move fund')
+                        return
+                    except Exception as e:
+                        log.error('Transfer error: {0}'.format(e))
+                        return                        
+                    else:
+                        log.info('{0} {1} moved from {2} to {3}'.format(round(amount, 2), code, wallet, to_wallet))
 
                     # Update amount
                     amount -= move
 
-                else:
-                    log.info('Transfer complete')
+        log.info('Transfer complete')
+        return True
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False, quote_order_qty=False):

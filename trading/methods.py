@@ -51,6 +51,7 @@ def format_decimal(counting_mode, precision, n):
 
 # Return amount limit min or amount limit max if condition is not satisfy
 def limit_amount(market, amount):
+
     # Check amount limits
     if market.limits['amount']['min']:
         if amount < market.limits['amount']['min']:
@@ -81,7 +82,7 @@ def limit_price(market, price):
     return True
 
 
-# Return True if cost limit conditions are satisfy otherwise False
+# Return True if cost limit conditions are satisfied otherwise False
 def limit_cost(market, cost):
     # Check cost limits
     if market.limits['cost']['min']:
@@ -95,33 +96,3 @@ def limit_cost(market, cost):
 
     return True
 
-
-# Test MIN_NOTIONAL
-def test_min_notional(market, action, amount, price):
-    cost = amount * price
-    min_notional = limit_cost(market, cost)
-
-    if market.exchange.exid == 'binance':
-
-        # If market is spot and if condition is applied to MARKET order
-        if market.type == 'spot':
-            if market.response['info']['filters'][3]['applyToMarket']:
-                if min_notional:
-                    return True, None
-            else:
-                return True, None
-
-        # If market is USDT margined and if verification fails, set reduce_only = True
-        elif not min_notional:
-            if market.type == 'derivative':
-                if market.margined.code == 'USDT':
-                    if action == 'close_short':
-                        return True, True  # Reduce only = True
-        else:
-            return True, None
-    else:
-        if min_notional:
-            return True, None
-
-    # In last resort return False
-    return False, None

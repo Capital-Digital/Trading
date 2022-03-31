@@ -412,6 +412,7 @@ class Account(models.Model):
                     free = total - notional_values
 
                 if amount:
+                    print('amount', amount)
                     move = min(free, amount)
 
                     try:
@@ -423,7 +424,7 @@ class Account(models.Model):
                         log.error('Transfer error: {0}'.format(e))
                         return
                     else:
-                        log.info('Transfer of {0} {1} from {2} to {3} done!'.format(round(amount, 2), code, wallet, to_wallet))
+                        log.info('Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
 
                     # Update amount
                     amount -= move

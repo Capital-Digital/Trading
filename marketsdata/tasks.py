@@ -631,13 +631,12 @@ def fetch_candle_history(exid):
 
                         if data:
 
-                            log.info('{0} candles returned'.format(len(data)))
+                            log.info('Market has {0} new candles'.format(len(data)))
 
                             # Drop the last candle if it's timestamp of the current hour
                             unix_time_last = data[-1][0]
                             end_dt = timezone.make_aware(datetime.fromtimestamp(unix_time_last / 1000))
                             if end_dt > now:
-                                log.info('Drop candle of the current hour')
                                 del data[-1]
                                 unix_time_last = data[-1][0]
 
@@ -693,6 +692,7 @@ def fetch_candle_history(exid):
                             # and break the while loop when the last candle is collected
                             dt = datetime.strptime(data[-1][0], directive).replace(tzinfo=pytz.UTC)
                             if dt >= now:
+                                log.info('Market is updated')
                                 break
 
                             else:
@@ -704,11 +704,10 @@ def fetch_candle_history(exid):
                             # if an empty object is returned by exchange return 30 day in the past
                             if 'empty' not in locals():
                                 since = int((now - timedelta(days=60)).timestamp() * 1000)
-                                log.info('Empty array received, try to offset 60 days')
                                 empty = True
 
                             else:
-                                log.warning('Empty array')
+                                log.warning('Market not fully update')
                                 del empty
                                 break
     else:

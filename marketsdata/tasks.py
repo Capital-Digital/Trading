@@ -563,7 +563,7 @@ def funding(exid):
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
-    
+
     exchange = Exchange.objects.get(exid=exid)
     markets = Market.objects.filter(exchange=exchange,
                                     trading=True,
@@ -575,17 +575,25 @@ def fetch_candle_history(exid):
 
         for market in markets:
 
+            log.info('Fetch candles for {0} {1}'.format(market.symbol, market.type))
             log.bind(exchange=exid, symbol=market.symbol, wallet=market.wallet)
+
             now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             directive = '%Y-%m-%dT%H:%M:%SZ'
+            limit = exchange.limit_ohlcv
 
-            # Test if an object already exist for this market
+            # Prepare client
+            client = exchange.get_ccxt_client()
+            client.options['defaultType'] = market.wallet if exchange.wallets else None
+
+            # Candle already exist ?
             queryset = Candles.objects.filter(market=market)
             if queryset:
 
                 # Get latest timestamp
                 end = queryset.order_by('-year', '-semester')[0].data[-1][0]
                 dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
+                log.info('Market {0} {1} latest candle at {2} found'.format(market.symbol, market.wallet, end))
 
                 if dt == now:
                     log.info('Market {0} {1} is updated'.format(market.symbol, market.wallet))
@@ -594,11 +602,9 @@ def fetch_candle_history(exid):
             else:
                 # Set datetime
                 dt = exchange.start_date
+                log.info('Market {0} {1} is new'.format(market.symbol, market.wallet))
 
-            limit = exchange.limit_ohlcv
-            client = exchange.get_ccxt_client()
-            client.options['defaultType'] = market.wallet if exchange.wallets else None
-
+            # timestamp not updated ?
             if dt < now:
 
                 # Add 1 hour and convert to milliseconds

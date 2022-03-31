@@ -164,6 +164,10 @@ class Account(models.Model):
     def get_target_value(self):
         account_value = self.account_value()
         target_pct = self.strategy.get_target_pct()
+
+        log.info('Target percentages')
+        print(target_pct)
+
         return account_value * target_pct
 
     # Returns a Series with target quantity
@@ -576,7 +580,6 @@ class Account(models.Model):
     # Cancel all open orders
     def cancel_orders(self, user_orders=False):
 
-        log.info('Cancel orders start')
         client = self.exchange.get_ccxt_client(account=self)
 
         # Iterate through wallets
@@ -591,7 +594,7 @@ class Account(models.Model):
 
                 # Iterate through orders
                 if responses:
-                    log.info('Cancel {0} order(s)'.format(len(responses)))
+                    log.info('Cancel {0} order(s) in {1}'.format(len(responses), wallet))
                     for order in responses:
                         self.cancel_order(wallet, order['symbol'], order['id'])
 

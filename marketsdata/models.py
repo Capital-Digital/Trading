@@ -503,6 +503,7 @@ class Exchange(models.Model):
 
         print('After update')
         print(df.tail(20))
+        print(df['ACA'])
 
         df = df.reset_index()
 

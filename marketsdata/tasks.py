@@ -705,8 +705,7 @@ def fetch_candle_history(exid):
 
                             # if an empty object is returned by exchange return 30 day in the past
                             if 'empty' not in locals():
-                                since = now - timedelta(days=30)
-                                since = int(time.mktime(since.timetuple()) * 1000)
+                                since = int((now - timedelta(days=30)).timestamp() * 1000)
                                 log.info('Empty array received, try to offset 30 days')
                                 empty = True
 

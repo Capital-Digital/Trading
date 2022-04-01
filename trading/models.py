@@ -344,6 +344,9 @@ class Account(models.Model):
                                     moved = self.move_fund(self.quote, desired, 'spot')
                                     order_value = cash + moved
 
+                                else:
+                                    order_value = delta_value
+
                             else:
                                 log.warning('Cash is needed to buy {0} spot'.format(code))
                                 moved = self.move_fund(self.quote, delta_value, 'spot')

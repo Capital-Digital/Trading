@@ -908,8 +908,7 @@ class Account(models.Model):
         self.sell_spot()
         self.close_short()
 
-        # Update dataframe and allocate funds
-        self.create_balances()
+        # Allocate funds
         self.buy_spot()
         self.open_short()
 

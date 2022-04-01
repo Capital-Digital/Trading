@@ -469,7 +469,6 @@ class Account(models.Model):
 
             # Set parameters
             if quote_order_qty:
-                args['price'] = None
                 args['amount'] = None
                 args['params'] = dict(quoteOrderQty=int(raw_amount))
 

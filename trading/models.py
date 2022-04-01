@@ -436,7 +436,7 @@ class Account(models.Model):
         candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
 
         # Iterate through wallets and move available funds
-        for wallet, i in enumerate(list(set(self.balances.columns.get_level_values(0)))):
+        for i, wallet in enumerate(list(set(self.balances.columns.get_level_values(0)))):
 
             if wallet in candidates:
 

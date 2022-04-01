@@ -383,8 +383,10 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        self.place_order('buy_spot', market, 'buy', amount, price)
-                        self.create_balances()
+                        trade = self.place_order('buy_spot', market, 'buy', amount, price)
+                        if trade:
+                            self.create_balances()
+                            log.info(' ')
 
                     else:
                         log.info('No cash found in account wallets')
@@ -476,8 +478,10 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        self.place_order('open_short', market, 'sell', amount, price)
-                        self.create_balances()
+                        trade = self.place_order('open_short', market, 'sell', amount, price)
+                        if trade:
+                            self.create_balances()
+                            log.info(' ')
 
                     else:
                         log.info('No cash found in account wallets')
@@ -622,7 +626,9 @@ class Account(models.Model):
             response = client.create_order(**args)
 
             # And create object
-            self.create_update_order(response, action, market)
+            trade = self.create_update_order(response, action, market)
+            if trade:
+                return True
 
         else:
             log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 3), market.base.code))

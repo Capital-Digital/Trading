@@ -861,6 +861,12 @@ class Account(models.Model):
 
         log.info(' ')
 
+        percent = self.balances.account.current.percent
+        for target, val in percent[percent!=0].sort_values(ascending=False).items():
+            log.info('Percentage for {0}: {1}%'.format(target, round(val * 100, 2)))
+
+        log.info(' ')
+
         percent = self.balances.account.target.percent
         for target, val in percent[percent!=0].sort_values(ascending=False).items():
             log.info('Target for {0}: {1}%'.format(target, round(val * 100, 2)))

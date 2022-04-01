@@ -300,7 +300,7 @@ class Account(models.Model):
             for code in codes_to_buy:
 
                 # Determine missing quantity and it's dollar value
-                delta = self.balances.account.trade.delta[code]
+                delta = abs(self.balances.account.trade.delta[code])
                 price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
                 delta_value = delta * price
 

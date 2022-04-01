@@ -176,7 +176,10 @@ class Account(models.Model):
         # Insert quantities
         for code, val in value.items():
             qty = val / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
+            print(code, val, qty)
             self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
+
+        self.save()
 
     # Calculate net exposure and delta
     def get_delta(self):

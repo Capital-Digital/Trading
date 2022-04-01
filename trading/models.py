@@ -436,6 +436,8 @@ class Account(models.Model):
                                 precision=market.precision['amount'],
                                 n=raw_amount)
 
+        code = market.base.code
+
         # Test amount limits MIN and MAX
         if limit_amount(market, amount):
 
@@ -454,14 +456,14 @@ class Account(models.Model):
                 # Else return
                 if not reduce_only:
                     log.info('Cost not satisfied to {0} {2} {1}'.format(action,
-                                                                        market.base.code,
+                                                                        code,
                                                                         round(amount, 1), ))
                     return
 
             # Prepare order
             args = dict(
                 symbol=market.symbol,
-                type='market' if self.limit_order else 'market',
+                type='limit' if self.limit_order else 'market',
                 side=side,
                 amount=amount,
                 price=price
@@ -483,8 +485,12 @@ class Account(models.Model):
             client = self.exchange.get_ccxt_client(self)
             client.options['defaultType'] = market.wallet
 
+            if reduce_only:
+                action = 'spend'
+                code = self.quote
+
             log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
-                                                                          market.base.code,
+                                                                          code,
                                                                           market.type,
                                                                           amount,
                                                                           action

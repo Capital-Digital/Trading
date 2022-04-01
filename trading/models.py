@@ -133,7 +133,6 @@ class Account(models.Model):
         if opened:
 
             for position in opened:
-
                 market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
                 code = market.base.code
                 quantity = float(position['positionAmt'])
@@ -220,6 +219,10 @@ class Account(models.Model):
     # Sell in spot market
     def sell_spot(self):
 
+        log.info(' ')
+        log.info('Sell spot')
+        log.info('*********')
+
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
@@ -244,10 +247,6 @@ class Account(models.Model):
                     # Spot resources could be released ?
                     if not np.isnan(free):
 
-                        log.info(' ')
-                        log.info('Sell spot')
-                        log.info('*********')
-
                         # Sell all resources available if coin must be shorted
                         if target < 0:
                             amount = free
@@ -268,6 +267,10 @@ class Account(models.Model):
     # Sell in derivative market
     def close_short(self):
 
+        log.info(' ')
+        log.info('Close short')
+        log.info('***********')
+
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
@@ -287,15 +290,10 @@ class Account(models.Model):
                 # Code is shorted now ?
                 if 'position' in self.balances.columns.get_level_values(0):
                     if self.balances.position.open.quantity[code] < 0:
-
                         # Get quantities
                         delta = abs(delta[code])
                         shorted = abs(self.balances.position.open.quantity[code])
                         amount = min(delta, shorted)
-
-                        log.info(' ')
-                        log.info('Close short')
-                        log.info('***********')
 
                         # Place buy order
                         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
@@ -305,6 +303,10 @@ class Account(models.Model):
 
     # Buy in spot market
     def buy_spot(self):
+
+        log.info(' ')
+        log.info('Buy spot')
+        log.info('********')
 
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
@@ -367,10 +369,6 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        log.info(' ')
-                        log.info('Buy spot')
-                        log.info('********')
-
                         self.place_order('buy_spot', market, 'buy', amount, price)
                         self.create_balances()
 
@@ -379,6 +377,10 @@ class Account(models.Model):
 
     # Sell in derivative market
     def open_short(self):
+
+        log.info(' ')
+        log.info('Open short')
+        log.info('**********')
 
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
@@ -456,10 +458,6 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        log.info(' ')
-                        log.info('Open short')
-                        log.info('**********')
-
                         self.place_order('open_short', market, 'sell', amount, price)
                         self.create_balances()
 
@@ -497,10 +495,10 @@ class Account(models.Model):
 
                     # Wallet is derivative test a position is open ?
                     if wallet != 'spot' and 'position' in self.balances.columns.get_level_values(0):
-
                         # Reserve notional value as margin to maintain 1:1 ratio
                         notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
                         free = max(0, total - notional_values)
+                        log.info('Wallet {0} has {1} {2} of free margin'.format(wallet, free, code))
 
                     # Determine maximum amount that can be moved
                     movable = min(free, desired)
@@ -538,7 +536,6 @@ class Account(models.Model):
             log.info('Source wallet not found')
 
         if moved:
-            log.info('Some funds have been moved')
             return moved
 
         else:
@@ -593,12 +590,12 @@ class Account(models.Model):
             client = self.exchange.get_ccxt_client(self)
             client.options['defaultType'] = market.wallet
 
-            log.info('Place order to {0} {1} {2} in {3} market ({4})'.format(side,
-                                                                             amount,
-                                                                             market.base.code,
-                                                                             market.type,
-                                                                             action
-                                                                             )
+            log.info('Place order to {0} {1} {2} in {3} ({4})'.format(side,
+                                                                      amount,
+                                                                      market.base.code,
+                                                                      market.type,
+                                                                      action
+                                                                      )
                      )
 
             print('\nFree quantity\n')
@@ -684,7 +681,7 @@ class Account(models.Model):
             # New order ?
             if created:
 
-                log.info('Create {0} order'.format(response['id']), id=market.base.code)
+                log.info('Create {0} order'.format(market.base.code), id=response['id'])
 
                 # Trade occurred ?
                 if float(response['filled']):
@@ -695,7 +692,7 @@ class Account(models.Model):
 
             else:
 
-                log.info('Update {0} order'.format(response['id']), account=self.name, id=market.base.code)
+                log.info('Update {0} order'.format(market.base.code), account=self.name, id=response['id'])
 
                 # Action is to liberate resources ?
                 if action in ['sell_spot', 'close_short']:
@@ -703,7 +700,6 @@ class Account(models.Model):
                     # New trades occurred since last update ?
                     filled = float(response['filled']) - order.filled
                     if filled > 0:
-
                         log.info('Trade detected', account=self.name)
                         log.info('Order filled at {0}%'.format(round(filled / order.amount, 3) * 100),
                                  account=self.name)
@@ -833,7 +829,7 @@ class Account(models.Model):
         log.info(' ')
         log.info(' ')
         log.info('Start trading with account : {0}'.format(self.name))
-        log.info('--------------------------')
+        log.info('##########################')
         log.info(' ')
         log.info(' ')
 
@@ -862,7 +858,7 @@ class Account(models.Model):
 
         log.info(' ')
         log.info('End trading with account : {0}'.format(self.name))
-        log.info('########################')
+        log.info('---------------------------------------------')
         log.info(' ')
 
 

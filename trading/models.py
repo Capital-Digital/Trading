@@ -335,7 +335,7 @@ class Account(models.Model):
 
                                 # Not enough cash available?
                                 if cash < delta_value:
-                                    log.warning('Cash is needed to buy {0} spot'.format(code))
+                                    # log.info('Cash is needed to buy {0} spot'.format(code))
                                     desired = delta_value - cash
                                     moved = self.move_fund(self.quote, desired, 'spot')
                                     order_value = cash + moved
@@ -344,7 +344,7 @@ class Account(models.Model):
                                     order_value = delta_value
 
                             else:
-                                log.warning('Cash is needed to buy {0} spot'.format(code))
+                                # log.info('Cash is needed to buy {0} spot'.format(code))
                                 moved = self.move_fund(self.quote, delta_value, 'spot')
                                 if not moved:
                                     continue
@@ -352,7 +352,7 @@ class Account(models.Model):
                                     order_value = moved
 
                         else:
-                            log.warning('Cash is needed to buy {0} spot'.format(code))
+                            # log.info('Cash is needed to buy {0} spot'.format(code))
                             moved = self.move_fund(self.quote, delta_value, 'spot')
                             if not moved:
                                 continue
@@ -428,8 +428,7 @@ class Account(models.Model):
 
                                 # Determine order value
                                 if free_margin < pos_value:
-
-                                    log.warning('Margin is needed to open {0} short'.format(code))
+                                    # log.info('Margin is needed to open {0} short'.format(code))
                                     desired = pos_value - free_margin
                                     moved = self.move_fund(self.quote, desired, 'future')
                                     order_value = free_margin + moved
@@ -438,7 +437,7 @@ class Account(models.Model):
                                     order_value = free_margin
 
                             else:
-                                log.warning('Free margin is needed to open {0} short'.format(code))
+                                # log.info('Free margin is needed to open {0} short'.format(code))
                                 moved = self.move_fund(self.quote, pos_value, 'future')
                                 if not moved:
                                     continue
@@ -446,7 +445,7 @@ class Account(models.Model):
                                     order_value = moved
 
                         else:
-                            log.warning('Free margin is needed to open {0} short'.format(code))
+                            # log.info('Free margin is needed to open {0} short'.format(code))
                             moved = self.move_fund(self.quote, pos_value, 'future')
                             if not moved:
                                 continue
@@ -852,6 +851,8 @@ class Account(models.Model):
         # Mark the account as not busy
         self.set_busy_flag(False)
 
+        log.unbind(account=self.name)
+        
         log.info('******************************')
         log.info(' ')
         log.info('End trading with account {0}'.format(self.name))

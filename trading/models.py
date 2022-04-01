@@ -115,7 +115,7 @@ class Account(models.Model):
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
             # Drop dust < $10
-            mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 10
+            mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
             self.save()
 

@@ -41,6 +41,7 @@ class Account(models.Model):
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     active = models.BooleanField(null=True, blank=False, default=False)
+    trading = models.BooleanField(null=True, blank=False, default=False)
     updated = models.BooleanField(null=True, blank=False)
     limit_order = models.BooleanField(null=True, blank=False, default=True)
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)

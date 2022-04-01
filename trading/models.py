@@ -302,7 +302,6 @@ class Account(models.Model):
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
-        spent = 0
 
         if codes_to_buy:
 
@@ -357,7 +356,7 @@ class Account(models.Model):
                                                 type='spot'
                                                 )
                     self.place_order('buy spot', market, 'buy', amount, price)
-                    spent = delta_value
+                    self.create_balances()
 
     # Sell in derivative market
     def open_short(self):
@@ -423,6 +422,7 @@ class Account(models.Model):
                                             )
 
                 self.place_order('open short', market, 'sell', amount, price)
+                self.create_balances()
 
     # Move funds between account wallets
     def move_fund(self, code, amount, to_wallet):

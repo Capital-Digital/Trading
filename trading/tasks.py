@@ -10,7 +10,6 @@ from django.db.models.query import QuerySet
 from django.db.models import Q
 import warnings
 import ccxt
-import ccxtpro
 import numpy as np
 import pandas as pd
 import logging

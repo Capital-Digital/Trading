@@ -1,7 +1,6 @@
 import time
 from datetime import datetime, date
 import ccxt
-import ccxtpro
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django_pandas.managers import DataFrameManager

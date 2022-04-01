@@ -226,7 +226,7 @@ class Account(models.Model):
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
-        codes_to_sell = list(set(codes_to_sell) & set(self.balances.spot.free.quantity.index.values.tolist()))
+        codes_to_sell = [i for i in codes_to_sell if i in self.balances.spot.free.quantity.index.values.tolist()]
 
         # Codes should be sold ?
         if codes_to_sell:

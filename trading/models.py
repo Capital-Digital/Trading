@@ -861,15 +861,16 @@ class Account(models.Model):
 
         log.info(' ')
 
-        percent = self.balances.account.current.percent
-        for target, val in percent[percent!=0].sort_values(ascending=False).items():
-            log.info('Percentage for {0}: {1}%'.format(target, round(val * 100, 2)))
+        current = self.balances.account.current.percent
+        for coin, val in current[current!=0].sort_values(ascending=False).items():
+            if coin != self.quote:
+                log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 2)))
 
         log.info(' ')
 
-        percent = self.balances.account.target.percent
-        for target, val in percent[percent!=0].sort_values(ascending=False).items():
-            log.info('Target for {0}: {1}%'.format(target, round(val * 100, 2)))
+        target = self.balances.account.target.percent
+        for coin, val in target[target!=0].sort_values(ascending=False).items():
+            log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 2)))
 
     # Mark the account as currently trading (busy) or not
     def set_busy_flag(self, busy):

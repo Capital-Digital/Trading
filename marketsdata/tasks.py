@@ -781,34 +781,36 @@ def insert_current_tickers(exid):
 
             else:
 
-                try:
-                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
+                if market.quote.code == 'USDT':
 
-                except ObjectDoesNotExist:
+                    try:
+                        obj = Tickers.objects.get(year=year, semester=semester, market=market)
 
-                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
+                    except ObjectDoesNotExist:
 
-                    # Create new object
-                    Tickers.objects.create(year=year,
-                                           semester=semester,
-                                           market=market,
-                                           data=[dic]
-                                           )
+                        log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
 
-                else:
-
-                    # Avoid duplicate records
-                    if timestamp_st not in [d['timestamp'] for d in obj.data]:
-
-                        # log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
-
-                        # Concatenate the two lists
-                        obj.data.append(dic)
-                        obj.save()
+                        # Create new object
+                        Tickers.objects.create(year=year,
+                                               semester=semester,
+                                               market=market,
+                                               data=[dic]
+                                               )
 
                     else:
 
-                        log.info('Tickers for {0} updated'.format(market.symbol))
+                        # Avoid duplicate records
+                        if timestamp_st not in [d['timestamp'] for d in obj.data]:
+
+                            # log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
+
+                            # Concatenate the two lists
+                            obj.data.append(dic)
+                            obj.save()
+
+                        else:
+
+                            log.info('Tickers for {0} updated'.format(market.symbol))
 
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     timestamp_st = dt.strftime('%Y-%m-%dT%H:%M:%SZ')

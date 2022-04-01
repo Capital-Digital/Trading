@@ -807,6 +807,10 @@ class Account(models.Model):
         log.info('Start trade')
         log.info('***')
 
+        # Mark account are busy
+        self.trading = True
+        self.save()
+
         if cancel:
             self.cancel_orders()
 
@@ -819,6 +823,10 @@ class Account(models.Model):
         self.create_balances()
         self.buy_spot()
         self.open_short()
+
+        # Mark the account as not busy
+        self.trading = False
+        self.save()
 
         log.info('***')
         log.info('End trade')

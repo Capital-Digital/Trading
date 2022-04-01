@@ -247,7 +247,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Sell spot')
                         log.info('*********')
-                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(qty_delta, 3), code))
 
@@ -299,7 +298,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Close short')
                         log.info('***********')
-                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
@@ -376,7 +374,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Buy spot')
                         log.info('********')
-                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
@@ -468,7 +465,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Open short')
                         log.info('**********')
-                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
@@ -484,7 +480,6 @@ class Account(models.Model):
         log.info(' ')
         log.info('Transfer funds')
         log.info('**************')
-        log.info(' ')
 
         log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
 
@@ -736,11 +731,6 @@ class Account(models.Model):
     # Cancel all open orders
     def cancel_orders(self, user_orders=False):
 
-        log.info(' ')
-        log.info('Cancel orders')
-        log.info('*************')
-        log.info(' ')
-
         client = self.exchange.get_ccxt_client(account=self)
 
         # Iterate through wallets
@@ -755,6 +745,11 @@ class Account(models.Model):
 
                 # Iterate through orders
                 if responses:
+
+                    log.info(' ')
+                    log.info('Cancel app and user orders')
+                    log.info('**************************')
+
                     for order in responses:
                         log.info('Cancel order {0}'.format(order['id']))
                         self.cancel_order(wallet, order['symbol'], order['id'])
@@ -767,6 +762,11 @@ class Account(models.Model):
                                               )
                 # Iterate through orders
                 if orders.exists():
+
+                    log.info(' ')
+                    log.info('Cancel app orders')
+                    log.info('*****************')
+
                     for order in orders:
                         log.info('Cancel order {0}'.format(order.orderid))
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
@@ -811,7 +811,6 @@ class Account(models.Model):
         log.info(' ')
         log.info('Create balances dataframe')
         log.info('*************************')
-        log.info(' ')
 
         self.get_balances_qty()
         self.get_balances_value()
@@ -834,8 +833,10 @@ class Account(models.Model):
     def trade(self, cancel=True):
 
         log.info(' ')
+        log.info(' ')
         log.info('Start trading with account : {0}'.format(self.name))
-        log.info('==========================')
+        log.info('--------------------------')
+        log.info(' ')
         log.info(' ')
 
         log.bind(account=self.name)
@@ -863,8 +864,7 @@ class Account(models.Model):
 
         log.info(' ')
         log.info('End trading with account : {0}'.format(self.name))
-        log.info('////////////////////////')
-        log.info(' ')
+        log.info('########################')
 
 
 class Fund(models.Model):

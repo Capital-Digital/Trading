@@ -185,6 +185,7 @@ class Account(models.Model):
 
         log.info('Get delta start')
         target = self.balances.account.target.quantity.dropna()
+        acc_value = self.account_value()
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
@@ -194,7 +195,14 @@ class Account(models.Model):
         # Determine total exposure
         self.balances.loc[:, ('account', 'current', 'exposure')] = df.sum(axis=1)
 
-        # Iterate through target coins and calculate delta
+        # Calculate percentage for each coin
+        for coin, exp in self.balances.account.current.exposure.items():
+            price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+            value = exp * price
+            percent = value / acc_value
+            self.balances.loc[coin, ('account', 'current', 'percent')] = percent
+
+            # Iterate through target coins and calculate delta
         for coin in target.index.values.tolist():
 
             # Coins already in account ?

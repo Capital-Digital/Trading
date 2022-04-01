@@ -322,9 +322,6 @@ class Account(models.Model):
                         # Cash is not nan ?
                         if not np.isnan(cash):
 
-                            # Update cash with amount already spent
-                            cash = max(0, cash - spent)
-
                             # Not enough cash available?
                             if cash < delta_value:
                                 log.warning('Cash is needed to buy {0} spot'.format(code))

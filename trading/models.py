@@ -157,28 +157,29 @@ class Account(models.Model):
         # Sum value of all wallet
         return sum(wallets)
 
-    # Returns a Series with target value
-    def get_target_value(self):
+    # Create columns with targets
+    def get_targets(self):
 
-        account_value = self.account_value()
+        # Insert percentage
         target_pct = self.strategy.get_target_pct()
+        for coin in target_pct:
+            self.balances.loc[coin, ('account', 'target', 'percent')] = target_pct[coin]
 
-        return account_value * target_pct
+        # Insert target values
+        value = self.account_value() * target_pct
+        for coin in value:
+            self.balances.loc[coin, ('account', 'target', 'value')] = value[coin]
 
-    # Returns a Series with target quantity
-    def get_target_qty(self):
-
-        target = self.get_target_value()
-        for code in target.index:
-            target[code] /= Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
-
-        return target
+        # Insert quantities
+        for code in value:
+            qty = value / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
+            self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
     # Calculate net exposure and delta
     def get_delta(self):
 
         log.info('Get delta start')
-        target = self.get_target_qty()
+        target = self.balances.account.target
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
@@ -194,15 +195,11 @@ class Account(models.Model):
             # Coins already in account ?
             if coin in df.index.values.tolist():
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
-
-                # if not np.isnan(qty):
-                self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
-                self.balances.loc[coin, ('account', 'trade', 'delta')] = qty - target[coin]
+                self.balances.loc[coin, ('account', 'target', 'delta')] = qty - target[coin]
 
             # Coins not in account ?
             else:
-                self.balances.loc[coin, ('account', 'trade', 'target')] = target[coin]
-                self.balances.loc[coin, ('account', 'trade', 'delta')] = -target[coin]
+                self.balances.loc[coin, ('account', 'target', 'delta')] = -target[coin]
 
         # Iterate through coins in account and calculate delta
         for coin in df.index.values.tolist():
@@ -210,8 +207,8 @@ class Account(models.Model):
             # Coin not in target ?
             if coin not in target.index.values.tolist():
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
-                self.balances.loc[coin, ('account', 'trade', 'delta')] = qty
-                self.balances.loc[coin, ('account', 'trade', 'target')] = 0
+                self.balances.loc[coin, ('account', 'target', 'delta')] = qty
+                self.balances.loc[coin, ('account', 'target', 'quantity')] = 0
 
         self.save()
         log.info('Get delta done')
@@ -224,7 +221,7 @@ class Account(models.Model):
         log.info('*********')
 
         # Select codes to sell (exclude quote currency)
-        delta = self.balances.account.trade.delta
+        delta = self.balances.account.target.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
         codes_to_sell = [i for i in codes_to_sell if i
                          in self.balances.spot.free.quantity.dropna().index.values.tolist()]
@@ -247,7 +244,7 @@ class Account(models.Model):
 
                     # Select quantities
                     free = self.balances.spot.free.quantity[code]
-                    target = self.balances.account.trade.target[code]
+                    target = self.balances.account.target.quantity[code]
                     qty_delta = delta[code]
 
                     # Fund is not nan ?
@@ -283,7 +280,7 @@ class Account(models.Model):
         log.info('***********')
 
         # Select codes to buy (exclude quote currency)
-        delta = self.balances.account.trade.delta
+        delta = self.balances.account.target.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
         if codes_to_buy:
@@ -327,7 +324,7 @@ class Account(models.Model):
         log.info('********')
 
         # Select codes to buy (exclude quote currency)
-        delta = self.balances.account.trade.delta
+        delta = self.balances.account.target.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
         if codes_to_buy:
@@ -346,7 +343,7 @@ class Account(models.Model):
                 if not self.has_order(market):
 
                     # Determine missing quantity and it's dollar value
-                    delta = abs(self.balances.account.trade.delta[code])
+                    delta = abs(self.balances.account.target.delta[code])
                     price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
                     delta_value = delta * price
 
@@ -408,11 +405,11 @@ class Account(models.Model):
         log.info('**********')
 
         # Select codes to sell (exclude quote currency)
-        delta = self.balances.account.trade.delta
+        delta = self.balances.account.target.delta
         to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
 
         # Select codes to short
-        target = self.balances.account.trade.target
+        target = self.balances.account.target.quantity
         to_short = [i for i in target.loc[target < 0].index.values.tolist()]
 
         # Determine codes to open short
@@ -798,7 +795,7 @@ class Account(models.Model):
                         log.info('Cancel order {0}'.format(order.orderid))
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
                 else:
-                    log.info('No open order')
+                    log.info('No open order in {0}'.format(wallet))
 
     # Return True if a market has open order else false
     def has_order(self, market):

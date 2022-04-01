@@ -220,17 +220,12 @@ class Account(models.Model):
     # Sell in spot market
     def sell_spot(self):
 
-        log.info('***')
-        log.info('*** Sell spot ***')
-
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
 
         # Codes should be sold ?
         if codes_to_sell:
-
-            log.info('Sell spot {0} currencies'.format(len(codes_to_sell)))
             for code in codes_to_sell:
 
                 market = Market.objects.get(quote__code=self.quote,
@@ -249,7 +244,9 @@ class Account(models.Model):
                     # Spot resources could be released ?
                     if not np.isnan(free):
 
-                        log.info('Sell spot {0} {1}'.format(round(qty_delta, 3), code))
+                        log.info('***')
+                        log.info('*** Sell spot ***')
+                        log.info('{0} {1}'.format(round(qty_delta, 3), code))
 
                         # Sell all resources available if coin must be shorted
                         if target < 0:
@@ -271,8 +268,6 @@ class Account(models.Model):
     # Sell in derivative market
     def close_short(self):
 
-        log.info('*** Close short ***')
-
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
@@ -292,10 +287,15 @@ class Account(models.Model):
                 # Code is shorted now ?
                 if 'position' in self.balances.columns.get_level_values(0):
                     if self.balances.position.open.quantity[code] < 0:
+
                         # Get quantities
                         delta = abs(delta[code])
                         shorted = abs(self.balances.position.open.quantity[code])
                         amount = min(delta, shorted)
+
+                        log.info('***')
+                        log.info('*** Close short ***')
+                        log.info('{0} {1}'.format(round(amount, 3), code))
 
                         # Place buy order
                         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
@@ -306,14 +306,11 @@ class Account(models.Model):
     # Buy in spot market
     def buy_spot(self):
 
-        log.info('*** Buy spot ***')
-
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
         if codes_to_buy:
-
             for code in codes_to_buy:
 
                 market = Market.objects.get(quote__code=self.quote,
@@ -330,7 +327,7 @@ class Account(models.Model):
                     price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
                     delta_value = delta * price
 
-                    # Check if cash is available
+                    # Cash is available in spot wallet ?
                     if self.quote in self.balances.index.values.tolist():
                         if 'spot' in self.balances.columns.get_level_values(0):
                             cash = self.balances.spot.free.quantity[self.quote]
@@ -367,13 +364,18 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
+                        log.info('***')
+                        log.info('*** Buy spot ***')
+                        log.info('{0} {1}'.format(round(amount, 3), code))
+
                         self.place_order('buy spot', market, 'buy', amount, price)
                         self.create_balances()
 
+                    else:
+                        log.info('No cash found in account wallets')
+
     # Sell in derivative market
     def open_short(self):
-
-        log.info('*** Open short ***')
 
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
@@ -452,8 +454,15 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
+                        log.info('***')
+                        log.info('*** Open short ***')
+                        log.info('{0} {1}'.format(round(amount, 3), code))
+
                         self.place_order('open short', market, 'sell', amount, price)
                         self.create_balances()
+
+                    else:
+                        log.info('No cash found in account wallets')
 
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):

@@ -498,7 +498,7 @@ class Account(models.Model):
 
                     # Reserve notional value as margin to maintain 1:1 ratio
                     notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
-                    free = total - notional_values
+                    free = max(0, total - notional_values)
 
                 # Determine maximum amount that can be moved
                 movable = min(free, desired)
@@ -511,8 +511,8 @@ class Account(models.Model):
                     return
 
                 except Exception as e:
-                    print(free, desired)
-                    print(code, movable, wallet, to_wallet)
+                    log.error('Free = {0}, desired={1}'.format(free, desired))
+                    log.error('Max movable is {0} {3} from {1} to {2}'.format(movable, wallet, to_wallet, code))
                     log.error('Transfer error: {0}'.format(e))
                     continue
 
@@ -679,7 +679,7 @@ class Account(models.Model):
             # New order ?
             if created:
 
-                log.info('Create {1} order {0}...'.format(response['id'], market.base.code))
+                log.info('Create {0} order'.format(response['id']), id=market.base.code)
 
                 # Trade occurred ?
                 if float(response['filled']):
@@ -690,7 +690,7 @@ class Account(models.Model):
 
             else:
 
-                log.info('Update {1} order {0}...'.format(response['id'], market.base.code))
+                log.info('Update {0} order'.format(response['id']), account=self.name, id=market.base.code)
 
                 # Action is to liberate resources ?
                 if action in ['sell_spot', 'close_short']:
@@ -699,8 +699,9 @@ class Account(models.Model):
                     filled = float(response['filled']) - order.filled
                     if filled > 0:
 
-                        log.info('Trade detected')
-                        log.info('Order filled at {0}%'.format(round(filled / order.amount, 3) * 100))
+                        log.info('Trade detected', account=self.name)
+                        log.info('Order filled at {0}%'.format(round(filled / order.amount, 3) * 100),
+                                 account=self.name)
 
                         return True
 

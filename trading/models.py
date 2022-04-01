@@ -318,14 +318,14 @@ class Account(models.Model):
                             self.move_fund(self.quote, cash_needed, 'spot')
 
                         # Place order
-                        amount = delta_value
+                        amount = delta_value / price
                         price -= (price * float(self.limit_price_tolerance))
                         market = Market.objects.get(quote__code=self.quote,
                                                     exchange=self.exchange,
                                                     base__code=code,
                                                     type='spot'
                                                     )
-                        self.place_order('buy spot', market, 'buy', amount, price, quote_order_qty=True)
+                        self.place_order('buy spot', market, 'buy', amount, price)
 
     # Sell in derivative market
     def open_short(self):
@@ -429,14 +429,12 @@ class Account(models.Model):
         return True
 
     # Send order to an exchange and create order object
-    def place_order(self, action, market, side, raw_amount, price, reduce_only=False, quote_order_qty=False):
+    def place_order(self, action, market, side, raw_amount, price, reduce_only=False):
 
         # Format decimals
         amount = format_decimal(counting_mode=self.exchange.precision_mode,
                                 precision=market.precision['amount'],
                                 n=raw_amount)
-
-        code = market.base.code
 
         # Test amount limits MIN and MAX
         if limit_amount(market, amount):
@@ -456,8 +454,9 @@ class Account(models.Model):
                 # Else return
                 if not reduce_only:
                     log.info('Cost not satisfied to {0} {2} {1}'.format(action,
-                                                                        code,
-                                                                        round(amount, 1), ))
+                                                                        market.base.code,
+                                                                        amount,
+                                                                        ))
                     return
 
             # Prepare order
@@ -470,29 +469,17 @@ class Account(models.Model):
             )
 
             # Set parameters
-            if quote_order_qty:
-                args['amount'] = None
-                args['params'] = dict(quoteOrderQty=int(raw_amount))
-
-            # Set parameters
             if reduce_only:
-                if 'params' not in args:
-                    args['params'] = dict(reduceonly=True)
-                else:
-                    args['params']['reduceonly'] = True
+                args['params'] = dict(reduceonly=True)
 
             # Place order
             client = self.exchange.get_ccxt_client(self)
             client.options['defaultType'] = market.wallet
 
-            if reduce_only:
-                side = 'spend'
-                code = self.quote
-
             log.info('Place order to {0} {1} {2} in {3} market ({4})'.format(side,
                                                                              amount,
-                                                                             code,
-                                                                             market.symbol,
+                                                                             market.base.code,
+                                                                             market.type,
                                                                              action
                                                                              )
                      )

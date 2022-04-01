@@ -168,18 +168,23 @@ class Account(models.Model):
         for coin, pct in target_pct.items():
             self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
+        print(self.balances.account)
+
         # Insert target values
         value = self.account_value() * target_pct
         for coin, val in value.items():
             self.balances.loc[coin, ('account', 'target', 'value')] = val
 
+        print(self.balances.account)
+
         # Insert quantities
         for code, val in value.items():
             qty = val / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
             print(code, val, qty)
+            print(type(qty))
             self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
-        print(self.balances)
+        print(self.balances.account)
         self.save()
 
     # Calculate net exposure and delta
@@ -187,6 +192,7 @@ class Account(models.Model):
 
         log.info('Get delta start')
         target = self.balances.account.target.quantity.dropna()
+        print('target\n', target)
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]

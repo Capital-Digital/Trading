@@ -472,7 +472,7 @@ class Account(models.Model):
     def move_fund(self, code, desired, to_wallet):
 
         log.info('*** Transfer funds ***')
-        log.info('{0} {1} to {2} is needed'.format(round(desired, 4), code, to_wallet))
+        log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
 
         client = self.exchange.get_ccxt_client(self)
         moved = 0
@@ -806,9 +806,11 @@ class Account(models.Model):
     # Rebalance portfolio
     def trade(self, cancel=True):
 
+        log.info(' ')
         log.info('***')
-        log.info('Start trade')
+        log.info('Start trading with account {0}'.format(self.name))
         log.info('***')
+        log.info(' ')
 
         # Mark account are busy
         self.trading = True
@@ -831,9 +833,11 @@ class Account(models.Model):
         self.trading = False
         self.save()
 
+        log.info(' ')
         log.info('***')
-        log.info('End trade')
+        log.info('End trading with account {0}'.format(self.name))
         log.info('***')
+        log.info(' ')
 
 
 class Fund(models.Model):

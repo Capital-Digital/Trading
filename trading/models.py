@@ -851,8 +851,8 @@ class Account(models.Model):
         # Mark the account as not busy
         self.set_busy_flag(False)
 
-        log.unbind(account=self.name)
-        
+        log.unbind('account')
+
         log.info('******************************')
         log.info(' ')
         log.info('End trading with account {0}'.format(self.name))

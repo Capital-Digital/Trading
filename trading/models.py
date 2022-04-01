@@ -236,6 +236,7 @@ class Account(models.Model):
 
             for code in codes_to_sell:
 
+                log.info(' ')
                 log.info('-> {0}'.format(code))
 
                 market = Market.objects.get(quote__code=self.quote,
@@ -304,6 +305,7 @@ class Account(models.Model):
                     if 'position' in self.balances.columns.get_level_values(0):
                         if self.balances.position.open.quantity[code] < 0:
 
+                            log.info(' ')
                             log.info('-> {0}'.format(code))
 
                             # Get quantities
@@ -333,6 +335,7 @@ class Account(models.Model):
         if codes_to_buy:
             for code in codes_to_buy:
 
+                log.info(' ')
                 log.info('-> {0}'.format(code))
 
                 market = Market.objects.get(quote__code=self.quote,
@@ -420,6 +423,7 @@ class Account(models.Model):
         if to_open:
             for code in to_open:
 
+                log.info(' ')
                 log.info('-> {0}'.format(code))
 
                 market = Market.objects.get(quote__code=self.quote,
@@ -753,6 +757,10 @@ class Account(models.Model):
     # Cancel all open orders
     def cancel_orders(self, user_orders=False):
 
+        log.info(' ')
+        log.info('Cancel app orders')
+        log.info('*****************')
+
         client = self.exchange.get_ccxt_client(account=self)
 
         # Iterate through wallets
@@ -776,6 +784,9 @@ class Account(models.Model):
                         log.info('Cancel order {0}'.format(order['id']))
                         self.cancel_order(wallet, order['symbol'], order['id'])
 
+                else:
+                    log.info('No open order')
+
             # Only cancel tracked orders ?
             else:
                 orders = Order.objects.filter(account=self,
@@ -785,13 +796,11 @@ class Account(models.Model):
                 # Iterate through orders
                 if orders.exists():
 
-                    log.info(' ')
-                    log.info('Cancel app orders')
-                    log.info('*****************')
-
                     for order in orders:
                         log.info('Cancel order {0}'.format(order.orderid))
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
+                else:
+                    log.info('No open order')
 
     # Return True if a market has open order else false
     def has_order(self, market):

@@ -311,23 +311,40 @@ class Account(models.Model):
 
                         print('\ncash: ', cash, '\n')
 
-                        # Not enough cash available?
-                        if cash < delta_value:
+                        # Cash is not nan ?
+                        if not np.isnan(cash):
+
+                            # Not enough cash available?
+                            if cash < delta_value:
+                                log.warning('Cash is needed to buy {0} spot'.format(code))
+                                res = self.move_fund(self.quote, delta_value - cash, 'spot')
+                                if not res:
+                                    log.error('Transfer failed')
+                                    return
+
+                        else:
                             log.warning('Cash is needed to buy {0} spot'.format(code))
+                            res = self.move_fund(self.quote, delta_value, 'spot')
+                            if not res:
+                                log.error('Transfer failed')
+                                return
 
-                            # Determine cash needed and move fund
-                            cash_needed = delta_value - cash
-                            self.move_fund(self.quote, cash_needed, 'spot')
+                    else:
+                        log.warning('Cash is needed to buy {0} spot'.format(code))
+                        res = self.move_fund(self.quote, delta_value, 'spot')
+                        if not res:
+                            log.error('Transfer failed')
+                            return
 
-                        # Place order
-                        amount = delta_value / price
-                        price -= (price * float(self.limit_price_tolerance))
-                        market = Market.objects.get(quote__code=self.quote,
-                                                    exchange=self.exchange,
-                                                    base__code=code,
-                                                    type='spot'
-                                                    )
-                        self.place_order('buy spot', market, 'buy', amount, price)
+                    # Place order
+                    amount = delta
+                    price -= (price * float(self.limit_price_tolerance))
+                    market = Market.objects.get(quote__code=self.quote,
+                                                exchange=self.exchange,
+                                                base__code=code,
+                                                type='spot'
+                                                )
+                    self.place_order('buy spot', market, 'buy', amount, price)
 
     # Sell in derivative market
     def open_short(self):
@@ -356,7 +373,18 @@ class Account(models.Model):
 
                     # Future wallet requires additional free margin ?
                     free_margin = self.balances.future.free.quantity[self.quote]
-                    if free_margin < pos_value:
+
+                    # Free margin is not nan
+                    if not np.isnan(free_margin):
+
+                        if free_margin < pos_value:
+                            log.warning('Free margin is needed to open {0} short'.format(code))
+                            res = self.move_fund(self.quote, pos_value - free_margin, 'future')
+                            if not res:
+                                log.error('Transfer failed')
+                                return
+
+                    else:
                         log.warning('Free margin is needed to open {0} short'.format(code))
                         res = self.move_fund(self.quote, pos_value, 'future')
                         if not res:

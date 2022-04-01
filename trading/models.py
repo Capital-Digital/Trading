@@ -74,6 +74,7 @@ class Account(models.Model):
     def get_balances_qty(self):
 
         client = self.exchange.get_ccxt_client(self)
+        log.info('Get balances quantity start')
 
         # Del attribute
         if hasattr(self, 'balances'):
@@ -99,8 +100,12 @@ class Account(models.Model):
                 else:
                     self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
+        log.info('Get balances quantity done')
+
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
+
+        log.info('Get balances value start')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in list(set(self.balances.columns.get_level_values(0))):
@@ -116,8 +121,12 @@ class Account(models.Model):
             self.balances = self.balances.loc[(mask == True).any(axis=1)]
             self.save()
 
+        log.info('Get balances value done')
+
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
+
+        log.info('Get position value start')
 
         # Client client and query all futures positions
         client = self.exchange.get_ccxt_client(self)
@@ -140,6 +149,8 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
                 self.save()
 
+        log.info('Get position value done')
+
     # Return account total value
     def account_value(self):
         wallets = []
@@ -154,20 +165,30 @@ class Account(models.Model):
     # Returns a Series with target value
     def get_target_value(self):
 
+        log.info('Get target value start')
+
         account_value = self.account_value()
         target_pct = self.strategy.get_target_pct()
+
+        log.info('Get target value done')
         return account_value * target_pct
 
     # Returns a Series with target quantity
     def get_target_qty(self):
+
+        log.info('Get target quantity start')
+
         target = self.get_target_value()
         for code in target.index:
             target[code] /= Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
+
+        log.info('Get target quantity done')
         return target
 
     # Calculate net exposure and delta
     def get_delta(self):
 
+        log.info('Get delta start')
         target = self.get_target_qty()
 
         #  Select quantities from wallet total balances and open positions
@@ -204,6 +225,7 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'trade', 'target')] = 0
 
         self.save()
+        log.info('Get delta done')
 
     # Sell in spot market
     def sell_spot(self):
@@ -822,8 +844,8 @@ class Account(models.Model):
     def trade(self, cancel=True):
 
         log.info(' ')
-        log.info('Start trading with account {0}'.format(self.name))
-        log.info('===================================')
+        log.info('Start trading with account : {0}'.format(self.name))
+        log.info('==========================')
         log.info(' ')
 
         log.bind(account=self.name)
@@ -850,8 +872,8 @@ class Account(models.Model):
         log.unbind('account')
 
         log.info(' ')
-        log.info('End trading with account {0}'.format(self.name))
-        log.info('===================================')
+        log.info('End trading with account : {0}'.format(self.name))
+        log.info('////////////////////////')
         log.info(' ')
 
 

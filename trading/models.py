@@ -480,7 +480,7 @@ class Account(models.Model):
                 else:
                     log.info('More funds are need...')
             else:
-                log.warnin('Wallet {0} is not candidate'.format(wallet))
+                log.warning('Wallet {0} is not candidate'.format(wallet))
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False):

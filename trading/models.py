@@ -437,7 +437,10 @@ class Account(models.Model):
 
         # Iterate through wallets and move available funds
         for wallet, i in enumerate(list(set(self.balances.columns.get_level_values(0)))):
+
             if wallet in candidates:
+
+                log.info('Iterate through wallet {0}'.format(wallet))
 
                 # Determine free resource
                 total = self.balances.loc[code, (wallet, 'total', 'quantity')]
@@ -476,6 +479,8 @@ class Account(models.Model):
                     return True
                 else:
                     log.info('More funds are need...')
+            else:
+                log.warnin('Wallet {0} is not candidate'.format(wallet))
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False):

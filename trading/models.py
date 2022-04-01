@@ -105,20 +105,15 @@ class Account(models.Model):
 
         # Iterate through wallets, free, used and total quantities
         for wallet in list(set(self.balances.columns.get_level_values(0))):
-            print(wallet)
             for tp in list(set(self.balances[wallet].columns.get_level_values(0))):
-                print(tp)
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
-                    print(coin)
                     price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
                     value = price * funds[coin]
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
-                    print(self.balances.loc[coin, (wallet, tp, 'value')])
 
         # Drop dust < $10
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
-        print(mask)
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 

@@ -737,9 +737,12 @@ def hourly_tasks():
 # Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(exid):
+
     log.info('Start tickers insertion for {0}'.format(exid))
 
     def insert(data, wallet=None):
+
+        log.info('Insert {0} tickers'.format(len(data)))
 
         # Recreate dictionaries with desired keys
         data = [data[i] for i in data]
@@ -819,6 +822,9 @@ def insert_current_tickers(exid):
             client = exchange.get_ccxt_client()
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
+
+                    log.info('Fetch tickers for {0}'.format(wallet))
+
                     client.options['defaultType'] = wallet
                     data = client.fetch_tickers()
                     insert(data, wallet)

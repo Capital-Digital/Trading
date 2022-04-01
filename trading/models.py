@@ -309,6 +309,7 @@ class Account(models.Model):
         # Select codes to buy (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
+        spent = 0
 
         if codes_to_buy:
 
@@ -328,6 +329,9 @@ class Account(models.Model):
 
                         # Cash is not nan ?
                         if not np.isnan(cash):
+
+                            # Update cash with amount already spent
+                            cash = max(0, cash - spent)
 
                             # Not enough cash available?
                             if cash < delta_value:
@@ -360,6 +364,7 @@ class Account(models.Model):
                                                 type='spot'
                                                 )
                     self.place_order('buy spot', market, 'buy', amount, price)
+                    spent = delta_value
 
     # Sell in derivative market
     def open_short(self):

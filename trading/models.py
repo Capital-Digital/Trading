@@ -535,8 +535,9 @@ class Account(models.Model):
                                                                              )
                      )
 
+            print('\nFree quantity\n')
             print(self.balances.spot.free.quantity)
-            print(market.type, 'order')
+            print('\nMarket:', market.type, '\n')
             pprint(args)
 
             response = client.create_order(**args)

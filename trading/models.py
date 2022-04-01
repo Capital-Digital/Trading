@@ -850,7 +850,7 @@ class Account(models.Model):
         self.open_short()
 
         # Mark the account as not busy
-        self.set_trading_flag(False)
+        self.set_busy_flag(False)
 
         log.info('******************************')
         log.info(' ')

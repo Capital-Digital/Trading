@@ -158,7 +158,7 @@ class Account(models.Model):
         return sum(wallets)
 
     # Create columns with targets
-    def get_targets(self):
+    def get_target(self):
 
         # Insert percentage
         target_pct = self.strategy.get_target_pct()
@@ -841,7 +841,7 @@ class Account(models.Model):
         self.get_balances_qty()
         self.get_balances_value()
         self.get_positions_value()
-        self.get_target_qty()
+        self.get_target()
         self.get_delta()
 
     # Mark the account as currently trading (busy) or not

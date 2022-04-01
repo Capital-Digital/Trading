@@ -605,7 +605,7 @@ class Account(models.Model):
             self.create_update_order(response, action, market)
 
         else:
-            log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 1), market.base.code))
+            log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 3), market.base.code))
 
     # Query exchange and update open orders
     def update_orders(self):
@@ -783,10 +783,6 @@ class Account(models.Model):
         self.cancel_orders()
         self.create_balances()
 
-        log.info('***')
-        log.info('Free resources')
-        log.info('***')
-
         # Free resources
         self.sell_spot()
         self.close_short()
@@ -797,10 +793,6 @@ class Account(models.Model):
 
         # Update dataframe
         self.create_balances()
-
-        log.info('***')
-        log.info('Allocate funds')
-        log.info('***')
 
         # Allocate funds
         self.buy_spot()

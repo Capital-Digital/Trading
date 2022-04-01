@@ -230,6 +230,10 @@ class Account(models.Model):
 
         # Codes should be sold ?
         if codes_to_sell:
+
+            log.info('Codes in spot'.format(self.balances.spot.free.quantity.index.values.tolist()))
+            log.info('Codes to sell {0}'.format(codes_to_sell))
+
             for code in codes_to_sell:
 
                 log.info('-> {0}'.format(code))

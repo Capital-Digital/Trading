@@ -231,8 +231,8 @@ class Account(models.Model):
         # Codes should be sold ?
         if codes_to_sell:
 
-            # log.info('Codes in spot'.format(self.balances.spot.free.quantity.index.values.tolist()))
-            # log.info('Codes to sell {0}'.format(codes_to_sell))
+            log.info('Codes in spot'.format(self.balances.spot.free.quantity.index.values.tolist()))
+            log.info('Codes to sell {0}'.format(codes_to_sell))
 
             for code in codes_to_sell:
 
@@ -251,22 +251,28 @@ class Account(models.Model):
                     target = self.balances.account.trade.target[code]
                     qty_delta = delta[code]
 
-                    # Sell all resources available if coin must be shorted
-                    if target < 0:
-                        amount = free
+                    # Fund is not nan ?
+                    if not np.isnan(free):
 
-                    # Sell all resources available if coin is not allocated
-                    elif target == 0:
-                        amount = free
+                        # Sell all resources available if coin must be shorted
+                        if target < 0:
+                            amount = free
+
+                        # Sell all resources available if coin is not allocated
+                        elif target == 0:
+                            amount = free
+
+                        else:
+                            amount = qty_delta
+
+                        # Place sell order
+                        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                        price += (price * float(self.limit_price_tolerance))
+
+                        self.place_order('sell_spot', market, 'sell', amount, price)
 
                     else:
-                        amount = qty_delta
-
-                    # Place sell order
-                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
-                    price += (price * float(self.limit_price_tolerance))
-
-                    self.place_order('sell_spot', market, 'sell', amount, price)
+                        log.info('{0} is nan in spot'.format(code))
         else:
             log.info('No code to sell in spot')
 
@@ -522,7 +528,7 @@ class Account(models.Model):
 
                     # Determine maximum amount that can be moved
                     movable = min(free, desired)
-                    if movable > 1:
+                    if movable > 0.5:
 
                         try:
                             client.transfer(code, movable, wallet, to_wallet)
@@ -547,7 +553,7 @@ class Account(models.Model):
                                 log.info('Transfert complete')
                                 return moved
                     else:
-                        log.info('Fund available is less than $1')
+                        log.info('Fund available is less than $0.5')
 
                 else:
                     log.info('Wallet {0} has 0 {1}'.format(wallet, code))

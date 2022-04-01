@@ -617,7 +617,10 @@ class Account(models.Model):
         for wallet in self.exchange.get_wallets():
 
             # Open orders ?
-            orders = Order.objects.filter(account=self, market__wallet=wallet, status='open')
+            orders = Order.objects.filter(account=self,
+                                          market__wallet=wallet,
+                                          status='open'
+                                          )
             if orders.exists():
 
                 # Set options
@@ -675,7 +678,7 @@ class Account(models.Model):
             # New order ?
             if created:
 
-                log.info('Create order {0} for {1} done'.format(response['id'], market.base.code))
+                log.info('Create order object {0} for {1} done'.format(response['id'], market.base.code))
 
                 # Trade occurred ?
                 if float(response['filled']):
@@ -686,7 +689,7 @@ class Account(models.Model):
 
             else:
 
-                log.info('Update order {0} for {1} done'.format(response['id'], market.base.code))
+                log.info('Update order object {0} for {1} done'.format(response['id'], market.base.code))
 
                 # Action is to liberate resources ?
                 if action in ['sell_spot', 'close_short']:

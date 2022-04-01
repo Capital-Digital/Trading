@@ -726,7 +726,7 @@ def hourly_tasks():
 
     if res.successful():
         log.info('Tickers insert complete')
-        for account in Account.objects.filter(trading=True, exchange__exid='binance'):
+        for account in Account.objects.filter(active=True, exchange__exid='binance'):
             if datetime.now().hour in account.strategy.execution_hours():
                 account.trade()
 

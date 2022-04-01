@@ -232,10 +232,9 @@ class Account(models.Model):
                     # Spot resources could be released ?
                     if not np.isnan(free):
 
-                        log.info('**********')
                         log.info(' ')
                         log.info('Sell spot')
-                        log.info(' ')
+                        log.info('*********')
                         log.info(' ')
 
                         log.info('{0} {1}'.format(round(qty_delta, 3), code))
@@ -285,10 +284,9 @@ class Account(models.Model):
                         shorted = abs(self.balances.position.open.quantity[code])
                         amount = min(delta, shorted)
 
-                        log.info('**********')
                         log.info(' ')
                         log.info('Close short')
-                        log.info(' ')
+                        log.info('***********')
                         log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
@@ -363,10 +361,9 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        log.info('**********')
                         log.info(' ')
                         log.info('Buy spot')
-                        log.info(' ')
+                        log.info('********')
                         log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
@@ -456,10 +453,9 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        log.info('**********')
                         log.info(' ')
                         log.info('Open short')
-                        log.info(' ')
+                        log.info('**********')
                         log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
@@ -473,10 +469,9 @@ class Account(models.Model):
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):
 
-        log.info('**********')
         log.info(' ')
         log.info('Transfer funds')
-        log.info(' ')
+        log.info('**************')
         log.info(' ')
 
         log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
@@ -729,7 +724,10 @@ class Account(models.Model):
     # Cancel all open orders
     def cancel_orders(self, user_orders=False):
 
-        log.info('Cancel orders start')
+        log.info(' ')
+        log.info('Cancel orders')
+        log.info('*************')
+        log.info(' ')
 
         client = self.exchange.get_ccxt_client(account=self)
 
@@ -760,8 +758,6 @@ class Account(models.Model):
                     for order in orders:
                         log.info('Cancel order {0}'.format(order.orderid))
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
-
-        log.info('Cancel orders done')
 
     # Return True if a market has open order else false
     def has_order(self, market):
@@ -800,10 +796,9 @@ class Account(models.Model):
     # Construct a fresh self.balances dataframe
     def create_balances(self):
 
-        log.info('**********')
         log.info(' ')
         log.info('Create balances dataframe')
-        log.info(' ')
+        log.info('*************************')
         log.info(' ')
 
         self.get_balances_qty()
@@ -826,11 +821,10 @@ class Account(models.Model):
     # Rebalance portfolio
     def trade(self, cancel=True):
 
-        log.info('******************************')
         log.info(' ')
         log.info('Start trading with account {0}'.format(self.name))
+        log.info('===================================')
         log.info(' ')
-        log.info('******************************')
 
         log.bind(account=self.name)
 
@@ -855,11 +849,10 @@ class Account(models.Model):
 
         log.unbind('account')
 
-        log.info('******************************')
         log.info(' ')
         log.info('End trading with account {0}'.format(self.name))
+        log.info('===================================')
         log.info(' ')
-        log.info('******************************')
 
 
 class Fund(models.Model):

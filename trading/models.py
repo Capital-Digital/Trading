@@ -73,7 +73,6 @@ class Account(models.Model):
     # Fetch coins and create balances dataframe
     def get_balances_qty(self):
 
-        log.info('*** Fetch account balances ***')
         client = self.exchange.get_ccxt_client(self)
 
         # Del attribute
@@ -91,7 +90,6 @@ class Account(models.Model):
                 dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
 
                 if dic:
-                    log.info('Get balances quantity in {1} ({0})'.format(key, wallet))
                     tmp = pd.DataFrame(index=dic.keys(),
                                        data=dic.values(),
                                        columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
@@ -103,8 +101,6 @@ class Account(models.Model):
 
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
-
-        log.info('Calculate dollar values')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in list(set(self.balances.columns.get_level_values(0))):
@@ -123,8 +119,6 @@ class Account(models.Model):
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
 
-        log.info('*** Fetch account positions ***')
-
         # Client client and query all futures positions
         client = self.exchange.get_ccxt_client(self)
         response = client.fapiPrivateGetPositionRisk()
@@ -133,10 +127,7 @@ class Account(models.Model):
 
         if opened:
 
-            log.info('There is {0} position(s) open in futures market'.format(len(opened)))
-
             for position in opened:
-                log.info('Update positions {0}'.format(position['symbol']))
 
                 market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
                 code = market.base.code
@@ -163,8 +154,6 @@ class Account(models.Model):
     # Returns a Series with target value
     def get_target_value(self):
 
-        log.info('*** Calculate target value ***')
-
         account_value = self.account_value()
         target_pct = self.strategy.get_target_pct()
         return account_value * target_pct
@@ -178,8 +167,6 @@ class Account(models.Model):
 
     # Calculate net exposure and delta
     def get_delta(self):
-
-        log.info('*** Calculate delta ***')
 
         target = self.get_target_qty()
 
@@ -722,7 +709,7 @@ class Account(models.Model):
     # Cancel all open orders
     def cancel_orders(self, user_orders=False):
 
-        log.info('*** Cancel orders ***')
+        log.info('Cancel orders start')
 
         client = self.exchange.get_ccxt_client(account=self)
 
@@ -738,12 +725,9 @@ class Account(models.Model):
 
                 # Iterate through orders
                 if responses:
-                    log.info('Cancel {0} order(s) in {1}'.format(len(responses), wallet))
                     for order in responses:
+                        log.info('Cancel order {0}'.format(order['id']))
                         self.cancel_order(wallet, order['symbol'], order['id'])
-
-                else:
-                    log.info('No order to cancel in wallet {0}'.format(wallet))
 
             # Only cancel tracked orders ?
             else:
@@ -753,12 +737,11 @@ class Account(models.Model):
                                               )
                 # Iterate through orders
                 if orders.exists():
-                    log.info('Cancel {0} order(s)'.format(len(orders)))
                     for order in orders:
+                        log.info('Cancel order {0}'.format(order.orderid))
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
 
-                else:
-                    log.info('No order to cancel in wallet {0}'.format(wallet))
+        log.info('Cancel orders done')
 
     # Return True if a market has open order else false
     def has_order(self, market):
@@ -797,24 +780,40 @@ class Account(models.Model):
     # Construct a fresh self.balances dataframe
     def create_balances(self):
 
+        log.info('Create balances dataframe start')
+
         self.get_balances_qty()
         self.get_balances_value()
         self.get_positions_value()
         self.get_target_qty()
         self.get_delta()
 
+        log.info('Create balances dataframe done')
+
+    # Mark the account as currently trading (busy) or not
+    def set_busy_flag(self, busy):
+
+        if busy:
+            log.info('Set busy flag = True')
+        else:
+            log.info('Set busy flag = False')
+
+        self.trading = busy
+        self.save()
+
     # Rebalance portfolio
     def trade(self, cancel=True):
 
+        log.info('******************************')
         log.info(' ')
-        log.info('***')
         log.info('Start trading with account {0}'.format(self.name))
-        log.info('***')
         log.info(' ')
+        log.info('******************************')
+
+        log.bind(account=self.name)
 
         # Mark account are busy
-        self.trading = True
-        self.save()
+        self.set_busy_flag(True)
 
         if cancel:
             self.cancel_orders()
@@ -830,14 +829,13 @@ class Account(models.Model):
         self.open_short()
 
         # Mark the account as not busy
-        self.trading = False
-        self.save()
+        self.set_trading_flag(False)
 
+        log.info('******************************')
         log.info(' ')
-        log.info('***')
         log.info('End trading with account {0}'.format(self.name))
-        log.info('***')
         log.info(' ')
+        log.info('******************************')
 
 
 class Fund(models.Model):

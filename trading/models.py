@@ -428,52 +428,54 @@ class Account(models.Model):
     def move_fund(self, code, amount, to_wallet):
 
         log.info('*** Transfer funds ***')
+        log.info('Move {0} {1} to {2} is needed'.format(round(amount, 4), code, to_wallet))
 
         client = self.exchange.get_ccxt_client(self)
-        log.info('Transfer {0} {1} to {2} is needed'.format(round(amount, 4), code, to_wallet))
 
         # Determine candidate source wallets
         candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
 
         # Iterate through wallets and move available funds
-        for wallet in list(set(self.balances.columns.get_level_values(0))):
+        for wallet, i in enumerate(list(set(self.balances.columns.get_level_values(0)))):
             if wallet in candidates:
 
-                # Determine quantities
+                # Determine free resource
                 total = self.balances.loc[code, (wallet, 'total', 'quantity')]
                 free = self.balances.loc[code, (wallet, 'free', 'quantity')]
 
                 if not np.isnan(free):
-
-                    # Preserve 1:1 margin if a position is open
+                    # Calculate notional value of all positions opened to preserve 1:1 margin
                     if 'position' in self.balances.columns.get_level_values(0):
                         notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
                         free = total - notional_values
-
-                    if amount:
-                        move = min(free, amount)
-
-                        try:
-                            client.transfer(code, move, wallet, to_wallet)
-                        except ccxt.AuthenticationError:
-                            log.error('Authentication error, can not move fund')
-                            return
-                        except Exception as e:
-                            print(free, amount)
-                            print(code, move, wallet, to_wallet)
-                            log.error('Transfer error: {0}'.format(e))
-                            return
-                        else:
-                            log.info(
-                                'Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
-
-                        # Update amount
-                        amount -= move
-
                 else:
                     log.error('Transfer not possible from wallet {0}'.format(wallet))
+                    continue
 
-        return True
+                # Determine maximum amount to transfer
+                move = min(free, amount)
+
+                try:
+                    client.transfer(code, move, wallet, to_wallet)
+                except ccxt.AuthenticationError:
+                    log.error('Authentication error, can not move fund')
+                    return
+                except Exception as e:
+                    print(free, amount)
+                    print(code, move, wallet, to_wallet)
+                    log.error('Transfer error: {0}'.format(e))
+                    return
+                else:
+                    log.info(
+                        'Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
+
+                # Update desired amount
+                amount -= move
+                if not amount:
+                    log.info('Transfert complete')
+                    return True
+                else:
+                    log.info('More funds are need...')
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False):

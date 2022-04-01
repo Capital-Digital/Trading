@@ -162,17 +162,17 @@ class Account(models.Model):
 
         # Insert percentage
         target_pct = self.strategy.get_target_pct()
-        for coin in target_pct:
-            self.balances.loc[coin, ('account', 'target', 'percent')] = target_pct[coin]
+        for coin, pct in target_pct.items():
+            self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
         # Insert target values
         value = self.account_value() * target_pct
-        for coin in value:
-            self.balances.loc[coin, ('account', 'target', 'value')] = value[coin]
+        for coin, val in value.items():
+            self.balances.loc[coin, ('account', 'target', 'value')] = val
 
         # Insert quantities
-        for code in value:
-            qty = value / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
+        for code, val in value.items():
+            qty = val / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
             self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
     # Calculate net exposure and delta

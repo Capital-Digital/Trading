@@ -72,7 +72,7 @@ class Account(models.Model):
     # Fetch coins and create balances dataframe
     def get_balances_qty(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Fetch account balances ***')
         client = self.exchange.get_ccxt_client(self)
 
@@ -104,7 +104,7 @@ class Account(models.Model):
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('Calculate dollar values')
 
         # Iterate through wallets, free, used and total quantities
@@ -124,7 +124,7 @@ class Account(models.Model):
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Fetch account positions ***')
 
         # Client client and query all futures positions
@@ -165,7 +165,7 @@ class Account(models.Model):
     # Returns a Series with target value
     def get_target_value(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Calculate target value ***')
 
         account_value = self.account_value()
@@ -182,7 +182,7 @@ class Account(models.Model):
     # Calculate net exposure and delta
     def get_delta(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Calculate delta ***')
 
         target = self.get_target_qty()
@@ -225,7 +225,7 @@ class Account(models.Model):
     # Sell in spot market
     def sell_spot(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Sell spot ***')
 
         # Select codes to sell (exclude quote currency)
@@ -272,7 +272,7 @@ class Account(models.Model):
     # Sell in derivative market
     def close_short(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Close short ***')
 
         # Select codes to buy (exclude quote currency)
@@ -303,7 +303,7 @@ class Account(models.Model):
     # Buy in spot market
     def buy_spot(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Buy spot ***')
 
         # Select codes to buy (exclude quote currency)
@@ -364,7 +364,7 @@ class Account(models.Model):
     # Sell in derivative market
     def open_short(self):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Open short ***')
 
         # Select codes to sell (exclude quote currency)
@@ -430,7 +430,7 @@ class Account(models.Model):
     # Move funds between account wallets
     def move_fund(self, code, amount, to_wallet):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Transfer funds ***')
 
         client = self.exchange.get_ccxt_client(self)
@@ -632,7 +632,7 @@ class Account(models.Model):
     # Cancel all open orders
     def cancel_orders(self, user_orders=False):
 
-        log.info('\n')
+        log.info('***')
         log.info('*** Cancel orders ***')
 
         client = self.exchange.get_ccxt_client(account=self)

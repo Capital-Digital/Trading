@@ -432,55 +432,55 @@ class Account(models.Model):
 
         client = self.exchange.get_ccxt_client(self)
 
-        # Determine candidate source wallets
+        # Determine candidates for source wallet
         candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
+        candidates = list(set(candidates) & set(list(set(self.balances.columns.get_level_values(0)))))
 
         # Iterate through wallets and move available funds
-        for i, wallet in enumerate(list(set(self.balances.columns.get_level_values(0)))):
+        for wallet in candidates:
 
-            if wallet in candidates:
+            # Determine free resource
+            total = self.balances.loc[code, (wallet, 'total', 'quantity')]
+            free = self.balances.loc[code, (wallet, 'free', 'quantity')]
 
-                log.info('Iterate through wallet {0}'.format(wallet))
+            if not np.isnan(free):
 
-                # Determine free resource
-                total = self.balances.loc[code, (wallet, 'total', 'quantity')]
-                free = self.balances.loc[code, (wallet, 'free', 'quantity')]
+                log.info('Wallet {0} has {1} {2} free'.format(wallet, round(free, 2), code))
 
-                if not np.isnan(free):
+                if wallet != 'spot':
                     # Calculate notional value of all positions opened to preserve 1:1 margin
                     if 'position' in self.balances.columns.get_level_values(0):
                         notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
                         free = total - notional_values
-                else:
-                    log.error('Transfer not possible from wallet {0}'.format(wallet))
-                    continue
-
-                # Determine maximum amount to transfer
-                move = min(free, amount)
-
-                try:
-                    client.transfer(code, move, wallet, to_wallet)
-                except ccxt.AuthenticationError:
-                    log.error('Authentication error, can not move fund')
-                    return
-                except Exception as e:
-                    print(free, amount)
-                    print(code, move, wallet, to_wallet)
-                    log.error('Transfer error: {0}'.format(e))
-                    return
-                else:
-                    log.info(
-                        'Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
-
-                # Update desired amount
-                amount -= move
-                if not amount:
-                    log.info('Transfert complete')
-                    return True
-                else:
-                    log.info('More funds are need...')
+                        log.info('Lower available resource to maintain 1:1 margin')
             else:
-                log.warning('Wallet {0} is not candidate'.format(wallet))
+                log.info('Wallet {0} has 0 {1} free'.format(wallet, code))
+                continue
+
+            # Determine maximum amount to transfer
+            move = min(free, amount)
+
+            try:
+                client.transfer(code, move, wallet, to_wallet)
+            except ccxt.AuthenticationError:
+                log.error('Authentication error, can not move fund')
+                return
+            except Exception as e:
+                print(free, amount)
+                print(code, move, wallet, to_wallet)
+                log.error('Transfer error: {0}'.format(e))
+                return
+            else:
+                log.info(
+                    'Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
+
+            # Update desired amount
+            amount -= move
+            if not amount:
+                log.info('Transfert complete')
+                return True
+            else:
+                log.info('More funds are need...')
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False):

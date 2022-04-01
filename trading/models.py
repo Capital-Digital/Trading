@@ -232,11 +232,11 @@ class Account(models.Model):
                     # Spot resources could be released ?
                     if not np.isnan(free):
 
-                        log.info('***')
+                        log.info('**********')
                         log.info(' ')
                         log.info('Sell spot')
                         log.info(' ')
-                        log.info('***')
+                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(qty_delta, 3), code))
 
@@ -285,11 +285,11 @@ class Account(models.Model):
                         shorted = abs(self.balances.position.open.quantity[code])
                         amount = min(delta, shorted)
 
-                        log.info('***')
+                        log.info('**********')
                         log.info(' ')
                         log.info('Close short')
                         log.info(' ')
-                        log.info('***')
+                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
@@ -363,11 +363,11 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        log.info('***')
+                        log.info('**********')
                         log.info(' ')
                         log.info('Buy spot')
                         log.info(' ')
-                        log.info('***')
+                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
@@ -456,11 +456,11 @@ class Account(models.Model):
                         amount = order_value / price
                         price -= (price * float(self.limit_price_tolerance))
 
-                        log.info('***')
+                        log.info('**********')
                         log.info(' ')
                         log.info('Open short')
                         log.info(' ')
-                        log.info('***')
+                        log.info(' ')
 
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
@@ -473,11 +473,11 @@ class Account(models.Model):
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):
 
-        log.info('***')
+        log.info('**********')
         log.info(' ')
         log.info('Transfer funds')
         log.info(' ')
-        log.info('***')
+        log.info(' ')
 
         log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
 
@@ -800,15 +800,17 @@ class Account(models.Model):
     # Construct a fresh self.balances dataframe
     def create_balances(self):
 
-        log.info('Create balances dataframe start')
+        log.info('**********')
+        log.info(' ')
+        log.info('Create balances dataframe')
+        log.info(' ')
+        log.info(' ')
 
         self.get_balances_qty()
         self.get_balances_value()
         self.get_positions_value()
         self.get_target_qty()
         self.get_delta()
-
-        log.info('Create balances dataframe done')
 
     # Mark the account as currently trading (busy) or not
     def set_busy_flag(self, busy):

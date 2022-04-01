@@ -750,7 +750,7 @@ def insert_current_tickers(exid):
         symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
         symbols.sort()
 
-        log.info('Insert {0] tickers'.format(len(symbols)))
+        log.info('Insert {0} tickers'.format(len(symbols)))
 
         # Iterate through symbols
         for symbol in symbols:

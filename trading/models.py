@@ -284,8 +284,6 @@ class Account(models.Model):
         if codes_to_buy:
             for code in codes_to_buy:
 
-                log.info('-> {0}'.format(code))
-
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
                                             base__code=code,
@@ -299,6 +297,9 @@ class Account(models.Model):
                     # Code is shorted now ?
                     if 'position' in self.balances.columns.get_level_values(0):
                         if self.balances.position.open.quantity[code] < 0:
+
+                            log.info('-> {0}'.format(code))
+
                             # Get quantities
                             delta = abs(delta[code])
                             shorted = abs(self.balances.position.open.quantity[code])
@@ -482,11 +483,10 @@ class Account(models.Model):
                         log.info('No cash found in account wallets')
         else:
             log.info('No code to open short')
-            
+
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):
 
-        log.info('Transfer funds')
         log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
 
         client = self.exchange.get_ccxt_client(self)
@@ -518,31 +518,32 @@ class Account(models.Model):
 
                     # Determine maximum amount that can be moved
                     movable = min(free, desired)
+                    if movable > 1:
 
-                    try:
-                        client.transfer(code, movable, wallet, to_wallet)
+                        try:
+                            client.transfer(code, movable, wallet, to_wallet)
 
-                    except ccxt.AuthenticationError:
-                        log.error('Authentication error, can not move fund')
-                        return
+                        except ccxt.AuthenticationError:
+                            log.error('Authentication error, can not move fund')
+                            return
 
-                    except Exception as e:
-                        log.error('Free = {0}, desired={1}'.format(free, desired))
-                        log.error('Max movable is {0} {3} from {1} to {2}'.format(movable, wallet, to_wallet, code))
-                        log.error('Transfer error: {0}'.format(e))
-                        continue
+                        except Exception as e:
+                            log.error('Transfer error: {0}'.format(e))
+                            continue
 
+                        else:
+                            # Update funds moved and desired
+                            moved += movable
+                            desired -= movable
+
+                            log.info('Transfer of {0} {1} done'.format(round(movable, 2), code))
+
+                            # All fund have been moved ?
+                            if not desired:
+                                log.info('Transfert complete')
+                                return moved
                     else:
-                        # Update funds moved and desired
-                        moved += movable
-                        desired -= movable
-
-                        log.info('Transfer of {0} {1} done'.format(round(movable, 2), code))
-
-                        # All fund have been moved ?
-                        if not desired:
-                            log.info('Transfert complete')
-                            return moved
+                        log.info('Fund available is less than $1')
 
                 else:
                     log.info('Wallet {0} has 0 {1}'.format(wallet, code))

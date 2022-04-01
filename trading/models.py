@@ -489,7 +489,7 @@ class Account(models.Model):
 
             if not np.isnan(free):
 
-                log.info('Wallet {0} has {1} {2} free'.format(wallet, round(free, 2), code))
+                log.info('Wallet {0} has {1} {2}'.format(wallet, round(free, 2), code))
 
                 # Wallet is derivative test a position is open ?
                 if wallet != 'spot' and 'position' in self.balances.columns.get_level_values(0):
@@ -527,7 +527,7 @@ class Account(models.Model):
                         return moved
 
             else:
-                log.info('Wallet {0} has 0 {1} free'.format(wallet, code))
+                log.info('Wallet {0} has 0 {1}'.format(wallet, code))
                 continue
 
         if moved:

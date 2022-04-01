@@ -150,7 +150,7 @@ class Account(models.Model):
     def account_value(self):
         wallets = []
         for level in list(set(self.balances.columns.get_level_values(0))):
-            
+
             # Keep only wallets
             if level not in ['position', 'account']:
 
@@ -182,7 +182,7 @@ class Account(models.Model):
     def get_delta(self):
 
         log.info('Get delta start')
-        target = self.balances.account.target
+        target = self.balances.account.target.dropna()
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]

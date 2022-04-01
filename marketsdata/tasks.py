@@ -742,15 +742,15 @@ def insert_current_tickers(exid):
 
     def insert(data, wallet=None):
 
-        log.info('Insert {0} tickers'.format(len(data)))
-
         # Recreate dictionaries with desired keys
         data = [data[i] for i in data]
         data = [{k: d[k] for k in ['symbol', 'bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
                 for d in data]
 
-        symbols = [i['symbol'] for i in data]
+        symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
         symbols.sort()
+
+        log.info('Insert {0] tickers'.format(len(symbols)))
 
         # Iterate through symbols
         for symbol in symbols:
@@ -776,41 +776,38 @@ def insert_current_tickers(exid):
                 market = Market.objects.get(**args)
 
             except ObjectDoesNotExist:
-                # print('No market', dic['symbol'], wallet)
                 continue
 
             else:
 
-                if market.quote.code == 'USDT':
+                try:
+                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
 
-                    try:
-                        obj = Tickers.objects.get(year=year, semester=semester, market=market)
+                except ObjectDoesNotExist:
 
-                    except ObjectDoesNotExist:
+                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
 
-                        log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
+                    # Create new object
+                    Tickers.objects.create(year=year,
+                                           semester=semester,
+                                           market=market,
+                                           data=[dic]
+                                           )
 
-                        # Create new object
-                        Tickers.objects.create(year=year,
-                                               semester=semester,
-                                               market=market,
-                                               data=[dic]
-                                               )
+                else:
+
+                    # Avoid duplicate records
+                    if timestamp_st not in [d['timestamp'] for d in obj.data]:
+
+                        # log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
+
+                        # Concatenate the two lists
+                        obj.data.append(dic)
+                        obj.save()
 
                     else:
 
-                        # Avoid duplicate records
-                        if timestamp_st not in [d['timestamp'] for d in obj.data]:
-
-                            # log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
-
-                            # Concatenate the two lists
-                            obj.data.append(dic)
-                            obj.save()
-
-                        else:
-
-                            log.info('Tickers for {0} updated'.format(market.symbol))
+                        log.info('Tickers for {0} updated'.format(market.symbol))
 
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     timestamp_st = dt.strftime('%Y-%m-%dT%H:%M:%SZ')

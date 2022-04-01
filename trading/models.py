@@ -486,15 +486,15 @@ class Account(models.Model):
             client.options['defaultType'] = market.wallet
 
             if reduce_only:
-                action = 'spend'
+                side = 'spend'
                 code = self.quote
 
-            log.info('Place order to {0} {3} {1} {2} market ({3})'.format(side,
-                                                                          code,
-                                                                          market.type,
-                                                                          amount,
-                                                                          action
-                                                                          )
+            log.info('Place order to {0} {1} {2} in {3} market ({4})'.format(side,
+                                                                             amount,
+                                                                             code,
+                                                                             market.symbol,
+                                                                             action
+                                                                             )
                      )
 
             print(self.balances.spot.free.quantity)

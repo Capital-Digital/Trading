@@ -469,7 +469,7 @@ class Account(models.Model):
                 return
             else:
                 log.info(
-                    'Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
+                    'Transfer of {0} {1} ({2} -> {3})'.format(round(move, 2), code, wallet, to_wallet))
 
             # Update desired amount
             amount -= move
@@ -477,7 +477,10 @@ class Account(models.Model):
                 log.info('Transfert complete')
                 return True
             else:
-                log.info('More funds are need...')
+                log.info('Additional {0} {1} need to be transfer'.format(amount, code))
+
+        log.error('Can not transfer all funds')
+        return
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False):

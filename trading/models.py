@@ -184,7 +184,7 @@ class Account(models.Model):
     def get_delta(self):
 
         log.info('Get delta start')
-        target = self.balances.account.target.quantity.dopna()
+        target = self.balances.account.target.quantity.dropna()
 
         #  Select quantities from wallet total balances and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]

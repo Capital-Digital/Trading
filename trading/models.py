@@ -492,13 +492,11 @@ class Account(models.Model):
                                                                           )
                      )
 
+            print(self.balances.spot.free.quantity)
             print(market.type, 'order')
             pprint(args)
 
             response = client.create_order(**args)
-
-            print('\nResponse\n')
-            pprint(response)
 
             # And create object
             self.create_update_order(response, action, market)

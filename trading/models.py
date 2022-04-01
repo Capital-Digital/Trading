@@ -248,8 +248,6 @@ class Account(models.Model):
                         log.info('Sell spot')
                         log.info('*********')
 
-                        log.info('{0} {1}'.format(round(qty_delta, 3), code))
-
                         # Sell all resources available if coin must be shorted
                         if target < 0:
                             amount = free
@@ -298,8 +296,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Close short')
                         log.info('***********')
-
-                        log.info('{0} {1}'.format(round(amount, 3), code))
 
                         # Place buy order
                         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
@@ -374,8 +370,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Buy spot')
                         log.info('********')
-
-                        log.info('{0} {1}'.format(round(amount, 3), code))
 
                         self.place_order('buy_spot', market, 'buy', amount, price)
                         self.create_balances()
@@ -465,8 +459,6 @@ class Account(models.Model):
                         log.info(' ')
                         log.info('Open short')
                         log.info('**********')
-
-                        log.info('{0} {1}'.format(round(amount, 3), code))
 
                         self.place_order('open_short', market, 'sell', amount, price)
                         self.create_balances()
@@ -687,7 +679,7 @@ class Account(models.Model):
             # New order ?
             if created:
 
-                log.info('Create order object {0} for {1} done'.format(response['id'], market.base.code))
+                log.info('Create {1} order {0}...'.format(response['id'], market.base.code))
 
                 # Trade occurred ?
                 if float(response['filled']):
@@ -698,7 +690,7 @@ class Account(models.Model):
 
             else:
 
-                log.info('Update order object {0} for {1} done'.format(response['id'], market.base.code))
+                log.info('Update {1} order {0}...'.format(response['id'], market.base.code))
 
                 # Action is to liberate resources ?
                 if action in ['sell_spot', 'close_short']:
@@ -865,6 +857,7 @@ class Account(models.Model):
         log.info(' ')
         log.info('End trading with account : {0}'.format(self.name))
         log.info('########################')
+        log.info(' ')
 
 
 class Fund(models.Model):

@@ -852,7 +852,9 @@ class Account(models.Model):
         self.get_delta()
 
         log.info(' ')
-        for target, val in self.balances.account.target.percent.sort_values(ascending=False).items():
+
+        percent = self.balances.account.target.percent
+        for target, val in percent[percent!=0].sort_values(ascending=False).items():
             log.info('Target for {0}: {1}%'.format(target, round(val * 100, 2)))
 
     # Mark the account as currently trading (busy) or not

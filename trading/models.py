@@ -231,7 +231,7 @@ class Account(models.Model):
         if codes_to_sell:
             for code in codes_to_sell:
 
-                log.info('Check {0}'.format(code))
+                log.info('-> {0}'.format(code))
 
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
@@ -265,6 +265,9 @@ class Account(models.Model):
                         price += (price * float(self.limit_price_tolerance))
 
                         self.place_order('sell_spot', market, 'sell', amount, price)
+
+                    else:
+                        log.info("No resource to release in spot")
 
     # Sell in derivative market
     def close_short(self):
@@ -679,7 +682,7 @@ class Account(models.Model):
             # New order ?
             if created:
 
-                log.info('Create {0} order'.format(market.base.code), id=response['id'])
+                log.info('Place order success for {0}'.format(market.base.code), id=response['id'])
 
                 # Trade occurred ?
                 if float(response['filled']):
@@ -813,6 +816,8 @@ class Account(models.Model):
     # Mark the account as currently trading (busy) or not
     def set_busy_flag(self, busy):
 
+        log.info(' ')
+
         if busy:
             log.info('Set busy flag = True')
         else:
@@ -856,7 +861,7 @@ class Account(models.Model):
 
         log.info(' ')
         log.info('End trading with account : {0}'.format(self.name))
-        log.info('--------------------------------------------')
+        log.info('-------------------------------------------')
         log.info(' ')
 
 

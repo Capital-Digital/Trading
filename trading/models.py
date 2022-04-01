@@ -231,6 +231,8 @@ class Account(models.Model):
         if codes_to_sell:
             for code in codes_to_sell:
 
+                log.info('Check {0}'.format(code))
+
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
                                             base__code=code,
@@ -467,10 +469,7 @@ class Account(models.Model):
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):
 
-        log.info(' ')
         log.info('Transfer funds')
-        log.info('**************')
-
         log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
 
         client = self.exchange.get_ccxt_client(self)
@@ -590,12 +589,11 @@ class Account(models.Model):
             client = self.exchange.get_ccxt_client(self)
             client.options['defaultType'] = market.wallet
 
-            log.info('Place order to {0} {1} {2} in {3} ({4})'.format(side,
-                                                                      amount,
-                                                                      market.base.code,
-                                                                      market.type,
-                                                                      action
-                                                                      )
+            log.info('Place order to {0} {1} {2} in {3}'.format(side,
+                                                                amount,
+                                                                market.base.code,
+                                                                market.type
+                                                                )
                      )
 
             print('\nFree quantity\n')
@@ -858,7 +856,7 @@ class Account(models.Model):
 
         log.info(' ')
         log.info('End trading with account : {0}'.format(self.name))
-        log.info('---------------------------------------------')
+        log.info('--------------------------------------------')
         log.info(' ')
 
 

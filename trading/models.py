@@ -233,36 +233,40 @@ class Account(models.Model):
             log.info('Sell spot {0} currencies'.format(len(codes_to_sell)))
             for code in codes_to_sell:
 
-                # Select quantities
-                free = self.balances.spot.free.quantity[code]
-                target = self.balances.account.trade.target[code]
-                qty_delta = delta[code]
+                market = Market.objects.get(quote__code=self.quote,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='spot')
 
-                # Spot resources could be released ?
-                if not np.isnan(free):
+                # Don't sell spot if an order is open
+                if not self.has_order(market):
 
-                    log.info('Sell spot {0} {1}'.format(round(qty_delta, 3), code))
+                    # Select quantities
+                    free = self.balances.spot.free.quantity[code]
+                    target = self.balances.account.trade.target[code]
+                    qty_delta = delta[code]
 
-                    # Sell all resources available if coin must be shorted
-                    if target < 0:
-                        amount = free
+                    # Spot resources could be released ?
+                    if not np.isnan(free):
 
-                    # Sell all resources available if coin is not allocated
-                    elif target == 0:
-                        amount = free
+                        log.info('Sell spot {0} {1}'.format(round(qty_delta, 3), code))
 
-                    else:
-                        amount = qty_delta
+                        # Sell all resources available if coin must be shorted
+                        if target < 0:
+                            amount = free
 
-                    # Place sell order
-                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
-                    price += (price * float(self.limit_price_tolerance))
-                    market = Market.objects.get(quote__code=self.quote,
-                                                exchange=self.exchange,
-                                                base__code=code,
-                                                type='spot')
+                        # Sell all resources available if coin is not allocated
+                        elif target == 0:
+                            amount = free
 
-                    self.place_order('sell spot', market, 'sell', amount, price)
+                        else:
+                            amount = qty_delta
+
+                        # Place sell order
+                        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                        price += (price * float(self.limit_price_tolerance))
+
+                        self.place_order('sell spot', market, 'sell', amount, price)
 
     # Sell in derivative market
     def close_short(self):
@@ -275,24 +279,29 @@ class Account(models.Model):
 
         for code in codes_to_buy:
 
-            # Code is shorted now ?
-            if 'position' in self.balances.columns.get_level_values(0):
-                if self.balances.position.open.quantity[code] < 0:
-                    # Get quantities
-                    delta = abs(delta[code])
-                    shorted = abs(self.balances.position.open.quantity[code])
-                    amount = min(delta, shorted)
+            market = Market.objects.get(quote__code=self.quote,
+                                        exchange=self.exchange,
+                                        base__code=code,
+                                        type='derivative',
+                                        contract_type='perpetual'
+                                        )
 
-                    # Place buy order
-                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
-                    price -= (price * float(self.limit_price_tolerance))
-                    market = Market.objects.get(quote__code=self.quote,
-                                                exchange=self.exchange,
-                                                base__code=code,
-                                                type='derivative',
-                                                contract_type='perpetual'
-                                                )
-                    self.place_order('close short', market, 'buy', amount, price, reduce_only=True)
+            # Don't close short if an order is open
+            if not self.has_order(market):
+
+                # Code is shorted now ?
+                if 'position' in self.balances.columns.get_level_values(0):
+                    if self.balances.position.open.quantity[code] < 0:
+                        # Get quantities
+                        delta = abs(delta[code])
+                        shorted = abs(self.balances.position.open.quantity[code])
+                        amount = min(delta, shorted)
+
+                        # Place buy order
+                        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                        price -= (price * float(self.limit_price_tolerance))
+
+                        self.place_order('close short', market, 'buy', amount, price, reduce_only=True)
 
     # Buy in spot market
     def buy_spot(self):
@@ -307,53 +316,59 @@ class Account(models.Model):
 
             for code in codes_to_buy:
 
-                # Determine missing quantity and it's dollar value
-                delta = abs(self.balances.account.trade.delta[code])
-                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
-                delta_value = delta * price
+                market = Market.objects.get(quote__code=self.quote,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='spot'
+                                            )
 
-                # Check if cash is available
-                if self.quote in self.balances.index.values.tolist():
-                    if 'spot' in self.balances.columns.get_level_values(0):
-                        cash = self.balances.spot.free.quantity[self.quote]
+                # Don't buy spot if an order is open
+                if not self.has_order(market):
 
-                        print('\ncash: ', cash, '\n')
+                    # Determine missing quantity and it's dollar value
+                    delta = abs(self.balances.account.trade.delta[code])
+                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                    delta_value = delta * price
 
-                        # Cash is not nan ?
-                        if not np.isnan(cash):
+                    # Check if cash is available
+                    if self.quote in self.balances.index.values.tolist():
+                        if 'spot' in self.balances.columns.get_level_values(0):
+                            cash = self.balances.spot.free.quantity[self.quote]
 
-                            # Not enough cash available?
-                            if cash < delta_value:
+                            print('\ncash: ', cash, '\n')
+
+                            # Cash is not nan ?
+                            if not np.isnan(cash):
+
+                                # Not enough cash available?
+                                if cash < delta_value:
+                                    log.warning('Cash is needed to buy {0} spot'.format(code))
+                                    desired = delta_value - cash
+                                    moved = self.move_fund(self.quote, desired, 'spot')
+                                    order_value = cash + moved
+
+                            else:
                                 log.warning('Cash is needed to buy {0} spot'.format(code))
-                                res = self.move_fund(self.quote, delta_value - cash, 'spot')
-                                if not res:
-                                    log.error('Transfer failed')
-                                    return
+                                moved = self.move_fund(self.quote, delta_value, 'spot')
+                                if not moved:
+                                    continue
+                                else:
+                                    order_value = moved
 
                         else:
                             log.warning('Cash is needed to buy {0} spot'.format(code))
-                            res = self.move_fund(self.quote, delta_value, 'spot')
-                            if not res:
-                                log.error('Transfer failed')
-                                return
+                            moved = self.move_fund(self.quote, delta_value, 'spot')
+                            if not moved:
+                                continue
+                            else:
+                                order_value = moved
 
-                    else:
-                        log.warning('Cash is needed to buy {0} spot'.format(code))
-                        res = self.move_fund(self.quote, delta_value, 'spot')
-                        if not res:
-                            log.error('Transfer failed')
-                            return
+                        # Place order
+                        amount = order_value / price
+                        price -= (price * float(self.limit_price_tolerance))
 
-                    # Place order
-                    amount = delta
-                    price -= (price * float(self.limit_price_tolerance))
-                    market = Market.objects.get(quote__code=self.quote,
-                                                exchange=self.exchange,
-                                                base__code=code,
-                                                type='spot'
-                                                )
-                    self.place_order('buy spot', market, 'buy', amount, price)
-                    self.create_balances()
+                        self.place_order('buy spot', market, 'buy', amount, price)
+                        self.create_balances()
 
     # Sell in derivative market
     def open_short(self):
@@ -374,43 +389,6 @@ class Account(models.Model):
         if to_open:
             for code in to_open:
 
-                # Determine desired quantity and value
-                amount = delta[code]
-                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
-                pos_value = amount * price
-
-                # Account has a future wallet ?
-                if 'future' in self.balances.columns.get_level_values(0):
-
-                    # Future wallet requires additional free margin ?
-                    free_margin = self.balances.future.free.quantity[self.quote]
-
-                    # Free margin is not nan
-                    if not np.isnan(free_margin):
-
-                        if free_margin < pos_value:
-                            log.warning('Free margin is needed to open {0} short'.format(code))
-                            res = self.move_fund(self.quote, pos_value - free_margin, 'future')
-                            if not res:
-                                log.error('Transfer failed')
-                                return
-
-                    else:
-                        log.warning('Free margin is needed to open {0} short'.format(code))
-                        res = self.move_fund(self.quote, pos_value, 'future')
-                        if not res:
-                            log.error('Transfer failed')
-                            return
-
-                else:
-                    log.warning('Free margin is needed to open {0} short'.format(code))
-                    res = self.move_fund(self.quote, pos_value, 'future')
-                    if not res:
-                        log.error('Transfer failed')
-                        return
-
-                # Place order
-                price -= (price * float(self.limit_price_tolerance))
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
                                             base__code=code,
@@ -418,16 +396,73 @@ class Account(models.Model):
                                             contract_type='perpetual'
                                             )
 
-                self.place_order('open short', market, 'sell', amount, price)
-                self.create_balances()
+                # Don't open short if an order is open
+                if not self.has_order(market):
+
+                    # Determine desired quantity and value
+                    amount = delta[code]
+                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                    pos_value = amount * price
+
+                    # Check margin
+                    if self.quote in self.balances.index.values.tolist():
+                        if 'future' in self.balances.columns.get_level_values(0):
+
+                            # Select free and total margin
+                            free_margin = self.balances.future.free.quantity[self.quote]
+                            total_margin = self.balances.future.total.quantity[self.quote]
+
+                            # Free margin is not nan ?
+                            if not np.isnan(free_margin):
+
+                                # If a position is already open in another market
+                                # then reserve notional value as margin to maintain 1:1 ratio
+                                if 'position' in self.balances.columns.get_level_values(0):
+                                    notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
+                                    free_margin = max(0, total_margin - notional_values)
+
+                                # Determine order value
+                                if free_margin < pos_value:
+
+                                    log.warning('Margin is needed to open {0} short'.format(code))
+                                    desired = pos_value - free_margin
+                                    moved = self.move_fund(self.quote, desired, 'future')
+                                    order_value = free_margin + moved
+
+                                else:
+                                    order_value = free_margin
+
+                            else:
+                                log.warning('Free margin is needed to open {0} short'.format(code))
+                                moved = self.move_fund(self.quote, pos_value, 'future')
+                                if not moved:
+                                    continue
+                                else:
+                                    order_value = moved
+
+                        else:
+                            log.warning('Free margin is needed to open {0} short'.format(code))
+                            moved = self.move_fund(self.quote, pos_value, 'future')
+                            if not moved:
+                                continue
+                            else:
+                                order_value = moved
+
+                        # Place order
+                        amount = order_value / price
+                        price -= (price * float(self.limit_price_tolerance))
+
+                        self.place_order('open short', market, 'sell', amount, price)
+                        self.create_balances()
 
     # Move funds between account wallets
-    def move_fund(self, code, amount, to_wallet):
+    def move_fund(self, code, desired, to_wallet):
 
         log.info('*** Transfer funds ***')
-        log.info('Move {0} {1} to {2} is needed'.format(round(amount, 4), code, to_wallet))
+        log.info('{0} {1} to {2} is needed'.format(round(desired, 4), code, to_wallet))
 
         client = self.exchange.get_ccxt_client(self)
+        moved = 0
 
         # Determine candidates for source wallet
         candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
@@ -444,43 +479,52 @@ class Account(models.Model):
 
                 log.info('Wallet {0} has {1} {2} free'.format(wallet, round(free, 2), code))
 
-                if wallet != 'spot':
-                    # Calculate notional value of all positions opened to preserve 1:1 margin
-                    if 'position' in self.balances.columns.get_level_values(0):
-                        notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
-                        free = total - notional_values
-                        log.info('Lower available resource to maintain 1:1 margin')
+                # Wallet is derivative test a position is open ?
+                if wallet != 'spot' and 'position' in self.balances.columns.get_level_values(0):
+
+                    # Reserve notional value as margin to maintain 1:1 ratio
+                    notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
+                    free = total - notional_values
+
+                # Determine maximum amount that can be moved
+                movable = min(free, desired)
+
+                try:
+                    client.transfer(code, movable, wallet, to_wallet)
+
+                except ccxt.AuthenticationError:
+                    log.error('Authentication error, can not move fund')
+                    return
+
+                except Exception as e:
+                    print(free, desired)
+                    print(code, movable, wallet, to_wallet)
+                    log.error('Transfer error: {0}'.format(e))
+                    continue
+
+                else:
+                    # Update funds moved and desired
+                    moved += movable
+                    desired -= movable
+
+                    log.info('Transfer of {0} {1} done'.format(round(movable, 2), code))
+
+                    # All fund have been moved ?
+                    if not desired:
+                        log.info('Transfert complete')
+                        return moved
+
             else:
                 log.info('Wallet {0} has 0 {1} free'.format(wallet, code))
                 continue
 
-            # Determine maximum amount to transfer
-            move = min(free, amount)
+        if moved:
+            log.info('Some funds have been moved')
+            return moved
 
-            try:
-                client.transfer(code, move, wallet, to_wallet)
-            except ccxt.AuthenticationError:
-                log.error('Authentication error, can not move fund')
-                return
-            except Exception as e:
-                print(free, amount)
-                print(code, move, wallet, to_wallet)
-                log.error('Transfer error: {0}'.format(e))
-                return
-            else:
-                log.info(
-                    'Transfer of {0} {1} ({2} -> {3})'.format(round(move, 2), code, wallet, to_wallet))
-
-            # Update desired amount
-            amount -= move
-            if not amount:
-                log.info('Transfert complete')
-                return True
-            else:
-                log.info('Additional {0} {1} need to be transfer'.format(amount, code))
-
-        log.error('Can not transfer all funds')
-        return
+        else:
+            log.error('Can not transfer all funds')
+            return 0
 
     # Send order to an exchange and create order object
     def place_order(self, action, market, side, raw_amount, price, reduce_only=False):

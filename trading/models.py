@@ -309,6 +309,8 @@ class Account(models.Model):
                     if 'spot' in self.balances.columns.get_level_values(0):
                         cash = self.balances.spot.free.quantity[self.quote]
 
+                        print('\ncash: ', cash, '\n')
+
                         # Not enough cash available?
                         if cash < delta_value:
                             log.warning('Cash is needed to buy {0} spot'.format(code))

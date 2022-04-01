@@ -231,8 +231,8 @@ class Account(models.Model):
         # Codes should be sold ?
         if codes_to_sell:
 
-            log.info('Codes in spot'.format(self.balances.spot.free.quantity.index.values.tolist()))
-            log.info('Codes to sell {0}'.format(codes_to_sell))
+            # log.info('Codes in spot'.format(self.balances.spot.free.quantity.index.values.tolist()))
+            # log.info('Codes to sell {0}'.format(codes_to_sell))
 
             for code in codes_to_sell:
 
@@ -267,6 +267,8 @@ class Account(models.Model):
                     price += (price * float(self.limit_price_tolerance))
 
                     self.place_order('sell_spot', market, 'sell', amount, price)
+        else:
+            log.info('No code to sell in spot')
 
     # Sell in derivative market
     def close_short(self):
@@ -279,31 +281,36 @@ class Account(models.Model):
         delta = self.balances.account.trade.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
-        for code in codes_to_buy:
+        if codes_to_buy:
+            for code in codes_to_buy:
 
-            market = Market.objects.get(quote__code=self.quote,
-                                        exchange=self.exchange,
-                                        base__code=code,
-                                        type='derivative',
-                                        contract_type='perpetual'
-                                        )
+                log.info('-> {0}'.format(code))
 
-            # Don't close short if an order is open
-            if not self.has_order(market):
+                market = Market.objects.get(quote__code=self.quote,
+                                            exchange=self.exchange,
+                                            base__code=code,
+                                            type='derivative',
+                                            contract_type='perpetual'
+                                            )
 
-                # Code is shorted now ?
-                if 'position' in self.balances.columns.get_level_values(0):
-                    if self.balances.position.open.quantity[code] < 0:
-                        # Get quantities
-                        delta = abs(delta[code])
-                        shorted = abs(self.balances.position.open.quantity[code])
-                        amount = min(delta, shorted)
+                # Don't close short if an order is open
+                if not self.has_order(market):
 
-                        # Place buy order
-                        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
-                        price -= (price * float(self.limit_price_tolerance))
+                    # Code is shorted now ?
+                    if 'position' in self.balances.columns.get_level_values(0):
+                        if self.balances.position.open.quantity[code] < 0:
+                            # Get quantities
+                            delta = abs(delta[code])
+                            shorted = abs(self.balances.position.open.quantity[code])
+                            amount = min(delta, shorted)
 
-                        self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
+                            # Place buy order
+                            price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                            price -= (price * float(self.limit_price_tolerance))
+
+                            self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
+        else:
+            log.info('No code to close short')
 
     # Buy in spot market
     def buy_spot(self):
@@ -318,6 +325,8 @@ class Account(models.Model):
 
         if codes_to_buy:
             for code in codes_to_buy:
+
+                log.info('-> {0}'.format(code))
 
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
@@ -378,6 +387,8 @@ class Account(models.Model):
 
                     else:
                         log.info('No cash found in account wallets')
+        else:
+            log.info('No code to buy in spot')
 
     # Sell in derivative market
     def open_short(self):
@@ -399,6 +410,8 @@ class Account(models.Model):
 
         if to_open:
             for code in to_open:
+
+                log.info('-> {0}'.format(code))
 
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
@@ -467,7 +480,9 @@ class Account(models.Model):
 
                     else:
                         log.info('No cash found in account wallets')
-
+        else:
+            log.info('No code to open short')
+            
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):
 
@@ -499,7 +514,7 @@ class Account(models.Model):
                         # Reserve notional value as margin to maintain 1:1 ratio
                         notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
                         free = max(0, total - notional_values)
-                        log.info('Wallet {0} has {1} {2} of free margin'.format(wallet, free, code))
+                        log.info('Wallet {0} has {1} {2} of free margin'.format(wallet, round(free, 2), code))
 
                     # Determine maximum amount that can be moved
                     movable = min(free, desired)

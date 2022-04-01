@@ -168,21 +168,16 @@ class Account(models.Model):
         for coin, pct in target_pct.items():
             self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
-        print(self.balances.account)
-
         # Insert target values
         value = self.account_value() * target_pct
         for coin, val in value.items():
             self.balances.loc[coin, ('account', 'target', 'value')] = val
 
-        print(self.balances.account)
-
         # Insert quantities
         for code, val in value.items():
             qty = val / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
-            print(code, val, qty)
-            print(type(qty))
             self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
+            print(self.balances.account.target.quantity)
 
         print(self.balances.account)
         self.save()
@@ -191,7 +186,7 @@ class Account(models.Model):
     def get_delta(self):
 
         log.info('Get delta start')
-        target = self.balances.account.target.quantity.dropna()
+        target = self.balances.account.target.quantity
         print('target\n', target)
 
         #  Select quantities from wallet total balances and open positions

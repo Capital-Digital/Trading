@@ -241,6 +241,8 @@ class Account(models.Model):
         codes_to_sell = [i for i in codes_to_sell if i
                          in self.balances.spot.free.quantity.dropna().index.values.tolist()]
 
+        trades = []
+
         # Codes should be sold ?
         if codes_to_sell:
 
@@ -280,12 +282,17 @@ class Account(models.Model):
                         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
                         price += (price * float(self.limit_price_tolerance))
 
-                        self.place_order('sell_spot', market, 'sell', amount, price)
+                        trade = self.place_order('sell_spot', market, 'sell', amount, price)
+                        trades.append(trade)
 
                     else:
                         log.info('{0} is nan in spot'.format(code))
         else:
             log.info('No code to sell in spot')
+
+        # Return True if trade occurred
+        if True in trades:
+            return True
 
     # Sell in derivative market
     def close_short(self):
@@ -298,9 +305,10 @@ class Account(models.Model):
         delta = self.balances.account.target.delta
         codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
+        trades = []
+
         if codes_to_buy:
             for code in codes_to_buy:
-
                 market = Market.objects.get(quote__code=self.quote,
                                             exchange=self.exchange,
                                             base__code=code,
@@ -327,9 +335,14 @@ class Account(models.Model):
                             price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
                             price -= (price * float(self.limit_price_tolerance))
 
-                            self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
+                            trade = self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
+                            trades.append(trade)
         else:
             log.info('No code to close short')
+
+        # Return True if trade occurred
+        if True in trades:
+            return True
 
     # Buy in spot market
     def buy_spot(self):
@@ -903,10 +916,12 @@ class Account(models.Model):
         if cancel:
             self.cancel_orders()
 
-        # Create dataframe and free resources
+        # Create fresh dataframe
         self.create_balances()
-        self.sell_spot()
-        self.close_short()
+
+        # Liberate resources and update dataframe if trade occurred
+        if self.sell_spot() or self.close_short():
+            self.create_balances()
 
         # Allocate funds
         self.buy_spot()

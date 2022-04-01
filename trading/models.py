@@ -150,7 +150,10 @@ class Account(models.Model):
     def account_value(self):
         wallets = []
         for level in list(set(self.balances.columns.get_level_values(0))):
-            if level != 'position':
+            
+            # Keep only wallets
+            if level not in ['position', 'account']:
+
                 # Sum value of all coins
                 wallets.append(self.balances[level].total.value.sum())
 

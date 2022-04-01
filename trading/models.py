@@ -482,62 +482,67 @@ class Account(models.Model):
         candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
         candidates = list(set(candidates) & set(list(set(self.balances.columns.get_level_values(0)))))
 
-        # Iterate through wallets and move available funds
-        for wallet in candidates:
+        if candidates:
 
-            # Determine free resource
-            total = self.balances.loc[code, (wallet, 'total', 'quantity')]
-            free = self.balances.loc[code, (wallet, 'free', 'quantity')]
+            # Iterate through wallets and move available funds
+            for wallet in candidates:
 
-            if not np.isnan(free):
+                # Determine free resource
+                total = self.balances.loc[code, (wallet, 'total', 'quantity')]
+                free = self.balances.loc[code, (wallet, 'free', 'quantity')]
 
-                log.info('Wallet {0} has {1} {2}'.format(wallet, round(free, 2), code))
+                if not np.isnan(free):
 
-                # Wallet is derivative test a position is open ?
-                if wallet != 'spot' and 'position' in self.balances.columns.get_level_values(0):
+                    log.info('Wallet {0} has {1} {2}'.format(wallet, round(free, 2), code))
 
-                    # Reserve notional value as margin to maintain 1:1 ratio
-                    notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
-                    free = max(0, total - notional_values)
+                    # Wallet is derivative test a position is open ?
+                    if wallet != 'spot' and 'position' in self.balances.columns.get_level_values(0):
 
-                # Determine maximum amount that can be moved
-                movable = min(free, desired)
+                        # Reserve notional value as margin to maintain 1:1 ratio
+                        notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
+                        free = max(0, total - notional_values)
 
-                try:
-                    client.transfer(code, movable, wallet, to_wallet)
+                    # Determine maximum amount that can be moved
+                    movable = min(free, desired)
 
-                except ccxt.AuthenticationError:
-                    log.error('Authentication error, can not move fund')
-                    return
+                    try:
+                        client.transfer(code, movable, wallet, to_wallet)
 
-                except Exception as e:
-                    log.error('Free = {0}, desired={1}'.format(free, desired))
-                    log.error('Max movable is {0} {3} from {1} to {2}'.format(movable, wallet, to_wallet, code))
-                    log.error('Transfer error: {0}'.format(e))
-                    continue
+                    except ccxt.AuthenticationError:
+                        log.error('Authentication error, can not move fund')
+                        return
+
+                    except Exception as e:
+                        log.error('Free = {0}, desired={1}'.format(free, desired))
+                        log.error('Max movable is {0} {3} from {1} to {2}'.format(movable, wallet, to_wallet, code))
+                        log.error('Transfer error: {0}'.format(e))
+                        continue
+
+                    else:
+                        # Update funds moved and desired
+                        moved += movable
+                        desired -= movable
+
+                        log.info('Transfer of {0} {1} done'.format(round(movable, 2), code))
+
+                        # All fund have been moved ?
+                        if not desired:
+                            log.info('Transfert complete')
+                            return moved
 
                 else:
-                    # Update funds moved and desired
-                    moved += movable
-                    desired -= movable
+                    log.info('Wallet {0} has 0 {1}'.format(wallet, code))
+                    continue
 
-                    log.info('Transfer of {0} {1} done'.format(round(movable, 2), code))
-
-                    # All fund have been moved ?
-                    if not desired:
-                        log.info('Transfert complete')
-                        return moved
-
-            else:
-                log.info('Wallet {0} has 0 {1}'.format(wallet, code))
-                continue
+        else:
+            log.info('Source wallet not found')
 
         if moved:
             log.info('Some funds have been moved')
             return moved
 
         else:
-            log.error('Can not transfer all funds')
+            log.error('No fund transferred')
             return 0
 
     # Send order to an exchange and create order object

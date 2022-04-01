@@ -135,7 +135,6 @@ class Account(models.Model):
             log.info('There is {0} position(s) open in futures market'.format(len(opened)))
 
             for position in opened:
-
                 log.info('Update positions {0}'.format(position['symbol']))
 
                 market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
@@ -273,7 +272,6 @@ class Account(models.Model):
             # Code is shorted now ?
             if 'position' in self.balances.columns.get_level_values(0):
                 if self.balances.position.open.quantity[code] < 0:
-
                     # Get quantities
                     delta = abs(delta[code])
                     shorted = abs(self.balances.position.open.quantity[code])
@@ -313,7 +311,6 @@ class Account(models.Model):
 
                         # Not enough cash available?
                         if cash < delta_value:
-
                             log.warning('Cash is needed to buy {0} spot'.format(code))
 
                             # Determine cash needed and move fund
@@ -420,7 +417,8 @@ class Account(models.Model):
                             log.error('Transfer error: {0}'.format(e))
                             return
                         else:
-                            log.info('Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
+                            log.info(
+                                'Transfer of {0} {1} ({2} -> {3})'.format(round(amount, 2), code, wallet, to_wallet))
 
                         # Update amount
                         amount -= move
@@ -455,9 +453,9 @@ class Account(models.Model):
 
                 # Else return
                 if not reduce_only:
-                    log.info('Cost not satisfied to {0} {1} in {2}'.format(action,
-                                                                                      market.base.code,
-                                                                                      market.type))
+                    log.info('Cost not satisfied to {0} {2} {1}'.format(action,
+                                                                        market.base.code,
+                                                                        round(amount, 1), ))
                     return
 
             # Prepare order
@@ -503,7 +501,7 @@ class Account(models.Model):
             self.create_update_order(response, action, market)
 
         else:
-            log.info('Limit not satisfied to {0} {1}'.format(action, market.base.code))
+            log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 1), market.base.code))
 
     # Query exchange and update open orders
     def update_orders(self):
@@ -521,7 +519,6 @@ class Account(models.Model):
 
                 # Iterate through order
                 for order in orders:
-
                     # Update order
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
                     self.create_update_order(responses, action=order.action, market=order.market)

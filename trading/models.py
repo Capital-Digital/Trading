@@ -174,12 +174,10 @@ class Account(models.Model):
             self.balances.loc[coin, ('account', 'target', 'value')] = val
 
         # Insert quantities
-        for code, val in value.items():
-            qty = val / Currency.objects.get(code=code).get_latest_price(self.quote, 'last')
+        for coin, val in value.items():
+            qty = val / Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
             self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
-            print(self.balances.account.target.quantity)
 
-        print(self.balances.account)
         self.save()
 
     # Calculate net exposure and delta

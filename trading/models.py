@@ -214,6 +214,8 @@ class Account(models.Model):
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
                 self.balances.loc[coin, ('account', 'target', 'delta')] = qty
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = 0
+                self.balances.loc[coin, ('account', 'target', 'percent')] = 0
+                self.balances.loc[coin, ('account', 'target', 'value')] = 0
 
         self.save()
         log.info('Get delta done')
@@ -848,6 +850,9 @@ class Account(models.Model):
         self.get_positions_value()
         self.get_target()
         self.get_delta()
+        
+        for target, val in self.balances.account.target.percent.items():
+            log.info('Target for {0}: {1}%'.format(target, round(val * 100, 2)))
 
     # Mark the account as currently trading (busy) or not
     def set_busy_flag(self, busy):

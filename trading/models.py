@@ -226,6 +226,7 @@ class Account(models.Model):
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
+        codes_to_sell = list(set(codes_to_sell) & set(self.balances.spot.free.quantity.index.values.tolist()))
 
         # Codes should be sold ?
         if codes_to_sell:
@@ -246,28 +247,22 @@ class Account(models.Model):
                     target = self.balances.account.trade.target[code]
                     qty_delta = delta[code]
 
-                    # Spot resources could be released ?
-                    if not np.isnan(free):
+                    # Sell all resources available if coin must be shorted
+                    if target < 0:
+                        amount = free
 
-                        # Sell all resources available if coin must be shorted
-                        if target < 0:
-                            amount = free
-
-                        # Sell all resources available if coin is not allocated
-                        elif target == 0:
-                            amount = free
-
-                        else:
-                            amount = qty_delta
-
-                        # Place sell order
-                        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
-                        price += (price * float(self.limit_price_tolerance))
-
-                        self.place_order('sell_spot', market, 'sell', amount, price)
+                    # Sell all resources available if coin is not allocated
+                    elif target == 0:
+                        amount = free
 
                     else:
-                        log.info("No resource to release in spot")
+                        amount = qty_delta
+
+                    # Place sell order
+                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                    price += (price * float(self.limit_price_tolerance))
+
+                    self.place_order('sell_spot', market, 'sell', amount, price)
 
     # Sell in derivative market
     def close_short(self):

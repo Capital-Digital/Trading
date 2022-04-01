@@ -226,13 +226,11 @@ class Account(models.Model):
         # Select codes to sell (exclude quote currency)
         delta = self.balances.account.trade.delta
         codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
-        codes_to_sell = [i for i in codes_to_sell if i in self.balances.spot.free.quantity.index.values.tolist()]
+        codes_to_sell = [i for i in codes_to_sell if i
+                         in self.balances.spot.free.quantity.dropna().index.values.tolist()]
 
         # Codes should be sold ?
         if codes_to_sell:
-
-            log.info('Codes in spot'.format(self.balances.spot.free.quantity.index.values.tolist()))
-            log.info('Codes to sell {0}'.format(codes_to_sell))
 
             for code in codes_to_sell:
 
@@ -785,7 +783,7 @@ class Account(models.Model):
                         self.cancel_order(wallet, order['symbol'], order['id'])
 
                 else:
-                    log.info('No open order')
+                    log.info('No open order in {0}'.format(wallet))
 
             # Only cancel tracked orders ?
             else:

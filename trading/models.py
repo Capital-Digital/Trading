@@ -40,7 +40,7 @@ class Account(models.Model):
     quote = models.CharField(max_length=10, null=True, choices=(('USDT', 'USDT'), ('BUSD', 'BUSD')), default='USDT')
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
-    trading = models.BooleanField(null=True, blank=False, default=False)
+    active = models.BooleanField(null=True, blank=False, default=False)
     updated = models.BooleanField(null=True, blank=False)
     limit_order = models.BooleanField(null=True, blank=False, default=True)
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)
@@ -263,7 +263,7 @@ class Account(models.Model):
                         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
                         price += (price * float(self.limit_price_tolerance))
 
-                        self.place_order('sell spot', market, 'sell', amount, price)
+                        self.place_order('sell_spot', market, 'sell', amount, price)
 
     # Sell in derivative market
     def close_short(self):
@@ -301,7 +301,7 @@ class Account(models.Model):
                         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
                         price -= (price * float(self.limit_price_tolerance))
 
-                        self.place_order('close short', market, 'buy', amount, price, reduce_only=True)
+                        self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
 
     # Buy in spot market
     def buy_spot(self):
@@ -371,7 +371,7 @@ class Account(models.Model):
                         log.info('*** Buy spot ***')
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
-                        self.place_order('buy spot', market, 'buy', amount, price)
+                        self.place_order('buy_spot', market, 'buy', amount, price)
                         self.create_balances()
 
                     else:
@@ -461,7 +461,7 @@ class Account(models.Model):
                         log.info('*** Open short ***')
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
-                        self.place_order('open short', market, 'sell', amount, price)
+                        self.place_order('open_short', market, 'sell', amount, price)
                         self.create_balances()
 
                     else:
@@ -607,10 +607,11 @@ class Account(models.Model):
         else:
             log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 3), market.base.code))
 
-    # Query exchange and update open orders
-    def update_orders(self):
+    # Fetch open orders
+    def fetch_open_orders(self):
 
-        # Get client and iterate through wallets
+        # Iterate through wallets
+        trades = []
         client = self.exchange.get_ccxt_client(account=self)
         for wallet in self.exchange.get_wallets():
 
@@ -618,29 +619,36 @@ class Account(models.Model):
             orders = Order.objects.filter(account=self, market__wallet=wallet, status='open')
             if orders.exists():
 
+                # Set options
                 client.options['defaultType'] = wallet
                 client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
-                # Iterate through order
                 for order in orders:
-                    # Update order
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
-                    self.create_update_order(responses, action=order.action, market=order.market)
+                    trade = self.create_update_order(responses, action=order.action, market=order.market)
+                    trades.append(trade)
 
-                    log.info('Order update', id=order.orderid, wallet=wallet)
+        # If resource is liberated after trades occurred then return True
+        if True in trades:
+            return True
 
-            else:
-                pass
-                # log.info('No order to update in wallet {0}'.format(wallet))
-
-    # Update order object
+    # Update an order object
     def create_update_order(self, response, action, market):
-        args = dict(account=self, market=market, orderid=response['id'])
+
         try:
+            # Select order object
+            args = dict(account=self,
+                        market=market,
+                        orderid=response['id']
+                        )
             order = Order.objects.get(**args)
+
         except ObjectDoesNotExist:
             pass
+
         finally:
+
+            # Data to be inserted
             defaults = dict(
                 action=action,
                 amount=response['amount'],
@@ -659,20 +667,39 @@ class Account(models.Model):
                 trades=response['trades'],
                 type=response['type']
             )
+
+            # Create of update object
             obj, created = Order.objects.update_or_create(**args, defaults=defaults)
 
+            # New order ?
             if created:
-                log.info('Order created with status "{0}"'.format(response['status'], id=response['id']))
+
+                log.info('Create order {0} for {1} done'.format(response['id'], market.base.code))
+
+                # Trade occurred ?
+                if float(response['filled']):
+                    log.info('Trade detected')
+                    return True
+                else:
+                    log.info('No trade detected')
 
             else:
+
+                log.info('Update order {0} for {1} done'.format(response['id'], market.base.code))
+
+                # Action is to liberate resources ?
                 if action in ['sell_spot', 'close_short']:
+
+                    # New trades occurred since last update ?
                     filled = float(response['filled']) - order.filled
                     if filled > 0:
-                        log.info(
-                            'Order filled at {0}% {1}'.format(round(filled / order.amount, 3) * 100, market.base.code))
-                        self.buy_spot()
 
-    # Cancel an order by it's ID
+                        log.info('Trade detected')
+                        log.info('Order filled at {0}%'.format(round(filled / order.amount, 3) * 100))
+
+                        return True
+
+    # Cancel an order by its ID
     def cancel_order(self, wallet, symbol, orderid):
         client = self.exchange.get_ccxt_client(account=self)
         client.options['defaultType'] = wallet
@@ -773,28 +800,22 @@ class Account(models.Model):
         self.get_delta()
 
     # Rebalance portfolio
-    def trade(self):
+    def trade(self, cancel=True):
 
         log.info('***')
         log.info('Start trade')
         log.info('***')
 
-        # Cancel orders and create dataframe
-        self.cancel_orders()
-        self.create_balances()
+        if cancel:
+            self.cancel_orders()
 
-        # Free resources
+        # Create dataframe and free resources
+        self.create_balances()
         self.sell_spot()
         self.close_short()
 
-        log.info('***')
-        log.info('Update balances')
-        log.info('***')
-
-        # Update dataframe
+        # Update dataframe and allocate funds
         self.create_balances()
-
-        # Allocate funds
         self.buy_spot()
         self.open_short()
 

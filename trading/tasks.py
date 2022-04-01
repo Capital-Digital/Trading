@@ -45,11 +45,14 @@ class BaseTaskWithRetry(Task):
 
 @shared_task(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
+
+    # Iterate through accounts and update open orders
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
 
-        # Update open orders and cancel
-        # all open orders before an update
-        account.update_orders()
+        # Continue trading if trade occurred
+        trade = account.fetch_open_orders()
+        if trade:
+            account.trade(cancel=False)
 
 
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
@@ -57,10 +60,6 @@ def trade():
     for account in Account.objects.filter(trading=True, exchange__exid='binance'):
         if datetime.now().hour in account.strategy.execution_hours():
             account.trade()
-
-        else:
-            sec = round(account.strategy.seconds_before_update(), 0)
-            log.info('Update will be executed in {0} seconds'.format(sec))
 
 
 @shared_task(name='Trading_____Trade single account', base=BaseTaskWithRetry)

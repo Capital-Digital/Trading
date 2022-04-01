@@ -23,6 +23,7 @@ from capital.methods import *
 from marketsdata.methods import *
 from marketsdata.models import Exchange, Market, Currency, CoinPaprika, Candles, Tickers
 import strategy.tasks as task
+from trading.models import Account
 
 log = structlog.get_logger(__name__)
 
@@ -724,7 +725,10 @@ def hourly_tasks():
         time.sleep(0.5)
 
     if res.successful():
-        log.info('Hourly tasks complete')
+        log.info('Tickers insert complete')
+        for account in Account.objects.filter(trading=True, exchange__exid='binance'):
+            if datetime.now().hour in account.strategy.execution_hours():
+                account.trade()
 
     else:
         log.error('Hourly tasks failed')

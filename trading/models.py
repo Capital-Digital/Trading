@@ -724,6 +724,7 @@ class Account(models.Model):
         orders = client.fetchOpenOrders(market.symbol)
 
         if orders:
+            log.info('Order is already open in {0} {1}'.format(market.symbol, market.type))
             return True
         else:
             return False

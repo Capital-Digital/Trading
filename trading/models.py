@@ -197,10 +197,10 @@ class Account(models.Model):
 
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
-            price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
-            value = exp * price
-            percent = value / acc_value
-            self.balances.loc[coin, ('account', 'current', 'percent')] = percent
+            if coin != self.quote:
+                price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+                percent = (exp * price) / acc_value
+                self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
             # Iterate through target coins and calculate delta
         for coin in target.index.values.tolist():

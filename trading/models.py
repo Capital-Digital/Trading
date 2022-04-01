@@ -461,7 +461,7 @@ class Account(models.Model):
             # Prepare order
             args = dict(
                 symbol=market.symbol,
-                type='limit' if self.limit_order else 'market',
+                type='market' if self.limit_order else 'market',
                 side=side,
                 amount=amount,
                 price=price

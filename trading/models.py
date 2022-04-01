@@ -233,7 +233,11 @@ class Account(models.Model):
                     if not np.isnan(free):
 
                         log.info('***')
-                        log.info('*** Sell spot ***')
+                        log.info(' ')
+                        log.info('Sell spot')
+                        log.info(' ')
+                        log.info('***')
+
                         log.info('{0} {1}'.format(round(qty_delta, 3), code))
 
                         # Sell all resources available if coin must be shorted
@@ -282,7 +286,11 @@ class Account(models.Model):
                         amount = min(delta, shorted)
 
                         log.info('***')
-                        log.info('*** Close short ***')
+                        log.info(' ')
+                        log.info('Close short')
+                        log.info(' ')
+                        log.info('***')
+
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
                         # Place buy order
@@ -356,7 +364,11 @@ class Account(models.Model):
                         price -= (price * float(self.limit_price_tolerance))
 
                         log.info('***')
-                        log.info('*** Buy spot ***')
+                        log.info(' ')
+                        log.info('Buy spot')
+                        log.info(' ')
+                        log.info('***')
+
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
                         self.place_order('buy_spot', market, 'buy', amount, price)
@@ -446,7 +458,11 @@ class Account(models.Model):
                         price -= (price * float(self.limit_price_tolerance))
 
                         log.info('***')
-                        log.info('*** Open short ***')
+                        log.info(' ')
+                        log.info('Open short')
+                        log.info(' ')
+                        log.info('***')
+
                         log.info('{0} {1}'.format(round(amount, 3), code))
 
                         self.place_order('open_short', market, 'sell', amount, price)
@@ -458,7 +474,12 @@ class Account(models.Model):
     # Move funds between account wallets
     def move_fund(self, code, desired, to_wallet):
 
-        log.info('*** Transfer funds ***')
+        log.info('***')
+        log.info(' ')
+        log.info('Transfer funds')
+        log.info(' ')
+        log.info('***')
+
         log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
 
         client = self.exchange.get_ccxt_client(self)

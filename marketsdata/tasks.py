@@ -1078,7 +1078,7 @@ def exe():
 
     if t.successful():
 
-        log.info('group 1 update complete')
+        log.info('group 0 update complete')
 
 
 @shared_task(name='Run tasks')
@@ -1092,45 +1092,51 @@ def run(exid):
 
     if res.successful():
 
-        log.info('Ticker update complete')
+        log.info('Ticker update complete for {0}'.format(exid))
         from strategy.models import Strategy
 
-        # Select strategies
+        # Select strategies on this exchange
         strategies = Strategy.objects.filter(exchange__exid=exid)
         s = group(update_weights.s(strategy.name) for strategy in strategies)()
 
         while not s.ready():
-            print('wait strategy group')
+            print('wait {0} strategy group'.format(exid))
             time.sleep(1)
 
         if s.successful():
             log.info('Strategies group update complete')
 
     else:
-        log.error('group 1 update failed')
+        log.error('Ticker update failed')
 
 
 # Update weights of a group of strategies
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(name):
 
-    s = strategy_update.delay(name)
+    u = strategy_update.delay(name)
 
-    while not s.ready():
-        print('wait group 3...')
+    while not u.ready():
+        print('Strategy {0} is not ready'.format(name))
         time.sleep(1)
 
-    if s.successful():
+    if u.successful():
+
+        log.info('Strategy {0} update complete'.format(name))
+
         from trading.models import Account
         accounts = Account.objects.filter(strategy__name=name)
-        s = group(account_update.s(account.name) for account in accounts)()
+        a = group(account_update.s(account.name) for account in accounts)()
 
-        while not s.ready():
-            print('wait Account group')
+        while not a.ready():
+            print('wait {0} account group'.format(name))
             time.sleep(1)
 
-        if s.successful():
+        if a.successful():
             log.info('Account group update complete')
+
+    else:
+        log.error('group strategy update failed')
 
 
 @shared_task()

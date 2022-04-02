@@ -1070,15 +1070,15 @@ def insert_coinpaprika_current_listing():
 @shared_task(name='Exe')
 def exe():
 
-    t = group(run.s(i) for i in ['binance', 'ftx'])()
+    t = group(run.s(i) for i in ['binance'])()
 
     while not t.ready():
-        print('wait group 0...')
+        print('wait chain')
         time.sleep(1)
 
     if t.successful():
 
-        log.info('group 0 update complete')
+        log.info('Update complete !')
 
 
 @shared_task(name='Run tasks')
@@ -1111,9 +1111,10 @@ def update_weights(name):
     log.info('Start {0}'.format(name))
 
     # Select strategies on this exchange
-    from strategy.models import Strategy
-    strategy = Strategy.objects.get(name=name)
-    strategy.execute('tickers', 10*24)
+    # from strategy.models import Strategy
+    # strategy = Strategy.objects.get(name=name)
+    # strategy.execute('tickers', 10*24)
+    print('Strategy update', name)
 
     log.info('Strategy {0} update complete'.format(name))
 
@@ -1133,9 +1134,9 @@ def update_weights(name):
 
 
 def tickers_update(exid):
-    print('\nTickers update done', exid, '\n')
+    print('\nTickers update', exid, '\n')
 
 
 @shared_task()
 def account_update(name):
-    print('Account update done', name)
+    print('Account update', name)

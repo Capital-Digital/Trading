@@ -1134,6 +1134,6 @@ def update_weights(name):
 
     # Select strategies
     from strategy.models import Strategy
-    strategy = Strategy.objects.filter(name=name)
+    strategy = Strategy.objects.get(name=name)
     # strategy.execute('tickers', 10 * 24)
     print('Execute strategy', strategy.name)

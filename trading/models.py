@@ -887,14 +887,6 @@ class Account(models.Model):
 
     # Mark the account as currently trading (busy) or not
     def set_busy_flag(self, busy):
-
-        log.info(' ')
-
-        if busy:
-            log.info('Set busy flag = True')
-        else:
-            log.info('Set busy flag = False')
-
         self.trading = busy
         self.save()
 

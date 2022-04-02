@@ -1164,4 +1164,5 @@ def add(self, x, y):
     try:
         return x / 0
     except Exception as e:
+        log.error('Division by zero')
         raise self.retry(exc=e)

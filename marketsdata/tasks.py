@@ -1084,7 +1084,7 @@ def exe():
 @shared_task(name='Run tasks')
 def run(exid):
 
-    res = task1.delay(exid)
+    res = tickers_update.delay(exid)
 
     while not res.ready():
         print('wait tickers update', exid)
@@ -1104,36 +1104,45 @@ def run(exid):
             time.sleep(1)
 
         if s.successful():
-            log.info('Strategies update complete')
-
-            from trading.models import Account
-            accounts = Account.objects.filter(strategy__exchange__exid=exid)
-
-            # Execute trades
-            u = group(account.trade() for account in accounts)()
-
-            while not u.ready():
-                print('wait group 3...')
-                time.sleep(1)
-
-            if u.successful():
-                log.info('group 3 update complete')
+            log.info('Strategies group update complete')
 
     else:
         log.error('group 1 update failed')
-
-
-@shared_task()
-def task1(exid):
-    print('task1 for', exid)
 
 
 # Update weights of a group of strategies
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(name):
 
-    # Select strategies
-    from strategy.models import Strategy
-    strategy = Strategy.objects.get(name=name)
-    # strategy.execute('tickers', 10 * 24)
-    print('Execute strategy', strategy.name)
+    s = strategy_update.delay(name)
+
+    while not s.ready():
+        print('wait group 3...')
+        time.sleep(1)
+
+    if s.successful():
+        from trading.models import Account
+        accounts = Account.objects.filter(strategy__name=name)
+        s = group(account_update.s(account.name) for account in accounts)()
+
+        while not s.ready():
+            print('wait Account group')
+            time.sleep(1)
+
+        if s.successful():
+            log.info('Account group update complete')
+
+
+@shared_task()
+def tickers_update(exid):
+    print('Tickers update done', exid)
+
+
+@shared_task()
+def strategy_update(name):
+    print('Strategy update done', name)
+
+
+@shared_task()
+def account_update(name):
+    print('Account update done', name)

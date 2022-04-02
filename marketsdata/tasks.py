@@ -769,8 +769,8 @@ def update_weights(exid):
     strategies = Strategy.objects.filter(exchange__exid=exid)
 
     # Chain weights update and trading
-    chains = [chain(strategy.execute.si('tickers', 10 * 24),
-                    trade.si(strategy.name)
+    chains = [chain(strategy.execute('tickers', 10 * 24),
+                    trade.s(strategy.name)
                     ) for strategy in strategies]
 
     res = group(*chains)()

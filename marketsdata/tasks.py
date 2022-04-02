@@ -740,7 +740,7 @@ def update():
     exchanges = Exchange.objects.filter(exid='binance').values_list('exid', flat=True)
 
     chains = [chain(insert_current_tickers.si(exid),
-                    update_weights.si(exid)
+                    update_weights.s(exid)
                     ) for exid in exchanges]
 
     log.info('Group and execute chains')

@@ -760,7 +760,7 @@ def update():
 
 
 # Update weights of a group of strategies
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
+@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(exid):
 
     from strategy.models import Strategy

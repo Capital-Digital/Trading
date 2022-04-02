@@ -869,7 +869,7 @@ def insert_current_tickers(exid):
                 else:
 
                     # Avoid duplicate records
-                    if timestamp_st not in [d['timestamp'] for d in obj.data]:
+                    if timestamp_st not in [d['datetime'] for d in obj.data]:
 
                         # log.info('Update tickers {0} {1} {2}'.format(market.symbol, year, semester))
 

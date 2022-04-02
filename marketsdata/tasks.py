@@ -1112,7 +1112,7 @@ def update_weights(name):
 
     # Select strategies on this exchange
     from strategy.models import Strategy
-    strategy = Strategy.objects.filter(name=name)
+    strategy = Strategy.objects.get(name=name)
     strategy.execute('tickers', 10*24)
 
     log.info('Strategy {0} update complete'.format(name))

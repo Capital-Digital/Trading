@@ -909,6 +909,7 @@ class Account(models.Model):
         log.info(' ')
 
         log.bind(account=self.name)
+        log.info('Value {0}'.format(round(self.account_value(), 2)))
 
         # Mark account are busy
         self.set_busy_flag(True)

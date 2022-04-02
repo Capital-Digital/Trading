@@ -1159,6 +1159,7 @@ def error_handler(uuid):
              name='sum-of-two-numbers',
              default_retry_delay=1,
              time_limit=120,
+             max_retries = 15
              )
 def add(self, x, y):
     try:

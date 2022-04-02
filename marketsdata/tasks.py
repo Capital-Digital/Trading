@@ -1096,8 +1096,8 @@ def run(exid):
         from strategy.models import Strategy
 
         # Select strategies
-        strategies = list(Strategy.objects.filter(exchange__exid=exid).values_list('name', flat=True))
-        s = group(update_weights.s(strategy) for strategy in strategies)()
+        strategies = Strategy.objects.filter(exchange__exid=exid)
+        s = group(update_weights.s(strategy.name) for strategy in strategies)()
 
         while not s.ready():
             print('wait strategy group')

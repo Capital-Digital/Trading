@@ -759,33 +759,6 @@ def update():
         log.error('Update failed')
 
 
-# Update weights of a group of strategies
-# @shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
-def update_weights(exid):
-
-    from strategy.models import Strategy
-
-    # Select strategies
-    strategies = Strategy.objects.filter(exchange__exid=exid)
-
-    # Chain weights update and trading
-    chains = [chain(strategy.execute('tickers', 10 * 24),
-                    trade.s(strategy.name)
-                    ) for strategy in strategies]
-
-    res = group(*chains)()
-
-    while not res.ready():
-        print('wait group 2...')
-        time.sleep(1)
-
-    if res.successful():
-        log.info('Strategies update complete')
-
-    else:
-        log.error('Strategies update failed')
-
-
 # Group accounts and execute trades
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Accounts update')
 def trade(strategy):
@@ -1125,7 +1098,7 @@ def run(exid):
         # Select strategies
         strategies = Strategy.objects.filter(exchange__exid=exid)
 
-        s = group(update_weights(strategy) for strategy in strategies)()
+        s = group(update_weights.s(strategy) for strategy in strategies)()
 
         while not s.ready():
             print('wait group 2...')
@@ -1154,3 +1127,30 @@ def run(exid):
 @shared_task()
 def task1(exid):
     print('task1 for', exid)
+
+
+# Update weights of a group of strategies
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
+def update_weights(exid):
+
+    from strategy.models import Strategy
+
+    # Select strategies
+    strategies = Strategy.objects.filter(exchange__exid=exid)
+
+    # Chain weights update and trading
+    chains = [chain(strategy.execute('tickers', 10 * 24),
+                    trade.s(strategy.name)
+                    ) for strategy in strategies]
+
+    res = group(*chains)()
+
+    while not res.ready():
+        print('wait group 2...')
+        time.sleep(1)
+
+    if res.successful():
+        log.info('Strategies update complete')
+
+    else:
+        log.error('Strategies update failed')

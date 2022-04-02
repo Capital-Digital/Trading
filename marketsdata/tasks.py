@@ -1084,69 +1084,56 @@ def exe():
 @shared_task(name='Run tasks')
 def run(exid):
 
-    res = tickers_update.delay(exid)
+    tickers_update(exid)
 
-    while not res.ready():
-        print('wait tickers update', exid)
+    log.info('Ticker update complete for {0}'.format(exid))
+    from strategy.models import Strategy
+
+    # Select strategies on this exchange
+    strategies = Strategy.objects.filter(exchange__exid=exid)
+    s = group(update_weights.s(strategy.name) for strategy in strategies)()
+
+    while not s.ready():
+        print('wait {0} strategy group'.format(exid))
         time.sleep(1)
 
-    if res.successful():
-
-        log.info('Ticker update complete for {0}'.format(exid))
-        from strategy.models import Strategy
-
-        # Select strategies on this exchange
-        strategies = Strategy.objects.filter(exchange__exid=exid)
-        s = group(update_weights.s(strategy.name) for strategy in strategies)()
-
-        while not s.ready():
-            print('wait {0} strategy group'.format(exid))
-            time.sleep(1)
-
-        if s.successful():
-            log.info('Strategies group update complete')
+    if s.successful():
+        log.info('Strategies group update complete')
 
     else:
-        log.error('Ticker update failed')
+        log.error('Strategies group update failed')
 
 
 # Update weights of a group of strategies
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(name):
 
-    u = strategy_update.delay(name)
+    log.info('Start {0}'.format(name))
 
-    while not u.ready():
-        print('Strategy {0} is not ready'.format(name))
+    # Select strategies on this exchange
+    from strategy.models import Strategy
+    strategy = Strategy.objects.filter(name=name)
+    strategy.execute('tickers', 10*24)
+
+    log.info('Strategy {0} update complete'.format(name))
+
+    from trading.models import Account
+    accounts = Account.objects.filter(strategy__name=name)
+    a = group(account_update.s(account.name) for account in accounts)()
+
+    while not a.ready():
+        print('wait {0} account group'.format(name))
         time.sleep(1)
 
-    if u.successful():
-
-        log.info('Strategy {0} update complete'.format(name))
-
-        from trading.models import Account
-        accounts = Account.objects.filter(strategy__name=name)
-        a = group(account_update.s(account.name) for account in accounts)()
-
-        while not a.ready():
-            print('wait {0} account group'.format(name))
-            time.sleep(1)
-
-        if a.successful():
-            log.info('Account group update complete')
+    if a.successful():
+        log.info('Account group update complete')
 
     else:
-        log.error('group strategy update failed')
+        log.info('Account group update failed')
 
 
-@shared_task()
 def tickers_update(exid):
     print('\nTickers update done', exid, '\n')
-
-
-@shared_task()
-def strategy_update(name):
-    print('\nStrategy update done', name, '\n')
 
 
 @shared_task()

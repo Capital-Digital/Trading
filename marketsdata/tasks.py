@@ -1094,65 +1094,64 @@ def insert_coinpaprika_current_listing():
     log.info('Insertion of Paprika listing complete')
 
 
+@shared_task(name='Exe')
+def exe():
+
+    t = group(run(i) for i in ['binance', 'ftx'])()
+
+    while not t.ready():
+        print('wait group 0...')
+        time.sleep(1)
+
+    if t.successful():
+
+        log.info('group 1 update complete')
+
+
 @shared_task(name='Run tasks')
-def run():
+def run(exid):
 
-    def group2(car):
-
-        chain2 = [chain(task2.s(m), group3(m)) for m in ['model1', 'models2']]
-        res = group(*chain2)()
-
-        while not res.ready():
-            print('wait group 2...')
-            time.sleep(1)
-
-        if res.successful():
-            log.info('group 2 update complete')
-
-        else:
-            log.error('group 2 update failed')
-
-    def group3(model):
-        print('user group !')
-        res = group(task3.s(u) for u in ['user1', 'user2'])()
-
-        while not res.ready():
-            print('wait group 3...')
-            time.sleep(1)
-
-        if res.successful():
-            log.info('group 3 update complete')
-
-        else:
-            log.error('group 3 update failed')
-
-    chain1 = [chain(task1.s(i), group2(i)) for i in ['BMW', 'Ford']]
-    res = group(*chain1)()
+    res = task1.s(exid)()
 
     while not res.ready():
         print('wait group 1...')
         time.sleep(1)
 
     if res.successful():
+
         log.info('group 1 update complete')
+        from strategy.models import Strategy
+
+        # Select strategies
+        strategies = Strategy.objects.filter(exchange__exid=exid)
+
+        tasks = [update_weights(strategy) for strategy in strategies]
+        s = group(*tasks)()
+
+        while not s.ready():
+            print('wait group 2...')
+            time.sleep(1)
+
+        if s.successful():
+            log.info('group 2 update complete')
+
+            from trading.models import Account
+            accounts = Account.objects.filter(strategy__exchange__exid=exid)
+
+            # Execute trades
+            u = group(account.trade() for account in accounts)()
+
+            while not u.ready():
+                print('wait group 3...')
+                time.sleep(1)
+
+            if u.successful():
+                log.info('group 3 update complete')
 
     else:
         log.error('group 1 update failed')
 
 
 @shared_task()
-def task1(car):
-    print('car group !')
-    print(car)
-
-
-@shared_task()
-def task2(model):
-    print('model group !')
-    print(model)
-
-
-@shared_task()
-def task3(user):
-    print('user group !')
-    print(user)
+def task1(exid):
+    print('task1 for', exid)

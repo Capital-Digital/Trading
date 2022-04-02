@@ -740,7 +740,7 @@ def update():
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     chains = [chain(insert_current_tickers.s(exid),
-                    update_weights.s(exid)
+                    update_weights(exid)
                     ) for exid in exchanges]
 
     log.info('Group and execute chains')
@@ -760,7 +760,7 @@ def update():
 
 
 # Update weights of a group of strategies
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
+# @shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(exid):
 
     from strategy.models import Strategy

@@ -1084,7 +1084,7 @@ def exe():
 @shared_task(name='Run tasks')
 def run(exid):
 
-    res = tickers_update.delay(exid)()
+    res = tickers_update.delay(exid)
 
     while not res.ready():
         print('wait tickers update', exid)
@@ -1114,7 +1114,7 @@ def run(exid):
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(name):
 
-    s = strategy_update.delay(name)()
+    s = strategy_update.delay(name)
 
     while not s.ready():
         print('wait group 3...')
@@ -1135,12 +1135,12 @@ def update_weights(name):
 
 @shared_task()
 def tickers_update(exid):
-    print('Tickers update done', exid)
+    print('\nTickers update done', exid, '\n')
 
 
 @shared_task()
 def strategy_update(name):
-    print('Strategy update done', name)
+    print('\nStrategy update done', name, '\n')
 
 
 @shared_task()

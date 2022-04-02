@@ -1125,8 +1125,7 @@ def run(exid):
         # Select strategies
         strategies = Strategy.objects.filter(exchange__exid=exid)
 
-        tasks = [update_weights(strategy) for strategy in strategies]
-        s = group(*tasks)()
+        s = group(update_weights(strategy) for strategy in strategies)()
 
         while not s.ready():
             print('wait group 2...')

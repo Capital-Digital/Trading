@@ -737,7 +737,7 @@ def hourly_tasks():
 def update():
 
     # Return a list of exid
-    exchanges = Exchange.objects.filter(exid='binance').values_list('exid', flat=True)
+    exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     chains = [chain(insert_current_tickers.si(exid),
                     update_weights.s(exid)
@@ -760,7 +760,7 @@ def update():
 
 
 # Update weights of a group of strategies
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Strategies update')
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
 def update_weights(exid):
 
     from strategy.models import Strategy

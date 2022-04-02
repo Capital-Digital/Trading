@@ -1140,3 +1140,8 @@ def tickers_update(exid):
 @shared_task()
 def account_update(name):
     print('Account update', name)
+
+
+@shared_task
+def add(x, y):
+    return x + y

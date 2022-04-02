@@ -6,13 +6,18 @@ import time
 from datetime import datetime, timedelta
 from pprint import pprint
 
+from capital.celery import app
+
 import ccxt
 import pandas as pd
 import requests
 import structlog
 import urllib3
+
 from celery import chain, group, shared_task, Task, Celery, states
+from celery.result import AsyncResult
 from celery.exceptions import Ignore
+
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django.db.models import Q
@@ -1140,6 +1145,14 @@ def tickers_update(exid):
 @shared_task()
 def account_update(name):
     print('Account update', name)
+
+
+@app.task
+def error_handler(uuid):
+    result = AsyncResult(uuid)
+    exc = result.get(propagate=False)
+    print('Task {0} raised exception: {1!r}\n{2!r}'.format(
+          uuid, exc, result.traceback))
 
 
 @shared_task

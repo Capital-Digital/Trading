@@ -1096,7 +1096,23 @@ def insert_coinpaprika_current_listing():
 
 @shared_task(name='Run tasks')
 def run():
-    chain1 = [chain(task1.s(i), group2.s(i)) for i in ['BMW', 'Ford']]
+
+    def group2(car):
+    
+        chain2 = [chain(task2.s(m), group3.s(m)) for m in ['model1', 'models2']]
+        res = group(*chain2)()
+
+        while not res.ready():
+            print('wait group 2...')
+            time.sleep(1)
+
+        if res.successful():
+            log.info('group 2 update complete')
+
+        else:
+            log.error('group 2 update failed')
+
+    chain1 = [chain(task1.s(i), group2(i)) for i in ['BMW', 'Ford']]
     res = group(*chain1)()
 
     while not res.ready():
@@ -1108,23 +1124,6 @@ def run():
 
     else:
         log.error('group 1 update failed')
-
-
-@shared_task()
-def group2(car):
-    print('model group !')
-    chain2 = [chain(task2.s(m), group3.s(m)) for m in ['model1', 'models2']]
-    res = group(*chain2)()
-
-    while not res.ready():
-        print('wait group 2...')
-        time.sleep(1)
-
-    if res.successful():
-        log.info('group 2 update complete')
-
-    else:
-        log.error('group 2 update failed')
 
 
 @shared_task()

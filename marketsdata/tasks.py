@@ -1155,6 +1155,9 @@ def error_handler(uuid):
           uuid, exc, result.traceback))
 
 
-@shared_task(name='sum-of-two-numbers')
+@shared_task(bind=True, name='sum-of-two-numbers')
 def add(x, y):
-    return x + y
+    try:
+        return x / 0
+    except Exception as e:
+        raise add.retry(exc=e)

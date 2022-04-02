@@ -1159,9 +1159,12 @@ def error_handler(uuid):
              name='sum-of-two-numbers',
              default_retry_delay=1,
              time_limit=120,
-             max_retries = 15
+             max_retries = 2
              )
 def add(self, x, y):
+
+    print(self.AsyncResult(self.request.id).state)
+
     try:
         return x / 0
     except Exception as e:

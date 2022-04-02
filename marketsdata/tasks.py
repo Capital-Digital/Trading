@@ -1111,7 +1111,7 @@ def exe():
 @shared_task(name='Run tasks')
 def run(exid):
 
-    res = task1.s(exid)()
+    res = task1(exid).delay()
 
     while not res.ready():
         print('wait group 1...')

@@ -1096,7 +1096,7 @@ def insert_coinpaprika_current_listing():
 
 @shared_task(name='Run tasks')
 def run():
-    chain1 = [chain(task1.s(i), task2.s(i)) for i in ['BMW', 'Ford']]
+    chain1 = [chain(task1.s(i), group2.s(i)) for i in ['BMW', 'Ford']]
     res = group(*chain1)()
 
     while not res.ready():
@@ -1111,15 +1111,9 @@ def run():
 
 
 @shared_task()
-def task1(car):
-    print('car group !')
-    print(car)
-
-
-@shared_task()
-def task2(car):
+def group2(car):
     print('model group !')
-    chain2 = [chain(task2.s(m), task3.s(m)) for m in ['model1', 'models2']]
+    chain2 = [chain(task2.s(m), group3.s(m)) for m in ['model1', 'models2']]
     res = group(*chain2)()
 
     while not res.ready():
@@ -1134,7 +1128,7 @@ def task2(car):
 
 
 @shared_task()
-def task3(model):
+def group3(model):
     print('user group !')
     res = group(task3.s(u) for u in ['user1', 'user2'])()
 
@@ -1147,3 +1141,21 @@ def task3(model):
 
     else:
         log.error('group 3 update failed')
+
+
+@shared_task()
+def task1(car):
+    print('car group !')
+    print(car)
+
+
+@shared_task()
+def task2(model):
+    print('model group !')
+    print(model)
+
+
+@shared_task()
+def task3(user):
+    print('user group !')
+    print(user)

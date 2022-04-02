@@ -1070,7 +1070,7 @@ def insert_coinpaprika_current_listing():
 @shared_task(name='Exe')
 def exe():
 
-    t = group(run(i) for i in ['binance', 'ftx'])()
+    t = group(run.s(i) for i in ['binance', 'ftx'])()
 
     while not t.ready():
         print('wait group 0...')

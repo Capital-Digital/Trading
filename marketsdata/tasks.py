@@ -1092,7 +1092,7 @@ def run(exid):
 
     if res.successful():
 
-        log.info('Ticker update complete', exid)
+        log.info('Ticker update complete')
         from strategy.models import Strategy
 
         # Select strategies

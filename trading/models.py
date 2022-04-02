@@ -909,7 +909,6 @@ class Account(models.Model):
         log.info(' ')
 
         log.bind(account=self.name)
-        log.info('Value {0}'.format(round(self.account_value(), 2)))
 
         # Mark account are busy
         self.set_busy_flag(True)
@@ -919,6 +918,8 @@ class Account(models.Model):
 
         # Create fresh dataframe
         self.create_balances()
+
+        log.info('Value {0}'.format(round(self.account_value(), 2)))
 
         # Liberate resources and update dataframe if trade occurred
         if self.sell_spot() or self.close_short():

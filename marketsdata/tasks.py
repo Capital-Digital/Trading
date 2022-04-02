@@ -564,7 +564,6 @@ def funding(exid):
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
-
     exchange = Exchange.objects.get(exid=exid)
     markets = Market.objects.filter(exchange=exchange,
                                     trading=True,
@@ -716,10 +715,9 @@ def fetch_candle_history(exid):
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
-# Insert current tickers
+# Group and execute exchange's tickers snapshot update
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Hourly tasks')
 def hourly_tasks():
-
     res = group(insert_current_tickers.s(exid) for exid in ['binance'])()
     while not res.ready():
         time.sleep(0.5)
@@ -734,18 +732,92 @@ def hourly_tasks():
         log.error('Hourly tasks failed')
 
 
+# Execute group of chains
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update')
+def update():
+
+    # Return a list of exid
+    exchanges = Exchange.objects.filter(exid='binance').values_list('exid', flat=True)
+
+    chains = [chain(insert_current_tickers.si(exid),
+                    update_weights.si(exid)
+                    ) for exid in exchanges]
+
+    log.info('Group and execute chains')
+
+    res = group(*chains)()
+
+    while not res.ready():
+        print('wait group 1...')
+        time.sleep(1)
+
+    if res.successful():
+        log.info('Update complete')
+
+    elif res.failed():
+        res.forget()
+        log.error('Update failed')
+
+
+# Update weights of a group of strategies
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
+def update_weights(exid):
+
+    from strategy.models import Strategy
+
+    # Select strategies
+    strategies = Strategy.objects.filter(exchange__exid=exid)
+
+    # Chain weights update and trading
+    chains = [chain(strategy.execute.si('tickers', 10 * 24),
+                    trade.si(strategy.name)
+                    ) for strategy in strategies]
+
+    res = group(*chains)()
+
+    while not res.ready():
+        print('wait group 2...')
+        time.sleep(1)
+
+    if res.successful():
+        log.info('Strategies update complete')
+
+    else:
+        log.error('Strategies update failed')
+
+
+# Group accounts and execute trades
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Accounts update')
+def trade(strategy):
+    from trading.models import Account
+    accounts = Account.objects.filter(strategy__name=strategy)
+
+    # Execute trades
+    res = group(account.trade() for account in accounts)
+
+    while not res.ready():
+        print('wait group 3...')
+        time.sleep(1)
+
+    if res.successful():
+        log.info('Accounts update complete')
+
+    else:
+        log.error('Accounts update failed')
+
+
 # Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(exid):
-
     log.info('Start tickers insertion for {0}'.format(exid))
 
     def insert(data, wallet=None):
 
         # Recreate dictionaries with desired keys
         data = [data[i] for i in data]
-        data = [{k: d[k] for k in ['symbol', 'bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
-                for d in data]
+        data = [
+            {k: d[k] for k in ['symbol', 'bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
+            for d in data]
 
         symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
         symbols.sort()
@@ -821,7 +893,6 @@ def insert_current_tickers(exid):
             client = exchange.get_ccxt_client()
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
-
                     log.info('Fetch tickers for {0}'.format(wallet))
 
                     client.options['defaultType'] = wallet

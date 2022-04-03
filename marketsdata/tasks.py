@@ -756,20 +756,26 @@ def update():
         time.sleep(1)
 
     if res.successful():
+        log.info(' ')
         log.info('Group ticker complete')
+        log.info(' ')
 
     elif res.failed():
+        log.info(' ')
         # group_tickers.forget()
         log.error('Group ticker failed')
+        log.info(' ')
 
 
 # Tickers update
 @app.task(bind=True, name='Markets_____Tickers')
 def tickers(self, exid):
 
+    log.info(' ')
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
+    log.info(' ')
 
-    job = chain(insert_current_tickers.s(exid), strategy.s(exid))
+    job = chain(insert_current_tickers.s(exid, test=True), strategy.s(exid))
     res = job.apply_async()
 
     with allow_join_result():
@@ -780,17 +786,23 @@ def tickers(self, exid):
         time.sleep(1)
 
     if res.successful():
+        log.info(' ')
         log.info('Chain complete')
+        log.info(' ')
 
     else:
+        log.info(' ')
         log.error('Chain failed')
+        log.info(' ')
 
 
 # Strategies update
 @app.task(bind=True, name='Markets_____Strategy')
 def strategy(self, exid):
 
+    log.info(' ')
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
+    log.info(' ')
 
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)
@@ -800,11 +812,11 @@ def strategy(self, exid):
     with allow_join_result():
         res.get()
 
-    while not job.ready():
+    while not res.ready():
         print('wait group strategy...')
         time.sleep(1)
 
-    if job.successful():
+    if res.successful():
         log.info('Group strategy complete')
 
     else:
@@ -833,8 +845,14 @@ def trade(strategy):
 
 # Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
-def insert_current_tickers(exid):
+def insert_current_tickers(exid, test=False):
     log.info('Start tickers insertion for {0}'.format(exid))
+
+    if test:
+        log.info(' ')
+        log.info('Tickers insertion complete for {0}'.format(exid))
+        log.info(' ')
+        return
 
     def insert(data, wallet=None):
 

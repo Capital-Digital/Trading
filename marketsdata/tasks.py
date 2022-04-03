@@ -791,14 +791,13 @@ def chain_tickers_strategy(self, exid):
         res = group(chain2.s(exid, i) for i in range(2)).apply_async(queue='slow')
 
         while not res.ready():
-            print('wait group strategy...')
             time.sleep(1)
 
         if res.successful():
-            log.info('CHAIN 2 complete')
+            print('EXID {0} CHAIN success...'.format(exid))
 
         else:
-            log.error('CHAIN 2 failed')
+            print('EXID {0} CHAIN failed...'.format(exid))
 
 
     else:
@@ -812,21 +811,21 @@ def chain_tickers_strategy(self, exid):
 def run_strategy(self, exid, strategy_id):
 
     print(' ')
-    print('STRATEGY: {0} exid {1}'.format(strategy_id, exid))
+    print('EXID {1} STRATEGY: {0}'.format(strategy_id, exid))
     print(' ')
 
-    time.sleep(3)
+    time.sleep(10)
 
 
 # Strategies update
 @app.task(bind=True, name='Account_execution')
-def run_account(self, strategy_id, account_id):
+def run_account(self, exid, strategy_id, account_id):
 
     print(' ')
-    print('ACCOUNT {0} for strategy {1}'.format(account_id, strategy_id))
+    print('EXID {2} STRATEGY {1} ACCOUNT {0}'.format(account_id, strategy_id, exid))
     print(' ')
 
-    time.sleep(3)
+    time.sleep(10)
 
 
 # Strategies update
@@ -834,7 +833,7 @@ def run_account(self, strategy_id, account_id):
 def chain2(self, exid, strategy_id):
 
     print(' ')
-    print('RUN CHAIN for strategy {0} exid {1}'.format(strategy_id, exid))
+    print('EXID {1} STRATEGY {0} CHAIN start...'.format(strategy_id, exid))
     print(' ')
 
     job = run_strategy.s(exid, strategy_id).apply_async(queue='default')
@@ -844,22 +843,21 @@ def chain2(self, exid, strategy_id):
 
     if job.successful():
 
-        print('RUN CHAIN for strategy: {0} exid {1} : success'.format(strategy_id, exid))
+        print('EXID {1} STRATEGY {0} CHAIN success...'.format(strategy_id, exid))
 
-        acc = group(run_account.s(strategy_id, account_id) for account_id in range(4)).apply_async(queue='slow')
+        acc = group(run_account.s(exid, strategy_id, account_id) for account_id in range(4)).apply_async(queue='slow')
 
         while not acc.ready():
-            print('wait account strategy...')
             time.sleep(1)
 
         if acc.successful():
-            log.info('Group account complete')
+            print('EXID {1} STRATEGY {0} ACCOUNT CHAIN success...'.format(strategy_id, exid))
 
         else:
-            log.error('Group account failed')
+            print('EXID {1} STRATEGY {0} ACCOUNT CHAIN failed...'.format(strategy_id, exid))
 
     else:
-        print('RUN CHAIN for strategy: {0} exid {1} : failure'.format(strategy_id, exid))
+        print('EXID {1} STRATEGY {0} CHAIN failed...'.format(strategy_id, exid))
 
 
 # Strategies update

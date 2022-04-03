@@ -797,6 +797,12 @@ def tickers(self, exid):
 
 
 # Strategies update
+@app.task(bind=True, name='Markets_____Test')
+def test(r):
+    return r
+
+
+# Strategies update
 @app.task(bind=True, name='Markets_____Strategy')
 def strategy(self, exid):
 
@@ -807,7 +813,7 @@ def strategy(self, exid):
     # from strategy.models import Strategy
     # strategies = Strategy.objects.filter(exchange__exid=exid)
 
-    res = group(print(r) for r in range(10))()
+    res = group(test(r) for r in range(10))()
 
     while not res.ready():
         print('wait group strategy...')

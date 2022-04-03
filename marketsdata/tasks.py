@@ -826,12 +826,12 @@ def chain_st_ac(self, strategy_id):
     #from strategy.models import Strategy
     #strategy = Strategy.objects.get(id=strategy_id).get_target_pct()
 
-    job = chain(strategy.s(), group_account.s())
+    job = chain(strategy.s(strategy_id), group_account.s())
     res = job.apply_async()
 
     with allow_join_result():
         res.get()
-        
+
     while not res.ready():
         print('wait chain_st_ac...')
         time.sleep(1)

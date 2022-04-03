@@ -771,9 +771,9 @@ def update():
 @app.task(bind=True, name='Markets_____Tickers')
 def tickers(self, exid):
 
-    log.info(' ')
+    print(' ')
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
-    log.info(' ')
+    print(' ')
 
     job = chain(insert_current_tickers.s(exid, test=True), strategy.s(exid))
     res = job.apply_async()
@@ -800,9 +800,9 @@ def tickers(self, exid):
 @app.task(bind=True, name='Markets_____Strategy')
 def strategy(self, exid):
 
-    log.info(' ')
+    print(' ')
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
-    log.info(' ')
+    print(' ')
 
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)

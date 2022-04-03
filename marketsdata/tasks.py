@@ -776,7 +776,7 @@ def chain_tickers_strategy(self, exid):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = insert_current_tickers.s(exid, test=True).apply_async(queue='priority.high')
+    job = insert_current_tickers.s(exid, test=True).apply_async(queue='default')
 
     while not job.ready():
 

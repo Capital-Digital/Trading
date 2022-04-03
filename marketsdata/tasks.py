@@ -807,7 +807,7 @@ def group_strategy(self, exid):
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)
 
-    job = group(chain_st_ac.s(strategy.id) for strategy in strategies)()
+    job = group(chain_st_ac.s(strategy.id) for strategy in strategies)
     res = job.apply_async()
 
     with allow_join_result():

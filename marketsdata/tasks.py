@@ -780,17 +780,13 @@ def chain_tickers_strategy(self, exid):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = chain(insert_current_tickers.s(exid, test=True), group_strategy.s())
-    res = job.apply_async()
+    job = insert_current_tickers.delay(exid, test=True)
 
-    with allow_join_result():
-        res.get()
-
-    while not res.ready():
+    while not job.ready():
         print('wait chain...')
         time.sleep(1)
 
-    if res.successful():
+    if job.successful():
         log.info(' ')
         log.info('Chain complete')
         log.info(' ')

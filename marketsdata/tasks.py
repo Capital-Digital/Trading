@@ -812,7 +812,7 @@ def chain_tickers_strategy(self, exid):
 def chain_st_ac(self, strategy_id):
 
     print(' ')
-    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
+    print('TASK STARTING: {0.name} for strategy {1} [{0.request.id}]'.format(self, strategy_id))
     print(' ')
 
     job = run_strategy.s(strategy_id).apply_async(queue='slow')
@@ -833,10 +833,6 @@ def chain_st_ac(self, strategy_id):
 # Strategies update
 @app.task(bind=True, name='Strategy execution')
 def run_strategy(self, strategy_id):
-
-    print(' ')
-    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
-    print(' ')
 
     from strategy.models import Strategy
     # Strategy.objects.get(id=strategy_id).get_target_pct()

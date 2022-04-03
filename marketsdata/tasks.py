@@ -788,7 +788,7 @@ def chain_tickers_strategy(self, exid):
         # Group strategies
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid)
-        res = group(run_strategy.s(i) for i in range(22)).apply_async(queue='slow')
+        res = group(run_strategy.s(i) for i in range(24)).apply_async(queue='slow')
 
         while not res.ready():
             print('wait group strategy...')

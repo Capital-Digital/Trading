@@ -750,7 +750,7 @@ def update(self):
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     # Create job
-    res = group(chain_tickers_strategy.s(exid).set(queue='default') for exid in exchanges)()
+    res = group(chain_tickers_strategy.s(exid).set(queue='default') for exid in ['ex0', 'ex1', 'ex2', 'ex3'])()
 
     while not res.ready():
         print('wait group tickers...')
@@ -788,7 +788,7 @@ def chain_tickers_strategy(self, exid):
         # Group strategies
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid)
-        res = group(run_strategy.s(i) for i in range(24)).apply_async(queue='slow')
+        res = group(run_strategy.s(exid + '_' + str(i)) for i in range(24)).apply_async(queue='slow')
 
         while not res.ready():
             print('wait group strategy...')
@@ -835,7 +835,7 @@ def chain_st_ac(self, strategy_id):
 def run_strategy(self, strategy_id):
 
     print(' ')
-    print('TASK STARTING: {0.name} for strategy {1} [{0.request.id}]'.format(self, strategy_id))
+    print('RUN STRATEGY: {1} [{0.request.id}]'.format(self, strategy_id))
     print(' ')
 
     time.sleep(10)
@@ -883,6 +883,9 @@ def insert_current_tickers(self, exid, test=False):
     log.info('Tickers insertion for {0} start'.format(exid))
 
     if test:
+
+        time.sleep(3)
+
         log.info('Tickers insertion for {0} complete'.format(exid))
         log.info(' ')
         return exid

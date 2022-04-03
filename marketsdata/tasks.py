@@ -827,12 +827,16 @@ def chain_st_ac(self, strategy_id):
     #strategy = Strategy.objects.get(id=strategy_id).get_target_pct()
 
     job = chain(strategy.s(), group_account.s())
+    res = job.apply_async()
 
-    while not job.ready():
+    with allow_join_result():
+        res.get()
+        
+    while not res.ready():
         print('wait chain_st_ac...')
         time.sleep(1)
 
-    if job.successful():
+    if res.successful():
         log.info('chain_st_ac complete')
 
     else:

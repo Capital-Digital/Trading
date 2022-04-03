@@ -40,6 +40,7 @@ config = configparser.ConfigParser()
 config.read('capital/config.ini')
 
 
+# Create a custom task class
 class BaseTaskWithRetry(Task):
     autoretry_for = (ccxt.DDoSProtection,
                      ccxt.RateLimitExceeded,
@@ -737,35 +738,72 @@ def hourly_tasks():
         log.error('Hourly tasks failed')
 
 
-# Execute group of chains
+# Execute groups
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Update')
 def update():
-
     # Return a list of exid
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
-    chains = [chain(insert_current_tickers.s(exid),
-                    update_weights(exid)
-                    ) for exid in exchanges]
+    # Group tickers insertion
+    group_tickers = group(tickers.s(exid) for exid in exchanges)
+    group_tickers()
 
-    log.info('Group and execute chains')
-
-    res = group(*chains)()
-
-    while not res.ready():
-        print('wait group 1...')
+    while not group_tickers.ready():
+        print('wait group tickers...')
         time.sleep(1)
 
-    if res.successful():
-        log.info('Update complete')
+    if group_tickers.successful():
+        log.info('Group ticker complete')
 
-    elif res.failed():
-        res.forget()
-        log.error('Update failed')
+    elif group_tickers.failed():
+        group_tickers.forget()
+        log.error('Group ticker failed')
+
+
+# Tickers update
+@app.task(bind=True, name='Markets_____Tickers')
+def tickers(self, exid):
+
+    print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
+
+    chn = chain(insert_current_tickers.s(exid), strategy.s(exid))
+    chn()
+
+    while not chn.ready():
+        print('wait chain...')
+        time.sleep(1)
+
+    if chn.successful():
+        log.info('Chain complete')
+
+    else:
+        log.error('Chain failed')
+
+
+# Strategies update
+@app.task(bind=True, name='Markets_____Strategy')
+def strategy(self, exid):
+
+    print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
+
+    from strategy.models import Strategy
+    strategies = Strategy.objects.filter(exchange__exid=exid)
+    group_strategy = group(strategy.execute('tickers', 10*24) for strategy in strategies)
+    group_strategy()
+
+    while not group_strategy.ready():
+        print('wait group strategy...')
+        time.sleep(1)
+
+    if group_strategy.successful():
+        log.info('Group strategy complete')
+
+    else:
+        log.error('Group strategy failed')
 
 
 # Group accounts and execute trades
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Accounts update')
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Trade')
 def trade(strategy):
     from trading.models import Account
     accounts = Account.objects.filter(strategy__name=strategy)
@@ -884,285 +922,21 @@ def insert_current_tickers(exid):
     log.info('Insertion for {0} complete'.format(exid))
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch CoinPaprika listing history')
-def fetch_coinpaprika_listing_history():
-    log.info('Start fetching CoinPaprika records')
-
-    from coinpaprika import client as Coinpaprika
-    client = Coinpaprika.Client()
-    listing = client.coins()
-    listing = [i for i in listing if i['rank'] < 400 and i['is_active']]
-    directive = '%Y-%m-%dT%H:%M:%SZ'
-
-    for coin in listing:
-
-        try:
-
-            code = coin['symbol']
-            currency = Currency.objects.get(code=code)
-
-        except ObjectDoesNotExist:
-            continue
-
-        else:
-            qs = CoinPaprika.objects.filter(currency=currency)
-            now = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-
-            if not qs:
-                # Set start datetime
-                start_dt = datetime.strptime('2020-01-01T00:00:00Z', directive).replace(tzinfo=pytz.UTC)
-            else:
-
-                # Get latest timestamp
-                end = qs.order_by('-year', '-semester')[0].data[-1]['timestamp']
-                end_dt = datetime.strptime(end, directive).replace(tzinfo=pytz.UTC)
-
-                if end_dt == now:
-                    log.info('Object {0} is updated'.format(code))
-                    continue
-
-                else:
-                    # Set start datetime
-                    start_dt = end_dt + timedelta(hours=1)
-
-            while start_dt < now:
-
-                start = start_dt.strftime(directive)
-                log.info('Fetch historical data for {0} starting {1}'.format(coin['symbol'], start))
-                data = client.historical(coin['id'], start=start, interval='1h', limit=5000)
-
-                if data:
-
-                    # Iterate through years
-                    for year in get_years('2020-01-01T00:00:00Z'):
-
-                        filter_1 = [str(year) + '-' + i for i in ['01', '02', '03', '04', '05', '06']]
-                        filter_2 = [str(year) + '-' + i for i in ['07', '08', '09', '10', '11', '12']]
-
-                        # And filter records by semester
-                        data_1 = [i for i in data if i['timestamp'][:7] in filter_1]
-                        data_2 = [i for i in data if i['timestamp'][:7] in filter_2]
-
-                        for i in range(1, 3):
-
-                            var = eval('data_' + str(i))
-                            if var:
-
-                                try:
-                                    obj = CoinPaprika.objects.get(year=year, semester=i, currency=currency)
-
-                                except ObjectDoesNotExist:
-
-                                    log.info('Create object {0} {1} {2}'.format(currency.code, year, i))
-
-                                    # Create new object for semester 1
-                                    CoinPaprika.objects.create(year=year,
-                                                               semester=i,
-                                                               name=coin['name'],
-                                                               currency=currency,
-                                                               data=var
-                                                               )
-
-                                else:
-                                    # Remove duplicate records
-                                    diff = [i for i in var if i not in obj.data]
-
-                                    if diff:
-
-                                        log.info('Update object {0} {1} {2}'.format(currency.code, year, i))
-
-                                        # Concatenate the two lists
-                                        obj.data += diff
-                                        obj.save()
-
-                                    else:
-                                        log.info('Object {0} {1} {2} is up to date'.format(currency.code, year, i))
-
-                    # Update start datetime
-                    start_dt = datetime.strptime(data[-1]['timestamp'], directive).replace(tzinfo=pytz.UTC)
-                    start_dt += timedelta(hours=1)
-
-                else:
-                    log.info('No data returned, add 30 days...')
-                    start_dt += timedelta(days=30)
-
-                time.sleep(1)
-
-            log.info('While loop break')
-
-
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Insert CoinPaprika current listing')
-def insert_coinpaprika_current_listing():
-    log.info('Insertion of CoinPaprika listing start')
-
-    from coinpaprika import client as Coinpaprika
-    client = Coinpaprika.Client()
-    listing = client.tickers()
-    listing = [i for i in listing if i['rank'] < 400]
-
-    # Sort indices
-    ids = [i['id'] for i in listing]
-    ids.sort()
-    for c in ids:
-
-        # Select dictionary
-        i = [v for v in listing if v['id'] == c][0]
-
-        code = i['symbol']
-        name = i['name']
-        price = i['quotes']['USD']['price']
-        volume_24h = i['quotes']['USD']['volume_24h']
-        market_cap = i['quotes']['USD']['market_cap']
-
-        # Create timestamp
-        timestamp = timezone.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-        timestamp_st = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-        record = dict(
-            price=price,
-            timestamp=timestamp_st,
-            volume_24h=volume_24h,
-            market_cap=market_cap
-        )
-
-        if None in record.values():
-            pprint(record)
-            raise Exception('None detect in {0}'.format(code))
-
-        # Get year and semester
-        year = timestamp.year
-        semester = 1 if timestamp.month <= 6 else 2
-
-        try:
-            currency = Currency.objects.get(code=code)
-
-        except ObjectDoesNotExist:
-            continue
-
-        else:
-
-            try:
-                obj = CoinPaprika.objects.get(year=year, semester=semester, currency=currency)
-
-            except ObjectDoesNotExist:
-
-                log.info('Create {0} {1} {2}'.format(currency.code, year, semester))
-
-                # Create new object
-                CoinPaprika.objects.create(year=year,
-                                           semester=semester,
-                                           name=name,
-                                           currency=currency,
-                                           data=[record]
-                                           )
-
-            else:
-
-                # if timestamp_st not in [d['timestamp'] for d in obj.data]:
-                if timestamp_st != obj.data[-1]['timestamp']:
-
-                    # Concatenate the two lists
-                    obj.data.append(record)
-                    obj.save()
-
-                else:
-
-                    log.info('{0} already updated'.format(currency.code))
-
-    log.info('Insertion of Paprika listing complete')
-
-
-@shared_task(name='Exe')
-def exe():
-
-    t = group(run.s(i) for i in ['binance'])()
-
-    while not t.ready():
-        print('wait chain')
-        time.sleep(1)
-
-    if t.successful():
-
-        log.info('Update complete !')
-
-
-@shared_task(name='Run tasks')
-def run(exid):
-
-    tickers_update(exid)
-
-    log.info('Ticker update complete for {0}'.format(exid))
-    from strategy.models import Strategy
-
-    # Select strategies on this exchange
-    strategies = Strategy.objects.filter(exchange__exid=exid)
-    s = group(update_weights.s(strategy.name) for strategy in strategies)()
-
-    while not s.ready():
-        print('wait {0} strategy group'.format(exid))
-        time.sleep(1)
-
-    if s.successful():
-        log.info('Strategies group update complete')
-
-    else:
-        log.error('Strategies group update failed')
-
-
-# Update weights of a group of strategies
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Strategies update')
-def update_weights(name):
-
-    log.info('Start {0}'.format(name))
-
-    # Select strategies on this exchange
-    # from strategy.models import Strategy
-    # strategy = Strategy.objects.get(name=name)
-    # strategy.execute('tickers', 10*24)
-    print('Strategy update', name)
-
-    log.info('Strategy {0} update complete'.format(name))
-
-    from trading.models import Account
-    accounts = Account.objects.filter(strategy__name=name)
-    a = group(account_update.s(account.name) for account in accounts)()
-
-    while not a.ready():
-        print('wait {0} account group'.format(name))
-        time.sleep(1)
-
-    if a.successful():
-        log.info('Account group update complete')
-
-    else:
-        log.info('Account group update failed')
-
-
-def tickers_update(exid):
-    print('\nTickers update', exid, '\n')
-
-
-@shared_task()
-def account_update(name):
-    print('Account update', name)
-
-
 @app.task
 def error_handler(uuid):
     result = AsyncResult(uuid)
     exc = result.get(propagate=False)
     print('Task {0} raised exception: {1!r}\n{2!r}'.format(
-          uuid, exc, result.traceback))
+        uuid, exc, result.traceback))
 
 
-@shared_task(bind=True,
-             name='sum-of-two-numbers',
-             default_retry_delay=1,
-             time_limit=120,
-             max_retries = 2
-             )
+@app.task(bind=True,
+          name='sum-of-two-numbers',
+          default_retry_delay=1,
+          time_limit=120,
+          max_retries=2
+          )
 def add(self, x, y):
-
     print(self.AsyncResult(self.request.id).state)
 
     try:

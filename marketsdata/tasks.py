@@ -805,7 +805,7 @@ def group_strategy(self, exid):
     print(' ')
 
     from strategy.models import Strategy
-    strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
+    strategies = Strategy.objects.filter(exchange__exid=exid)
 
     job = group(chain_st_ac.s(strategy.id) for strategy in strategies)
     res = job.apply_async()
@@ -862,8 +862,6 @@ def group_account(self, strategy_id):
     accounts = Account.objects.filter(strategy__id=strategy_id)
 
 
-
-
 # Group accounts and execute trades
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Trade')
 def trade(strategy):
@@ -887,11 +885,11 @@ def trade(strategy):
 # Insert current tickers
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(exid, test=False):
-    log.info('Start tickers insertion for {0}'.format(exid))
+    log.info('Tickers insertion for {0} start'.format(exid))
 
     if test:
         log.info(' ')
-        log.info('Tickers insertion complete for {0}'.format(exid))
+        log.info('Tickers insertion for {0} complete'.format(exid))
         log.info(' ')
         return exid
 

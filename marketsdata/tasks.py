@@ -745,7 +745,7 @@ def update():
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     # Create job
-    job = group(tickers.s(exid) for exid in exchanges)
+    job = group(chain_tickers_strategy.s(exid) for exid in exchanges)
     res = job.apply_async()
 
     with allow_join_result():
@@ -769,13 +769,13 @@ def update():
 
 # Tickers update
 @app.task(bind=True, name='Markets_____Tickers')
-def tickers(self, exid):
+def chain_tickers_strategy(self, exid):
 
     print(' ')
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
     print(' ')
 
-    job = chain(insert_current_tickers.s(exid, test=True), strategy.s())
+    job = chain(insert_current_tickers.s(exid, test=True), group_strategy.s())
     res = job.apply_async()
 
     with allow_join_result():
@@ -797,15 +797,8 @@ def tickers(self, exid):
 
 
 # Strategies update
-@app.task(bind=True, name='Markets_____Test')
-def st(self, strategy_id):
-    from strategy.models import Strategy
-    Strategy.objects.get(id=strategy_id).get_target_pct()
-
-
-# Strategies update
 @app.task(bind=True, name='Markets_____Strategy')
-def strategy(self, exid):
+def group_strategy(self, exid):
 
     print(' ')
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
@@ -814,7 +807,7 @@ def strategy(self, exid):
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)
 
-    res = group(st.s(strategy.id) for strategy in strategies)()
+    res = group(chain_st_ac.s(strategy.id) for strategy in strategies)()
 
     while not res.ready():
         print('wait group strategy...')
@@ -825,6 +818,42 @@ def strategy(self, exid):
 
     else:
         log.error('Group strategy failed')
+
+
+# Strategies update
+@app.task(bind=True, name='Markets_____Chain_st_ac')
+def chain_st_ac(self, strategy_id):
+    from strategy.models import Strategy
+    strategy = Strategy.objects.get(id=strategy_id).get_target_pct()
+
+    job = chain(strategy.s(), group_account.s())
+
+    while not job.ready():
+        print('wait chain_st_ac...')
+        time.sleep(1)
+
+    if job.successful():
+        log.info('chain_st_ac complete')
+
+    else:
+        log.error('chain_st_ac failed')
+
+
+# Strategies update
+@app.task(bind=True, name='Markets_____Str')
+def strategy(self, strategy_id):
+    from strategy.models import Strategy
+    Strategy.objects.get(id=strategy_id).get_target_pct()
+    return strategy_id
+
+
+# Strategies update
+@app.task(bind=True, name='Markets_____Acc')
+def group_account(self, strategy_id):
+    from trading.models import Account
+    accounts = Account.objects.filter(strategy__id=strategy_id)
+
+
 
 
 # Group accounts and execute trades

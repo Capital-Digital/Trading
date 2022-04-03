@@ -810,10 +810,10 @@ def strategy(self, exid):
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
     print(' ')
 
-    # from strategy.models import Strategy
-    # strategies = Strategy.objects.filter(exchange__exid=exid)
+    from strategy.models import Strategy
+    strategies = Strategy.objects.filter(exchange__exid=exid)
 
-    res = group(test.s(r) for r in range(10))()
+    res = group(strategy.get_target_pct.s() for strategy in strategies)()
 
     while not res.ready():
         print('wait group strategy...')

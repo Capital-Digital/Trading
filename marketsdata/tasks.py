@@ -853,7 +853,7 @@ def insert_current_tickers(exid, test=False):
         log.info(' ')
         log.info('Tickers insertion complete for {0}'.format(exid))
         log.info(' ')
-        return # exid
+        return exid
 
     def insert(data, wallet=None):
 

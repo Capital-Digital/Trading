@@ -40,31 +40,31 @@ app.conf.CELERY_ENABLE_UTC = True
 ###########################
 # Configure Celery queues #
 ###########################
-#
-# default_queue_name = 'default'
-# default_exchange_name = 'default'
-# default_routing_key = 'default'
-#
-# slow_queue_name = 'slow'
-# slow_routing_key = 'slow'
-#
-# default_exchange = Exchange(default_exchange_name, type='direct')
-#
-# default_queue = Queue(
-#     default_queue_name,
-#     default_exchange,
-#     routing_key=default_routing_key)
-#
-# slow_queue = Queue(
-#     slow_queue_name,
-#     default_exchange,
-#     routing_key=slow_routing_key)
-#
-# app.conf.task_queues = (default_queue, slow_queue)
-#
-# app.conf.task_default_queue = default_queue_name
-# app.conf.task_default_exchange = default_exchange_name
-# app.conf.task_default_routing_key = default_routing_key
+
+default_queue_name = 'default'
+default_exchange_name = 'default'
+default_routing_key = 'default'
+
+slow_queue_name = 'slow'
+slow_routing_key = 'slow'
+
+default_exchange = Exchange(default_exchange_name, type='direct')
+
+default_queue = Queue(
+    default_queue_name,
+    default_exchange,
+    routing_key=default_routing_key)
+
+slow_queue = Queue(
+    slow_queue_name,
+    default_exchange,
+    routing_key=slow_routing_key)
+
+app.conf.task_queues = (default_queue, slow_queue)
+
+app.conf.task_default_queue = default_queue_name
+app.conf.task_default_exchange = default_exchange_name
+app.conf.task_default_routing_key = default_routing_key
 
 
 @setup_logging.connect

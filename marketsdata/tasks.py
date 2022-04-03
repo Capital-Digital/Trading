@@ -845,7 +845,7 @@ def run_strategy(self, strategy_id):
 
     from strategy.models import Strategy
     Strategy.objects.get(id=strategy_id).get_target_pct()
-    
+
 
 # Strategies update
 @app.task(bind=True, name='Markets_____Acc')

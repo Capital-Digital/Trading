@@ -773,8 +773,7 @@ def update(self):
 def chain_tickers_strategy(self, exid):
 
     print(' ')
-    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
-    print(' ')
+    print('TICKERS update for {0} start'.format(self))
 
     job = insert_current_tickers.s(exid, test=True).apply_async(queue='default')
 
@@ -783,7 +782,8 @@ def chain_tickers_strategy(self, exid):
 
     if job.successful():
 
-        log.info('Tickers update complete for {0}'.format(exid))
+        print('TICKERS update for {0} success'.format(self))
+        print(' ')
 
         # Group strategies
         from strategy.models import Strategy
@@ -795,15 +795,15 @@ def chain_tickers_strategy(self, exid):
 
         if res.successful():
             print('EXID {0} CHAIN success...'.format(exid))
+            print(' ')
 
         else:
             print('EXID {0} CHAIN failed...'.format(exid))
-
+            print(' ')
 
     else:
-        log.info(' ')
-        log.error('Chain failed')
-        log.info(' ')
+        print('TICKERS update for {0} failed'.format(self))
+        print(' ')
 
 
 # Strategies update
@@ -832,9 +832,7 @@ def run_account(self, exid, strategy_id, account_id):
 @app.task(bind=True, name='Strategy execution')
 def chain2(self, exid, strategy_id):
 
-    print(' ')
     print('EXID {1} STRATEGY {0} CHAIN start...'.format(strategy_id, exid))
-    print(' ')
 
     job = run_strategy.s(exid, strategy_id).apply_async(queue='default')
 
@@ -891,18 +889,10 @@ def trade(strategy):
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(self, exid, test=False):
 
-    print(' ')
-    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
-    print(' ')
-
-    log.info('Tickers insertion for {0} start'.format(exid))
-
+    print('Tickers insertion for {0} start'.format(exid))
     if test:
-
         time.sleep(3)
-
-        log.info('Tickers insertion for {0} complete'.format(exid))
-        log.info(' ')
+        print('Tickers insertion for {0} complete'.format(exid))
         return exid
 
     def insert(data, wallet=None):

@@ -750,7 +750,7 @@ def update(self):
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     # Create job
-    res = group(chain_tickers_strategy.s(exid).set(queue='default') for exid in ['ex0', 'ex1', 'ex2', 'ex3'])()
+    res = group(chain_tickers_strategy.s(exid).set(queue='default') for exid in ['ex0'])()
 
     while not res.ready():
         print('wait group tickers...')
@@ -788,7 +788,7 @@ def chain_tickers_strategy(self, exid):
         # Group strategies
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid)
-        res = group(run_strategy.s(exid + '_' + str(i)) for i in range(24)).apply_async(queue='slow')
+        res = group(run_strategy.s(exid + ' strategy ' + str(i)) for i in range(2)).apply_async(queue='slow')
 
         while not res.ready():
             print('wait group strategy...')
@@ -808,26 +808,21 @@ def chain_tickers_strategy(self, exid):
 
 
 # Strategies update
-@app.task(bind=True, name='Markets_____Chain 2')
-def chain_st_ac(self, strategy_id):
+@app.task(bind=True, name='Strategy_execution')
+def run_strategy(self, strategy_id):
 
     print(' ')
-    print('TASK STARTING: {0.name} for strategy {1} [{0.request.id}]'.format(self, strategy_id))
+    print('STRATEGY: {0}]'.format(strategy_id))
     print(' ')
 
-    job = run_strategy.s(strategy_id).apply_async(queue='slow')
 
-    print(self.AsyncResult(self.request.id).state)
+# Strategies update
+@app.task(bind=True, name='Account_execution')
+def run_account(self, account_id):
 
-    if job.successful():
-        log.info('Strategy {0} complete'.format(strategy_id))
-
-        from trading.models import Account
-        accounts = Account.objects.filter(strategy__id=strategy_id)
-        log.info('RUN ACCOUNTS GROUP')
-
-    else:
-        log.error('Strategy {0} failed'.format(strategy_id))
+    print(' ')
+    print('ACCOUNT: {0}]'.format(account_id))
+    print(' ')
 
 
 # Strategies update
@@ -838,11 +833,27 @@ def run_strategy(self, strategy_id):
     print('RUN STRATEGY: {1} [{0.request.id}]'.format(self, strategy_id))
     print(' ')
 
-    time.sleep(10)
+    job = run_strategy.s(strategy_id).apply_async(queue='default')
 
-    from strategy.models import Strategy
-    # Strategy.objects.get(id=strategy_id).get_target_pct()
-    return strategy_id
+    while not job.ready():
+        time.sleep(1)
+
+    if job.successful():
+
+        acc = group(run_account.s(account_id) for account_id in range(4))
+
+        while not acc.ready():
+            print('wait account strategy...')
+            time.sleep(1)
+
+        if acc.successful():
+            log.info('Group account complete')
+
+        else:
+            log.error('Group account failed')
+
+    else:
+        print('RUN STRATEGY FAILED: {1} [{0.request.id}]'.format(self, strategy_id))
 
 
 # Strategies update

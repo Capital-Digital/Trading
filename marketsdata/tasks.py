@@ -739,8 +739,13 @@ def hourly_tasks():
 
 
 # Execute groups
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Update')
-def update():
+@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update')
+def update(self):
+
+    print(' ')
+    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
+    print(' ')
+
     # Return a list of exid
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 

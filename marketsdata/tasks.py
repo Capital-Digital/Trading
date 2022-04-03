@@ -817,6 +817,8 @@ def chain_st_ac(self, strategy_id):
 
     job = run_strategy.s(strategy_id).apply_async(queue='slow')
 
+    print(self.AsyncResult(self.request.id).state)
+
     if job.successful():
         log.info('Strategy {0} complete'.format(strategy_id))
 

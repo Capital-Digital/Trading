@@ -769,14 +769,17 @@ def tickers(self, exid):
 
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
 
-    chn = chain(insert_current_tickers.s(exid), strategy.s(exid))
-    chn()
+    job = chain(insert_current_tickers.s(exid), strategy.s(exid))
+    res = job.apply_async()
 
-    while not chn.ready():
+    with allow_join_result():
+        res.get()
+
+    while not res.ready():
         print('wait chain...')
         time.sleep(1)
 
-    if chn.successful():
+    if res.successful():
         log.info('Chain complete')
 
     else:
@@ -791,14 +794,17 @@ def strategy(self, exid):
 
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)
-    group_strategy = group(strategy.execute('tickers', 10*24) for strategy in strategies)
-    group_strategy()
+    job = group(strategy.execute('tickers', 10*24) for strategy in strategies)
+    res = job.apply_async()
 
-    while not group_strategy.ready():
+    with allow_join_result():
+        res.get()
+
+    while not job.ready():
         print('wait group strategy...')
         time.sleep(1)
 
-    if group_strategy.successful():
+    if job.successful():
         log.info('Group strategy complete')
 
     else:

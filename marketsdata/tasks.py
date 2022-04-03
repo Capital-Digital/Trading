@@ -775,7 +775,7 @@ def tickers(self, exid):
     print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
     print(' ')
 
-    job = chain(insert_current_tickers.s(exid, test=True), strategy.s(exid))
+    job = chain(insert_current_tickers.s(exid, test=True), strategy.s())
     res = job.apply_async()
 
     with allow_join_result():
@@ -852,7 +852,7 @@ def insert_current_tickers(exid, test=False):
         log.info(' ')
         log.info('Tickers insertion complete for {0}'.format(exid))
         log.info(' ')
-        return
+        return exid
 
     def insert(data, wallet=None):
 

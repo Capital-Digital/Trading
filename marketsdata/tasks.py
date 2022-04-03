@@ -843,7 +843,8 @@ def chain_st_ac(self, strategy_id):
 @app.task(bind=True, name='Markets_____Str')
 def strategy(self, strategy_id):
     from strategy.models import Strategy
-    Strategy.objects.get(id=strategy_id).get_target_pct()
+    # Strategy.objects.get(id=strategy_id).get_target_pct()
+    print('Run strategy {0}'.format(strategy_id))
     return strategy_id
 
 

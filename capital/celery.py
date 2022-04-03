@@ -5,6 +5,7 @@ import structlog
 from celery import Celery
 from celery.signals import setup_logging
 from django_structlog.celery.steps import DjangoStructLogInitStep
+import settings
 
 from kombu import Queue, Exchange
 from django_structlog.celery import signals
@@ -22,7 +23,7 @@ app = Celery('capital', broker='redis://localhost:6379/0')
 # the configuration object to child processes.
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
-app.config_from_object('django.conf:settings', namespace='CELERY')
+app.config_from_object(settings, namespace='CELERY')
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
@@ -32,6 +33,9 @@ app.steps['worker'].add(DjangoStructLogInitStep)
 
 # Change name of the default queue
 app.conf.task_default_queue = 'default'
+
+app.conf.CELERY_ENABLE_UTC = True
+
 
 ###########################
 # Configure Celery queues #

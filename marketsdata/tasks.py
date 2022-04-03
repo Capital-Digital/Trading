@@ -810,9 +810,6 @@ def group_strategy(self, exid):
     job = group(chain_st_ac.s(strategy.id) for strategy in strategies)
     res = job.apply_async()
 
-    with allow_join_result():
-        res.get()
-
     while not res.ready():
         print('wait group strategy...')
         time.sleep(1)

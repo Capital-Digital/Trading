@@ -841,7 +841,6 @@ def run_strategy(self, strategy_id):
     from strategy.models import Strategy
     # Strategy.objects.get(id=strategy_id).get_target_pct()
     print('Run strategy {0}'.format(strategy_id))
-    return strategy_id
 
 
 # Strategies update

@@ -806,6 +806,7 @@ def strategy(self, exid):
 
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)
+
     job = group(strategy.execute('tickers', 10*24) for strategy in strategies)
     res = job.apply_async()
 
@@ -852,7 +853,7 @@ def insert_current_tickers(exid, test=False):
         log.info(' ')
         log.info('Tickers insertion complete for {0}'.format(exid))
         log.info(' ')
-        return exid
+        return # exid
 
     def insert(data, wallet=None):
 

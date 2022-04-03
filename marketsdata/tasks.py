@@ -802,7 +802,7 @@ def chain_tickers_strategy(self, exid):
 
 
 # Strategies update
-@app.task(bind=True, name='Markets_____Strategy')
+@app.task(bind=True, name='Group strategy')
 def group_strategy(self, exid):
 
     print(' ')

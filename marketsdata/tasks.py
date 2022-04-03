@@ -788,7 +788,7 @@ def chain_tickers_strategy(self, exid):
         # Group strategies
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid)
-        res = group(chain_st_ac.s(strategy.id) for strategy in strategies).apply_async(queue='default')
+        res = group(run_strategy.s(strategy.id) for strategy in strategies).apply_async(queue='default')
 
         while not res.ready():
             print('wait group strategy...')
@@ -833,6 +833,10 @@ def chain_st_ac(self, strategy_id):
 # Strategies update
 @app.task(bind=True, name='Strategy execution')
 def run_strategy(self, strategy_id):
+
+    print(' ')
+    print('TASK STARTING: {0.name} for strategy {1} [{0.request.id}]'.format(self, strategy_id))
+    print(' ')
 
     from strategy.models import Strategy
     # Strategy.objects.get(id=strategy_id).get_target_pct()

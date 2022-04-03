@@ -5,7 +5,7 @@ import structlog
 from celery import Celery
 from celery.signals import setup_logging
 from django_structlog.celery.steps import DjangoStructLogInitStep
-import settings
+from capital import settings
 
 from kombu import Queue, Exchange
 from django_structlog.celery import signals

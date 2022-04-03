@@ -800,7 +800,7 @@ def tickers(self, exid):
 @app.task(bind=True, name='Markets_____Test')
 def st(self, strategy_id):
     from strategy.models import Strategy
-    return Strategy.objects.get(id=strategy_id).get_target_pct()
+    Strategy.objects.get(id=strategy_id).get_target_pct()
 
 
 # Strategies update

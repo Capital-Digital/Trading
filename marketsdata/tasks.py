@@ -816,9 +816,9 @@ def chain_st_ac(self, strategy_id):
     print(' ')
 
     job = run_strategy.s(strategy_id).apply_async(queue='default')
-    res = job.get()
-
-    print(res)
+    with allow_join_result():
+        res = job.get()
+        print(res)
 
     from trading.models import Account
     accounts = Account.objects.filter(strategy__id=strategy_id)

@@ -838,6 +838,8 @@ def run_strategy(self, strategy_id):
     print('TASK STARTING: {0.name} for strategy {1} [{0.request.id}]'.format(self, strategy_id))
     print(' ')
 
+    time.sleep(10)
+
     from strategy.models import Strategy
     # Strategy.objects.get(id=strategy_id).get_target_pct()
     return strategy_id

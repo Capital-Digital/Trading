@@ -808,7 +808,7 @@ def chain_tickers_strategy(self, exid):
 
 
 # Strategies update
-@app.task(bind=True, name='Markets_____Chain_st_ac')
+@app.task(bind=True, name='Markets_____Chain 2')
 def chain_st_ac(self, strategy_id):
 
     print(' ')
@@ -836,12 +836,16 @@ def chain_st_ac(self, strategy_id):
 
 
 # Strategies update
-@app.task(bind=True, name='Markets_____Str')
+@app.task(bind=True, name='Strategy execution')
 def run_strategy(self, strategy_id):
-    from strategy.models import Strategy
-    # Strategy.objects.get(id=strategy_id).get_target_pct()
-    print('Run strategy {0}'.format(strategy_id))
 
+    print(' ')
+    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
+    print(' ')
+
+    from strategy.models import Strategy
+    Strategy.objects.get(id=strategy_id).get_target_pct()
+    
 
 # Strategies update
 @app.task(bind=True, name='Markets_____Acc')

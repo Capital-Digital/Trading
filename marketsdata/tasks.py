@@ -818,14 +818,14 @@ def chain_st_ac(self, strategy_id):
     job = run_strategy.s(strategy_id).apply_async(queue='default')
 
     if job.successful():
-        log.info('Group strategy complete')
-        
+        log.info('Strategy {0} complete'.format(strategy_id))
+
         from trading.models import Account
         accounts = Account.objects.filter(strategy__id=strategy_id)
         log.info('RUN ACCOUNTS GROUP')
 
     else:
-        log.error('Group strategy failed')
+        log.error('Strategy {0} failed'.format(strategy_id))
 
 
 # Strategies update

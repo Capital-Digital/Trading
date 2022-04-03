@@ -745,18 +745,18 @@ def update():
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     # Group tickers insertion
-    group_tickers = group(tickers.s(exid) for exid in exchanges)
-    group_tickers()
+    res = group(tickers.s(exid) for exid in exchanges)()
+    res = res.get()
 
-    while not group_tickers.ready():
+    while not res.ready():
         print('wait group tickers...')
         time.sleep(1)
 
-    if group_tickers.successful():
+    if res.successful():
         log.info('Group ticker complete')
 
-    elif group_tickers.failed():
-        group_tickers.forget()
+    elif res.failed():
+        # group_tickers.forget()
         log.error('Group ticker failed')
 
 

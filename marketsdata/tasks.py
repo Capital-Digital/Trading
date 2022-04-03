@@ -15,7 +15,7 @@ import structlog
 import urllib3
 
 from celery import chain, group, shared_task, Task, Celery, states
-from celery.result import AsyncResult
+from celery.result import AsyncResult, allow_join_result
 from celery.exceptions import Ignore
 
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
@@ -747,7 +747,9 @@ def update():
     # Create job
     job = group(tickers.s(exid) for exid in exchanges)
     res = job.apply_async()
-    res.get()
+
+    with allow_join_result():
+        res.get()
 
     while not res.ready():
         print('wait group tickers...')

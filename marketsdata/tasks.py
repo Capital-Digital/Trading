@@ -750,7 +750,7 @@ def update(self):
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     # Create job
-    res = group(chain_tickers_strategy.s(exid).set(queue='slow') for exid in exchanges)()
+    res = group(chain_tickers_strategy.s(exid).set(queue='default') for exid in exchanges)()
 
     while not res.ready():
         print('wait group tickers...')

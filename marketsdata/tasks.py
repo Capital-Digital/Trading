@@ -815,7 +815,7 @@ def chain_st_ac(self, strategy_id):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = run_strategy.delay(strategy_id)
+    job = run_strategy.s(strategy_id).apply_async(queue='default')
 
     while not job.ready():
         print('wait strategy execution...')

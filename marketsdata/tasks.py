@@ -795,10 +795,10 @@ def chain_tickers_strategy(self, exid):
             time.sleep(1)
 
         if res.successful():
-            log.info('Group strategy complete')
+            log.info('CHAIN 2 complete')
 
         else:
-            log.error('Group strategy failed')
+            log.error('CHAIN 2 failed')
 
 
     else:
@@ -844,6 +844,8 @@ def chain2(self, exid, strategy_id):
 
     if job.successful():
 
+        print('RUN CHAIN for strategy: {0} exid {1} : success'.format(strategy_id, exid))
+
         acc = group(run_account.s(strategy_id, account_id) for account_id in range(4)).apply_async(queue='slow')
 
         while not acc.ready():
@@ -857,7 +859,7 @@ def chain2(self, exid, strategy_id):
             log.error('Group account failed')
 
     else:
-        print('RUN CHAIN for strategy: {0} failed'.format(strategy_id))
+        print('RUN CHAIN for strategy: {0} exid {1} : failure'.format(strategy_id, exid))
 
 
 # Strategies update

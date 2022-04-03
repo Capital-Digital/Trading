@@ -798,7 +798,7 @@ def tickers(self, exid):
 
 # Strategies update
 @app.task(bind=True, name='Markets_____Test')
-def test(r):
+def test(self, r):
     return r
 
 

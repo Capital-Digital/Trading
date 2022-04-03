@@ -844,7 +844,7 @@ def chain2(self, exid, strategy_id):
 
     if job.successful():
 
-        acc = group(run_account.s(strategy_id, account_id) for account_id in range(4))
+        acc = group(run_account.s(strategy_id, account_id) for account_id in range(4)).apply_async(queue='slow')
 
         while not acc.ready():
             print('wait account strategy...')

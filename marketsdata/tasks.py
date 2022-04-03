@@ -744,9 +744,10 @@ def update():
     # Return a list of exid
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
-    # Group tickers insertion
-    res = group(tickers.s(exid) for exid in exchanges)()
-    res = res.get()
+    # Create job
+    job = group(tickers.s(exid) for exid in exchanges)
+    res = job.apply_async()
+    res.get()
 
     while not res.ready():
         print('wait group tickers...')

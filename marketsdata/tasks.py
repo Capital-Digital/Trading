@@ -750,7 +750,7 @@ def update(self):
     exchanges = list(Exchange.objects.filter(exid='binance').values_list('exid', flat=True))
 
     # Create job
-    res = group(chain_tickers_strategy.s(exid) for exid in exchanges)()
+    res = group(chain_tickers_strategy.s(exid).set(queue='default') for exid in exchanges)()
 
     while not res.ready():
         print('wait group tickers...')
@@ -776,7 +776,7 @@ def chain_tickers_strategy(self, exid):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = insert_current_tickers.delay(exid, test=True).set(queue='default')
+    job = insert_current_tickers.s(exid, test=True).apply_async(queue='priority.high')
 
     while not job.ready():
 
@@ -817,7 +817,7 @@ def chain_st_ac(self, strategy_id):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = run_strategy.delay(strategy_id).set(queue='default')
+    job = run_strategy.delay(strategy_id)
 
     while not job.ready():
         print('wait strategy execution...')

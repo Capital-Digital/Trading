@@ -776,7 +776,7 @@ def chain_tickers_strategy(self, exid):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = insert_current_tickers.delay(exid, test=True)
+    job = insert_current_tickers.delay(exid, test=True).set(queue='default')
 
     while not job.ready():
 
@@ -817,7 +817,7 @@ def chain_st_ac(self, strategy_id):
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
-    job = run_strategy.delay(strategy_id)
+    job = run_strategy.delay(strategy_id).set(queue='default')
 
     while not job.ready():
         print('wait strategy execution...')
@@ -831,7 +831,7 @@ def chain_st_ac(self, strategy_id):
         accounts = Account.objects.filter(strategy__id=strategy_id)
         log.info('RUN ACCOUNTS GROUP')
         #res = group(chain_st_ac.s(strategy.id) for strategy in strategies)()
-        
+
     else:
         log.error('strategy failed')
 

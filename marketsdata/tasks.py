@@ -823,8 +823,8 @@ def group_strategy(self, exid):
 # Strategies update
 @app.task(bind=True, name='Markets_____Chain_st_ac')
 def chain_st_ac(self, strategy_id):
-    from strategy.models import Strategy
-    strategy = Strategy.objects.get(id=strategy_id).get_target_pct()
+    #from strategy.models import Strategy
+    #strategy = Strategy.objects.get(id=strategy_id).get_target_pct()
 
     job = chain(strategy.s(), group_account.s())
 

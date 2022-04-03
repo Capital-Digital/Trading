@@ -779,8 +779,6 @@ def chain_tickers_strategy(self, exid):
     job = insert_current_tickers.s(exid, test=True).apply_async(queue='default')
 
     while not job.ready():
-
-        log.info('wait tickers...')
         time.sleep(1)
 
     if job.successful():
@@ -790,7 +788,7 @@ def chain_tickers_strategy(self, exid):
         # Group strategies
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid)
-        res = group(chain_st_ac.s(strategy.id) for strategy in strategies)()
+        res = group(chain_st_ac.s(strategy.id) for strategy in strategies).apply_async(queue='default')
 
         while not res.ready():
             print('wait group strategy...')

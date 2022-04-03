@@ -807,11 +807,7 @@ def strategy(self, exid):
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid)
 
-    job = group(strategy.execute('tickers', 10*24) for strategy in strategies)
-    res = job.apply_async()
-
-    with allow_join_result():
-        res.get()
+    res = group(strategy.execute('tickers', 10*24) for strategy in strategies)()
 
     while not res.ready():
         print('wait group strategy...')

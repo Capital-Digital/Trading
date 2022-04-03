@@ -813,7 +813,7 @@ def strategy(self, exid):
     # from strategy.models import Strategy
     # strategies = Strategy.objects.filter(exchange__exid=exid)
 
-    res = group(test(r) for r in range(10))()
+    res = group(test.s(r) for r in range(10))()
 
     while not res.ready():
         print('wait group strategy...')

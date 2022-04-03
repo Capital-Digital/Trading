@@ -788,7 +788,7 @@ def chain_tickers_strategy(self, exid):
         # Group strategies
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid)
-        res = group(run_strategy.s(exid + ' strategy ' + str(i)) for i in range(2)).apply_async(queue='slow')
+        res = group(chain2.s(exid, i) for i in range(2)).apply_async(queue='slow')
 
         while not res.ready():
             print('wait group strategy...')
@@ -809,38 +809,42 @@ def chain_tickers_strategy(self, exid):
 
 # Strategies update
 @app.task(bind=True, name='Strategy_execution')
-def run_strategy(self, strategy_id):
+def run_strategy(self, exid, strategy_id):
 
     print(' ')
-    print('STRATEGY: {0}]'.format(strategy_id))
+    print('STRATEGY: {0} exid {1}'.format(strategy_id, exid))
     print(' ')
+
+    time.sleep(3)
 
 
 # Strategies update
 @app.task(bind=True, name='Account_execution')
-def run_account(self, account_id):
+def run_account(self, strategy_id, account_id):
 
     print(' ')
-    print('ACCOUNT: {0}]'.format(account_id))
+    print('ACCOUNT {0} for strategy {1}'.format(account_id, strategy_id))
     print(' ')
+
+    time.sleep(3)
 
 
 # Strategies update
 @app.task(bind=True, name='Strategy execution')
-def run_strategy(self, strategy_id):
+def chain2(self, exid, strategy_id):
 
     print(' ')
-    print('RUN STRATEGY: {1} [{0.request.id}]'.format(self, strategy_id))
+    print('RUN CHAIN for strategy {0} exid {1}'.format(strategy_id, exid))
     print(' ')
 
-    job = run_strategy.s(strategy_id).apply_async(queue='default')
+    job = run_strategy.s(exid, strategy_id).apply_async(queue='default')
 
     while not job.ready():
         time.sleep(1)
 
     if job.successful():
 
-        acc = group(run_account.s(account_id) for account_id in range(4))
+        acc = group(run_account.s(strategy_id, account_id) for account_id in range(4))
 
         while not acc.ready():
             print('wait account strategy...')
@@ -853,7 +857,7 @@ def run_strategy(self, strategy_id):
             log.error('Group account failed')
 
     else:
-        print('RUN STRATEGY FAILED: {1} [{0.request.id}]'.format(self, strategy_id))
+        print('RUN CHAIN for strategy: {0} failed'.format(strategy_id))
 
 
 # Strategies update

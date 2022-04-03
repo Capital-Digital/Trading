@@ -818,6 +818,7 @@ def chain_st_ac(self, strategy_id):
     job = run_strategy.s(strategy_id).apply_async(queue='default')
 
     while not job.ready():
+        print(self.AsyncResult(self.request.id).state)
         print('wait strategy execution...')
         time.sleep(1)
 

@@ -739,7 +739,7 @@ def hourly_tasks():
 
 
 # Execute groups
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update')
+@app.task(bind=True, base=BaseTaskWithRetry, name='Update')
 def update(self):
 
     print(' ')

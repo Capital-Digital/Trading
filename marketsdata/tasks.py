@@ -772,7 +772,7 @@ def update():
 def chain_tickers_strategy(self, exid):
 
     print(' ')
-    print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
+    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
     job = chain(insert_current_tickers.s(exid, test=True), group_strategy.s())
@@ -801,7 +801,7 @@ def chain_tickers_strategy(self, exid):
 def group_strategy(self, exid):
 
     print(' ')
-    print('TASK STARTING: {0.name}[{0.request.id}]'.format(self))
+    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
 
     from strategy.models import Strategy
@@ -823,8 +823,10 @@ def group_strategy(self, exid):
 # Strategies update
 @app.task(bind=True, name='Markets_____Chain_st_ac')
 def chain_st_ac(self, strategy_id):
-    #from strategy.models import Strategy
-    #strategy = Strategy.objects.get(id=strategy_id).get_target_pct()
+
+    print(' ')
+    print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
+    print(' ')
 
     job = chain(strategy.s(strategy_id), group_account.s())
     res = job.apply_async()

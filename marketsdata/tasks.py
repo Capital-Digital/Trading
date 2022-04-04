@@ -1016,8 +1016,8 @@ def add(self, x, y):
 
 @app.task
 def test():
-    
-    for i in range(20):
+
+    for i in range(12):
         print_info.delay(i)
 
 
@@ -1025,5 +1025,10 @@ def test():
 def print_info(i):
     from billiard.process import current_process
     print('Iteration', i, 'process', current_process().index)
-    time.sleep(10)
+    time.sleep(4)
+
+
+@task_success(sender=print_info)
+def success():
+    print('success')
 

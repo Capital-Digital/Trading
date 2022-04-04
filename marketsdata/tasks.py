@@ -1135,6 +1135,11 @@ def update_tickers(exid):
     log.unbind('exid')
 
 
+@task_success.connect(sender=update_tickers)
+def monitor(sender, **kwargs):
+    log.info('task scan completed - %s', kwargs['result'])
+
+
 @task_postrun.connect(sender=update_tickers)
 def update_strategies(task=None, **kwargs):
 

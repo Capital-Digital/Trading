@@ -1030,8 +1030,8 @@ def print_info(i):
 
 
 @task_postrun.connect(sender=test)
-def success(sender, result, **kwargs):
-    print('Post execution')
+def success(sender, result, task_id, **kwargs):
+    print('Post execution', task_id)
     print(sender)
     print(result)
 

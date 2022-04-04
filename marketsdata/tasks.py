@@ -1026,9 +1026,10 @@ def print_info(i):
     from billiard.process import current_process
     print('Iteration', i, 'process', current_process().index)
     time.sleep(4)
+    return True
 
 
 @task_success.connect(sender='print_info')
-def success(result, sender=None, task_id=None, task=None, **kwargs):
-    print('success')
+def success(result, sender=None):
+    print('success', sender, result)
 

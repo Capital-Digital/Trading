@@ -1029,6 +1029,6 @@ def print_info(i):
 
 
 @task_success.connect(sender=print_info)
-def success():
+def success(result, sender=None, task_id=None, task=None, **kwargs):
     print('success')
 

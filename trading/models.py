@@ -328,7 +328,7 @@ class Account(models.Model):
                                                 contract_type='perpetual'
                                                 )
                 except ObjectDoesNotExist:
-                    print('\nDelta\n', delta)
+                    print('\nBalances\n', self.balances)
                     raise Exception('Perp market {0} {1} does not exist in database'.format(code, self.quote))
 
                 else:

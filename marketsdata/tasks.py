@@ -1029,7 +1029,7 @@ def print_info(i):
     return True
 
 
-@task_success.connect(sender='print_info')
-def success(result, sender=None):
+@task_success.connect(sender='tasks.print_info')
+def success(sender, result, **kwargs):
     print('success', sender, result)
 

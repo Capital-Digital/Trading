@@ -1028,7 +1028,7 @@ def print_info(i):
     time.sleep(4)
 
 
-@task_success(sender=print_info)
+@task_success.connect(sender=print_info)
 def success():
     print('success')
 

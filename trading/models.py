@@ -320,25 +320,28 @@ class Account(models.Model):
         if codes_to_buy:
             for code in codes_to_buy:
 
-                try:
-                    market = Market.objects.get(quote__code=self.quote,
-                                                exchange=self.exchange,
-                                                base__code=code,
-                                                type='derivative',
-                                                contract_type='perpetual'
-                                                )
-                except ObjectDoesNotExist:
-                    print('\nBalances\n', self.balances)
-                    raise Exception('Perp market {0} {1} does not exist in database'.format(code, self.quote))
+                # Code is shorted now ?
+                if 'position' in self.balances.columns.get_level_values(0):
+                    positions = self.balances.positions.open.quantity.dropna()
+                    shorts = positions[positions < 0].index.tolist()
 
-                else:
+                    if code in shorts:
 
-                    # Don't close short if an order is open
-                    if not self.has_order(market):
+                        try:
+                            market = Market.objects.get(quote__code=self.quote,
+                                                        exchange=self.exchange,
+                                                        base__code=code,
+                                                        type='derivative',
+                                                        contract_type='perpetual'
+                                                        )
+                        except ObjectDoesNotExist:
+                            print('\nBalances\n', self.balances)
+                            raise Exception('Perp market {0} {1} does not exist in database'.format(code, self.quote))
 
-                        # Code is shorted now ?
-                        if 'position' in self.balances.columns.get_level_values(0):
-                            if self.balances.position.open.quantity[code] < 0:
+                        else:
+
+                            # Don't close short if an order is open
+                            if not self.has_order(market):
 
                                 log.info(' ')
                                 log.info('-> {0}'.format(code))

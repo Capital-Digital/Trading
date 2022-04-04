@@ -586,7 +586,7 @@ class Account(models.Model):
 
                         except Exception as e:
                             log.error('Unable to move {0} {1} from {2}'.format(movable, code, wallet))
-                            log.error('{0}'.format(e))
+                            log.error('Exception {0}'.format(e.__class__.__name__))
                             continue
 
                         else:

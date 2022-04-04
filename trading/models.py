@@ -768,19 +768,16 @@ class Account(models.Model):
 
         try:
             client.cancel_order(id=orderid, symbol=symbol)
-
         except ccxt.OrderNotFound as e:
-            log.warning('Order not found {0}'.format(orderid))
-
+            log.warning('Order not found', id=orderid)
         else:
-            log.info('Order canceled {0}'.format(orderid))
+            log.info('Order canceled', id=orderid)
 
         try:
             obj = Order.objects.get(orderid=orderid)
-
         except ObjectDoesNotExist:
+            log.warning('Order object not found', id=orderid)
             pass
-
         else:
             obj.status = 'canceled'
             obj.save()

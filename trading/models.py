@@ -168,8 +168,8 @@ class Account(models.Model):
 
         try:
             for coin, pct in target_pct.items():
-                print('coin', coin)
-                print('pct', pct)
+                print('coin', type(coin))
+                print('pct', type(pct))
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values
@@ -193,7 +193,6 @@ class Account(models.Model):
         else:
 
             self.save()
-
 
     # Calculate net exposure and delta
     def get_delta(self):

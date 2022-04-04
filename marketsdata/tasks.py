@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timedelta
 from pprint import pprint
 
+from billiard.process import current_process
 from capital.celery import app
 
 import ccxt
@@ -742,7 +743,6 @@ def hourly_tasks():
 # Execute groups
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update')
 def update(self):
-
     print(' ')
     print('TASK STARTING: {0.name} [{0.request.id}]'.format(self))
     print(' ')
@@ -772,7 +772,6 @@ def update(self):
 # Tickers update
 @app.task(bind=True, name='Markets_____Tickers')
 def chain_tickers_strategy(self, exid):
-
     print(' ')
     print('TICKERS update for {0} start'.format(self))
 
@@ -810,7 +809,6 @@ def chain_tickers_strategy(self, exid):
 # Strategies update
 @app.task(bind=True, name='Strategy_execution')
 def run_strategy(self, exid, strategy_id):
-
     print(' ')
     print('EXID {1} STRATEGY: {0}'.format(strategy_id, exid))
     print(' ')
@@ -821,7 +819,6 @@ def run_strategy(self, exid, strategy_id):
 # Strategies update
 @app.task(bind=True, name='Account_execution')
 def run_account(self, exid, strategy_id, account_id):
-
     print(' ')
     print('EXID {2} STRATEGY {1} ACCOUNT {0}'.format(account_id, strategy_id, exid))
     print(' ')
@@ -832,7 +829,6 @@ def run_account(self, exid, strategy_id, account_id):
 # Strategies update
 @app.task(bind=True, name='Strategy execution')
 def chain2(self, exid, strategy_id):
-
     print('EXID {1} STRATEGY {0} CHAIN start...'.format(strategy_id, exid))
 
     job = run_strategy.s(exid, strategy_id).apply_async(queue='default')
@@ -889,7 +885,6 @@ def trade(strategy):
 # Insert current tickers
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Insert tickers')
 def insert_current_tickers(self, exid, test=False):
-
     print('Tickers insertion for {0} start'.format(exid))
     if test:
         time.sleep(3)
@@ -1015,23 +1010,122 @@ def add(self, x, y):
 
 
 @app.task
-def test():
-
-    for i in range(12):
-        print_info.delay(i)
+def update():
+    exchanges = Exchange.objects.filter(exid__in=['binance']).values_list('exid', flat=True)
+    for exchange in exchanges:
+        update_tickers.delay(exchange)
 
 
 @app.task
-def print_info(i):
-    from billiard.process import current_process
-    print('Iteration', i, 'process', current_process().index)
-    time.sleep(4)
-    return True
+def update_tickers(exid):
+    log.info(' ')
+    log.info(' ')
+    log.info('Update tickers for exchange : {0}'.format(exid))
+    log.info('###########################')
+    log.info(' ')
+    log.info(' ')
+
+    print('Process', current_process().index)
+    log.bind(exid=exid)
+
+    def insert(data, wallet=None):
+
+        # Recreate dictionaries with desired keys
+        data = [data[i] for i in data]
+        data = [{k: d[k] for k in ['symbol',
+                                   'bid',
+                                   'ask',
+                                   'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']} for d in data]
+
+        # Select and sort desired symbols
+        symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
+        symbols.sort()
+
+        log.info('Insert {0} tickers'.format(len(symbols)), wallet=wallet)
+
+        for symbol in symbols:
+
+            # Create a dictionary with symbol data and create keys for timestamps
+            dic = [i for i in data if i['symbol'] == symbol][0]
+            dic['timestamp'] = int(dt.timestamp())
+            dic['datetime'] = timestamp_st
+
+            # Create filter to select market object
+            args = dict(exchange=exchange, symbol=dic['symbol'], wallet=wallet)
+
+            # Customize filter if necessary
+            if exid == 'binance' and wallet == 'delivery':
+                del args['symbol']
+                args['response__info__symbol'] = dic['symbol']
+            if not wallet:
+                del args['wallet']
+
+            try:
+                market = Market.objects.get(**args)
+
+            except ObjectDoesNotExist:
+                log.warning('Unknown market symbol {0}'.format(symbol))
+                continue
+
+            else:
+
+                try:
+                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
+
+                except ObjectDoesNotExist:
+                    log.info('Create new object for tickers {0} ({1}-{2})'.format(market.symbol,
+                                                                                  year,
+                                                                                  semester
+                                                                                  ))
+                    Tickers.objects.create(year=year,
+                                           semester=semester,
+                                           market=market,
+                                           data=[dic]
+                                           )
+
+                else:
+
+                    # Check for duplicate timestamps
+                    if timestamp_st not in [d['datetime'] for d in obj.data]:
+                        obj.data.append(dic)
+                        obj.save()
+
+                    else:
+                        log.warning('Tickers {0} already updated'.format(market.symbol))
+
+    # Determine datetime, year and semester
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+    timestamp_st = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    year = dt.year
+    semester = 1 if dt.month <= 6 else 2
+    exchange = Exchange.objects.get(exid=exid)
+
+    # Exchange is working ?
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
+
+            # Exchange supports separate account's wallets ?
+            client = exchange.get_ccxt_client()
+            if exchange.wallets:
+
+                for wallet in exchange.get_wallets():
+                    client.options['defaultType'] = wallet
+                    data = client.fetch_tickers()
+                    insert(data, wallet)
+
+            else:
+                data = client.fetch_tickers()
+                insert(data)
+
+        else:
+            raise Exception('fetchTickers method not supported')
+
+    log.unbind('exid')
 
 
-@task_postrun.connect(sender=print_info)
-def task_postrun(signal=None, sender=None, task_id=None, task=None, **kwargs):
+@task_postrun.connect(sender=update_tickers)
+def update_strategies(signal=None, sender=None, task_id=None, task=None, **kwargs):
+
     text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())
-    print('kwargs', kwargs)
+    print('exid', kwargs['args'])
     print(text)
-

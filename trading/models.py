@@ -351,12 +351,9 @@ class Account(models.Model):
                                 log.info(' ')
                                 log.info('-> {0}'.format(code))
 
-                                print('\ndelta code \n', delta[code])
-
                                 # Get quantities
-                                delta = abs(delta[code])
                                 shorted = abs(self.balances.position.open.quantity[code])
-                                amount = min(delta, shorted)
+                                amount = min(abs(delta[code]), shorted)
 
                                 # Place buy order
                                 price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
@@ -684,12 +681,17 @@ class Account(models.Model):
             print('\nMarket:', market.type, '\n')
             pprint(args)
 
-            response = client.create_order(**args)
+            try:
+                response = client.create_order(**args)
 
-            # And create object
-            trade = self.create_update_order(response, action, market)
-            if trade:
-                return True
+            except ccxt.InsufficientFunds as e:
+                log.error('Insufficient funds to place order')
+
+            else:
+                # And create object
+                trade = self.create_update_order(response, action, market)
+                if trade:
+                    return True
 
         else:
             log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 3), market.base.code))

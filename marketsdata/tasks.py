@@ -1032,6 +1032,6 @@ def print_info(i):
 @task_postrun.connect(sender=print_info)
 def task_postrun(signal=None, sender=None, task_id=None, task=None, **kwargs):
     text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())
-    print('kwargs', **kwargs)
+    print('kwargs', kwargs)
     print(text)
 

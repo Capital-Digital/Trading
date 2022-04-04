@@ -1024,7 +1024,8 @@ def update_tickers(exid):
     log.info('###########################')
     log.info(' ')
     log.info(' ')
-
+    return
+    
     print('Process', current_process().index)
     log.bind(exid=exid)
 
@@ -1041,12 +1042,12 @@ def update_tickers(exid):
         symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
         symbols.sort()
 
+        log.info(' ')
+
         if not symbols:
             log.info('-> {0}'.format(wallet))
             log.info('No tickers found')
             return
-
-        log.info(' ')
 
         if not wallet:
             log.info('Insert {0} tickers'.format(len(symbols)))

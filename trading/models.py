@@ -585,7 +585,8 @@ class Account(models.Model):
                             return
 
                         except Exception as e:
-                            log.error('Transfer error: {0}'.format(e))
+                            log.error('Unable to move {0} {1} from {2}'.format(movable, code, wallet))
+                            log.error('{0}'.format(e))
                             continue
 
                         else:

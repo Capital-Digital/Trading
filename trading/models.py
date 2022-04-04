@@ -687,6 +687,8 @@ class Account(models.Model):
 
             else:
 
+                log.info('Place order success', id=response['id'])
+
                 # When resource are used update balances dataframe
                 if action in ['buy_spot', 'open_short']:
                     self.update_free_balances(market, action, amount)
@@ -784,8 +786,6 @@ class Account(models.Model):
 
             # New order ?
             if created:
-
-                log.info('Place order success', id=response['id'])
 
                 # Trade occurred ?
                 if float(response['filled']):

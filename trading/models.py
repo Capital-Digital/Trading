@@ -322,8 +322,8 @@ class Account(models.Model):
 
                 # Code is shorted now ?
                 if 'position' in self.balances.columns.get_level_values(0):
-                    positions = self.balances.positions.open.quantity.dropna()
-                    shorts = positions[positions < 0].index.tolist()
+                    pos = self.balances.position.open.quantity.dropna()
+                    shorts = pos[pos < 0].index.tolist()
 
                     if code in shorts:
 

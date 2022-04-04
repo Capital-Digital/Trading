@@ -319,34 +319,40 @@ class Account(models.Model):
 
         if codes_to_buy:
             for code in codes_to_buy:
-                market = Market.objects.get(quote__code=self.quote,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='derivative',
-                                            contract_type='perpetual'
-                                            )
 
-                # Don't close short if an order is open
-                if not self.has_order(market):
+                try:
+                    market = Market.objects.get(quote__code=self.quote,
+                                                exchange=self.exchange,
+                                                base__code=code,
+                                                type='derivative',
+                                                contract_type='perpetual'
+                                                )
+                except ObjectDoesNotExist:
+                    raise Exception('Perp market {0} {1} does not exist in database'.format(code, self.quote))
 
-                    # Code is shorted now ?
-                    if 'position' in self.balances.columns.get_level_values(0):
-                        if self.balances.position.open.quantity[code] < 0:
+                else:
 
-                            log.info(' ')
-                            log.info('-> {0}'.format(code))
+                    # Don't close short if an order is open
+                    if not self.has_order(market):
 
-                            # Get quantities
-                            delta = abs(delta[code])
-                            shorted = abs(self.balances.position.open.quantity[code])
-                            amount = min(delta, shorted)
+                        # Code is shorted now ?
+                        if 'position' in self.balances.columns.get_level_values(0):
+                            if self.balances.position.open.quantity[code] < 0:
 
-                            # Place buy order
-                            price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
-                            price -= (price * float(self.limit_price_tolerance))
+                                log.info(' ')
+                                log.info('-> {0}'.format(code))
 
-                            trade = self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
-                            trades.append(trade)
+                                # Get quantities
+                                delta = abs(delta[code])
+                                shorted = abs(self.balances.position.open.quantity[code])
+                                amount = min(delta, shorted)
+
+                                # Place buy order
+                                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                                price -= (price * float(self.limit_price_tolerance))
+
+                                trade = self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
+                                trades.append(trade)
         else:
             log.info('No code to close short')
 

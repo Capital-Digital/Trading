@@ -1015,7 +1015,7 @@ def add(self, x, y):
 
 @app.task
 def test():
-    res = group(run_task.s(i) for i in range(20)).apply_async(queue='slow')
+    res = group(print_info.s(i) for i in range(20)).apply_async(queue='slow')
 
     while not res.ready():
         time.sleep(1)
@@ -1028,6 +1028,8 @@ def test():
 
 
 @app.task
-def run_task(i):
-    print(i)
+def print_info(i):
+    from billiard.process import current_process
+    print('Iteration', i, 'process', current_process().index)
+    time.sleep(10)
 

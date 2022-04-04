@@ -713,7 +713,7 @@ class Account(models.Model):
         elif action == 'open_short':
             self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= used
 
-        self.balances.save()
+        self.save()
 
     # Fetch open orders
     def fetch_open_orders(self):

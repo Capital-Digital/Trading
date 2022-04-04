@@ -351,8 +351,8 @@ class Account(models.Model):
                                 log.info(' ')
                                 log.info('-> {0}'.format(code))
 
-                                print(delta)
-                                
+                                print('\ndelta code \n', delta[code])
+
                                 # Get quantities
                                 delta = abs(delta[code])
                                 shorted = abs(self.balances.position.open.quantity[code])

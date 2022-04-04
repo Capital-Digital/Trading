@@ -404,8 +404,6 @@ class Account(models.Model):
                         if 'spot' in self.balances.columns.get_level_values(0):
                             cash = self.balances.spot.free.quantity[self.quote]
 
-                            print('\ncash: ', cash, '\n')
-
                             # Cash is not nan ?
                             if not np.isnan(cash):
 
@@ -575,7 +573,7 @@ class Account(models.Model):
                         # Reserve notional value as margin to maintain 1:1 ratio
                         notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
                         free = max(0, total - notional_values)
-                        log.info('Wallet {0} has {1} {2} of free margin'.format(wallet, round(free, 2), code))
+                        log.info('Wallet {0} has {1} {2} free margin'.format(wallet, round(free, 2), code))
 
                     # Determine maximum amount that can be moved
                     movable = min(free, desired)
@@ -589,7 +587,7 @@ class Account(models.Model):
                             return
 
                         except Exception as e:
-                            log.error('Unable to move {0} {1} from {2}'.format(movable, code, wallet))
+                            log.error('Unable to move {0} {1} from {2}'.format(round(movable, 2), code, wallet))
                             log.error('Exception {0}'.format(e.__class__.__name__))
                             continue
 
@@ -688,13 +686,34 @@ class Account(models.Model):
                 log.error('Insufficient funds to place order')
 
             else:
-                # And create object
+
+                # When resource are used update balances dataframe
+                if action in ['buy_spot', 'open_short']:
+                    self.update_free_balances(market, action, amount)
+
+                # Create order object and check if trade occurred
                 trade = self.create_update_order(response, action, market)
                 if trade:
                     return True
 
         else:
             log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 3), market.base.code))
+
+    # Update free quantity
+    def update_free_balances(self, market, action, amount):
+
+        log.info('Remove used resources from balances')
+
+        code = market.base.code
+        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+        used = amount * price
+
+        if action == 'buy_spot':
+            self.balances.loc[self.quote, ('spot', 'free', 'quantity')] -= used
+        elif action == 'open_short':
+            self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= used
+
+        self.balances.save()
 
     # Fetch open orders
     def fetch_open_orders(self):
@@ -724,7 +743,7 @@ class Account(models.Model):
         if True in trades:
             return True
 
-    # Update an order object
+    # Update or create an order object
     def create_update_order(self, response, action, market):
 
         try:

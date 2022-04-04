@@ -1029,9 +1029,8 @@ def print_info(i):
     return True
 
 
-@task_postrun.connect(sender=test)
-def success(sender, result, task_id, **kwargs):
-    print('Post execution', task_id)
-    print(sender)
-    print(result)
+@task_postrun.connect()
+def task_postrun(signal=None, sender=None, task_id=None, task=None, **kwargs):
+    text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())
+    print(text)
 

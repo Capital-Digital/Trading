@@ -168,6 +168,7 @@ class Account(models.Model):
 
         try:
             for coin, pct in target_pct.items():
+                print(coin, pct)
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values

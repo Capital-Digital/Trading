@@ -1141,9 +1141,9 @@ def monitor(sender, **kwargs):
 
 
 @task_postrun.connect(sender=update_tickers)
-def update_strategies(task=None, **kwargs):
+def update_strategies(sender, **kwargs):
 
     print('hello')
-    text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())
+    text = 'task_postrun; {0}; {1:.16g}\n'.format(sender.name, time.time())
     print('exid', kwargs['args'])
     print(text)

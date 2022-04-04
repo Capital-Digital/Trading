@@ -164,7 +164,7 @@ class Account(models.Model):
     def get_target(self):
 
         # Insert percentage
-        target_pct = self.strategy.get_target_pct()
+        target_pct = self.strategy.load_weights()
         for coin, pct in target_pct.items():
             self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 

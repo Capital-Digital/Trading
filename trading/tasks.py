@@ -49,11 +49,17 @@ def update_orders():
     # Iterate through accounts and update open orders
     for account in Account.objects.filter(active=True, exchange__exid='binance'):
 
-        # Continue trading if new trade is detected
-        new_trade = account.fetch_open_orders()
-        if new_trade:
-            if not account.trading:
-                account.trade(cancel=False)
+        if not account.trading:
+
+            # Continue trading if new trade is detected
+            new_trade = account.fetch_open_orders()
+            if new_trade:
+                if not account.trading:
+                    log.info('Trade detected, continue account rebalancing', account=account.name)
+                    account.trade(cancel=False)
+
+        else:
+            log.warning('Account is already trading', account=account.name)
 
 
 @shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)

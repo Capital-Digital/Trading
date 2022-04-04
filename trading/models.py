@@ -687,8 +687,8 @@ class Account(models.Model):
 
                 for order in orders:
                     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
-                    trade = self.create_update_order(responses, action=order.action, market=order.market)
-                    trades.append(trade)
+                    new_trade = self.create_update_order(responses, action=order.action, market=order.market)
+                    trades.append(new_trade)
 
         # If resource is liberated after trades occurred then return True
         if True in trades:
@@ -751,12 +751,12 @@ class Account(models.Model):
                 if action in ['sell_spot', 'close_short']:
 
                     # New trades occurred since last update ?
-                    filled = float(response['filled']) - order.filled
-                    if filled > 0:
+                    new = float(response['filled']) - order.filled
+                    if new > 0:
 
                         log.info('Update {0} order'.format(market.base.code), account=self.name, id=response['id'])
                         log.info('Trade detected', account=self.name)
-                        log.info('Order filled at {0}%'.format(round(filled / order.amount, 3) * 100),
+                        log.info('Order filled at {0}%'.format(round(new / order.amount, 3) * 100),
                                  account=self.name)
 
                         return True

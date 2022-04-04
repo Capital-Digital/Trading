@@ -1006,9 +1006,28 @@ def error_handler(uuid):
           )
 def add(self, x, y):
     print(self.AsyncResult(self.request.id).state)
-
     try:
         return x / 0
     except Exception as e:
         log.error('Division by zero')
         raise self.retry(exc=e)
+
+
+@app.task
+def test():
+    res = group(run_task.s(i) for i in range(20)).apply_async(queue='slow')
+
+    while not res.ready():
+        time.sleep(1)
+
+    if res.successful():
+        print('success')
+
+    else:
+        print('failure')
+
+
+@app.task
+def run_task(i):
+    print(i)
+

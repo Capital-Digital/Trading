@@ -168,11 +168,8 @@ class Account(models.Model):
 
         try:
             for coin, pct in target_pct.items():
-                
-                print(coin, pct)
-                print(self.balances)
-                print(type(self.balances))
-
+                print('coin', coin)
+                print('pct', pct)
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values
@@ -187,8 +184,11 @@ class Account(models.Model):
 
         except ValueError as e:
 
-            print(target_pct)
-            raise Exception('Weights has bad format: {0}'.format(e))
+            print('target\n', target_pct)
+            print(self.balances)
+            print(type(self.balances))
+
+            raise Exception('Weights error: {0}'.format(e))
 
         else:
 

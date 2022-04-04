@@ -1041,7 +1041,18 @@ def update_tickers(exid):
         symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
         symbols.sort()
 
-        log.info('Insert {0} tickers'.format(len(symbols)), wallet=wallet)
+        if not symbols:
+            log.info('-> {0}'.format(wallet))
+            log.info('No tickers found')
+            return
+
+        log.info(' ')
+
+        if not wallet:
+            log.info('Insert {0} tickers'.format(len(symbols)))
+        else:
+            log.info('-> {0}'.format(wallet))
+            log.info('Insert {0} tickers'.format(len(symbols)))
 
         for symbol in symbols:
 
@@ -1126,6 +1137,7 @@ def update_tickers(exid):
 @task_postrun.connect(sender=update_tickers)
 def update_strategies(signal=None, sender=None, task_id=None, task=None, **kwargs):
 
+    print('hello')
     text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())
     print('exid', kwargs['args'])
     print(text)

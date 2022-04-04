@@ -1025,7 +1025,7 @@ def update_tickers(exid):
     log.info(' ')
     log.info(' ')
     return
-    
+
     print('Process', current_process().index)
     log.bind(exid=exid)
 
@@ -1136,7 +1136,7 @@ def update_tickers(exid):
 
 
 @task_postrun.connect(sender=update_tickers)
-def update_strategies(signal=None, sender=None, task_id=None, task=None, **kwargs):
+def update_strategies(task=None, **kwargs):
 
     print('hello')
     text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())

@@ -17,6 +17,7 @@ import urllib3
 from celery import chain, group, shared_task, Task, Celery, states
 from celery.result import AsyncResult, allow_join_result
 from celery.exceptions import Ignore
+from celery.signals import task_success
 
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
@@ -1015,16 +1016,9 @@ def add(self, x, y):
 
 @app.task
 def test():
-    res = group(print_info.s(i) for i in range(20)).apply_async(queue='slow')
-
-    while not res.ready():
-        time.sleep(1)
-
-    if res.successful():
-        print('success')
-
-    else:
-        print('failure')
+    
+    for i in range(20):
+        print_info.delay(i)
 
 
 @app.task

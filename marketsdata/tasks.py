@@ -17,7 +17,7 @@ import urllib3
 from celery import chain, group, shared_task, Task, Celery, states
 from celery.result import AsyncResult, allow_join_result
 from celery.exceptions import Ignore
-from celery.signals import task_success
+from celery.signals import task_success, task_postrun, task_failure
 
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
@@ -1029,9 +1029,9 @@ def print_info(i):
     return True
 
 
-@task_success.connect(sender=test)
+@task_postrun.connect(sender=test)
 def success(sender, result, **kwargs):
-    print('success', sender, result)
+    print('Post execution')
     print(sender)
     print(result)
 

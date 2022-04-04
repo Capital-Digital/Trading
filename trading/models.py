@@ -165,20 +165,30 @@ class Account(models.Model):
 
         # Insert percentage
         target_pct = self.strategy.load_weights()
-        for coin, pct in target_pct.items():
-            self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
-        # Insert target values
-        value = self.account_value() * target_pct
-        for coin, val in value.items():
-            self.balances.loc[coin, ('account', 'target', 'value')] = val
+        try:
+            for coin, pct in target_pct.items():
+                self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
-        # Insert quantities
-        for coin, val in value.items():
-            qty = val / Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
-            self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
+            # Insert target values
+            value = self.account_value() * target_pct
+            for coin, val in value.items():
+                self.balances.loc[coin, ('account', 'target', 'value')] = val
 
-        self.save()
+            # Insert quantities
+            for coin, val in value.items():
+                qty = val / Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+                self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
+
+        except ValueError as e:
+
+            print(target_pct)
+            raise Exception('Weights has bad format: {0}'.format(e))
+
+        else:
+
+            self.save()
+
 
     # Calculate net exposure and delta
     def get_delta(self):

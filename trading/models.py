@@ -766,14 +766,22 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(account=self)
         client.options['defaultType'] = wallet
 
-        client.cancel_order(id=orderid, symbol=symbol)
+        try:
+            client.cancel_order(id=orderid, symbol=symbol)
+
+        except ccxt.OrderNotFound as e:
+            log.warning('Order not found {0}'.format(orderid))
+
+        else:
+            log.info('Order canceled {0}'.format(orderid))
 
         try:
             obj = Order.objects.get(orderid=orderid)
+
         except ObjectDoesNotExist:
             pass
+
         else:
-            log.info('Cancel order {0}'.format(orderid))
             obj.status = 'canceled'
             obj.save()
 

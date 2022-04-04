@@ -605,6 +605,11 @@ class Exchange(models.Model):
         # Reorder columns by name
         df = df.reindex(sorted(df.columns), axis=1)
 
+        # Drop columns filled with nan
+        df = df.dropna(axis=1, how='all')
+        if volume:
+            vo = vo.dropna(axis=1, how='all')
+
         if volume:
             # Fill missing values with previous data
             vo = vo.resample('H').fillna('ffill')

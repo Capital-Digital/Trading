@@ -830,7 +830,7 @@ class Account(models.Model):
                     log.info('**************************')
 
                     for order in responses:
-                        log.info('Cancel order {0}'.format(order['id']))
+                        log.info('Cancel order', order['id'])
                         self.cancel_order(wallet, order['symbol'], order['id'])
 
                 else:
@@ -846,7 +846,7 @@ class Account(models.Model):
                 if orders.exists():
 
                     for order in orders:
-                        log.info('Cancel order {0}'.format(order.orderid))
+                        log.info('Cancel order', id=order.orderid)
                         self.cancel_order(wallet, order.market.symbol, order.orderid)
                 else:
                     log.info('No open order in {0}'.format(wallet))

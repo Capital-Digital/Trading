@@ -4,6 +4,8 @@ from marketsdata.error import *
 import structlog
 from datetime import datetime
 from pprint import pprint
+import pandas as pd
+import pytz
 
 log = structlog.get_logger(__name__)
 

@@ -168,8 +168,6 @@ class Account(models.Model):
 
         try:
             for coin, pct in target_pct.items():
-                print('coin', type(coin))
-                print('pct', type(pct))
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values
@@ -182,13 +180,11 @@ class Account(models.Model):
                 qty = val / Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
+        except AttributeError as e:
+            raise Exception('Exception {0}'.format(e.__class__.__name__))
+
         except ValueError as e:
-
-            print('target\n', target_pct)
-            print(self.balances)
-            print(type(self.balances))
-
-            raise Exception('Weights error: {0}'.format(e))
+            raise Exception('Exception {0}'.format(e))
 
         else:
 

@@ -1,19 +1,19 @@
-# from django.http import HttpResponse, HttpResponseRedirect
-# from django.contrib.auth.models import User
-# from django.contrib import messages
-# from django.contrib.auth import login, decorators
-# from django.shortcuts import redirect, render, get_object_or_404
-# from django.urls import reverse
-# from trading.forms import CustomUserCreationForm, AccountForm, AccountDeleteForm
-# from trading.models import Strategy, Account, Allocation
-# from pprint import pprint
-# import datetime
+from django.http import HttpResponse, HttpResponseRedirect
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.contrib.auth import login, decorators
+from django.shortcuts import redirect, render, get_object_or_404
+from django.urls import reverse
+from trading.forms import CustomUserCreationForm, AccountForm, AccountDeleteForm
+from trading.models import Strategy, Account, Allocation
+from pprint import pprint
+import datetime
 #
-#
-# def index(request):
-#     return render(request, "users/dashboard.html")
-#     # return HttpResponse()
-#
+
+
+def index(request):
+    return HttpResponse()
+
 #
 # def register(request):
 #     if request.method == "GET":

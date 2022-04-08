@@ -671,10 +671,10 @@ class Account(models.Model):
                                                                 )
                      )
 
-            print('\nFree quantity\n')
-            print(self.balances.spot.free.quantity)
-            print('\nMarket:', market.type, '\n')
-            pprint(args)
+            # print('\nFree quantity\n')
+            # print(self.balances.spot.free.quantity)
+            # print('\nMarket:', market.type, '\n')
+            # pprint(args)
 
             try:
                 response = client.create_order(**args)
@@ -707,10 +707,15 @@ class Account(models.Model):
         price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
         used = amount * price
 
-        if action == 'buy_spot':
-            self.balances.loc[self.quote, ('spot', 'free', 'quantity')] -= used
-        elif action == 'open_short':
-            self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= used
+        try:
+            if action == 'buy_spot':
+                self.balances.loc[self.quote, ('spot', 'free', 'quantity')] -= used
+            elif action == 'open_short':
+                self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= used
+
+        except KeyError:
+            log.warning('Remove used resources failure')
+            self.create_balances()
 
         self.save()
 

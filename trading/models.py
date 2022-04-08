@@ -163,10 +163,11 @@ class Account(models.Model):
     # Create columns with targets
     def get_target(self):
 
-        # Insert percentage
-        target_pct = self.strategy.load_weights()
-
         try:
+
+            # Insert percentage
+            target_pct = self.strategy.load_targets()
+
             for coin, pct in target_pct.items():
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
@@ -181,13 +182,14 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
         except AttributeError as e:
+            self.trading = False
             raise Exception('Exception {0}'.format(e.__class__.__name__))
 
         except ValueError as e:
+            self.trading = False
             raise Exception('Exception {0}'.format(e))
 
-        else:
-
+        finally:
             self.save()
 
     # Calculate net exposure and delta

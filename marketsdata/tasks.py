@@ -736,7 +736,7 @@ def hourly_tasks():
 
         from strategy.models import Strategy
         exchange = Exchange.objects.get(exid='binance')
-        strategies = Strategy.objects.filter(exchange__exid='binance')
+        strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
 
         # Create list of desired codes
         codes = list(set(s.get_codes_long() for s in strategies))

@@ -744,7 +744,7 @@ def hourly_tasks():
         if gp.successful():
 
             accounts = Account.objects.filter(active=True, exchange__exid='binance')
-            gp_acc = group(run_account.s(a.id) for a in accounts)
+            gp_acc = group(run_account.s(a.id) for a in accounts)()
             while not gp_acc.ready():
                 time.sleep(0.5)
 

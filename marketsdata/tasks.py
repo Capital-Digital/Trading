@@ -739,7 +739,7 @@ def hourly_tasks():
         strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
 
         # Create list of desired codes
-        codes = list(set(s.get_codes_long() for s in strategies.filter(child=False)))
+        codes = (list(set(s.get_codes_long())) for s in strategies.filter(child=False))
 
         # Load prices and volumes
         data = exchange.load_data(10 * 24, codes)

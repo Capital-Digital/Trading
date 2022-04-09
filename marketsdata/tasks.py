@@ -744,20 +744,24 @@ def hourly_tasks():
         codes = list(itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)]))[0]
 
         # Load prices and volumes
-        data = exchange.load_data(10 * 24, codes)
+        data = exchange.load_data(10 * 24, codes)()
 
-        log.info('Update strategy')
+        gp = group(run_strategy(s.id, data) for s in strategies)
 
-        for strategy in strategies:
-            log.info('Process {0}'.format(current_process().index))
-            strategy.execute(data)
+        while not gp.ready():
+            time.sleep(0.5)
 
-        log.info('Update accounts')
+        if gp.successful():
 
-        for account in Account.objects.filter(active=True, exchange__exid='binance'):
-            if datetime.now().hour in account.strategy.execution_hours():
-                account.trade()
+            log.info('Update accounts')
 
+            for account in Account.objects.filter(active=True, exchange__exid='binance'):
+                if datetime.now().hour in account.strategy.execution_hours():
+                    account.trade()
+
+        else:
+            log.error('Strategies failed')
+            
     else:
         log.error('Hourly tasks failed')
 
@@ -830,12 +834,15 @@ def chain_tickers_strategy(self, exid):
 
 # Strategies update
 @app.task(bind=True, name='Strategy_execution')
-def run_strategy(self, exid, strategy_id):
-    print(' ')
-    print('EXID {1} STRATEGY: {0}'.format(strategy_id, exid))
-    print(' ')
+def run_strategy(self, strategy_id, data):
 
-    time.sleep(10)
+    from strategy.models import Strategy
+    strategy = Strategy.objects.get(id=strategy_id)
+
+    log.info('Update strategy {0}'.format(strategy.name), s=strategy.name)
+    log.info('Process {0}'.format(current_process().index), s=strategy.name)
+
+    strategy.execute(data)
 
 
 # Strategies update

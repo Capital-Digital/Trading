@@ -548,6 +548,7 @@ class Exchange(models.Model):
 
                 self.data = pd.concat([self.data, df], axis=1)
 
+            return self.data
             # Check and fix rows
             self.data = fix(self.data)
 

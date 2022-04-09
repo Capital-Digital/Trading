@@ -513,34 +513,39 @@ class Exchange(models.Model):
 
         log.info('Loading data', exid=self.exid)
 
-        now = datetime.now().replace(minute=0, second=0, microsecond=0)
-        start = now - timedelta(hours=length)
+        if codes:
 
-        self.data = pd.DataFrame()
+            now = datetime.now().replace(minute=0, second=0, microsecond=0)
+            start = now - timedelta(hours=length)
 
-        # Query tickers objects
-        qs = Tickers.objects.filter(year__in=get_years(start),
-                                    semester__in=get_semesters(start),
-                                    market__base__code__in=codes,
-                                    market__type='spot',
-                                    market__quote__code='USDT',
-                                    market__exchange=self
-                                    )
+            self.data = pd.DataFrame()
 
-        for ticker in qs.iterator(10):
+            # Query tickers objects
+            qs = Tickers.objects.filter(year__in=get_years(start),
+                                        semester__in=get_semesters(start),
+                                        market__base__code__in=codes,
+                                        market__type='spot',
+                                        market__quote__code='USDT',
+                                        market__exchange=self
+                                        )
 
-            df = pd.DataFrame(ticker.data).T[['last', 'quoteVolume']]
-            df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
-            df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-            axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(0)) else 1
-            self.data = pd.concat([self.data, df], axis=axis)
+            for ticker in qs.iterator(10):
 
-        # Check and fix rows
-        self.data = fix(self.data)
+                df = pd.DataFrame(ticker.data).T[['last', 'quoteVolume']]
+                df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
+                df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
+                axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(0)) else 1
+                self.data = pd.concat([self.data, df], axis=axis)
 
-        log.info('Loading data complete')
+            # Check and fix rows
+            self.data = fix(self.data)
 
-        return self.data
+            log.info('Loading data complete')
+
+            return self.data
+
+        else:
+            raise Exception('List of codes is empty')
 
 
 class Currency(models.Model):

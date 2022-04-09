@@ -741,7 +741,7 @@ def hourly_tasks():
         strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
 
         # Create list of desired codes
-        codes = list(itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)]))
+        codes = itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)])
 
         print(codes)
 

@@ -539,6 +539,7 @@ class Exchange(models.Model):
                 df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
                 self.data = pd.concat([self.data, df], axis=1)
 
+            print(self.data)
             # Flatten columns
             self.data['last'] = self.data['last'].groupby(level=0, axis=1).sum()
             print(self.data)

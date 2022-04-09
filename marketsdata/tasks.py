@@ -844,17 +844,13 @@ def run_strategy(self, strategy_id):
 
 # Strategies update
 @app.task(bind=True, name='Account_execution')
-def run_account(self, exid, account_id):
+def run_account(self, account_id):
 
     from trading.models import Account
     account = Account.objects.get(id=account_id)
 
-    log.info('Update account {0}'.format(account.name), s=strategy.name)
-    log.info('Process {0}'.format(current_process().index), s=strategy.name)
-
-    exchange = Exchange.objects.get(exid='binance')
-    data = exchange.load_data(10 * 24, strategy.get_codes_long())
-    strategy.execute(data)
+    log.info('Process {0}'.format(current_process().index), account=account.name)
+    account.trade(cancel=True)
 
 
 # Strategies update

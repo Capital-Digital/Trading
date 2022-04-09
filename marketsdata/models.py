@@ -536,9 +536,10 @@ class Exchange(models.Model):
             self.data = pd.concat([self.data, df], axis=axis)
 
         print(self.data)
+        return self.data
         
         # Group rows (if multiple semesters)
-        self.data = self.data.groupby(level=0).mean()
+        self.data = self.data.groupby(level=0, axis=0).mean()
 
         # Check and fix rows
         self.data = fix(self.data)

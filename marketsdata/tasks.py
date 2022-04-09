@@ -749,6 +749,7 @@ def hourly_tasks():
         log.info('Update strategy')
 
         for strategy in strategies:
+            log.info('Process {0}'.format(current_process().index))
             strategy.execute(data)
 
         log.info('Update accounts')

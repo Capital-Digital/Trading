@@ -943,6 +943,8 @@ def insert_current_tickers(self, exid, test=False):
                     else:
                         log.info('Dictionary updated for {0}'.format(market.symbol))
 
+            break
+
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     year = dt.year

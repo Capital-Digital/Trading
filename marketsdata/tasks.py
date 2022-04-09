@@ -730,7 +730,6 @@ def fetch_candle_history(exid):
 def hourly_tasks():
 
     res = group(insert_current_tickers.s(exid) for exid in ['binance'])()
-
     while not res.ready():
         time.sleep(0.5)
 
@@ -738,20 +737,22 @@ def hourly_tasks():
 
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
-
-        # Load prices and volumes
         gp = group(run_strategy.s(s.id) for s in strategies)()
-
         while not gp.ready():
             time.sleep(0.5)
 
         if gp.successful():
 
-            log.info('Update accounts')
+            accounts = Account.objects.filter(active=True, exchange__exid='binance')
+            gp_acc = group(run_account.s(a.id) for a in accounts)
+            while not gp_acc.ready():
+                time.sleep(0.5)
 
-            for account in Account.objects.filter(active=True, exchange__exid='binance'):
-                if datetime.now().hour in account.strategy.execution_hours():
-                    account.trade()
+            if gp_acc.successful():
+                log.info('Update update success')
+
+            else:
+                log.info('Update update failure')
 
         else:
             log.error('Strategies failed')
@@ -843,12 +844,17 @@ def run_strategy(self, strategy_id):
 
 # Strategies update
 @app.task(bind=True, name='Account_execution')
-def run_account(self, exid, strategy_id, account_id):
-    print(' ')
-    print('EXID {2} STRATEGY {1} ACCOUNT {0}'.format(account_id, strategy_id, exid))
-    print(' ')
+def run_account(self, exid, account_id):
 
-    time.sleep(10)
+    from trading.models import Account
+    account = Account.objects.get(id=account_id)
+
+    log.info('Update account {0}'.format(account.name), s=strategy.name)
+    log.info('Process {0}'.format(current_process().index), s=strategy.name)
+
+    exchange = Exchange.objects.get(exid='binance')
+    data = exchange.load_data(10 * 24, strategy.get_codes_long())
+    strategy.execute(data)
 
 
 # Strategies update

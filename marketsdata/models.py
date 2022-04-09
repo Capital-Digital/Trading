@@ -538,8 +538,10 @@ class Exchange(models.Model):
                 df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
                 df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
                 self.data = pd.concat([self.data, df], axis=1)
-
-            return self.data
+            
+            # Group by columns
+            self.data = self.data.groupby(self.data.columns, axis=1).sum()
+            self.data.columns = pd.MultiIndex.from_tuples(self.data.columns)
 
             # Check and fix rows
             self.data = fix(self.data)

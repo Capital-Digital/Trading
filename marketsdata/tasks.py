@@ -957,7 +957,8 @@ def insert_current_tickers(self, exid):
                         obj.save()
 
                     else:
-                        log.info('Dictionary already updated for {0}'.format(market.symbol))
+                        pass
+                        # log.info('Dictionary already updated for {0}'.format(market.symbol))
 
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')

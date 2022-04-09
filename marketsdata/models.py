@@ -4,6 +4,7 @@ import ccxt
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
 from django_pandas.managers import DataFrameManager
+from capital.methods import *
 from marketsdata.methods import *
 from capital.methods import *
 import pandas as pd
@@ -506,6 +507,43 @@ class Exchange(models.Model):
         # Save dataframe to file
         df.to_csv(filename, sep=',', encoding='utf-8', index=False)
         log.info("Update complete")
+
+    # Create dataframes for prices and volumes
+    def load_data(self, length, codes):
+
+        log.info('Loading data', exid=self.exid)
+
+        now = datetime.now().replace(minute=0, second=0, microsecond=0)
+        start = now - timedelta(hours=length)
+
+        self.data = pd.DataFrame()
+
+        # Query tickers objects
+        qs = Tickers.objects.filter(year__in=get_years(start),
+                                    semester__in=get_semesters(start),
+                                    market__base__code__in=codes,
+                                    market__type='spot',
+                                    market__quote__code='USDT',
+                                    market__exchange=self
+                                    )
+
+        for ticker in qs.iterator(10):
+
+            df = pd.DataFrame(ticker.data).T[['last', 'quoteVolume']]
+            df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
+            df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
+            axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(0)) else 1
+            self.data = pd.concat([self.data, df], axis=axis)
+
+        # Group rows (if multiple semesters)
+        self.data = self.data.groupby(level=0).mean()
+
+        # Check and fix rows
+        self.data = fix(self.data)
+
+        log.info('Loading data complete')
+        
+        return self.data
 
 
 class Currency(models.Model):

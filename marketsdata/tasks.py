@@ -1024,9 +1024,7 @@ def update_tickers(exid):
     log.info('###########################')
     log.info(' ')
     log.info(' ')
-    return
 
-    print('Process', current_process().index)
     log.bind(exid=exid)
 
     def insert(data, wallet=None):
@@ -1147,3 +1145,24 @@ def update_strategies(task_id=None, task=None, args=None, **kwargs):
     text = 'task_postrun; {0}; {1:.16g}\n'.format(task.name, time.time())
     print('exid', kwargs['args'])
     print(text)
+
+
+def test(self, exid):
+
+    from strategy.models import Strategy
+    strategies = Strategy.objects.filter(exchange__id=exid)
+    exchange = Exchange.objects.get(exid=exid)
+
+    # Create list of desired codes
+    longs = list(set(s.get_codes_long() for s in strategies))
+
+    # Load prices and volumes
+    prices, volumes = exchange.load_tickers(10*24, longs)
+
+    index = prices.index[:-1]
+
+    while datetime.now().minute != 0:
+        time.sleep(1)
+
+    client = exchange.get_ccxt_client()
+    tickers = client.fetch_tickers()

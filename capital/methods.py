@@ -13,6 +13,17 @@ directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_coinpaprika = '%Y-%m-%dT%H:%M:%SZ'
 
 
+# Check and fix prices and volumes dataframes
+def fix(df):
+    df = df.replace(to_replace=0, method='ffill')
+    df = df.fillna(method='ffill')
+    df = df.reindex(sorted(df.columns), axis=1)
+    df = df.dropna(axis=1, how='all')
+    df = df.resample('H').fillna('ffill')
+    df.index = df.index.drop_duplicates(keep='first')
+    return df
+
+
 # Return a list of years since timestamp
 def get_years(timestamp):
     if isinstance(timestamp, datetime):

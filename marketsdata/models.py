@@ -531,7 +531,10 @@ class Exchange(models.Model):
 
             for ticker in qs.iterator(10):
 
-                df = pd.DataFrame(ticker.data).T[['last', 'quoteVolume']]
+                # Select dictionaries
+                dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
+
+                df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
                 df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
                 df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
                 axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(0)) else 1

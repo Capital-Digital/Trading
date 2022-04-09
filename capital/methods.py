@@ -15,7 +15,7 @@ directive_coinpaprika = '%Y-%m-%dT%H:%M:%SZ'
 
 # Check and fix prices and volumes dataframes
 def fix(df):
-    print(df)
+    return(df)
     df = df.replace(to_replace=0, method='ffill')
     df = df.fillna(method='ffill')
     df = df.reindex(sorted(df.columns), axis=1)

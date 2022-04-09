@@ -835,7 +835,7 @@ def run_strategy(self, strategy_id):
 
     log.info('Update strategy {0}'.format(strategy.name), s=strategy.name)
     log.info('Process {0}'.format(current_process().index), s=strategy.name)
-    
+
     exchange = Exchange.objects.get(exid='binance')
     data = exchange.load_data(10 * 24, strategy.get_codes_long())
     strategy.execute(data)

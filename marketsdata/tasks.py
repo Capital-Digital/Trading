@@ -25,6 +25,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+import itertools
+
 import capital.celery as celery
 from capital.methods import *
 from marketsdata.methods import *
@@ -739,7 +741,8 @@ def hourly_tasks():
         strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
 
         # Create list of desired codes
-        codes = (list(set(s.get_codes_long())) for s in strategies.filter(child=False))
+        codes = list(set([s.get_codes_long() for s in strategies.filter(child=False)]))
+        codes = list(itertools.chain(*codes))
 
         # Load prices and volumes
         data = exchange.load_data(10 * 24, codes)

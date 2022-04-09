@@ -537,18 +537,12 @@ class Exchange(models.Model):
                 df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
                 df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
                 df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-
-                # level = 0 if self.data.columns.nlevels == 1 else 1
-                # axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(level)) else 1
-                #
-                # print('\n')
-                # print(self.data)
-                # print(df)
-                # print('\n')
-
                 self.data = pd.concat([self.data, df], axis=1)
 
-            return self.data
+            # Flatten columns
+            self.data['last'] = self.data['last'].groupby(level=0, axis=1).sum()
+            self.data['quoteVolume'] = self.data['quoteVolume'].groupby(level=0, axis=1).sum()
+
             # Check and fix rows
             self.data = fix(self.data)
 

@@ -743,6 +743,8 @@ def hourly_tasks():
         # Create list of desired codes
         codes = list(itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)]))
 
+        print(codes)
+
         # Load prices and volumes
         data = exchange.load_data(10 * 24, codes)
 

@@ -536,9 +536,7 @@ class Exchange(models.Model):
             self.data = pd.concat([self.data, df], axis=axis)
 
         # Check and fix rows
-        print(type(self.data))
         self.data = fix(self.data)
-        print(type(self.data))
 
         log.info('Loading data complete')
 

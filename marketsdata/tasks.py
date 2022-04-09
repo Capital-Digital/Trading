@@ -726,12 +726,31 @@ def fetch_candle_history(exid):
 # Group and execute exchange's tickers snapshot update
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Hourly tasks')
 def hourly_tasks():
+
     res = group(insert_current_tickers.s(exid) for exid in ['binance'])()
+
     while not res.ready():
         time.sleep(0.5)
 
     if res.successful():
-        log.info('Tickers insert complete')
+
+        from strategy.models import Strategy
+        exchange = Exchange.objects.get(exid='binance')
+        strategies = Strategy.objects.filter(exchange__exid='binance')
+
+        # Create list of desired codes
+        codes = list(set(s.get_codes_long() for s in strategies))
+
+        # Load prices and volumes
+        data = exchange.load_tickers(10 * 24, codes)
+
+        log.info('Update strategy')
+
+        for strategy in strategies:
+            strategy.execute(data)
+
+        log.info('Update accounts')
+
         for account in Account.objects.filter(active=True, exchange__exid='binance'):
             if datetime.now().hour in account.strategy.execution_hours():
                 account.trade()
@@ -884,12 +903,9 @@ def trade(strategy):
 
 # Insert current tickers
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Insert tickers')
-def insert_current_tickers(self, exid, test=False):
+def insert_current_tickers(self, exid):
+
     print('Tickers insertion for {0} start'.format(exid))
-    if test:
-        time.sleep(3)
-        print('Tickers insertion for {0} complete'.format(exid))
-        return exid
 
     def insert(data, wallet=None):
 

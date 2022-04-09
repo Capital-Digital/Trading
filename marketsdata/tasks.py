@@ -902,7 +902,7 @@ def insert_current_tickers(self, exid, test=False):
             dic = {k: data[symbol][k] for k in ['bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
             dic['timestamp'] = int(dt.timestamp())
 
-            log.info('Insert dictionary {0}'.format(symbols))
+            log.info('Insert dictionary {0}'.format(symbol))
 
             args = dict(exchange=exchange,
                         symbol=symbol,

@@ -538,6 +538,7 @@ class Exchange(models.Model):
         # Check and fix rows
         print(type(self.data))
         self.data = fix(self.data)
+        print(type(self.data))
 
         log.info('Loading data complete')
 

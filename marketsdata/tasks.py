@@ -744,9 +744,7 @@ def hourly_tasks():
         codes = list(itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)]))[0]
 
         # Load prices and volumes
-        data = exchange.load_data(10 * 24, codes)
-
-        gp = group(run_strategy.s(s.id, data) for s in strategies)()
+        gp = group(run_strategy.s(s.id) for s in strategies)()
 
         while not gp.ready():
             time.sleep(0.5)
@@ -834,10 +832,13 @@ def chain_tickers_strategy(self, exid):
 
 # Strategies update
 @app.task(bind=True, name='Strategy_execution')
-def run_strategy(self, strategy_id, data):
+def run_strategy(self, strategy_id):
 
     from strategy.models import Strategy
     strategy = Strategy.objects.get(id=strategy_id)
+
+    exchange = Exchange.objects.get(exid='binance')
+    data = exchange.load_data(10 * 24, strategy.get_codes_long())
 
     log.info('Update strategy {0}'.format(strategy.name), s=strategy.name)
     log.info('Process {0}'.format(current_process().index), s=strategy.name)

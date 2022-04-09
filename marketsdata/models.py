@@ -573,7 +573,11 @@ class Currency(models.Model):
                                           market__type='spot',
                                           year=get_year(),
                                           semester=get_semester())
-            return candles.data[-1][key]
+
+            dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+            now = dt.strftime(datetime_directive_s_UTC)
+            return candles.data[now]['last']
+
         else:
             return 1
 

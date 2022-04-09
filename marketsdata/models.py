@@ -541,6 +541,7 @@ class Exchange(models.Model):
 
             # Flatten columns
             self.data['last'] = self.data['last'].groupby(level=0, axis=1).sum()
+            print(self.data['last'])
             self.data['quoteVolume'] = self.data['quoteVolume'].groupby(level=0, axis=1).sum()
 
             # Check and fix rows

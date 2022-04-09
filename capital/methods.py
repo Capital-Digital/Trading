@@ -18,7 +18,7 @@ def fix(df):
     print(df)
     df = df.replace(to_replace=0, method='ffill')
     df = df.fillna(method='ffill')
-    df = df.reindex(sorted(df.columns.get_level_values(0)), axis=1)
+    df = df.reindex(sorted(df.columns), axis=1)
     df = df.dropna(axis=1, how='all')
     df = df.resample('H').fillna('ffill')
     df.index = df.index.drop_duplicates(keep='first')

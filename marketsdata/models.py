@@ -535,12 +535,6 @@ class Exchange(models.Model):
             axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(0)) else 1
             self.data = pd.concat([self.data, df], axis=axis)
 
-        print(self.data)
-        return self.data
-        
-        # Group rows (if multiple semesters)
-        self.data = self.data.groupby(level=0, axis=0).mean()
-
         # Check and fix rows
         self.data = fix(self.data)
 

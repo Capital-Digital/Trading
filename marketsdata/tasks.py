@@ -737,11 +737,7 @@ def hourly_tasks():
     if res.successful():
 
         from strategy.models import Strategy
-        exchange = Exchange.objects.get(exid='binance')
         strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
-
-        # Create list of desired codes
-        codes = list(itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)]))[0]
 
         # Load prices and volumes
         gp = group(run_strategy.s(s.id) for s in strategies)()
@@ -837,13 +833,18 @@ def run_strategy(self, strategy_id):
     from strategy.models import Strategy
     strategy = Strategy.objects.get(id=strategy_id)
 
-    exchange = Exchange.objects.get(exid='binance')
-    data = exchange.load_data(10 * 24, strategy.get_codes_long())
-
     log.info('Update strategy {0}'.format(strategy.name), s=strategy.name)
     log.info('Process {0}'.format(current_process().index), s=strategy.name)
 
-    strategy.execute(data)
+    if not strategy.child:
+
+        exchange = Exchange.objects.get(exid='binance')
+        data = exchange.load_data(10 * 24, strategy.get_codes_long())
+        strategy.execute(data)
+
+    else:
+
+        strategy.execute()
 
 
 # Strategies update

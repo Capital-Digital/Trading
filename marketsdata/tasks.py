@@ -742,7 +742,7 @@ def hourly_tasks():
         codes = list(set(s.get_codes_long() for s in strategies.filter(child=False)))
 
         # Load prices and volumes
-        data = exchange.load_tickers(10 * 24, codes)
+        data = exchange.load_data(10 * 24, codes)
 
         log.info('Update strategy')
 

@@ -918,8 +918,6 @@ def insert_current_tickers(self, exid):
             dic = {k: data[symbol][k] for k in ['bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
             dic['timestamp'] = int(dt.timestamp())
 
-            log.info('Insert dictionary {0}'.format(symbol))
-
             args = dict(exchange=exchange,
                         symbol=symbol,
                         wallet=wallet
@@ -957,7 +955,7 @@ def insert_current_tickers(self, exid):
                         obj.save()
 
                     else:
-                        log.info('Dictionary updated for {0}'.format(market.symbol))
+                        log.info('Dictionary already updated for {0}'.format(market.symbol))
 
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')

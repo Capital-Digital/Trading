@@ -17,7 +17,6 @@ directive_coinpaprika = '%Y-%m-%dT%H:%M:%SZ'
 def fix(df):
     df = df.replace(to_replace=0, method='ffill')
     df = df.fillna(method='ffill')
-    return(df)
     df = df.reindex(sorted(df.columns), axis=1)
     df = df.dropna(axis=1, how='all')
     df = df.resample('H').fillna('ffill')

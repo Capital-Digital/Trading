@@ -537,8 +537,8 @@ class Exchange(models.Model):
                 df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
                 df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
                 df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-                axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(0)) else 1
-                print(axis, ticker.market.symbol, ticker.market.type)
+
+                axis = 0 if ticker.market.base.code in list(self.data.columns.get_level_values(1)) else 1
                 self.data = pd.concat([self.data, df], axis=axis)
 
             # Check and fix rows

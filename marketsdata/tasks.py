@@ -744,9 +744,9 @@ def hourly_tasks():
         codes = list(itertools.chain([s.get_codes_long() for s in strategies.filter(child=False)]))[0]
 
         # Load prices and volumes
-        data = exchange.load_data(10 * 24, codes)()
+        data = exchange.load_data(10 * 24, codes)
 
-        gp = group(run_strategy(s.id, data) for s in strategies)
+        gp = group(run_strategy.s(s.id, data) for s in strategies)()
 
         while not gp.ready():
             time.sleep(0.5)
@@ -761,7 +761,7 @@ def hourly_tasks():
 
         else:
             log.error('Strategies failed')
-            
+
     else:
         log.error('Hourly tasks failed')
 

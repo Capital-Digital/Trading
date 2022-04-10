@@ -3,7 +3,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from strategy.models import Strategy
 from celery.signals import task_success, task_postrun, task_failure
-from .tasks import loader, update_strategies, update_accounts
+from .tasks import update_strategies, update_accounts
 
 log = structlog.get_logger()
 

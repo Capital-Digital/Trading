@@ -923,7 +923,13 @@ def insert_current_tickers(self, exid):
         for symbol in symbols:
 
             # Create dictionary
-            dic = {k: data[symbol][k] for k in ['bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']}
+            dic = {k: data[symbol][k] for k in ['bid',
+                                                'ask',
+                                                'last',
+                                                'bidVolume',
+                                                'askVolume',
+                                                'quoteVolume',
+                                                'baseVolume']}
             dic['timestamp'] = int(dt.timestamp())
 
             args = dict(exchange=exchange,
@@ -1018,132 +1024,23 @@ def add(self, x, y):
 def update():
     exchanges = Exchange.objects.filter(exid__in=['binance']).values_list('exid', flat=True)
     for exchange in exchanges:
-        update_tickers.delay(exchange)
+        loader.delay(exchange)
 
 
 @app.task
-def update_tickers(exid):
-    log.info(' ')
-    log.info(' ')
+def loader(exid):
     log.info('Update tickers for exchange : {0}'.format(exid))
     log.info('###########################')
     log.info(' ')
     log.info(' ')
 
-    log.bind(exid=exid)
 
-    def insert(data, wallet=None):
-
-        # Recreate dictionaries with desired keys
-        data = [data[i] for i in data]
-        data = [{k: d[k] for k in ['symbol',
-                                   'bid',
-                                   'ask',
-                                   'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']} for d in data]
-
-        # Select and sort desired symbols
-        symbols = [i['symbol'] for i in data if 'USDT' in i['symbol']]
-        symbols.sort()
-
-        log.info(' ')
-
-        if not symbols:
-            log.info('-> {0}'.format(wallet))
-            log.info('No tickers found')
-            return
-
-        if not wallet:
-            log.info('Insert {0} tickers'.format(len(symbols)))
-        else:
-            log.info('-> {0}'.format(wallet))
-            log.info('Insert {0} tickers'.format(len(symbols)))
-
-        for symbol in symbols:
-
-            # Create a dictionary with symbol data and create keys for timestamps
-            dic = [i for i in data if i['symbol'] == symbol][0]
-            dic['timestamp'] = int(dt.timestamp())
-            dic['datetime'] = timestamp_st
-
-            # Create filter to select market object
-            args = dict(exchange=exchange, symbol=dic['symbol'], wallet=wallet)
-
-            # Customize filter if necessary
-            if exid == 'binance' and wallet == 'delivery':
-                del args['symbol']
-                args['response__info__symbol'] = dic['symbol']
-            if not wallet:
-                del args['wallet']
-
-            try:
-                market = Market.objects.get(**args)
-
-            except ObjectDoesNotExist:
-                log.warning('Unknown market symbol {0}'.format(symbol))
-                continue
-
-            else:
-
-                try:
-                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
-
-                except ObjectDoesNotExist:
-                    log.info('Create new object for tickers {0} ({1}-{2})'.format(market.symbol,
-                                                                                  year,
-                                                                                  semester
-                                                                                  ))
-                    Tickers.objects.create(year=year,
-                                           semester=semester,
-                                           market=market,
-                                           data=[dic]
-                                           )
-
-                else:
-
-                    # Check for duplicate timestamps
-                    if timestamp_st not in [d['datetime'] for d in obj.data]:
-                        obj.data.append(dic)
-                        obj.save()
-
-                    else:
-                        log.warning('Tickers {0} already updated'.format(market.symbol))
-
-    # Determine datetime, year and semester
-    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-    timestamp_st = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    year = dt.year
-    semester = 1 if dt.month <= 6 else 2
-    exchange = Exchange.objects.get(exid=exid)
-
-    # Exchange is working ?
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
-
-            # Exchange supports separate account's wallets ?
-            client = exchange.get_ccxt_client()
-            if exchange.wallets:
-
-                for wallet in exchange.get_wallets():
-                    client.options['defaultType'] = wallet
-                    data = client.fetch_tickers()
-                    insert(data, wallet)
-
-            else:
-                data = client.fetch_tickers()
-                insert(data)
-
-        else:
-            raise Exception('fetchTickers method not supported')
-
-    log.unbind('exid')
-
-
-@task_success.connect(sender=update_tickers)
+@task_success.connect(sender=loader)
 def monitor(sender, **kwargs):
     log.info('task scan completed - %s', kwargs['result'])
 
 
-@task_postrun.connect(sender=update_tickers)
+@task_postrun.connect(sender=loader)
 def update_strategies(task_id=None, task=None, args=None, **kwargs):
 
     print('hello')

@@ -877,7 +877,7 @@ def run_account(self, account_id):
 # Update all exchanges
 @app.task(bind=True, name='Update_exchanges')
 def update_exchanges(self):
-    exchanges = Exchange.objects.filter(trading=True)
+    exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
         update_exchange.delay(exchange.id)
 

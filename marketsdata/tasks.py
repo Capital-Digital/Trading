@@ -932,6 +932,9 @@ def update_tickers(self, exid):
     log.bind(exid=exid)
     exchange = Exchange.objects.get(exid=exid)
 
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
     def insert(data, wallet=None):
 
         log.info('Insert tickers data', wallet=wallet)
@@ -995,6 +998,10 @@ def update_tickers(self, exid):
 
         log.info('Insert tickers data complete', wallet=wallet)
 
+    # And wait...
+    while datetime.now().minute > 0:
+        time.sleep(0.5)
+        
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
 

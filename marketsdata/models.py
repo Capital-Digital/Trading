@@ -578,9 +578,9 @@ class Currency(models.Model):
     def __str__(self):
         return self.code if self.code else ''
 
-    def get_latest_price(self, quote):
+    def get_latest_price(self, quote, key):
         if self.code != quote:
-            print(quote, self.code)
+            log.info('Get price for spot market {0}/{1}'.format(self.code, quote))
             tickers = Tickers.objects.get(market__quote__code=quote,
                                           market__base__code=self.code,
                                           market__type='spot',
@@ -589,7 +589,7 @@ class Currency(models.Model):
 
             dt = datetime.now().replace(minute=0, second=0, microsecond=0)
             now = dt.strftime(datetime_directive_s_UTC)
-            return tickers.data[now]['last']
+            return tickers.data[now][key]
 
         else:
             return 1

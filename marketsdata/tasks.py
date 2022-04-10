@@ -879,7 +879,7 @@ def run_account(self, account_id):
 def update_exchanges(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        update_exchange.delay(exchange.id)
+        update_exchange.delay(exchange.exid)
 
 
 # Update an exchange's tickers

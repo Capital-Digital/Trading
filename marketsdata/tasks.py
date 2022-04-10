@@ -1036,9 +1036,9 @@ def loader(exid):
     return True
 
 
-@task_success.connect(sender=loader)
-def monitor(sender, **kwargs):
-    log.info('task scan completed - %s', kwargs['result'])
+# @task_success.connect(sender=loader)
+# def monitor(sender, **kwargs):
+#     log.info('task scan completed - %s', kwargs['result'])
 
 
 @task_postrun.connect

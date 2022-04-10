@@ -925,6 +925,7 @@ def update_dataframe(self, exid):
                 tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
                 df = pd.concat([df, tmp], axis=1)
 
+            print(df)
             df = df.reindex(sorted(df.columns), axis=1)
             exchange.data = pd.concat([exchange.data, df])
             exchange.save()

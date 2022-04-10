@@ -580,7 +580,7 @@ class Currency(models.Model):
 
     def get_latest_price(self, quote, key):
         if self.code != quote:
-            candles = Tickers.objects.get(market__quote__code=quote,
+            tickers = Tickers.objects.get(market__quote__code=quote,
                                           market__base__code=self.code,
                                           market__type='spot',
                                           year=get_year(),
@@ -588,7 +588,7 @@ class Currency(models.Model):
 
             dt = datetime.now().replace(minute=0, second=0, microsecond=0)
             now = dt.strftime(datetime_directive_s_UTC)
-            return candles.data[now]['last']
+            return tickers.data[now]['last']
 
         else:
             return 1
@@ -647,10 +647,13 @@ class Market(models.Model):
         return ex + space + type + '__' + self.symbol
 
     def get_latest_price(self, key):
-        candles = Tickers.objects.get(market=self,
+        tickers = Tickers.objects.get(market=self,
                                       year=get_year(),
                                       semester=get_semester())
-        return candles.data[-1][key]
+
+        dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+        now = dt.strftime(datetime_directive_s_UTC)
+        return tickers.data[now]['last']
 
     # Return True if a market has candles
     def is_populated(self):

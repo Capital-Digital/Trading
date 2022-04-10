@@ -879,18 +879,32 @@ def run_account(self, account_id):
 def update_exchanges(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        codes = exchange.get_strategies_codes()
-        data = exchange.load_data(10*24, codes)
         update_exchange.delay(exchange.exid)
 
 
 # Update an exchange's tickers
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_exchange')
 def update_exchange(self, exid):
-    print('Tickers insertion for {0} start'.format(exid))
+    #
+    log.bind(exid=exid)
+    log.info('Pre-load data')
+
+    # Select instance and pre-load dataframe
+    exchange = Exchange.objects.get(exid=exid)
+    codes = exchange.get_strategies_codes()
+    exchange.data = exchange.load_data(10 * 24, codes)
+
+    # And wait...
+    while datetime.now().minute > 0:
+        time.sleep(0.5)
 
     def insert(data, wallet=None):
 
+        log.info('Insert tickers', wallet=wallet)
+
+        dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+        dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        semester = 1 if dt.month <= 6 else 2
         symbols = [s for s in data.keys() if '/USDT' in s]
         symbols.sort()
 
@@ -926,13 +940,13 @@ def update_exchange(self, exid):
 
             else:
                 try:
-                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
+                    obj = Tickers.objects.get(year=dt.year, semester=semester, market=market)
 
                 except ObjectDoesNotExist:
-                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
+                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, dt.year, semester))
 
                     # Create new object
-                    Tickers.objects.create(year=year,
+                    Tickers.objects.create(year=dt.year,
                                            semester=semester,
                                            market=market,
                                            data={dt_string: dic}
@@ -946,29 +960,27 @@ def update_exchange(self, exid):
                         pass
                         # log.info('Dictionary already updated for {0}'.format(market.symbol))
 
-    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    year = dt.year
-    semester = 1 if dt.month <= 6 else 2
+        log.info('Insert tickers complete', wallet=wallet)
 
-    exchange = Exchange.objects.get(exid=exid)
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
-
             client = exchange.get_ccxt_client()
+
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
-                    log.info('Fetch tickers for {0}'.format(wallet))
+
+                    log.info('Fetch tickers', wallet=wallet)
 
                     client.options['defaultType'] = wallet
                     data = client.fetch_tickers()
                     insert(data, wallet)
 
             else:
+                log.info('Fetch tickers')
                 data = client.fetch_tickers()
                 insert(data)
 
-    log.info('Insertion for {0} complete'.format(exid))
+    log.unbind('exid')
 
 
 # Update all strategies

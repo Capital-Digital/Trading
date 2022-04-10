@@ -1044,11 +1044,11 @@ def monitor(sender, **kwargs):
 @task_postrun.connect
 def task_postrun_handler(task_id=None, **kwargs):
     log.info('CONNECT {0}'.format(task_id))
-    log.info(kwargs['task'])
-    log.info(kwargs['task_id'])
-    log.info(kwargs['args'])
-    log.info(kwargs['retval'])
-    log.info(kwargs['state'])
+    log.info('Task {0}'.format(kwargs['task']))
+    log.info('Task_id {0}'.format(kwargs['task_id']))
+    log.info('args {0}'.format(kwargs['args']))
+    log.info('retval {0}'.format(kwargs['retval']))
+    log.info('state {0}'.format(kwargs['state']))
 
 
 def test(self, exid):

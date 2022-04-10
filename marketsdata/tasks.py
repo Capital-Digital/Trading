@@ -1042,18 +1042,8 @@ def monitor(sender, **kwargs):
 
 
 @task_postrun.connect
-def update_strategies(task_id=None, **kwargs):
-
+def task_postrun_handler(task_id=None, **kwargs):
     print('CONNECT', task_id)
-
-    resource_name = kwargs.get('kwargs', {}).get('resource_name')
-
-    print(resource_name)
-
-    print('hello')
-    text = 'task_postrun; {0}; {1:.16g}\n'.format(task_id.name, time.time())
-    print('exid', kwargs['args'])
-    print(text)
 
 
 def test(self, exid):

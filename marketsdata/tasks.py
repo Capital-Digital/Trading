@@ -174,78 +174,61 @@ def update_ex_currencies(exid):
 
         def update(code, dic):
 
-            log.bind(code=code)
-
             try:
-                curr = Currency.objects.get(code=code, exchange=exchange)
+                obj = Currency.objects.get(code=code, exchange=exchange)
 
-            # This should not happen...
             except MultipleObjectsReturned:
                 log.error('Duplicate currency {0}'.format(code))
 
-            # Currency is new ?
+            # Currency is new on this exchange ?
             except ObjectDoesNotExist:
 
                 try:
-                    curr = Currency.objects.get(code=code)
+                    obj = Currency.objects.get(code=code)
 
                 except MultipleObjectsReturned:
                     log.error('Duplicate currency {0}'.format(code))
-                    pass
+                    return
 
                 except ObjectDoesNotExist:
+                    obj = Currency.objects.create(code=code)
 
-                    # create currency
-                    curr = Currency.objects.create(code=code)
+                finally:
 
-                    # add exchange
-                    curr.exchange.add(exchange)
+                    # Add an exchange to an existing currency
+                    log.info('{0} is now listed'.format(code))
+                    obj.exchange.add(exchange)
+                    obj.response = dic
+                    obj.save()
 
-                    log.info('New currency created {0}'.format(code))
-                    curr.save()
-                else:
-
-                    # add exchange
-                    curr.exchange.add(exchange)
-                    log.info('Exchange attached to currency {0}'.format(code))
-                    curr.save()
-            else:
-                pass
-
-            # Add or remove stablecoin = True if needed
+            # Tag currency as stablecoin
             if code in config['MARKETSDATA']['supported_stablecoins']:
                 if not Currency.objects.get(code=code).stable_coin:
-                    log.info('Tag currency as stablecoin')
-                    curr.stable_coin = True
-                    curr.save()
+                    obj.stable_coin = True
+                    obj.save()
+
             elif Currency.objects.get(code=code).stable_coin:
-                log.info('Untag currency as stablecoin')
-                curr.stable_coin = False
-                curr.save()
+                obj.stable_coin = False
+                obj.save()
 
-        # Iterate through all currencies. Skip OKEx because it returns
-        # all currencies characteristics in a single call ccxt.okex.currencies
-
+        # Skip OKEx wallets because all currencies
+        # are returned with a single call ccxt.okex.currencies
         if exchange.wallets and exid != 'okex':
 
             for wallet in exchange.get_wallets():
 
                 log.bind(wallet=wallet)
-
                 client.options['defaultType'] = wallet
                 client.load_markets(True)
                 for code, dic in client.currencies.items():
                     update(code, dic)
-
                 log.unbind('wallet')
 
         else:
             if exchange.has_credit():
                 client.load_markets(True)
-                exchange.update_credit('load_markets')
-
-                for currency, dic in client.currencies.items():
-                    update(dic)
+                for code, dic in client.currencies.items():
+                    update(code, dic)
 
 
 @shared_task(base=BaseTaskWithRetry)

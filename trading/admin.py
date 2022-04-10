@@ -17,8 +17,8 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'updated', 'valid_credentials',
-                    'get_limit_price_tolerance', 'limit_order','updated_at',)
+    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'valid_credentials', 'get_limit_price_tolerance',
+                    'updated_at',)
     readonly_fields = ('valid_credentials', 'user')
     actions = ['update_credentials', 'trade']
     save_as = True

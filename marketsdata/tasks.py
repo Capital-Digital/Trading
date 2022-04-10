@@ -59,38 +59,69 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
-@shared_task(name='Markets_____Update information')
-def update_information():
-    """"
-    Hourly task to update currencies, markets and exchange properties
+@shared_task(name='Markets_____Periodic_update')
+def periodic_update():
+    #
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
 
-    """
-    log.info('Update start')
+        exid = exchange.exid
+        log.info('Periodic update of {0}'.format(exid))
 
-    from marketsdata.models import Exchange
-    exchanges = [e.exid for e in Exchange.objects.filter(enable=True)]
+        update_status.delay(exid)
+        update_properties.delay(exid)
+        update_currencies.delay(exid)
+        update_markets.delay(exid)
+        update_funding.delay(exid)
 
-    # must use si() signatures
-    chains = [chain(status.si(exid),
-                    properties.si(exid),
-                    currencies.si(exid),
-                    markets.si(exid),
-                    funding.si(exid)
-                    ) for exid in exchanges]
 
-    log.info('Execute chain for {0} exchanges'.format(len(exchanges)))
-    res = group(*chains)()
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_status')
+def update_status(exid):
+    #
+    log.bind(exid=exid)
+    log.info('Update status')
+    exchange = Exchange.objects.get(exid=exid)
 
-    while not res.ready():
-        print('wait...')
-        time.sleep(1)
+    try:
+        client = exchange.get_ccxt_client()
+        response = client.fetchStatus()
 
-    if res.successful():
-        log.info('Update complete {0} exchanges'.format(res.completed_count()))
+    except ccxt.ExchangeNotAvailable:
+        exchange.status = 'nok'
+        exchange.status_at = timezone.now()
+        exchange.save()
+        log.error('Exchange not available', status=exchange.status)
 
-    elif res.failed():
-        res.forget()
-        log.error('Update failed')
+    else:
+
+        if 'status' in response:
+            if response['status']:
+                exchange.status = response['status']
+            else:
+                exchange.status = 'Unknown'
+                log.warning('Status is unknown')
+
+        if 'updated' in response:
+            if response['updated']:
+                dt = datetime.fromtimestamp(response['updated'] / 1e3)
+                exchange.status_at = timezone.make_aware(dt)
+            else:
+                log.warning('Status update datetime unknown')
+
+        if 'eta' in response:
+            if response['eta']:
+                dt = datetime.fromtimestamp(response['eta'] / 1e3)
+                exchange.eta = timezone.make_aware(dt)
+
+        if 'url' in response:
+            if response['url']:
+                exchange.url = response['url']
+
+        exchange.save(update_fields=['status_at',
+                                     'status',
+                                     'eta',
+                                     'url']
+                      )
 
 
 @shared_task(base=BaseTaskWithRetry)
@@ -114,49 +145,6 @@ def properties(exid):
     exchange.save()
 
     log.debug('Save exchange properties complete', exchange=exid)
-
-
-@shared_task(base=BaseTaskWithRetry)
-def status(exid):
-    #
-    log.bind(exchange=exid)
-    log.info('Update status')
-    from marketsdata.models import Exchange
-    from trading.models import Account
-    exchange = Exchange.objects.get(exid=exid)
-    a = Account.objects.get(id=1)
-
-    try:
-        client = exchange.get_ccxt_client(a)
-        response = client.fetchStatus()
-
-    except ccxt.ExchangeNotAvailable:
-
-        exchange.status = 'nok'
-        exchange.status_at = timezone.now()
-        exchange.save()
-
-        log.error('Exchange status for {1} is {0}'.format(exchange.status, exchange.exid))
-
-    else:
-
-        if response['status'] is not None:
-            exchange.status = response['status']
-
-            if response['status'] != 'ok':
-                log.warning('Update status for {1} is {0}'.format(exchange.status, exchange.exid))
-            else:
-                pass
-                # log.info('Update status complete')
-
-        if response['updated'] is not None:
-            exchange.status_at = timezone.make_aware(datetime.fromtimestamp(response['updated'] / 1e3))
-        if response['eta'] is not None:
-            exchange.eta = datetime.fromtimestamp(response['eta'] / 1e3)
-        if response['url'] is not None:
-            exchange.url = response['url']
-
-        exchange.save(update_fields=['status', 'eta', 'status_at', 'url'])
 
 
 @shared_task(base=BaseTaskWithRetry)

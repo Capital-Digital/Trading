@@ -1041,7 +1041,7 @@ def monitor(sender, **kwargs):
     log.info('task scan completed - %s', kwargs['result'])
 
 
-@task_postrun.connect(sender=loader)
+@task_postrun.connect
 def update_strategies(task_id=None, task=None, args=None, **kwargs):
 
     print('hello')

@@ -71,8 +71,7 @@ def periodic_update():
         update_ex_status.delay(exid)
         update_ex_properties.delay(exid)
         update_ex_currencies.delay(exid)
-        update_markets.delay(exid)
-        update_funding.delay(exid)
+        update_ex_markets.delay(exid)
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_status')
@@ -231,8 +230,8 @@ def update_ex_currencies(exid):
                     update(code, dic)
 
 
-@shared_task(base=BaseTaskWithRetry)
-def markets(exid):
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_markets')
+def update_ex_markets(exid):
     def update():
 
         def is_known_currency(code):

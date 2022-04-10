@@ -13,6 +13,7 @@ from pprint import pprint
 import json
 import cloudscraper
 import itertools
+from picklefield.fields import PickledObjectField
 
 log = structlog.get_logger(__name__)
 
@@ -24,6 +25,8 @@ class Exchange(models.Model):
     name, version = [models.CharField(max_length=12, blank=True, null=True) for i in range(2)]
     api, countries, urls, has, timeframes, credentials, options = [models.JSONField(blank=True, null=True) for i in
                                                                    range(7)]
+
+    data = PickledObjectField(null=True)
     timeout = models.IntegerField(default=3000)
     rate_limit = models.IntegerField(default=1000)
     precision_mode = models.IntegerField(null=True, blank=True)

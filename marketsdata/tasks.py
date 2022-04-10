@@ -68,15 +68,15 @@ def periodic_update():
         exid = exchange.exid
         log.info('Periodic update of {0}'.format(exid))
 
-        update_status.delay(exid)
-        update_properties.delay(exid)
+        update_ex_status.delay(exid)
+        update_ex_properties.delay(exid)
         update_currencies.delay(exid)
         update_markets.delay(exid)
         update_funding.delay(exid)
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_status')
-def update_status(exid):
+def update_ex_status(exid):
     #
     log.bind(exid=exid)
     log.info('Update status')
@@ -125,12 +125,17 @@ def update_status(exid):
 
 
 @shared_task(base=BaseTaskWithRetry)
-def properties(exid):
-    log.debug('Save exchange properties', exchange=exid)
-
-    from marketsdata.models import Exchange
+def update_ex_properties(exid):
+    #
+    log.bind(exid=exid)
+    log.info('Update status')
     exchange = Exchange.objects.get(exid=exid)
-    client = exchange.get_ccxt_client()
+
+    try:
+        client = exchange.get_ccxt_client()
+
+    except ccxt.ExchangeNotAvailable as e:
+        log.error('Properties update failure: {0}'.format(e))
 
     exchange.version = client.version
     exchange.precision_mode = client.precisionMode
@@ -898,6 +903,7 @@ def update_dataframe(self, exid):
             # Download snapshot of spot markets
             client = exchange.get_ccxt_client()
             dic = client.fetch_tickers()
+            df = pd.DataFrame()
 
             log.info('Update dataframe')
 
@@ -915,12 +921,12 @@ def update_dataframe(self, exid):
                     log.warning('Market {0} not found in dictionary')
                     continue
 
-                df = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
-                df.columns = pd.MultiIndex.from_product([df.columns, [code]])
-                d = pd.concat([d, df], axis=1)
+                tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
+                tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
+                df = pd.concat([df, tmp], axis=1)
 
-            d = d.reindex(sorted(d.columns), axis=1)
-            exchange.data = pd.concat([exchange.data, d])
+            df = df.reindex(sorted(df.columns), axis=1)
+            exchange.data = pd.concat([exchange.data, df])
             exchange.save()
 
             log.info('Update dataframe complete')

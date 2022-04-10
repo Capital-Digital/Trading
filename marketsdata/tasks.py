@@ -972,6 +972,7 @@ def update_exchange(self, exid):
 # Update all strategies
 @app.task(bind=True, name='Update_strategies')
 def update_strategies(self, exid):
+    log.info('Update strategies of exchange {0}'.format(exid))
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
     for strategy in strategies:
@@ -989,6 +990,7 @@ def update_strategy(self, stid):
 # Update all accounts
 @app.task(bind=True, name='Update_accounts')
 def update_accounts(self, stid):
+    log.info('Update accounts of strategy {0}'.format(stid))
     from trading.models import Account
     accounts = Account.objects.filter(strategy__id=stid, active=True)
     for account in accounts:

@@ -1035,7 +1035,6 @@ def update_tickers(self, exid):
 # Update all strategies
 @app.task(bind=True, name='Update_strategies')
 def update_strategies(self, exid):
-    #
     log.info('Update strategies of exchange {0}'.format(exid))
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
@@ -1046,7 +1045,6 @@ def update_strategies(self, exid):
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
 def update_strategy(self, stid):
-    #
     from strategy.models import Strategy
     strategy = Strategy.objects.get(id=stid)
     strategy.execute()

@@ -557,6 +557,7 @@ class Exchange(models.Model):
 
             # Check and fix rows
             self.data = fix(self.data)
+            self.save()
 
             log.info('Loading data complete')
 

@@ -879,6 +879,8 @@ def run_account(self, account_id):
 def update_exchanges(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
+        codes = exchange.get_strategies_codes()
+        data = exchange.load_data(10*24, codes)
         update_exchange.delay(exchange.exid)
 
 
@@ -971,20 +973,20 @@ def update_exchange(self, exid):
 
 # Update all strategies
 @app.task(bind=True, name='Update_strategies')
-def update_strategies(self, exid):
+def update_strategies(self, exid, data):
     log.info('Update strategies of exchange {0}'.format(exid))
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
     for strategy in strategies:
-        update_strategy.delay(strategy.id)
+        update_strategy.delay(strategy.id, data)
 
 
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
-def update_strategy(self, stid):
+def update_strategy(self, stid, data):
     from strategy.models import Strategy
     strategy = Strategy.objects.get(id=stid)
-    strategy.execute()
+    strategy.execute(data)
 
 
 # Update all accounts

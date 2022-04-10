@@ -12,6 +12,7 @@ from tqdm import tqdm
 from pprint import pprint
 import json
 import cloudscraper
+import itertools
 
 log = structlog.get_logger(__name__)
 
@@ -196,6 +197,15 @@ class Exchange(models.Model):
     # Return a list of stablecoins
     def get_stablecoins(self):
         return [c.code for c in Currency.objects.filter(exchange=self, stable_coin=True)]
+
+    # Return a list of codes used by strategies
+    def get_strategies_codes(self):
+        from strategy.models import Strategy
+        strategies = Strategy.objects.filter(exchange__exid=self.exid)
+        codes = []
+        for strategy in strategies:
+            codes.append(strategy.get_codes_long())
+        return list(itertools.chain(codes))
 
     # Return True if there is available credit
     def has_credit(self, wallet=None):

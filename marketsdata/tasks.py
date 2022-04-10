@@ -893,7 +893,7 @@ def update_dataframe(self, exid):
     exchange.data = exchange.load_data(10 * 24, codes)
 
     # And wait...
-    while datetime.now().minute > 0:
+    while datetime.now().minute < 0:
         log.info('Wait...')
         time.sleep(0.5)
 

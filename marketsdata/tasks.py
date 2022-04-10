@@ -1039,13 +1039,13 @@ def update_tickers(self, exid):
 
 # Update all strategies
 @app.task(bind=True, name='Update_strategies')
-def update_strategies(self, exid, data):
+def update_strategies(self, exid):
     #
     log.info('Update strategies of exchange {0}'.format(exid))
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
     for strategy in strategies:
-        update_strategy.delay(strategy.id, data)
+        update_strategy.delay(strategy.id)
 
 
 # Update a strategy

@@ -1033,6 +1033,7 @@ def loader(exid):
     log.info('###########################')
     log.info(' ')
     log.info(' ')
+    return True
 
 
 @task_success.connect(sender=loader)

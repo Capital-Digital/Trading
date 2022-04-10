@@ -108,7 +108,7 @@ class Account(models.Model):
             for tp in list(set(self.balances[wallet].columns.get_level_values(0))):
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
-                    price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+                    price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                     value = price * funds[coin]
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 

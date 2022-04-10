@@ -1050,11 +1050,11 @@ def update_strategies(self, exid):
 
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
-def update_strategy(self, stid, data):
+def update_strategy(self, stid):
     #
     from strategy.models import Strategy
     strategy = Strategy.objects.get(id=stid)
-    strategy.execute(data)
+    strategy.execute()
 
 
 # Update all accounts

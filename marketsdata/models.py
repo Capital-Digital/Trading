@@ -204,6 +204,7 @@ class Exchange(models.Model):
         strategies = Strategy.objects.filter(exchange__exid=self.exid)
         codes = []
         for strategy in strategies:
+            print(strategy.get_codes_long())
             codes.append(strategy.get_codes_long())
         return list(itertools.chain(codes))
 

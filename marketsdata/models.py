@@ -580,7 +580,6 @@ class Currency(models.Model):
 
     def get_latest_price(self, exchange, quote, key):
         if self.code != quote:
-            log.info('Get price for spot market {0}/{1}'.format(self.code, quote))
             tickers = Tickers.objects.get(market__quote__code=quote,
                                           market__base__code=self.code,
                                           market__type='spot',

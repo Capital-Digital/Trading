@@ -923,8 +923,10 @@ def update_dataframe(self, exid):
 
                 tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
                 tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
-                df = pd.concat([df, tmp], axis=1)
+                if tmp.index not in exchange.data.index:
+                    df = pd.concat([df, tmp], axis=1)
 
+            df.index = df.index.drop_duplicates(keep='first')
             df = df.reindex(sorted(df.columns), axis=1)
             exchange.data = pd.concat([exchange.data, df])
             exchange.save()

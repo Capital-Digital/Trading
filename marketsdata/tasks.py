@@ -891,6 +891,8 @@ def update_dataframe(self, exid):
     exchange = Exchange.objects.get(exid=exid)
     codes = exchange.get_strategies_codes()
     exchange.data = exchange.load_data(10 * 24, codes)
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # And wait...
     while datetime.now().minute < 0:
@@ -911,8 +913,6 @@ def update_dataframe(self, exid):
             codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
 
             for code in codes:
-                dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-                dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
                 try:
                     d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
@@ -925,10 +925,9 @@ def update_dataframe(self, exid):
                 tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
                 df = pd.concat([df, tmp], axis=1)
 
-            print(df.index.duplicated(keep='first'))
-            df = df[~df.index.duplicated(keep='first')]
             df = df.reindex(sorted(df.columns), axis=1)
-            exchange.data = pd.concat([exchange.data, df])
+            df = pd.concat([exchange.data, df])
+            exchange.data = df[~df.index.duplicated(keep='first')]
             exchange.save()
 
             log.info('Update dataframe complete')

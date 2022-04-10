@@ -18,5 +18,7 @@ def monitor(sender, **kwargs):
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
 
     if task.name == 'marketsdata.tasks.loader':
+        log.info('Task ID {0}'.format(task_id))
         log.info('Args {0}'.format(args))
         log.info('State {0}'.format(state))
+        loader.delay("exid")

@@ -118,6 +118,7 @@ def properties(exid):
 
 @shared_task(base=BaseTaskWithRetry)
 def status(exid):
+    #
     log.bind(exchange=exid)
     log.info('Update status')
     from marketsdata.models import Exchange
@@ -724,6 +725,8 @@ def fetch_candle_history(exid):
 
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
+###################################
+
 
 # Group and execute exchange's tickers snapshot update
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Hourly tasks')
@@ -877,14 +880,16 @@ def run_account(self, account_id):
 # Update all exchanges
 @app.task(bind=True, name='Update_exchanges')
 def update_exchanges(self):
+    #
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        update_exchange.delay(exchange.exid)
+        update_dataframe.delay(exchange.exid)
+        update_tickers.delay(exchange.exid)
 
 
-# Update an exchange's tickers
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_exchange')
-def update_exchange(self, exid):
+# Update dataframe
+@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
+def update_dataframe(self, exid):
     #
     log.bind(exid=exid)
     log.info('Pre-load data')
@@ -896,11 +901,60 @@ def update_exchange(self, exid):
 
     # And wait...
     while datetime.now().minute > 0:
+        log.info('Wait...')
         time.sleep(0.5)
+
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
+
+            # Download snapshot of spot markets
+            client = exchange.get_ccxt_client()
+            dic = client.fetch_tickers()
+
+            log.info('Update dataframe')
+
+            # Select codes of our strategies
+            codes = exchange.data.columns.get_level_values(1).tolist()
+
+            for code in codes:
+                dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+                dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                try:
+                    d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
+
+                except KeyError:
+                    log.warning('Market {0} not found in dictionary')
+                    continue
+
+                df = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
+                df.columns = pd.MultiIndex.from_product([df.columns, [code]])
+                d = pd.concat([d, df], axis=1)
+
+            d = d.reindex(sorted(d.columns), axis=1)
+            exchange.data = pd.concat([exchange.data, d])
+            exchange.save()
+
+            log.info('Update dataframe complete')
+
+        else:
+            log.error("Exchange doesn't support fetchTickers")
+    else:
+        log.error('Exchange is not trading')
+
+    log.unbind('exid')
+
+
+# Update Tickers objects
+@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_tickers')
+def update_tickers(self, exid):
+    #
+    log.bind(exid=exid)
+    exchange = Exchange.objects.get(exid=exid)
 
     def insert(data, wallet=None):
 
-        log.info('Insert tickers', wallet=wallet)
+        log.info('Insert tickers data', wallet=wallet)
 
         dt = timezone.now().replace(minute=0, second=0, microsecond=0)
         dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -943,7 +997,7 @@ def update_exchange(self, exid):
                     obj = Tickers.objects.get(year=dt.year, semester=semester, market=market)
 
                 except ObjectDoesNotExist:
-                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, dt.year, semester))
+                    log.info('Create object for {0} {1} {2}'.format(market.symbol, dt.year, semester))
 
                     # Create new object
                     Tickers.objects.create(year=dt.year,
@@ -958,14 +1012,14 @@ def update_exchange(self, exid):
 
                     else:
                         pass
-                        # log.info('Dictionary already updated for {0}'.format(market.symbol))
 
-        log.info('Insert tickers complete', wallet=wallet)
+        log.info('Insert tickers data complete', wallet=wallet)
 
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
-            client = exchange.get_ccxt_client()
 
+            # Download tickers
+            client = exchange.get_ccxt_client()
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
 
@@ -980,12 +1034,18 @@ def update_exchange(self, exid):
                 data = client.fetch_tickers()
                 insert(data)
 
+        else:
+            log.error("Exchange doesn't support fetchTickers")
+    else:
+        log.error('Exchange is not trading')
+
     log.unbind('exid')
 
 
 # Update all strategies
 @app.task(bind=True, name='Update_strategies')
 def update_strategies(self, exid, data):
+    #
     log.info('Update strategies of exchange {0}'.format(exid))
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
@@ -996,6 +1056,7 @@ def update_strategies(self, exid, data):
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
 def update_strategy(self, stid, data):
+    #
     from strategy.models import Strategy
     strategy = Strategy.objects.get(id=stid)
     strategy.execute(data)
@@ -1004,6 +1065,7 @@ def update_strategy(self, stid, data):
 # Update all accounts
 @app.task(bind=True, name='Update_accounts')
 def update_accounts(self, stid):
+    #
     log.info('Update accounts of strategy {0}'.format(stid))
     from trading.models import Account
     accounts = Account.objects.filter(strategy__id=stid, active=True)
@@ -1014,6 +1076,7 @@ def update_accounts(self, stid):
 # Update an account
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_account')
 def update_account(self, acid):
+    #
     from trading.models import Account
     account = Account.objects.get(id=acid)
     account.trade()
@@ -1042,40 +1105,3 @@ def add(self, x, y):
     except Exception as e:
         log.error('Division by zero')
         raise self.retry(exc=e)
-
-
-@app.task
-def update():
-    exchanges = Exchange.objects.filter(exid__in=['binance']).values_list('exid', flat=True)
-    for exchange in exchanges:
-        loader.delay(exchange)
-
-
-@app.task
-def loader(exid):
-    log.info('Update tickers for exchange : {0}'.format(exid))
-    log.info('###########################')
-    log.info(' ')
-    log.info(' ')
-    time.sleep(3)
-    return True
-
-
-def test(self, exid):
-    from strategy.models import Strategy
-    strategies = Strategy.objects.filter(exchange__id=exid)
-    exchange = Exchange.objects.get(exid=exid)
-
-    # Create list of desired codes
-    longs = list(set(s.get_codes_long() for s in strategies))
-
-    # Load prices and volumes
-    prices, volumes = exchange.load_tickers(10 * 24, longs)
-
-    index = prices.index[:-1]
-
-    while datetime.now().minute != 0:
-        time.sleep(1)
-
-    client = exchange.get_ccxt_client()
-    tickers = client.fetch_tickers()

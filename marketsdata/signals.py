@@ -8,18 +8,13 @@ from .tasks import loader, update_strategies, update_accounts
 log = structlog.get_logger()
 
 
-@task_success.connect(sender=loader)
-def monitor(sender, **kwargs):
-    log.info('task scan completed - %s', kwargs['result'])
-
-
 @task_postrun.connect
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
 
-    if task.name == 'Update_exchange':
+    if task.name == 'Update_dataframe':
         exid = args[0]
         if state == 'SUCCESS':
-            log.info('Exchange update success', exchange=exid)
+            log.info('Dataframe update success', exchange=exid)
             update_strategies.delay(exid)
 
     if task.name == 'Update_strategy':

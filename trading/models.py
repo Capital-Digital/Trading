@@ -178,7 +178,7 @@ class Account(models.Model):
 
             # Insert quantities
             for coin, val in value.items():
-                qty = val / Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+                qty = val / Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
         except AttributeError as e:
@@ -210,7 +210,7 @@ class Account(models.Model):
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
             if coin != self.quote:
-                price = Currency.objects.get(code=coin).get_latest_price(self.quote, 'last')
+                price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                 percent = (exp * price) / acc_value
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
@@ -291,7 +291,7 @@ class Account(models.Model):
                             amount = qty_delta
 
                         # Place sell order
-                        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                        price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'ask')
                         price += (price * float(self.limit_price_tolerance))
 
                         trade = self.place_order('sell_spot', market, 'sell', amount, price)
@@ -353,7 +353,10 @@ class Account(models.Model):
                                 amount = min(abs(delta[code]), shorted)
 
                                 # Place buy order
-                                price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                                price = Currency.objects.get(code=code).get_latest_price(self.exchange,
+                                                                                         self.quote,
+                                                                                         'bid'
+                                                                                         )
                                 price -= (price * float(self.limit_price_tolerance))
 
                                 trade = self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
@@ -393,7 +396,7 @@ class Account(models.Model):
 
                     # Determine missing quantity and it's dollar value
                     delta = abs(self.balances.account.target.delta[code])
-                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'ask')
+                    price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'ask')
                     delta_value = delta * price
 
                     # Cash is available in spot wallet ?
@@ -480,7 +483,7 @@ class Account(models.Model):
 
                     # Determine desired quantity and value
                     amount = delta[code]
-                    price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+                    price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'bid')
                     pos_value = amount * price
 
                     # Check margin
@@ -704,7 +707,7 @@ class Account(models.Model):
         log.info('Remove used resources from balances')
 
         code = market.base.code
-        price = Currency.objects.get(code=code).get_latest_price(self.quote, 'bid')
+        price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'bid')
         used = amount * price
 
         try:

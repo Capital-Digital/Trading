@@ -70,7 +70,7 @@ def periodic_update():
 
         update_ex_status.delay(exid)
         update_ex_properties.delay(exid)
-        update_currencies.delay(exid)
+        update_ex_currencies.delay(exid)
         update_markets.delay(exid)
         update_funding.delay(exid)
 
@@ -123,12 +123,14 @@ def update_ex_status(exid):
                                      'url']
                       )
 
+    log.unbind('exid')
 
-@shared_task(base=BaseTaskWithRetry)
+
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_properties')
 def update_ex_properties(exid):
     #
     log.bind(exid=exid)
-    log.info('Update status')
+    log.info('Update properties')
     exchange = Exchange.objects.get(exid=exid)
 
     try:
@@ -137,47 +139,51 @@ def update_ex_properties(exid):
     except ccxt.ExchangeNotAvailable as e:
         log.error('Properties update failure: {0}'.format(e))
 
-    exchange.version = client.version
-    exchange.precision_mode = client.precisionMode
-    exchange.api = client.api
-    exchange.countries = client.countries
-    exchange.urls = client.urls
-    exchange.has = client.has
-    exchange.timeframes = client.timeframes
-    exchange.timeout = client.timeout
-    exchange.rate_limit = client.rateLimit
-    exchange.credentials = client.requiredCredentials
-    exchange.save()
+    else:
+        exchange.version = client.version
+        exchange.precision_mode = client.precisionMode
+        exchange.api = client.api
+        exchange.countries = client.countries
+        exchange.urls = client.urls
+        exchange.has = client.has
+        exchange.timeframes = client.timeframes
+        exchange.timeout = client.timeout
+        exchange.rate_limit = client.rateLimit
+        exchange.credentials = client.requiredCredentials
+        exchange.save()
 
-    log.debug('Save exchange properties complete', exchange=exid)
+        log.debug('Update properties complete')
+
+    log.unbind('exid')
 
 
-@shared_task(base=BaseTaskWithRetry)
-def currencies(exid):
-    """
-    Create/update currency information from load_markets().currencies
-
-    """
-
-    from marketsdata.models import Exchange, Currency
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_currencies')
+def update_ex_currencies(exid):
+    #
+    log.bind(exid=exid)
     log.info('Update currencies')
+    exchange = Exchange.objects.get(exid=exid)
 
-    if exchange.is_trading():
-
+    try:
         client = exchange.get_ccxt_client()
 
-        def update(currency):
+    except Exception as e:
+        log.error('Currencies update failure: {0}'.format(e))
 
-            code = currency['code']
+    else:
+
+        def update(code, dic):
+
             log.bind(code=code)
 
             try:
                 curr = Currency.objects.get(code=code, exchange=exchange)
+
+            # This should not happen...
             except MultipleObjectsReturned:
-                log.warning('Duplicate currency {0}'.format(code))
-                pass
+                log.error('Duplicate currency {0}'.format(code))
+
+            # Currency is new ?
             except ObjectDoesNotExist:
 
                 try:
@@ -225,14 +231,11 @@ def currencies(exid):
             for wallet in exchange.get_wallets():
 
                 log.bind(wallet=wallet)
+
                 client.options['defaultType'] = wallet
-
-                if exchange.has_credit(wallet):
-                    client.load_markets(True)
-                    exchange.update_credit('load_markets', wallet)
-
-                    for currency, dic in client.currencies.items():
-                        update(dic)
+                client.load_markets(True)
+                for code, dic in client.currencies.items():
+                    update(code, dic)
 
                 log.unbind('wallet')
 

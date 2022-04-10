@@ -570,6 +570,7 @@ class Currency(models.Model):
     name, code = [models.CharField(max_length=100, blank=True, null=True) for i in range(2)]
     exchange = models.ManyToManyField(Exchange, related_name='currency')
     stable_coin = models.BooleanField(default=False, null=False, blank=False)
+    response = models.JSONField(null=True)
     objects = models.Manager()
 
     class Meta:

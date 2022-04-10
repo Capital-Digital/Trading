@@ -1036,6 +1036,16 @@ def loader(exid):
     return True
 
 
+@task_success.connect(sender=loader)
+def monitor(sender, **kwargs):
+    log.info('task scan completed - %s', kwargs['result'])
+
+
+@task_postrun.connect
+def task_postrun_handler(task_id=None, **kwargs):
+    log.info('CONNECT {0}'.format(task_id))
+
+
 def test(self, exid):
 
     from strategy.models import Strategy

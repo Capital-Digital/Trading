@@ -927,7 +927,6 @@ def update_dataframe(self, exid):
 
             print(df.index.duplicated(keep='first'))
             df = df[~df.index.duplicated(keep='first')]
-            # df.index = df.index.drop_duplicates(keep='first')
             df = df.reindex(sorted(df.columns), axis=1)
             exchange.data = pd.concat([exchange.data, df])
             exchange.save()

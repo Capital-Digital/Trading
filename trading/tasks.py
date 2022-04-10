@@ -19,6 +19,9 @@ from celery import chain, group, shared_task, Task
 from django.core.exceptions import ObjectDoesNotExist
 from timeit import default_timer as timer
 
+from billiard.process import current_process
+from capital.celery import app
+
 from capital.error import *
 from capital.methods import *
 from marketsdata.models import Market, Currency, Exchange
@@ -45,7 +48,6 @@ class BaseTaskWithRetry(Task):
 
 @shared_task(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
-
     # Iterate through accounts and update open orders
     for account in Account.objects.filter(active=True, exchange__exid='binance'):
 
@@ -67,8 +69,3 @@ def trade():
     for account in Account.objects.filter(active=True, exchange__exid='binance'):
         if datetime.now().hour in account.strategy.execution_hours():
             account.trade()
-
-
-@shared_task(name='Trading_____Trade single account', base=BaseTaskWithRetry)
-def trade_single(pk):
-    Account.objects.get(pk=pk).trade()

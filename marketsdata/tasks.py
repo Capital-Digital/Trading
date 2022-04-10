@@ -1043,9 +1043,8 @@ def monitor(sender, **kwargs):
 
 @task_postrun.connect
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
-    log.info('Task {0}'.format(task.name))
-    print(task)
-    if 'loader' in task:
+
+    if task.name == 'marketsdata.tasks.loader':
         log.info('Args {0}'.format(args))
         log.info('State {0}'.format(state))
 

@@ -856,27 +856,26 @@ def run_account(self, account_id):
 ########################
 
 
-# Update all exchanges
+# Update dataframes of all exchanges
 @app.task(bind=True, name='Update_exchanges')
 def update_exchanges(self):
-    #
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
         update_dataframe.delay(exchange.exid)
-        update_tickers.delay(exchange.exid)
 
 
-# Update dataframe
+# Add a new row to exchange.data dataframe (signal strategies update)
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid):
     #
     log.bind(exid=exid)
     log.info('Pre-load data')
 
-    # Select instance and pre-load dataframe
+    # Select instance and preload dataframe
     exchange = Exchange.objects.get(exid=exid)
     codes = exchange.get_strategies_codes()
     exchange.data = exchange.load_data(10 * 24, codes)
+
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -925,7 +924,15 @@ def update_dataframe(self, exid):
     log.unbind('exid')
 
 
-# Update Tickers objects
+# Fetch markets snapshot of all exchanges at 00:00
+@app.task(bind=True, name='Update_prices')
+def update_prices(self):
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
+        update_tickers.delay(exchange.exid)
+
+
+# Update tickers objects
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_tickers')
 def update_tickers(self, exid):
     #
@@ -998,10 +1005,6 @@ def update_tickers(self, exid):
 
         log.info('Insert tickers data complete', wallet=wallet)
 
-    # And wait...
-    while datetime.now().minute > 0:
-        time.sleep(0.5)
-        
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
 

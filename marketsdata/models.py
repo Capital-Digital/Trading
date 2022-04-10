@@ -202,11 +202,7 @@ class Exchange(models.Model):
     def get_strategies_codes(self):
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=self.exid)
-        codes = []
-        for strategy in strategies:
-            print(strategy.get_codes_long())
-            codes.append(strategy.get_codes_long())
-        return list(itertools.chain(codes))
+        return list(itertools.chain([s.get_codes_long() for s in strategies]))[0]
 
     # Return True if there is available credit
     def has_credit(self, wallet=None):

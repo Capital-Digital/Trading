@@ -1044,6 +1044,7 @@ def monitor(sender, **kwargs):
 @task_postrun.connect
 def task_postrun_handler(task_id=None, **kwargs):
     log.info('CONNECT {0}'.format(task_id))
+    log.info(kwargs)
 
 
 def test(self, exid):

@@ -1046,6 +1046,9 @@ def update_strategies(sender=None, state=None, **kwargs):
 
     resource_name = kwargs.get('kwargs', {}).get('resource_name')
 
+    print(sender)
+    print(resource_name)
+
     if resource_name and state == 'SUCCESS':
 
         print(sender.name)

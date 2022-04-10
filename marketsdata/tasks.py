@@ -908,9 +908,8 @@ def update_dataframe(self, exid):
             log.info('Update dataframe')
 
             # Select codes of our strategies
-            codes = exchange.data.columns.get_level_values(1).tolist()
-            print(codes)
-            
+            codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+
             for code in codes:
                 dt = timezone.now().replace(minute=0, second=0, microsecond=0)
                 dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -926,7 +925,6 @@ def update_dataframe(self, exid):
                 tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
                 df = pd.concat([df, tmp], axis=1)
 
-            print(df.last['ZRX'])
             df = df.reindex(sorted(df.columns), axis=1)
             exchange.data = pd.concat([exchange.data, df])
             exchange.save()

@@ -851,7 +851,7 @@ def update_exchanges(self):
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
-    log.info('Update dataframe for {0}'.format(exid))
+    log.info('Update dataframe {0}'.format(exid))
     log.bind(exid=exid)
 
     # Select instance and preload dataframe
@@ -911,11 +911,12 @@ def update_dataframe(self, exid, signal):
 
                 else:
                     raise Exception('Dataframe update problem')
-
             else:
                 log.error("Exchange doesn't support fetchTickers")
         else:
             log.error('Exchange is not trading')
+    else:
+        log.info('Dataframe is already updated')
 
     log.unbind('exid')
 

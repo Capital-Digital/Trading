@@ -48,7 +48,7 @@ class CustomerAdmin(admin.ModelAdmin):
         # return obj.is_data_updated()
         if hasattr(obj, 'data'):
             if isinstance(obj.data, pd.DataFrame):
-                log.info('Last row'.format(list(obj.data.index[-1])[0]))
+                log.info('Last row'.format(list(obj.data.index[-1])))
                 return list(obj.data.index[-1])
 
     get_df_latest_index.short_description = "Last index"

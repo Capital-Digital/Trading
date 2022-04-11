@@ -20,7 +20,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',
                        'credentials')
     actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'update_prices',
-               'update_strategies']
+               'update_dataframe', 'update_strategies']
     save_as = True
     save_on_top = True
 
@@ -79,9 +79,16 @@ class CustomerAdmin(admin.ModelAdmin):
     # Update prices
     def update_prices(self, request, queryset):
         for exchange in queryset:
-            update_ticker.delay(exchange.exid)
+            update_prices.delay(exchange.exid)
 
     update_prices.short_description = "Update prices"
+
+    # Update dataframes
+    def update_dataframe(self, request, queryset):
+        for exchange in queryset:
+            update_dataframe.delay(exchange.exid, signal=False)
+
+    update_dataframe.short_description = "Update dataframes"
 
     # Update strategies
     def update_strategies(self, request, queryset):

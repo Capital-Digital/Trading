@@ -860,12 +860,12 @@ def run_account(self, account_id):
 def update_exchanges(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        update_dataframe.delay(exchange.exid, signal=True)
+        update_dataframe.delay(exchange.exid)
 
 
 # Add a new row to exchange.data dataframe (signal strategies update)
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
-def update_dataframe(self, exid, signal):
+def update_dataframe(self, exid, signal=True):
     log.info('#')
     log.info('#')
     log.info('Update dataframe {0}'.format(exid))

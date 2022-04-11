@@ -867,9 +867,8 @@ def update_exchanges(self):
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     log.info('#')
-    log.info('#')
-    log.info('Update dataframe {0}'.format(exid))
-    log.info('#')
+    log.info('Update dataframe of exchange:{0}'.format(exid))
+    log.info('############################')
     log.info('#')
 
     log.bind(exid=exid)
@@ -1043,9 +1042,8 @@ def update_tickers(self, exid):
 @app.task(bind=True, name='Update_strategies')
 def update_strategies(self, exid, signal):
     log.info('#')
-    log.info('#')
-    log.info('Update strategies of exchange {0}'.format(exid))
-    log.info('#')
+    log.info('Update strategies of exchange: {0}'.format(exid))
+    log.info('##############################')
     log.info('#')
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
@@ -1065,9 +1063,8 @@ def update_strategy(self, name, signal):
 @app.task(bind=True, name='Update_accounts')
 def update_accounts(self, strategy_name, signal):
     log.info('#')
-    log.info('#')
-    log.info('Update accounts ({0})'.format(strategy_name))
-    log.info('#')
+    log.info('# Update accounts: ({0})'.format(strategy_name))
+    log.info('##################')
     log.info('#')
     from trading.models import Account
     accounts = Account.objects.filter(strategy__name=strategy_name, active=True)
@@ -1078,7 +1075,6 @@ def update_accounts(self, strategy_name, signal):
 # Update an account
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_account')
 def update_account(self, account_id, signal):
-    #
     from trading.models import Account
     account = Account.objects.get(id=account_id)
     account.trade()

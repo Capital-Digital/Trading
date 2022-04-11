@@ -858,6 +858,7 @@ def update_dataframe(self, exid, signal):
     exchange = Exchange.objects.get(exid=exid)
     codes = exchange.get_strategies_codes()
     exchange.data = exchange.load_data(10 * 24, codes)
+    exchange.save()
 
     # And wait...
     if signal:
@@ -906,7 +907,7 @@ def update_dataframe(self, exid, signal):
 
             else:
                 raise Exception('Dataframe update problem')
-            
+
         else:
             log.error("Exchange doesn't support fetchTickers")
     else:

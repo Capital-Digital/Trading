@@ -1,3 +1,5 @@
+import time
+
 import structlog
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -12,11 +14,10 @@ log = structlog.get_logger(__name__)
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
 
     if task.name == 'Update_dataframe':
-        log.info('Signal received for task {1} args {0}'.format(args, task.name))
         exid, signal = args
         if state == 'SUCCESS':
             if signal:
-                log.info('Dataframe update success', exchange=exid)
+                time.sleep(1)
                 update_strategies.delay(exid, signal)
         else:
             log.error('Dataframe update failure')
@@ -25,7 +26,6 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwarg
         stid, signal = args
         if state == 'SUCCESS':
             if signal:
-                log.info('Strategy update success', strategy=stid)
                 update_accounts.delay(stid, signal)
         else:
             log.error('Strategies update failure')
@@ -34,6 +34,6 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwarg
         acid, signal = args
         if state == 'SUCCESS':
             if signal:
-                log.info('Account update success', account=acid)
+                pass
         else:
             log.error('Accounts update failure')

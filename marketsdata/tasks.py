@@ -1030,12 +1030,7 @@ def update_tickers(self, exid):
 # Update all strategies
 @app.task(bind=True, name='Update_strategies')
 def update_strategies(self, exid, signal):
-    log.info('#')
-    log.info('Update strategies of exchange: {0}'.format(exid))
-
-    # Dataframe with the latest prices and volumes is updated ?
     if Exchange.objects.get(exid=exid).is_data_updated():
-
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
         for strategy in strategies:
@@ -1053,10 +1048,6 @@ def update_strategy(self, name, signal):
 # Update all accounts
 @app.task(bind=True, name='Update_accounts')
 def update_accounts(self, strategy_name, signal):
-    log.info('#')
-    log.info('# Update accounts: ({0})'.format(strategy_name))
-    log.info('##################')
-    log.info('#')
     from trading.models import Account
     accounts = Account.objects.filter(strategy__name=strategy_name, active=True)
     for account in accounts:

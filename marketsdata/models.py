@@ -564,11 +564,13 @@ class Exchange(models.Model):
 
     # Return True if the dataframe is updated
     def is_data_updated(self):
-        if self.data.index[-1] == dt_aware_now(0):
-            return True
-        else:
-            log.error('Dataframe is not updated')
-            return False
+        if hasattr(self, 'data'):
+            if isinstance(self.data, pd.DataFrame):
+                if self.data.index[-1] == dt_aware_now(0):
+                    return True
+                else:
+                    log.error('Dataframe is not updated')
+                    return False
 
 
 class Currency(models.Model):

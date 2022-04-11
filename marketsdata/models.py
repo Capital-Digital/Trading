@@ -142,7 +142,7 @@ class Exchange(models.Model):
     def get_ccxt_client_pro(self, account=None, market=None):
 
         if not self.is_trading():
-            log.error('Exchange is intrading', exchange=self.exid)
+            log.error('Exchange is trading', exchange=self.exid)
             return
 
         client = getattr(ccxt, self.exid)
@@ -591,16 +591,20 @@ class Currency(models.Model):
 
     def get_latest_price(self, exchange, quote, key):
         if self.code != quote:
-            tickers = Tickers.objects.get(market__quote__code=quote,
-                                          market__base__code=self.code,
-                                          market__type='spot',
-                                          market__exchange=exchange,
-                                          year=get_year(),
-                                          semester=get_semester())
+            try:
+                tickers = Tickers.objects.get(market__quote__code=quote,
+                                              market__base__code=self.code,
+                                              market__type='spot',
+                                              market__exchange=exchange,
+                                              year=get_year(),
+                                              semester=get_semester())
+            except ObjectDoesNotExist:
+                log.error('Ticker object not found for {0}/{1}'.format(self.code, quote))
 
-            dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-            now = dt.strftime(datetime_directive_ISO_8601)
-            return tickers.data[now][key]
+            else:
+                dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+                now = dt.strftime(datetime_directive_ISO_8601)
+                return tickers.data[now][key]
 
         else:
             return 1

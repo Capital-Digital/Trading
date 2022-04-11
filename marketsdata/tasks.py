@@ -872,7 +872,6 @@ def update_dataframe(self, exid, signal):
     log.info('#')
 
     log.bind(exid=exid)
-    log.info('Preload data')
 
     # Select instance and preload dataframe
     exchange = Exchange.objects.get(exid=exid)

@@ -2,38 +2,21 @@ from __future__ import absolute_import, unicode_literals
 
 import configparser
 import time
-from datetime import datetime, timedelta
-from pprint import pprint
-
-from billiard.process import current_process
-from capital.celery import app
 
 import ccxt
-import pandas as pd
 import requests
-import structlog
 import urllib3
-
-from celery import chain, group, shared_task, Task, Celery, states
-from celery.result import AsyncResult, allow_join_result
-from celery.exceptions import Ignore
-from celery.signals import task_success, task_postrun, task_failure
+from billiard.process import current_process
+from celery import group, shared_task, Task
+from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
 
-logger = get_task_logger(__name__)
+from capital.celery import app
 
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
-from django.db import models
-from django.db.models import Q
-from django.utils import timezone
-
-import itertools
-
-import capital.celery as celery
 from capital.methods import *
 from marketsdata.methods import *
 from marketsdata.models import Exchange, Market, Currency, Candles, Tickers
-import strategy.tasks as task
 from trading.models import Account
 
 log = structlog.get_logger(__name__)
@@ -66,7 +49,6 @@ def periodic_update():
     #
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-
         exid = exchange.exid
         log.info('Periodic update of {0}'.format(exid))
 
@@ -706,6 +688,7 @@ def fetch_candle_history(exid):
 
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
+
 ###################################
 
 
@@ -1021,7 +1004,6 @@ def update_tickers(self, exid):
             client = exchange.get_ccxt_client()
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
-
                     client.options['defaultType'] = wallet
                     data = client.fetch_tickers()
                     insert(data, wallet)
@@ -1078,6 +1060,7 @@ def update_account(self, account_id, signal):
     from trading.models import Account
     account = Account.objects.get(id=account_id)
     account.trade()
+
 
 #########################################
 

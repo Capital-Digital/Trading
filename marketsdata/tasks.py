@@ -884,7 +884,7 @@ def update_dataframe(self, exid, signal):
 
     # And wait...
     if signal:
-        while datetime.now().minute == 0:
+        while datetime.now().minute > 0:
             time.sleep(0.5)
 
     if exchange.is_trading():

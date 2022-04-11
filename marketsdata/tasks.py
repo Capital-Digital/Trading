@@ -864,7 +864,7 @@ def update_exchanges(self):
 
 
 # Add a new row to exchange.data dataframe (signal strategies update)
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
+@app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     log.info('#')
     log.info('Update dataframe of exchange:{0}'.format(exid))
@@ -884,6 +884,7 @@ def update_dataframe(self, exid, signal):
     # And wait...
     if signal:
         while datetime.now().minute > 0:
+            print('wait')
             time.sleep(0.5)
 
     if exchange.is_trading():

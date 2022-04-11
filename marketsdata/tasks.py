@@ -900,9 +900,13 @@ def update_dataframe(self, exid, signal):
             exchange.data = df
             exchange.save()
 
-            log.info('New row added {0}'.format(df.index[-1]))
-            log.info('Update dataframe complete')
+            if exchange.is_data_updated():
+                log.info('New row added {0}'.format(df.index[-1]))
+                log.info('Update dataframe complete')
 
+            else:
+                raise Exception('Dataframe update problem')
+            
         else:
             log.error("Exchange doesn't support fetchTickers")
     else:
@@ -1025,8 +1029,6 @@ def update_tickers(self, exid):
 def update_strategies(self, exid, signal):
     log.info('#')
     log.info('Update strategies of exchange: {0}'.format(exid))
-    log.info('##############################')
-    log.info('#')
 
     # Dataframe with the latest prices and volumes is updated ?
     if Exchange.objects.get(exid=exid).is_data_updated():

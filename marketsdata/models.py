@@ -562,7 +562,7 @@ class Exchange(models.Model):
         else:
             raise Exception('List of codes is empty')
 
-    # Return True if dataframe is updated
+    # Return True if the dataframe is updated
     def is_data_updated(self):
         if self.data.index[-1] == dt_aware_now(0):
             return True

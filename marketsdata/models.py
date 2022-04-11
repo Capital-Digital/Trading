@@ -145,7 +145,7 @@ class Exchange(models.Model):
             log.error('Exchange is intrading', exchange=self.exid)
             return
 
-        client = getattr(ccxtpro, self.exid)
+        client = getattr(ccxt, self.exid)
         client = client({
             'timeout': self.timeout,
             'verbose': self.verbose,

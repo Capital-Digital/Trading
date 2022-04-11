@@ -849,18 +849,17 @@ def update_exchanges(self):
         update_dataframe.delay(exchange.exid, True)
 
 
-# Add a new row to exchange.data dataframe (signal strategies update)
+# Add a new row to dataframe (signal strategies update)
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
     log.info('Update dataframe {0}'.format(exid))
     log.bind(exid=exid)
 
-    # Select instance and preload dataframe
+    # Select instance and create self.data dataframe with available prices
     exchange = Exchange.objects.get(exid=exid)
     codes = exchange.get_strategies_codes()
-    exchange.data = exchange.load_data(10 * 24, codes)
-    exchange.save()
+    exchange.load_data(10 * 24, codes)
 
     if signal:
 
@@ -901,11 +900,14 @@ def update_dataframe(self, exid, signal):
             df = pd.concat([exchange.data, df])
             df = df[~df.index.duplicated(keep='first')]
 
+            log.info('Save new dataframe')
+            log.info(df)
+
             exchange.data = df
             exchange.save()
 
             if exchange.is_data_updated():
-                log.info('New row added {0}'.format(df.index[-1]))
+                log.info('1 row added with timestamp {0}'.format(df.index[-1]))
                 log.info('Update dataframe complete')
 
             else:
@@ -915,6 +917,8 @@ def update_dataframe(self, exid, signal):
     else:
         log.error('Exchange is not trading')
 
+    log.info('Finally')
+    log.info(exchange.is_data_updated())
     log.unbind('exid')
 
 

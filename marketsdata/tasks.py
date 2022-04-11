@@ -866,11 +866,8 @@ def update_exchanges(self):
 # Add a new row to exchange.data dataframe (signal strategies update)
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
-    log.info('#')
-    log.info('Update dataframe of exchange:{0}'.format(exid))
-    log.info('############################')
-    log.info('#')
-
+    #
+    log.info('Update dataframe for {0}'.format(exid))
     log.bind(exid=exid)
 
     # Select instance and preload dataframe

@@ -205,7 +205,7 @@ LOGGING = {
     },
     "loggers": {
         '': {
-            "handlers": ["console", "flat_line_file", "json_file"],
+            "handlers": ["console", "flat_line_file", "json_file", "marketsdata_file"],
             "level": "WARNING",
             'propagate': False,
         },

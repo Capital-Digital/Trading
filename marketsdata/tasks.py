@@ -491,6 +491,8 @@ def update_ex_markets(exid):
         # log.info('Update markets complete')
         log.unbind('exchange')
 
+    log.info('Update market complete')
+
 
 @shared_task(base=BaseTaskWithRetry)
 def funding(exid):
@@ -860,63 +862,58 @@ def update_dataframe(self, exid, signal):
     exchange.data = exchange.load_data(10 * 24, codes)
     exchange.save()
 
-    # Dataframe must be updated ?
-    if not exchange.is_data_updated():
+    if signal:
 
-        if signal:
+        # wait...
+        while datetime.now().minute > 0:
+            log.info('Wait {0} minutes and {1}s'.format(60 - datetime.now().minute, 60 - datetime.now().second))
+            time.sleep(1)
 
-            # wait...
-            while datetime.now().minute > 0:
-                log.info('Wait {0} minutes and {1}s'.format(60 - datetime.now().minute, 60 - datetime.now().second))
-                time.sleep(1)
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
 
-        if exchange.is_trading():
-            if exchange.has['fetchTickers']:
+            # Download snapshot of spot markets
+            client = exchange.get_ccxt_client()
+            dic = client.fetch_tickers()
+            df = pd.DataFrame()
+            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+            dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-                # Download snapshot of spot markets
-                client = exchange.get_ccxt_client()
-                dic = client.fetch_tickers()
-                df = pd.DataFrame()
-                dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-                dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            log.info('Update dataframe')
 
-                log.info('Update dataframe')
+            # Select codes of our strategies
+            codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
 
-                # Select codes of our strategies
-                codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+            for code in codes:
 
-                for code in codes:
+                try:
+                    d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
 
-                    try:
-                        d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
+                except KeyError:
+                    log.warning('Market {0} not found in dictionary')
+                    continue
 
-                    except KeyError:
-                        log.warning('Market {0} not found in dictionary')
-                        continue
+                tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
+                tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
+                df = pd.concat([df, tmp], axis=1)
 
-                    tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
-                    tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
-                    df = pd.concat([df, tmp], axis=1)
+            df = df.reindex(sorted(df.columns), axis=1)
+            df = pd.concat([exchange.data, df])
+            df = df[~df.index.duplicated(keep='first')]
 
-                df = df.reindex(sorted(df.columns), axis=1)
-                df = pd.concat([exchange.data, df])
-                df = df[~df.index.duplicated(keep='first')]
+            exchange.data = df
+            exchange.save()
 
-                exchange.data = df
-                exchange.save()
+            if exchange.is_data_updated():
+                log.info('New row added {0}'.format(df.index[-1]))
+                log.info('Update dataframe complete')
 
-                if exchange.is_data_updated():
-                    log.info('New row added {0}'.format(df.index[-1]))
-                    log.info('Update dataframe complete')
-
-                else:
-                    raise Exception('Dataframe update problem')
             else:
-                log.error("Exchange doesn't support fetchTickers")
+                raise Exception('Dataframe update problem')
         else:
-            log.error('Exchange is not trading')
+            log.error("Exchange doesn't support fetchTickers")
     else:
-        log.info('Dataframe is already updated')
+        log.error('Exchange is not trading')
 
     log.unbind('exid')
 

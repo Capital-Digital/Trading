@@ -884,8 +884,9 @@ def update_dataframe(self, exid, signal):
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # And wait...
-    while datetime.now().minute > 0:
-        time.sleep(0.5)
+    if signal:
+        while datetime.now().minute > 0:
+            time.sleep(0.5)
 
     if exchange.is_trading():
         if exchange.has['fetchTickers']:

@@ -112,13 +112,17 @@ class Account(models.Model):
             for tp in list(set(self.balances[wallet].columns.get_level_values(0))):
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
-                    price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                    if price:
-                        value = price * funds[coin]
-                        self.balances.loc[coin, (wallet, tp, 'value')] = value
+                    try:
+                        price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                    except MultipleObjectsReturned as e:
+                        log.error('Multiple objects found for currency {0}'.format(coin))
                     else:
-                        log.warning('Drop coin {0} from wallet balance'.format(coin))
-                        self.balances = self.balances.drop(coin)
+                        if price:
+                            value = price * funds[coin]
+                            self.balances.loc[coin, (wallet, tp, 'value')] = value
+                        else:
+                            log.warning('Drop coin {0} from wallet balance'.format(coin))
+                            self.balances = self.balances.drop(coin)
 
         # Drop dust < $10
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1

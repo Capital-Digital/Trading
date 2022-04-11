@@ -971,7 +971,7 @@ class Account(models.Model):
             log.info(' ')
 
         else:
-            log.error('Trading aborted')
+            log.error('Trading aborted, strategy {0} not updated'.format(self.strategy.name))
 
 
 class Fund(models.Model):

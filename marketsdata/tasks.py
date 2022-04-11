@@ -868,7 +868,7 @@ def update_exchanges(self, signal):
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
-    log.bind(exid=exid)
+    log.bind(exid=exid, s=signal)
     log.info('Preload data')
 
     # Select instance and preload dataframe

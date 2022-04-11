@@ -961,34 +961,36 @@ class Account(models.Model):
 
         log.bind(account=self.name)
 
-        # Mark account are busy
-        self.set_busy_flag(True)
+        if self.strategy.is_updated():
 
-        if cancel:
-            self.cancel_orders()
+            # Mark account are busy
+            self.set_busy_flag(True)
 
-        # Create fresh dataframe
-        self.create_balances()
+            if cancel:
+                self.cancel_orders()
 
-        log.info('Value {0}'.format(round(self.account_value(), 2)))
-
-        # Liberate resources and update dataframe if trade occurred
-        if self.sell_spot() or self.close_short():
+            # Create fresh dataframe
             self.create_balances()
 
-        # Allocate funds
-        self.buy_spot()
-        self.open_short()
+            log.info('Value {0}'.format(round(self.account_value(), 2)))
 
-        # Mark the account as not busy
-        self.set_busy_flag(False)
+            # Liberate resources and update dataframe if trade occurred
+            if self.sell_spot() or self.close_short():
+                self.create_balances()
 
-        log.unbind('account')
+            # Allocate funds
+            self.buy_spot()
+            self.open_short()
 
-        log.info(' ')
-        log.info('End trading with account : {0}'.format(self.name))
-        log.info('-------------------------------------------')
-        log.info(' ')
+            # Mark the account as not busy
+            self.set_busy_flag(False)
+
+            log.unbind('account')
+
+            log.info(' ')
+            log.info('End trading with account : {0}'.format(self.name))
+            log.info('-------------------------------------------')
+            log.info(' ')
 
 
 class Fund(models.Model):

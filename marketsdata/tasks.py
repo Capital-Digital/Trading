@@ -61,7 +61,6 @@ def periodic_update():
 def update_ex_status(exid):
     #
     log.bind(exid=exid)
-    logger.info('Update status !')
     log.info('Update status')
     exchange = Exchange.objects.get(exid=exid)
 
@@ -897,10 +896,12 @@ def update_dataframe(self, exid, signal):
 
             df = df.reindex(sorted(df.columns), axis=1)
             df = pd.concat([exchange.data, df])
-            exchange.data = df[~df.index.duplicated(keep='first')]
+            df = df[~df.index.duplicated(keep='first')]
+            exchange.data = df
             exchange.save()
 
             log.info('Update dataframe complete')
+            log.info('Last row {0}'.format(df.index[-1]))
 
         else:
             log.error("Exchange doesn't support fetchTickers")

@@ -1027,10 +1027,14 @@ def update_strategies(self, exid, signal):
     log.info('Update strategies of exchange: {0}'.format(exid))
     log.info('##############################')
     log.info('#')
-    from strategy.models import Strategy
-    strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
-    for strategy in strategies:
-        update_strategy.delay(strategy.name, signal)
+
+    # Dataframe with the latest prices and volumes is updated ?
+    if Exchange.objects.get(exid=exid).is_data_updated():
+
+        from strategy.models import Strategy
+        strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
+        for strategy in strategies:
+            update_strategy.delay(strategy.name, signal)
 
 
 # Update a strategy

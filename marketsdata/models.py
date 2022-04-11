@@ -448,7 +448,7 @@ class Exchange(models.Model):
             self.save()
 
     # Save spot prices and volume to CSV files
-    def save_data(self, quote, dtype):
+    def save_csv_file(self, quote, dtype):
 
         from pathlib import Path
         filename = 'df_' + quote + '_' + dtype + '.csv'
@@ -500,7 +500,7 @@ class Exchange(models.Model):
 
             # Filter data based on timestamps
             directive = '%Y-%m-%dT%H:%M:%SZ'
-            ts = [e[0] for e in i.data if convert_string_to_date(e[0], directive) >= start]
+            ts = [e[0] for e in i.data if string_to_date(e[0], directive) >= start]
             data = [i[indice] for i in i.data if i[0] in ts]
 
             if i.market.symbol == 'ACA/USDT':
@@ -520,7 +520,7 @@ class Exchange(models.Model):
         df.to_csv(filename, sep=',', encoding='utf-8', index=False)
         log.info("Update complete")
 
-    # Create dataframes for prices and volumes
+    # Create dataframes from tickers
     def load_data(self, length, codes):
 
         if codes:
@@ -561,6 +561,14 @@ class Exchange(models.Model):
 
         else:
             raise Exception('List of codes is empty')
+
+    # Return True if dataframe is updated
+    def is_data_updated(self):
+        if self.data.index[-1] == dt_aware_now(0):
+            return True
+        else:
+            log.error('Dataframe is not updated')
+            return False
 
 
 class Currency(models.Model):

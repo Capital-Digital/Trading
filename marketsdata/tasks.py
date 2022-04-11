@@ -945,8 +945,6 @@ def update_ticker(self, exid):
 
         log.info('Insert tickers data', wallet=wallet)
 
-        dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-        dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
         semester = 1 if dt.month <= 6 else 2
         symbols = [s for s in data.keys() if '/USDT' in s]
         symbols.sort()

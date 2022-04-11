@@ -16,6 +16,7 @@ import logging
 import structlog
 from structlog.processors import format_exc_info
 from celery import chain, group, shared_task, Task
+from capital.celery import app
 from django.core.exceptions import ObjectDoesNotExist
 from timeit import default_timer as timer
 
@@ -46,14 +47,16 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
-@shared_task(name='Trading_____Check accounts credentials', base=BaseTaskWithRetry)
+# Check all accounts credentials
+@app.tasks(name='Trading_____Check accounts credentials')
 def check_accounts_cred():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange):
             check_account_cred.delay(account.id)
 
 
-@shared_task(name='Trading_____Check account credentials', base=BaseTaskWithRetry)
+# Check an account credential
+@app.tasks(name='Trading_____Check account credentials', base=BaseTaskWithRetry)
 def check_account_cred(account_id):
     #
     account = Account.objects.get(id=account_id)
@@ -81,7 +84,7 @@ def check_account_cred(account_id):
         log.unbind('user')
 
 
-@shared_task(name='Trading_____Update orders', base=BaseTaskWithRetry)
+@app.tasks(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
     # Iterate through accounts and update open orders
     for account in Account.objects.filter(active=True, exchange__exid='binance'):

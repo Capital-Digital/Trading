@@ -896,28 +896,6 @@ class Account(models.Model):
         else:
             return False
 
-    # Check crendentials and update field
-    def update_credentials(self):
-
-        try:
-            client = self.exchange.get_ccxt_client(self)
-            client.checkRequiredCredentials()
-
-        except ccxt.AuthenticationError as e:
-            print('NOK')
-            self.valid_credentials = False
-
-        except Exception as e:
-            print('NOK')
-            self.valid_credentials = False
-
-        else:
-            print('OK')
-            self.valid_credentials = True
-
-        finally:
-            self.save()
-
     # Construct a fresh self.balances dataframe
     def create_balances(self):
 

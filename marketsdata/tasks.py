@@ -948,6 +948,7 @@ def update_ticker(self, exid):
         semester = 1 if dt.month <= 6 else 2
         symbols = [s for s in data.keys() if '/USDT' in s]
         symbols.sort()
+        insert = 0
 
         for symbol in symbols:
 
@@ -996,11 +997,12 @@ def update_ticker(self, exid):
                     if dt_string not in obj.data.keys():
                         obj.data[dt_string] = dic
                         obj.save()
+                        insert += 1
 
                     else:
                         pass
 
-        log.info('Insert {0} data complete'.format(wallet))
+        log.info('Insert {0} data complete ({1})'.format(wallet, insert))
 
     if exchange.is_trading():
         if exchange.has['fetchTickers']:

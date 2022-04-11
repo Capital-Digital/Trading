@@ -117,7 +117,8 @@ class Account(models.Model):
                         value = price * funds[coin]
                         self.balances.loc[coin, (wallet, tp, 'value')] = value
                     else:
-                        self.balances = self.balances.loc[~coin]
+                        log.warning('Drop coin {0} from wallet balance'.format(coin))
+                        self.balances = self.balances.drop(coin)
 
         # Drop dust < $10
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1

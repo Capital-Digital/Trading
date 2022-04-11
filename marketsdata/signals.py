@@ -12,22 +12,27 @@ log = structlog.get_logger()
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
 
     if task.name == 'Update_dataframe':
-        log.info('Signal received kwargs')
-        log.info('{0}'.format(args))
-        log.info('{0}'.format(kwargs))
         exid, signal = args
-        log.info('{0} {1} {2}'.format(exid, signal, state))
-        if signal and state == 'SUCCESS':
-            log.info('Dataframe update success', exchange=exid)
-            update_strategies.delay(exid, signal)
+        if state == 'SUCCESS':
+            if signal:
+                log.info('Dataframe update success', exchange=exid)
+                update_strategies.delay(exid, signal)
+        else:
+            log.error('Dataframe update failure')
 
     if task.name == 'Update_strategy':
         stid, signal = args
-        if signal and state == 'SUCCESS':
-            log.info('Strategy update success', strategy=stid)
-            update_accounts.delay(stid, signal)
+        if state == 'SUCCESS':
+            if signal:
+                log.info('Strategy update success', strategy=stid)
+                update_accounts.delay(stid, signal)
+        else:
+            log.error('Strategies update failure')
 
     if task.name == 'Update_account':
         acid, signal = args
-        if signal and state == 'SUCCESS':
-            log.info('Account update success', account=acid)
+        if state == 'SUCCESS':
+            if signal:
+                log.info('Account update success', account=acid)
+        else:
+            log.error('Accounts update failure')

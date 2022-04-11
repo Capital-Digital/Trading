@@ -93,7 +93,7 @@ class CustomerAdmin(admin.ModelAdmin):
     # Update strategies
     def run_strategies(self, request, queryset):
         for exchange in queryset:
-            update_strategies.delay(exchange.exid, signal=False)
+            update_strategies.delay(exchange.exid, False)
 
     run_strategies.short_description = "Update strategies"
 
@@ -101,7 +101,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def rebalance_accounts(self, request, queryset):
         for exchange in queryset:
             for account in Account.objects.filter(exchange=exchange, active=True):
-                update_account.delay(account.id, signal=False)
+                update_account.delay(account.id, False)
 
     rebalance_accounts.short_description = "Rebalance accounts"
 

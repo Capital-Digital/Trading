@@ -79,7 +79,7 @@ class CustomerAdmin(admin.ModelAdmin):
     # Update prices
     def fetch_prices(self, request, queryset):
         for exchange in queryset:
-            update_prices.delay(exchange.exid)
+            update_tickers.delay(exchange.exid)
 
     fetch_prices.short_description = "Update prices"
 

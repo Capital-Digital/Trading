@@ -593,7 +593,7 @@ class Currency(models.Model):
                                           semester=get_semester())
 
             dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-            now = dt.strftime(datetime_directive_s_UTC)
+            now = dt.strftime(datetime_directive_ISO_8601)
             return tickers.data[now][key]
 
         else:
@@ -658,7 +658,7 @@ class Market(models.Model):
                                       semester=get_semester())
 
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-        now = dt.strftime(datetime_directive_s_UTC)
+        now = dt.strftime(datetime_directive_ISO_8601)
         return tickers.data[now]['last']
 
     # Return True if a market has candles

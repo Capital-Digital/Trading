@@ -2,7 +2,7 @@ from prettyjson import PrettyJSONWidget
 from django.contrib import admin
 from marketsdata.tasks import update_account
 from trading.models import Account, Fund, Position, Order, Transfer
-from trading import tasks
+from trading.tasks import *
 import structlog
 from celery import chain, group
 from django.contrib.admin import SimpleListFilter
@@ -18,10 +18,10 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'trading', 'valid_credentials', 'get_limit_price_tolerance',
-                    'updated_at',)
+    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'trading', 'valid_credentials',
+                    'get_limit_price_tolerance', 'updated_at',)
     readonly_fields = ('valid_credentials', 'user')
-    actions = ['update_credentials', 'rebalance_account']
+    actions = ['check_credentials', 'rebalance_account']
     save_as = True
     save_on_top = True
 
@@ -45,11 +45,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
     rebalance_account.short_description = "Rebalance"
 
-    def update_credentials(self, request, queryset):
+    def check_credentials(self, request, queryset):
         for account in queryset:
-            account.update_credentials()
+            check_account_cred.delay(account.id)
 
-    update_credentials.short_description = "Update credentials"
+    check_credentials.short_description = "Check credentials"
 
 
 @admin.register(Fund)

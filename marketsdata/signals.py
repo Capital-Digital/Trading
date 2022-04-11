@@ -13,6 +13,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwarg
 
     if task.name == 'Update_dataframe':
         log.info('Signal received kwargs')
+        log.info('{0}'.format(args))
         log.info('{0}'.format(kwargs))
         exid, signal = args
         log.info('{0} {1} {2}'.format(exid, signal, state))

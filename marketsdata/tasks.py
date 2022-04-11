@@ -1,6 +1,5 @@
 from __future__ import absolute_import, unicode_literals
 
-import asyncio
 import configparser
 import time
 from datetime import datetime, timedelta
@@ -19,6 +18,9 @@ from celery import chain, group, shared_task, Task, Celery, states
 from celery.result import AsyncResult, allow_join_result
 from celery.exceptions import Ignore
 from celery.signals import task_success, task_postrun, task_failure
+from celery.utils.log import get_task_logger
+
+logger = get_task_logger(__name__)
 
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import models
@@ -78,6 +80,7 @@ def periodic_update():
 def update_ex_status(exid):
     #
     log.bind(exid=exid)
+    logger.info('Update status !')
     log.info('Update status')
     exchange = Exchange.objects.get(exid=exid)
 

@@ -6,11 +6,10 @@ import pytz
 log = structlog.get_logger(__name__)
 
 datetime_directive_s = "%Y-%m-%d %H:%M:%S"
-datetime_directive_s_UTC = "%Y-%m-%dT%H:%M:%SZ"
 datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
+datetime_directive_ISO_8601 = "%Y-%m-%dT%H:%M:%SZ"
 directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
-directive_coinpaprika = '%Y-%m-%dT%H:%M:%SZ'
 
 
 # Check and fix prices and volumes dataframes
@@ -29,7 +28,7 @@ def get_years(timestamp):
     if isinstance(timestamp, datetime):
         years = list(range(timestamp.year, timezone.now().year + 1))
     elif isinstance(timestamp, str):
-        dt = datetime.strptime(timestamp, directive_coinpaprika).replace(tzinfo=pytz.UTC)
+        dt = datetime.strptime(timestamp, datetime_directive_ISO_8601).replace(tzinfo=pytz.UTC)
         years = list(range(dt.year, timezone.now().year + 1))
 
     return years
@@ -56,7 +55,7 @@ def get_datetime_str(dt, format):
 # Return semester of timestamp
 def get_semester(timestamp=None):
     if timestamp:
-        dt = datetime.strptime(timestamp, directive_coinpaprika).replace(tzinfo=pytz.UTC)
+        dt = datetime.strptime(timestamp, datetime_directive_ISO_8601).replace(tzinfo=pytz.UTC)
         semester = 1 if dt.month < 6 else 2
         return semester
     else:

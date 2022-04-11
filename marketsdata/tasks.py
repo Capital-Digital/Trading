@@ -943,7 +943,7 @@ def update_ticker(self, exid):
 
     def insert(data, wallet=None):
 
-        log.info('Insert tickers data', wallet=wallet)
+        log.info('Insert {0} data'.format(wallet))
 
         semester = 1 if dt.month <= 6 else 2
         symbols = [s for s in data.keys() if '/USDT' in s]
@@ -1000,7 +1000,7 @@ def update_ticker(self, exid):
                     else:
                         pass
 
-        log.info('Insert tickers data complete', wallet=wallet)
+        log.info('Insert {0} data complete'.format(wallet))
 
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
@@ -1010,14 +1010,11 @@ def update_ticker(self, exid):
             if exchange.wallets:
                 for wallet in exchange.get_wallets():
 
-                    log.info('Fetch tickers', wallet=wallet)
-
                     client.options['defaultType'] = wallet
                     data = client.fetch_tickers()
                     insert(data, wallet)
 
             else:
-                log.info('Fetch tickers')
                 data = client.fetch_tickers()
                 insert(data)
 

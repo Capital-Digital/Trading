@@ -14,7 +14,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwarg
     if task.name == 'Update_dataframe':
         log.info('Signal received')
         exid, signal = args
-        print(exid, signal, state)
+        log.info('{0} {1} {2}'.format(exid, signal, state))
         if signal and state == 'SUCCESS':
             log.info('Dataframe update success', exchange=exid)
             update_strategies.delay(exid, signal)

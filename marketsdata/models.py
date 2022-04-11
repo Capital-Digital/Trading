@@ -523,8 +523,6 @@ class Exchange(models.Model):
     # Create dataframes for prices and volumes
     def load_data(self, length, codes):
 
-        log.info('Loading data', exid=self.exid)
-
         if codes:
 
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
@@ -558,8 +556,6 @@ class Exchange(models.Model):
             # Check and fix rows
             self.data = fix(self.data)
             self.save()
-
-            log.info('Loading data complete')
 
             return self.data
 

@@ -14,7 +14,7 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Exchange)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'get_status', "timeout", "rate_limit", "updated_at",
+    list_display = ('name', 'get_status', "timeout", "rate_limit", "updated_at", "get_df_latest_index",
                     'get_currencies', 'get_markets', 'precision_mode', 'start_date', 'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
                        'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',

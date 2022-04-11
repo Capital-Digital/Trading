@@ -11,9 +11,8 @@ log = structlog.get_logger()
 @task_postrun.connect
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
 
-    log.info('args {0} {1}'.format(args, task.name))
-
     if task.name == 'Update_dataframe':
+        log.info('Signal received for task {1} args {0}'.format(args, task.name))
         exid, signal = args
         if state == 'SUCCESS':
             if signal:

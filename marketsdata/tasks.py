@@ -9,7 +9,6 @@ import urllib3
 from billiard.process import current_process
 from celery import group, shared_task, Task
 from celery.result import AsyncResult
-from celery.utils.log import get_task_logger
 
 from capital.celery import app
 

@@ -601,6 +601,9 @@ class Currency(models.Model):
             except ObjectDoesNotExist:
                 log.error('Ticker object not found for {0}/{1}'.format(self.code, quote))
 
+            except MultipleObjectsReturned:
+                log.error('Multiple objects found for ticker {0}/{1}'.format(self.code, quote))
+
             else:
                 dt = datetime.now().replace(minute=0, second=0, microsecond=0)
                 now = dt.strftime(datetime_directive_ISO_8601)

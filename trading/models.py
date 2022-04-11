@@ -74,7 +74,7 @@ class Account(models.Model):
     def get_balances_qty(self):
 
         client = self.exchange.get_ccxt_client(self)
-        log.info('Get balances start')
+        log.info('Get balances qty start')
 
         # Del attribute
         if hasattr(self, 'balances'):
@@ -100,8 +100,12 @@ class Account(models.Model):
                 else:
                     self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
+        log.info('Get balances qty done')
+
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
+
+        log.info('Get balances value start')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in list(set(self.balances.columns.get_level_values(0))):
@@ -117,7 +121,7 @@ class Account(models.Model):
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
-        log.info('Get balances done')
+        log.info('Get balances value done')
 
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):

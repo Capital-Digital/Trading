@@ -30,7 +30,7 @@ import itertools
 import capital.celery as celery
 from capital.methods import *
 from marketsdata.methods import *
-from marketsdata.models import Exchange, Market, Currency, CoinPaprika, Candles, Tickers
+from marketsdata.models import Exchange, Market, Currency, Candles, Tickers
 import strategy.tasks as task
 from trading.models import Account
 

@@ -1,10 +1,10 @@
 from django.contrib import admin
 from datetime import timedelta, datetime
-from .models import Exchange, Market, Candle, Currency, Tickers, CoinPaprika, Candles
+from marketsdata.models import Exchange, Market, Candle, Currency, Tickers, Candles
 import structlog
 import locale
 from celery import group
-from marketsdata import tasks
+from marketsdata.tasks import *
 import time
 from celery import chain
 
@@ -48,123 +48,51 @@ class CustomerAdmin(admin.ModelAdmin):
 
     get_markets.short_description = "Markets"
 
-    def get_markets_not_updated(self, obj):
-        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj,
-                                                           trading=True,
-                                                           updated=False
-                                                           )]
-        return len(not_upd)
-
-    get_markets_not_updated.short_description = "Not updated"
-
-    def get_markets_not_populated(self, obj):
-        not_upd = [m.symbol for m in Market.objects.filter(exchange=obj,
-                                                           trading=True
-                                                           ) if not m.is_populated()]
-        return len(not_upd)
-
-    get_markets_not_populated.short_description = "Not populated"
-
     ##########
     # Action #
     ##########
 
-    # Fetch markets history
-    def fetch_candle_history(self, request, queryset):
+    # Update status
+    def update_status(self, request, queryset):
+        for exchange in queryset:
+            update_ex_status.delay(exchange.exid)
 
-        exids = [i.exid for i in queryset]
-        res = group(tasks.fetch_candle_history.s(exid).set(queue='default') for exid in exids)()
+    update_status.short_description = "Update status"
 
-        while not res.ready():
-            time.sleep(0.5)
+    # Update properties
+    def update_properties(self, request, queryset):
+        for exchange in queryset:
+            update_ex_properties.delay(exchange.exid)
 
-        if res.successful():
-            log.info('Fetch markets history complete')
+    update_properties.short_description = "Update properties"
 
-        else:
-            log.error('Fetch markets history error')
-
-    fetch_candle_history.short_description = "Fetch candles history"
-
-    # Fetch markets history
+    # Update currencies
     def update_currencies(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.currencies.s(exchange).set(queue='default') for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Update currencies complete')
-
-        else:
-            log.error('Update currencies failed')
+        for exchange in queryset:
+            update_ex_currencies.delay(exchange.exid)
 
     update_currencies.short_description = "Update currencies"
 
-    # Update prices
-    def update_prices(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.prices.s(exchange).set(queue='default') for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Update prices complete')
-
-        else:
-            log.error('Update prices failed')
-
-    update_prices.short_description = "Update prices"
-
     # Update markets
     def update_markets(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.markets.s(exchange).set(queue='default') for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Update markets complete')
-
-        else:
-            log.error('Update markets failed')
+        for exchange in queryset:
+            update_ex_markets.delay(exchange.exid)
 
     update_markets.short_description = "Update markets"
 
-    # Update price
+    # Update prices
     def update_prices(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.prices.s(exchange).set(queue='default') for exchange in exchanges)()
+        for exchange in queryset:
+            update_ticker.delay(exchange.exid)
 
-        while not res.ready():
-            time.sleep(0.5)
+    update_prices.short_description = "Update prices"
 
-        if res.successful():
-            log.info('Update prices complete')
+    # Fetch markets history
+    def fetch_candle_history(self, request, queryset):
+        for exchange in queryset:
+            pass
 
-        else:
-            log.error('Update prices failed')
-
-    update_prices.short_description = "Update price"
-
-    # Update status
-    def update_status(self, request, queryset):
-        exchanges = [exchange.exid for exchange in queryset]
-        res = group(tasks.status.s(exchange).set(queue='default') for exchange in exchanges)()
-
-        while not res.ready():
-            time.sleep(0.5)
-
-        if res.successful():
-            log.info('Update status complete')
-
-        else:
-            log.error('Update status failed')
-
-    update_status.short_description = "Update status"
+    fetch_candle_history.short_description = "Fetch candles history"
 
 
 @admin.register(Currency)

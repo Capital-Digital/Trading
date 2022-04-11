@@ -859,9 +859,6 @@ def update_dataframe(self, exid, signal):
     codes = exchange.get_strategies_codes()
     exchange.data = exchange.load_data(10 * 24, codes)
 
-    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
     # And wait...
     if signal:
         while datetime.now().minute > 0:
@@ -875,6 +872,8 @@ def update_dataframe(self, exid, signal):
             client = exchange.get_ccxt_client()
             dic = client.fetch_tickers()
             df = pd.DataFrame()
+            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+            dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
             log.info('Update dataframe')
 
@@ -897,11 +896,12 @@ def update_dataframe(self, exid, signal):
             df = df.reindex(sorted(df.columns), axis=1)
             df = pd.concat([exchange.data, df])
             df = df[~df.index.duplicated(keep='first')]
+
             exchange.data = df
             exchange.save()
 
+            log.info('New row added {0}'.format(df.index[-1]))
             log.info('Update dataframe complete')
-            log.info('Last row {0}'.format(df.index[-1]))
 
         else:
             log.error("Exchange doesn't support fetchTickers")

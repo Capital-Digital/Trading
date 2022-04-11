@@ -5,7 +5,7 @@ from strategy.models import Strategy
 from celery.signals import task_success, task_postrun, task_failure
 from .tasks import update_strategies, update_accounts
 
-log = structlog.get_logger()
+log = structlog.get_logger(__name__)
 
 
 @task_postrun.connect

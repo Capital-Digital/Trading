@@ -19,8 +19,8 @@ class CustomerAdmin(admin.ModelAdmin):
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
                        'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',
                        'credentials')
-    actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'update_prices',
-               'update_dataframe', 'update_strategies', 'rebalance_accounts']
+    actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'fetch_prices',
+               'refresh_dataframe', 'run_strategies', 'rebalance_accounts']
     save_as = True
     save_on_top = True
 
@@ -77,25 +77,25 @@ class CustomerAdmin(admin.ModelAdmin):
     update_markets.short_description = "Update markets"
 
     # Update prices
-    def update_prices(self, request, queryset):
+    def fetch_prices(self, request, queryset):
         for exchange in queryset:
             update_prices.delay(exchange.exid)
 
-    update_prices.short_description = "Update prices"
+    fetch_prices.short_description = "Update prices"
 
     # Update dataframes
-    def update_dataframe(self, request, queryset):
+    def refresh_dataframe(self, request, queryset):
         for exchange in queryset:
             update_dataframe.delay(exchange.exid)
 
-    update_dataframe.short_description = "Update dataframes"
+    refresh_dataframe.short_description = "Update dataframes"
 
     # Update strategies
-    def update_strategies(self, request, queryset):
+    def run_strategies(self, request, queryset):
         for exchange in queryset:
             update_strategies.delay(exchange.exid, signal=False)
 
-    update_strategies.short_description = "Update strategies"
+    run_strategies.short_description = "Update strategies"
 
     # Rebalance accounts
     def rebalance_accounts(self, request, queryset):

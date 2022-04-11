@@ -12,6 +12,14 @@ directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
+# Get current time as an aware datetime object in Python 3.3+
+def dt_aware_now(minute):
+    dt = datetime.now(timezone.utc)
+    if minute:
+        dt = dt.replace(minute=minute, second=0, microsecond=0)
+    return dt
+
+
 # Check and fix prices and volumes dataframes
 def fix(df):
     df = df.replace(to_replace=0, method='ffill')

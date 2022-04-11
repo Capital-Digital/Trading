@@ -95,40 +95,40 @@ def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):
                     "class": "logging.StreamHandler",
                     "formatter": "plain_console",
                 },
-                "json_file": {
-                    "class": "logging.handlers.WatchedFileHandler",
-                    "filename": "log/celery_json.log",
-                    "formatter": "json_formatter",
-                },
-                "flat_line_file": {
-                    "class": "logging.handlers.WatchedFileHandler",
-                    "filename": "log/celery_flat_line.log",
-                    "formatter": "key_value",
-                },
                 "marketsdata_file": {
                     "class": "logging.handlers.WatchedFileHandler",
                     "filename": "log/marketsdata.log",
                     "formatter": "key_value",
                 },
+                "strategy_file": {
+                    "class": "logging.handlers.WatchedFileHandler",
+                    "filename": "log/strategy.log",
+                    "formatter": "key_value",
+                },
+                "trading_file": {
+                    "class": "logging.handlers.WatchedFileHandler",
+                    "filename": "log/trading.log",
+                    "formatter": "key_value",
+                },
             },
             "loggers": {
                 '': {
-                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "handlers": ["console"],
                     "level": "ERROR",
                     'propagate': False,
                 },
                 'marketsdata': {
-                    "handlers": ["console", "flat_line_file", "json_file", "marketsdata_file"],
+                    "handlers": ["console", "marketsdata_file"],
                     "level": "INFO",
                     'propagate': False,
                 },
                 'strategy': {
-                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "handlers": ["console", "strategy_file"],
                     "level": "INFO",
                     'propagate': False,
                 },
                 'trading': {
-                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "handlers": ["console", "trading_file"],
                     "level": "INFO",
                     'propagate': False,
                 }

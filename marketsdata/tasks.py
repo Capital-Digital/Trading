@@ -689,155 +689,6 @@ def fetch_candle_history(exid):
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
-###################################
-
-
-# Group and execute exchange's tickers snapshot update
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Hourly tasks')
-def hourly_tasks():
-    res = group(insert_current_tickers.s(exid) for exid in ['binance'])()
-    while not res.ready():
-        time.sleep(0.5)
-
-    if res.successful():
-
-        from strategy.models import Strategy
-        strategies = Strategy.objects.filter(exchange__exid='binance', production=True)
-        gp = group(run_strategy.s(s.id) for s in strategies)()
-        while not gp.ready():
-            time.sleep(0.5)
-
-        if gp.successful():
-
-            accounts = Account.objects.filter(active=True, exchange__exid='binance')
-            gp_acc = group(run_account.s(a.id) for a in accounts)()
-            while not gp_acc.ready():
-                time.sleep(0.5)
-
-            if gp_acc.successful():
-                log.info('Update update success')
-
-            else:
-                log.info('Update update failure')
-
-        else:
-            log.error('Strategies failed')
-
-    else:
-        log.error('Hourly tasks failed')
-
-
-# Insert current tickers
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Insert tickers')
-def insert_current_tickers(self, exid):
-    print('Tickers insertion for {0} start'.format(exid))
-
-    def insert(data, wallet=None):
-
-        symbols = [s for s in data.keys() if '/USDT' in s]
-        symbols.sort()
-
-        for symbol in symbols:
-
-            # Create dictionary
-            dic = {k: data[symbol][k] for k in ['bid',
-                                                'ask',
-                                                'last',
-                                                'bidVolume',
-                                                'askVolume',
-                                                'quoteVolume',
-                                                'baseVolume']}
-            dic['timestamp'] = int(dt.timestamp())
-
-            args = dict(exchange=exchange,
-                        symbol=symbol,
-                        wallet=wallet
-                        )
-
-            # Replace symbol name in the query if delivery
-            if exid == 'binance' and wallet == 'delivery':
-                del args['symbol']
-                args['response__info__symbol'] = data[symbol]['symbol']
-            if not wallet:
-                del args['wallet']
-
-            try:
-                market = Market.objects.get(**args)
-
-            except ObjectDoesNotExist:
-                continue
-
-            else:
-                try:
-                    obj = Tickers.objects.get(year=year, semester=semester, market=market)
-
-                except ObjectDoesNotExist:
-                    log.info('Create tickers {0} {1} {2}'.format(market.symbol, year, semester))
-
-                    # Create new object
-                    Tickers.objects.create(year=year,
-                                           semester=semester,
-                                           market=market,
-                                           data={dt_string: dic}
-                                           )
-                else:
-                    if dt_string not in obj.data.keys():
-                        obj.data[dt_string] = dic
-                        obj.save()
-
-                    else:
-                        pass
-                        # log.info('Dictionary already updated for {0}'.format(market.symbol))
-
-    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    year = dt.year
-    semester = 1 if dt.month <= 6 else 2
-
-    exchange = Exchange.objects.get(exid=exid)
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
-
-            client = exchange.get_ccxt_client()
-            if exchange.wallets:
-                for wallet in exchange.get_wallets():
-                    log.info('Fetch tickers for {0}'.format(wallet))
-
-                    client.options['defaultType'] = wallet
-                    data = client.fetch_tickers()
-                    insert(data, wallet)
-
-            else:
-                data = client.fetch_tickers()
-                insert(data)
-
-    log.info('Insertion for {0} complete'.format(exid))
-
-
-# Strategies update
-@app.task(bind=True, name='Strategy_execution')
-def run_strategy(self, strategy_id):
-    from strategy.models import Strategy
-    strategy = Strategy.objects.get(id=strategy_id)
-
-    log.info('Update strategy {0}'.format(strategy.name), s=strategy.name)
-    log.info('Process {0}'.format(current_process().index), s=strategy.name)
-
-    exchange = Exchange.objects.get(exid='binance')
-    data = exchange.load_data(10 * 24, strategy.get_codes_long())
-    strategy.execute(data)
-
-
-# Strategies update
-@app.task(bind=True, name='Account_execution')
-def run_account(self, account_id):
-    from trading.models import Account
-    account = Account.objects.get(id=account_id)
-
-    log.info('Process {0}'.format(current_process().index), account=account.name)
-    account.trade(cancel=True)
-
-
 ########################
 
 
@@ -853,7 +704,7 @@ def update_exchanges(self):
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
-    log.info('Update dataframe {0}'.format(exid))
+    log.info('Update dataframe ({0})'.format(current_process().index))
     log.bind(exid=exid)
 
     # Select instance and create self.data dataframe with available prices
@@ -935,7 +786,7 @@ def update_prices(self):
 def update_tickers(self, exid):
     log.info('#')
     log.info('#')
-    log.info('Update tickers {0}'.format(exid))
+    log.info('Update tickers ({0})'.format(current_process().index))
     log.info('#')
     log.info('#')
 
@@ -1044,6 +895,7 @@ def update_strategies(self, exid, signal):
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
 def update_strategy(self, name, signal):
+    log.info('Update strategy {0} ({1})'.format(name, current_process().index))
     from strategy.models import Strategy
     strategy = Strategy.objects.get(name=name)
     strategy.execute()
@@ -1063,6 +915,7 @@ def update_accounts(self, strategy_name, signal):
 def update_account(self, account_id, signal):
     from trading.models import Account
     account = Account.objects.get(id=account_id)
+    log.info('Update account {0} ({1})'.format(account.name, current_process().index))
     account.trade()
 
 

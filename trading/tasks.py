@@ -48,7 +48,7 @@ class BaseTaskWithRetry(Task):
 
 
 # Check all accounts credentials
-@app.tasks(name='Trading_____Check accounts credentials')
+@app.task(name='Trading_____Check accounts credentials')
 def check_accounts_cred():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange):
@@ -56,7 +56,7 @@ def check_accounts_cred():
 
 
 # Check an account credential
-@app.tasks(name='Trading_____Check account credentials', base=BaseTaskWithRetry)
+@app.task(name='Trading_____Check account credentials', base=BaseTaskWithRetry)
 def check_account_cred(account_id):
     #
     account = Account.objects.get(id=account_id)
@@ -84,7 +84,7 @@ def check_account_cred(account_id):
         log.unbind('user')
 
 
-@app.tasks(name='Trading_____Update orders', base=BaseTaskWithRetry)
+@app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
     # Iterate through accounts and update open orders
     for account in Account.objects.filter(active=True, exchange__exid='binance'):

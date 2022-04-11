@@ -861,9 +861,10 @@ def update_exchanges(self, signal):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
         update_dataframe.delay(exchange.exid, signal)
+        update_ticker.delay(exchange.exid, signal=False)
 
 
-# Add a new row to exchange.data dataframe (signal strategies update)
+# Update dataframe
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
@@ -921,14 +922,6 @@ def update_dataframe(self, exid, signal):
         log.error('Exchange is not trading')
 
     log.unbind('exid')
-
-
-# Fetch markets snapshot of all exchanges at 00:00
-@app.task(bind=True, name='Update_tickers')
-def update_tickers(self):
-    exchanges = Exchange.objects.filter(enable=True)
-    for exchange in exchanges:
-        update_ticker.delay(exchange.exid)
 
 
 # Update ticker object

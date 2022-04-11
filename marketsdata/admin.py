@@ -45,7 +45,7 @@ class CustomerAdmin(admin.ModelAdmin):
     get_markets.short_description = "Markets"
 
     def get_df_latest_index(self, obj):
-        if obj.data:
+        if hasattr(obj, 'data'):
             if not obj.data.empty:
                 return list(obj.data.index[-1])[0]
 

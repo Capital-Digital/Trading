@@ -20,9 +20,8 @@ class CustomerAdmin(admin.ModelAdmin):
                        'urls', 'rate_limits', 'credit', 'credit_max',
                        'has', 'timeframes',
                        'precision_mode', 'credentials')
-    actions = ['fetch_candle_history', 'update_currencies',
-               'update_markets', 'update_price', 'update_status', 'update_prices',
-               'flag_top_markets']
+    actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'update_prices' 
+                                                                                            'update_strategies']
     save_as = True
     save_on_top = True
 

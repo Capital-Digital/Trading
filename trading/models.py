@@ -116,6 +116,8 @@ class Account(models.Model):
                         price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                     except MultipleObjectsReturned as e:
                         log.error('Multiple objects found for currency {0}'.format(coin))
+                    except ObjectDoesNotExist as e:
+                        log.error('Currency {0} not found'.format(coin))
                     else:
                         if price:
                             value = price * funds[coin]

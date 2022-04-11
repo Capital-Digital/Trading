@@ -866,7 +866,12 @@ def update_exchanges(self):
 # Add a new row to exchange.data dataframe (signal strategies update)
 @shared_task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
-    #
+    log.info('#')
+    log.info('#')
+    log.info('Update dataframe {0}'.format(exid))
+    log.info('#')
+    log.info('#')
+
     log.bind(exid=exid)
     log.info('Preload data')
 
@@ -924,17 +929,22 @@ def update_dataframe(self, exid, signal):
 
 
 # Fetch markets snapshot of all exchanges at 00:00
-@app.task(bind=True, name='Update_tickers')
-def update_tickers(self):
+@app.task(bind=True, name='Update_prices')
+def update_prices(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        update_ticker.delay(exchange.exid)
+        update_tickers.delay(exchange.exid)
 
 
-# Update ticker object
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_ticker')
-def update_ticker(self, exid):
-    #
+# Update tickers objects
+@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_tickers')
+def update_tickers(self, exid):
+    log.info('#')
+    log.info('#')
+    log.info('Update tickers {0}'.format(exid))
+    log.info('#')
+    log.info('#')
+
     log.bind(exid=exid)
     exchange = Exchange.objects.get(exid=exid)
 
@@ -1039,34 +1049,37 @@ def update_strategies(self, exid, signal):
     from strategy.models import Strategy
     strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
     for strategy in strategies:
-        update_strategy.delay(strategy.id, signal)
+        update_strategy.delay(strategy.name, signal)
 
 
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
-def update_strategy(self, stid, signal):
+def update_strategy(self, name, signal):
     from strategy.models import Strategy
-    strategy = Strategy.objects.get(id=stid)
+    strategy = Strategy.objects.get(name=name)
     strategy.execute()
 
 
 # Update all accounts
 @app.task(bind=True, name='Update_accounts')
-def update_accounts(self, stid, signal):
-    #
-    log.info('Update accounts of strategy {0}'.format(stid))
+def update_accounts(self, strategy_name, signal):
+    log.info('#')
+    log.info('#')
+    log.info('Update accounts ({0})'.format(strategy_name))
+    log.info('#')
+    log.info('#')
     from trading.models import Account
-    accounts = Account.objects.filter(strategy__id=stid, active=True)
+    accounts = Account.objects.filter(strategy__name=strategy_name, active=True)
     for account in accounts:
         update_account.delay(account.id, signal)
 
 
 # Update an account
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_account')
-def update_account(self, acid, signal):
+def update_account(self, account_id, signal):
     #
     from trading.models import Account
-    account = Account.objects.get(id=acid)
+    account = Account.objects.get(id=account_id)
     account.trade()
 
 #########################################

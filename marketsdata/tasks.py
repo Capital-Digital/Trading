@@ -860,58 +860,62 @@ def update_dataframe(self, exid, signal):
     exchange.data = exchange.load_data(10 * 24, codes)
     exchange.save()
 
-    # And wait...
-    if signal:
-        while datetime.now().minute > 0:
-            log.info('Wait {0} minutes and {1}s'.format(60 - datetime.now().minute, 60 - datetime.now().second))
-            time.sleep(1)
+    # Dataframe must be updated ?
+    if not exchange.is_data_updated():
 
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
+        if signal:
 
-            # Download snapshot of spot markets
-            client = exchange.get_ccxt_client()
-            dic = client.fetch_tickers()
-            df = pd.DataFrame()
-            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-            dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            # wait...
+            while datetime.now().minute > 0:
+                log.info('Wait {0} minutes and {1}s'.format(60 - datetime.now().minute, 60 - datetime.now().second))
+                time.sleep(1)
 
-            log.info('Update dataframe')
+        if exchange.is_trading():
+            if exchange.has['fetchTickers']:
 
-            # Select codes of our strategies
-            codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+                # Download snapshot of spot markets
+                client = exchange.get_ccxt_client()
+                dic = client.fetch_tickers()
+                df = pd.DataFrame()
+                dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+                dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            for code in codes:
+                log.info('Update dataframe')
 
-                try:
-                    d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
+                # Select codes of our strategies
+                codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
 
-                except KeyError:
-                    log.warning('Market {0} not found in dictionary')
-                    continue
+                for code in codes:
 
-                tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
-                tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
-                df = pd.concat([df, tmp], axis=1)
+                    try:
+                        d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
 
-            df = df.reindex(sorted(df.columns), axis=1)
-            df = pd.concat([exchange.data, df])
-            df = df[~df.index.duplicated(keep='first')]
+                    except KeyError:
+                        log.warning('Market {0} not found in dictionary')
+                        continue
 
-            exchange.data = df
-            exchange.save()
+                    tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
+                    tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
+                    df = pd.concat([df, tmp], axis=1)
 
-            if exchange.is_data_updated():
-                log.info('New row added {0}'.format(df.index[-1]))
-                log.info('Update dataframe complete')
+                df = df.reindex(sorted(df.columns), axis=1)
+                df = pd.concat([exchange.data, df])
+                df = df[~df.index.duplicated(keep='first')]
+
+                exchange.data = df
+                exchange.save()
+
+                if exchange.is_data_updated():
+                    log.info('New row added {0}'.format(df.index[-1]))
+                    log.info('Update dataframe complete')
+
+                else:
+                    raise Exception('Dataframe update problem')
 
             else:
-                raise Exception('Dataframe update problem')
-
+                log.error("Exchange doesn't support fetchTickers")
         else:
-            log.error("Exchange doesn't support fetchTickers")
-    else:
-        log.error('Exchange is not trading')
+            log.error('Exchange is not trading')
 
     log.unbind('exid')
 

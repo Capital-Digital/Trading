@@ -46,7 +46,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_df_latest_index(self, obj):
         if hasattr(obj, 'data'):
-            if not obj.data.empty:
+            if obj.data:
                 return list(obj.data.index[-1])[0]
 
     get_df_latest_index.short_description = "Last index"

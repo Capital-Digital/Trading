@@ -20,7 +20,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',
                        'credentials')
     actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'update_prices',
-               'update_dataframe', 'update_strategies']
+               'update_dataframe', 'update_strategies', 'rebalance_accounts']
     save_as = True
     save_on_top = True
 
@@ -96,6 +96,14 @@ class CustomerAdmin(admin.ModelAdmin):
             update_strategies.delay(exchange.exid, signal=False)
 
     update_strategies.short_description = "Update strategies"
+
+    # Rebalance accounts
+    def rebalance_accounts(self, request, queryset):
+        for exchange in queryset:
+            for account in Account.objects.filter(exchange=exchange, active=True):
+                update_account.delay(account.id, signal=False)
+
+    rebalance_accounts.short_description = "Rebalance accounts"
 
     # Fetch markets history
     def fetch_candle_history(self, request, queryset):

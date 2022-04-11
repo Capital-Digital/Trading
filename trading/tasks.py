@@ -46,6 +46,41 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
+@shared_task(name='Trading_____Check accounts credentials', base=BaseTaskWithRetry)
+def check_accounts_cred():
+    for exchange in Exchange.objects.all():
+        for account in Account.objects.filter(exchange=exchange):
+            check_account_cred.delay(account.id)
+
+
+@shared_task(name='Trading_____Check account credentials', base=BaseTaskWithRetry)
+def check_account_cred(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+    log.bind(user=account.name)
+
+    try:
+        # Check credentials
+        client.checkRequiredCredentials()
+
+    except ccxt.AuthenticationError as e:
+        account.valid_credentials = False
+        log.warning('Account credentials are invalid')
+
+    except Exception as e:
+        log.warning("Account credential can't be checked: {0}".format(e))
+        account.valid_credentials = False
+
+    else:
+        account.valid_credentials = True
+        log.info('Account credentials are valid')
+
+    finally:
+        account.save()
+        log.unbind('user')
+
+
 @shared_task(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
     # Iterate through accounts and update open orders
@@ -63,9 +98,3 @@ def update_orders():
         else:
             log.warning('Account is already trading', account=account.name)
 
-
-@shared_task(name='Trading_____Trade account', base=BaseTaskWithRetry)
-def trade():
-    for account in Account.objects.filter(active=True, exchange__exid='binance'):
-        if datetime.now().hour in account.strategy.execution_hours():
-            account.trade()

@@ -1,5 +1,6 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
+from marketsdata.tasks import update_account
 from trading.models import Account, Fund, Position, Order, Transfer
 from trading import tasks
 import structlog
@@ -17,10 +18,10 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'valid_credentials', 'get_limit_price_tolerance',
+    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'trading', 'valid_credentials', 'get_limit_price_tolerance',
                     'updated_at',)
     readonly_fields = ('valid_credentials', 'user')
-    actions = ['update_credentials', 'trade']
+    actions = ['update_credentials', 'rebalance_account']
     save_as = True
     save_on_top = True
 
@@ -38,39 +39,17 @@ class CustomerAdmin(admin.ModelAdmin):
 
     # Actions
 
-    def trade(self, request, queryset):
+    def rebalance_account(self, request, queryset):
+        for account in queryset:
+            update_account.delay(account.id, signal=False)
 
-        chains = [chain(
-            tasks.trade_single.s(account.id).set(queue='default')
-        ) for account in queryset]
-
-        result = group(*chains).delay()
-
-    trade.short_description = "Trade"
+    rebalance_account.short_description = "Rebalance"
 
     def update_credentials(self, request, queryset):
         for account in queryset:
             account.update_credentials()
 
     update_credentials.short_description = "Update credentials"
-
-    def update_fund(self, request, queryset):
-        for account in queryset:
-            tasks.create_fund(account.id)
-
-    update_fund.short_description = "Update fund"
-
-    def update_positions(self, request, queryset):
-        for account in queryset:
-            tasks.update_positions(account.id)
-
-    update_positions.short_description = "Update positions"
-
-    def fetch_order_open_all(self, request, queryset):
-        for account in queryset:
-            tasks.fetch_order_open(account)
-
-    fetch_order_open_all.short_description = "Fetch all open orders"
 
 
 @admin.register(Fund)

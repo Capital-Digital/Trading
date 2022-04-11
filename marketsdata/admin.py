@@ -17,11 +17,10 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'get_status', "timeout", "rate_limit", "updated_at",
                     'get_currencies', 'get_markets', 'precision_mode', 'start_date', 'limit_ohlcv',)
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
-                       'urls', 'rate_limits', 'credit', 'credit_max',
-                       'has', 'timeframes',
-                       'precision_mode', 'credentials')
-    actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'update_prices' 
-                                                                                            'update_strategies']
+                       'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',
+                       'credentials')
+    actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'update_prices',
+               'update_strategies']
     save_as = True
     save_on_top = True
 

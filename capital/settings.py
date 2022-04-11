@@ -249,8 +249,7 @@ structlog.configure(
 
 @receiver(bind_extra_request_metadata)
 def bind_unbind_metadata(request, logger, **kwargs):
-    # logger.unbind('request_id', 'ip', 'user_id')
-    logger.bind(user_name=getattr(request.user, 'name', ''))
+    logger.unbind('request_id', 'ip', 'user_id')
 
 
 DEFAULT_AUTO_FIELD='django.db.models.AutoField'

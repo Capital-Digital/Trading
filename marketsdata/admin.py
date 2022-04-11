@@ -170,28 +170,6 @@ class CustomerAdmin(admin.ModelAdmin):
     get_precision_price.short_description = "Precision price"
 
 
-@admin.register(CoinPaprika)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('currency', 'year', 'semester', 'count_records', 'latest_timestamp')
-    readonly_fields = ('name', 'currency', 'year', 'semester', 'dt_created', 'data')
-    list_filter = ('year', 'semester', 'currency__code',)
-    ordering = ('-year', '-semester', 'currency',)
-    save_as = True
-
-    def count_records(self, obj):
-        if obj.data:
-            return len(obj.data)
-
-    count_records.short_description = 'Records'
-
-    def latest_timestamp(self, obj):
-        if obj.data:
-            log.info('Display {0}'.format(obj.currency.code))
-            return # obj.data[-1]['timestamp'][:16]
-
-    latest_timestamp.short_description = 'Latest'
-
-
 @admin.register(Candles)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('market', 'year', 'semester', 'count_records', 'latest_timestamp')

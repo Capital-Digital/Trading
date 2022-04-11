@@ -857,10 +857,10 @@ def run_account(self, account_id):
 
 # Update dataframes of all exchanges
 @app.task(bind=True, name='Update_exchanges')
-def update_exchanges(self, signal):
+def update_exchanges(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        update_dataframe.delay(exchange.exid, signal)
+        update_dataframe.delay(exchange.exid, signal=True)
 
 
 # Add a new row to exchange.data dataframe (signal strategies update)

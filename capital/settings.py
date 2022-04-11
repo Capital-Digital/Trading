@@ -169,16 +169,12 @@ LOGGING = {
         },
         "plain_console": {
             "()": structlog.stdlib.ProcessorFormatter,
-            "processor": structlog.dev.ConsoleRenderer(pad_event=43,
-                                                       colors=True,
-                                                       force_colors=True
-                                                       ),
+            "processor": structlog.dev.ConsoleRenderer(pad_event=43, colors=True, force_colors=True),
         },
         "key_value": {
             "()": structlog.stdlib.ProcessorFormatter,
-            "processor": structlog.processors.KeyValueRenderer(
-                key_order=['timestamp', 'level', 'logger', 'event'],
-                sort_keys=False
+            "processor": structlog.processors.KeyValueRenderer(key_order=['timestamp', 'level', 'logger', 'event'],
+                                                               sort_keys=False
             ),
         },
     },
@@ -205,7 +201,7 @@ LOGGING = {
     },
     "loggers": {
         '': {
-            "handlers": ["console", "flat_line_file", "json_file", "marketsdata_file"],
+            "handlers": ["console", "flat_line_file", "json_file"],
             "level": "WARNING",
             'propagate': False,
         },

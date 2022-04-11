@@ -67,7 +67,9 @@ app.conf.task_default_routing_key = default_routing_key
 
 
 @setup_logging.connect
-def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):  # pragma: no cover
+def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):
+
+    # Takes the logging configuration from a dictionary
     logging.config.dictConfig(
         {
             "version": 1,
@@ -79,16 +81,13 @@ def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):  # pr
                 },
                 "plain_console": {
                     "()": structlog.stdlib.ProcessorFormatter,
-                    "processor": structlog.dev.ConsoleRenderer(pad_event=43,
-                                                               colors=True,
-                                                               force_colors=True
-                                                               ),
+                    "processor": structlog.dev.ConsoleRenderer(pad_event=43, colors=True, force_colors=True),
                 },
                 "key_value": {
                     "()": structlog.stdlib.ProcessorFormatter,
-                    "processor": structlog.processors.KeyValueRenderer(
-                        sort_keys=False,
-                        key_order=['timestamp', 'level', 'logger', 'event']),
+                    "processor": structlog.processors.KeyValueRenderer(sort_keys=False,
+                                                                       key_order=['timestamp', 'level', 'logger',
+                                                                                  'event']),
                 },
             },
             "handlers": {
@@ -106,6 +105,11 @@ def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):  # pr
                     "filename": "log/celery_flat_line.log",
                     "formatter": "key_value",
                 },
+                "marketsdata_file": {
+                    "class": "logging.handlers.WatchedFileHandler",
+                    "filename": "log/marketsdata.log",
+                    "formatter": "key_value",
+                },
             },
             "loggers": {
                 '': {
@@ -114,7 +118,7 @@ def receiver_setup_logging(loglevel, logfile, format, colorize, **kwargs):  # pr
                     'propagate': False,
                 },
                 'marketsdata': {
-                    "handlers": ["console", "flat_line_file", "json_file"],
+                    "handlers": ["console", "flat_line_file", "json_file", "marketsdata_file"],
                     "level": "INFO",
                     'propagate': False,
                 },

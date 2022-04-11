@@ -113,8 +113,11 @@ class Account(models.Model):
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
                     price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                    value = price * funds[coin]
-                    self.balances.loc[coin, (wallet, tp, 'value')] = value
+                    if price:
+                        value = price * funds[coin]
+                        self.balances.loc[coin, (wallet, tp, 'value')] = value
+                    else:
+                        self.balances = self.balances.loc[~coin]
 
         # Drop dust < $10
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1

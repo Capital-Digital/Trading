@@ -118,19 +118,14 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),
-                    )
+STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 STATIC_ROOT = os.path.join(PROJECT_ROOT, 'static')  # Static files settings
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
@@ -202,6 +197,11 @@ LOGGING = {
             "filename": "log/django_flat_line.log",
             "formatter": "key_value",
         },
+        "marketsdata_file": {
+            "class": "logging.handlers.WatchedFileHandler",
+            "filename": "log/marketsdata.log",
+            "formatter": "key_value",
+        },
     },
     "loggers": {
         '': {
@@ -210,7 +210,7 @@ LOGGING = {
             'propagate': False,
         },
         'marketsdata': {
-            "handlers": ["console", "flat_line_file", "json_file"],
+            "handlers": ["console", "flat_line_file", "json_file", "marketsdata_file"],
             "level": "INFO",
             'propagate': False,
         },

@@ -992,6 +992,9 @@ class Account(models.Model):
             log.info('-------------------------------------------')
             log.info(' ')
 
+        else:
+            log.error('Trading aborted, strategy is not updated')
+
 
 class Fund(models.Model):
     objects = models.Manager()

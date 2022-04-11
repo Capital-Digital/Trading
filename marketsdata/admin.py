@@ -85,6 +85,13 @@ class CustomerAdmin(admin.ModelAdmin):
 
     update_prices.short_description = "Update prices"
 
+    # Update strategies
+    def update_strategies(self, request, queryset):
+        for exchange in queryset:
+            update_strategies.delay(exchange.exid, signal=False)
+
+    update_strategies.short_description = "Update strategies"
+
     # Fetch markets history
     def fetch_candle_history(self, request, queryset):
         for exchange in queryset:

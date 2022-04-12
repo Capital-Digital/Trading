@@ -88,20 +88,18 @@ class Account(models.Model):
             response = client.fetchBalance()
             for key in ['total', 'free', 'used']:
 
-                print(wallet, key)
-
                 # Exclude LBTC from dictionary (staking or earning account)
                 dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
 
-                if dic:
-                    tmp = pd.DataFrame(index=dic.keys(),
-                                       data=dic.values(),
-                                       columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
-                                       )
-                    self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
-                    self.balances = self.balances.groupby(level=0).last()
-                else:
-                    self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
+                #if dic:
+                tmp = pd.DataFrame(index=dic.keys(),
+                                   data=dic.values(),
+                                   columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
+                                   )
+                self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
+                self.balances = self.balances.groupby(level=0).last()
+                #else:
+                #    self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
         log.info('Get balances qty done')
 

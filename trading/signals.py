@@ -19,9 +19,8 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info('SUCCESS')
             log.info(retval['info']['orderId'])
             log.info(retval['info']['status'])
-            Account.objects.get(id=args).get_balances_value()
-            log.info(args)
-            pprint(retval)
+            account = Account.objects.get(id=args)
+            log.info(account.balances)
 
 
 @receiver(pre_delete, sender=Order)

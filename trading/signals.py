@@ -11,7 +11,7 @@ log = structlog.get_logger(__name__)
 
 
 @task_postrun.connect
-def task_postrun_handler(task_id=None, task=None, args=None, retval=None, state=None, **kwargs):
+def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
     if task.name == 'Trading_place_order':
 

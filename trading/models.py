@@ -114,7 +114,7 @@ class Account(models.Model):
                 for coin in funds.index:
                     try:
                         price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                        
+
                     except ObjectDoesNotExist as e:
                         log.error('Currency {0} not found'.format(coin))
                         self.balances = self.balances.drop(coin)
@@ -254,6 +254,30 @@ class Account(models.Model):
 
         self.save()
         log.info('Get delta done')
+
+    # Return a list of codes sell
+    def codes_to_sell(self):
+        delta = self.balances.account.target.delta
+        codes = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
+        return [i for i in codes if i in self.balances.spot.free.quantity.dropna().index.values.tolist()]
+
+    # Return a list of codes and quantity to sell spot
+    def qty_to_sell_spot(self):
+        codes = self.codes_to_sell()
+        codes = self.balances.spot.free.quantity[codes].dropna().index.values.tolist()
+        target = self.balances.account.target.quantity[codes]
+        qty_delta = self.balances.account.target.delta[codes]
+
+        # Sell all resources available if coin must be shorted
+        if target < 0:
+            amount = free
+
+        # Sell all resources available if coin is not allocated
+        elif target == 0:
+            amount = free
+
+        else:
+            amount = qty_delta
 
     # Sell in spot market
     def sell_spot(self):

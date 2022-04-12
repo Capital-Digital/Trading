@@ -607,6 +607,7 @@ class Currency(models.Model):
             else:
                 dt = datetime.now().replace(minute=0, second=0, microsecond=0)
                 now = dt.strftime(datetime_directive_ISO_8601)
+                print(tickers.data)
                 return tickers.data[now][key]
 
         else:

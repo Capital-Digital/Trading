@@ -1,19 +1,28 @@
 from django.db.models.signals import post_save, pre_delete
 from django.db.backends.signals import connection_created
 from django.dispatch import receiver
-from .models import Order
+from trading.models import Account
+from trading.tasks import *
+from celery.signals import task_success, task_postrun, task_failure
 
 import structlog
 
 log = structlog.get_logger(__name__)
 
 
-# # Execute at startup
-# @receiver(connection_created)
-# def my_receiver(connection, **kwargs):
-#     with connection.cursor() as cursor:
-#         # do something to the database
-#         print('Hello world')
+@task_postrun.connect
+def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
+
+    if task.name == 'trading.get_balances_qty':
+        if state == 'SUCCESS':
+            Account.objects.get(id=args).get_balances_value()
+            get_positions.delay(args)
+
+    if task.name == 'trading.get_positions':
+        if state == 'SUCCESS':
+            Account.objects.get(id=args).get_target()
+            Account.objects.get(id=args).get_delta()
+            sell_spot.delay(args)
 
 
 @receiver(pre_delete, sender=Order)

@@ -417,11 +417,9 @@ class Account(models.Model):
                 side = 'buy'
 
             order = dict(symbol=market.symbol,
-                         market=market.type,
                          wallet=market.wallet,
                          size=size,
                          price=price,
-                         action=action,
                          reduce_only=reduce_only,
                          valid=True,
                          side=side,

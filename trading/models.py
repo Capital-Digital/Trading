@@ -359,7 +359,10 @@ class Account(models.Model):
                 market = 'future'
 
             self.balances.loc[self.quote, (market, 'free', 'quantity')] -= order_value
-            self.balances.loc[self.quote, (market, 'used', 'quantity')] += order_value
+            if 'used' in self.balances.columns.get_level_values(1):
+                self.balances.loc[self.quote, (market, 'used', 'quantity')] += order_value
+            else:
+                self.balances.loc[self.quote, (market, 'used', 'quantity')] = order_value
 
         return dict(order_size=order_size,
                     order_value=order_value,

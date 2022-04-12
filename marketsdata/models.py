@@ -178,15 +178,11 @@ class Exchange(models.Model):
     # Return exchange's wallets
     def get_wallets(self):
 
-        if 'defaultType' in self.get_ccxt_client().options:
-
-            # Return a list of supported ccxt types
-            if self.wallets:
-                return str(self.wallets).replace(" ", "").split(',')
-            else:
-                raise Exception('Exchange {0} requires a parameter defaultType'.format(self.exid))
+        # Return a list of supported ccxt types
+        if self.wallets:
+            return str(self.wallets).replace(" ", "").split(',')
         else:
-            return None
+            raise Exception('Exchange {0} requires a parameter defaultType'.format(self.exid))
 
     # return a list of market types (spot or derivative)
     def get_market_types(self):

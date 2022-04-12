@@ -182,6 +182,7 @@ def place_order(account_id, wallet, symbol, size, price, order_type, side, reduc
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
     client.options['defaultType'] = wallet
+    client.verbose = True
 
     kwargs = dict(
         symbol=symbol,
@@ -196,7 +197,7 @@ def place_order(account_id, wallet, symbol, size, price, order_type, side, reduc
         kwargs['params'] = dict(reduceonly=True)
 
     pprint(kwargs)
-    
+
     log.info('Place order to {0} {1} in {2}'.format(side, symbol, wallet))
     client.create_order(**kwargs)
 

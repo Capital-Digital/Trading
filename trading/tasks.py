@@ -86,89 +86,109 @@ def check_account_cred(account_id):
 ###############################################
 
 
-@app.task(name='Trading_Create_accounts_balances')
-def create_accounts_balances(strategy_id):
+@app.task(name='Trading_Rebalance_accounts')
+def rebalance_all(strategy_id):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)
     for account in accounts:
-        get_balances_qty.delay(account.id)
+        rebalance.delay(account.id)
 
 
-# Fetch account balances and create a dataframe
-@app.task(base=BaseTaskWithRetry)
-def get_balances_qty(account_id):
-    #
+@app.task(name='Trading_Rebalance_account')
+def rebalance(account_id):
     account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-
-    log.bind(user=account.name)
-    log.info('Get balances qty')
-
-    # Del attribute
-    if hasattr(account, 'balances'):
-        del account.balances
-
-    # Iterate through exchange's wallets
-    for wallet in account.exchange.get_wallets():
-
-        client.options['defaultType'] = wallet
-        response = client.fetchBalance()
-        for key in ['total', 'free', 'used']:
-
-            # Exclude LBTC from dictionary (staking or earning account)
-            dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
-
-            if dic:
-                tmp = pd.DataFrame(index=dic.keys(),
-                                   data=dic.values(),
-                                   columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
-                                   )
-                account.balances = tmp if not hasattr(account, 'balances') else pd.concat([account.balances, tmp])
-                account.balances = account.balances.groupby(level=0).last()
-            else:
-                account.balances = pd.DataFrame() if not hasattr(account, 'balances') else account.balances
-
-    log.info('Get balances qty done')
+    account.create_balances()
+    account.sell_spot_all()
 
 
-# Fetch opened positions and add to dataframe
-@app.task(base=BaseTaskWithRetry)
-def get_positions(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-
-    log.bind(user=account.name)
-    log.info('Get positions')
-
-    response = client.fapiPrivateGetPositionRisk()
-    opened = [i for i in response if float(i['positionAmt']) != 0]
-    closed = [i for i in response if float(i['positionAmt']) == 0]
-
-    if opened:
-
-        for position in opened:
-            market = Market.objects.get(exchange=account.exchange, response__id=position['symbol'], type='derivative')
-            code = market.base.code
-            quantity = float(position['positionAmt'])
-            account.balances.loc[code, ('position', 'open', 'quantity')] = quantity
-            account.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
-            account.balances.loc[code, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
-            account.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
-            account.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
-            account.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
-            account.save()
-
-    log.info('Get positions done')
+# # Fetch account balances and create a dataframe
+# @app.task(base=BaseTaskWithRetry)
+# def get_balances_qty(account_id):
+#     #
+#     account = Account.objects.get(id=account_id)
+#     client = account.exchange.get_ccxt_client(account)
+#
+#     log.bind(user=account.name)
+#     log.info('Get balances qty')
+#
+#     # Del attribute
+#     if hasattr(account, 'balances'):
+#         del account.balances
+#
+#     # Iterate through exchange's wallets
+#     for wallet in account.exchange.get_wallets():
+#
+#         client.options['defaultType'] = wallet
+#         response = client.fetchBalance()
+#         for key in ['total', 'free', 'used']:
+#
+#             # Exclude LBTC from dictionary (staking or earning account)
+#             dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
+#
+#             if dic:
+#                 tmp = pd.DataFrame(index=dic.keys(),
+#                                    data=dic.values(),
+#                                    columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
+#                                    )
+#                 account.balances = tmp if not hasattr(account, 'balances') else pd.concat([account.balances, tmp])
+#                 account.balances = account.balances.groupby(level=0).last()
+#             else:
+#                 account.balances = pd.DataFrame() if not hasattr(account, 'balances') else account.balances
+#
+#     log.info('Get balances qty done')
+#
+#
+# # Fetch opened positions and add to dataframe
+# @app.task(base=BaseTaskWithRetry)
+# def get_positions(account_id):
+#     #
+#     account = Account.objects.get(id=account_id)
+#     client = account.exchange.get_ccxt_client(account)
+#
+#     log.bind(user=account.name)
+#     log.info('Get positions')
+#
+#     response = client.fapiPrivateGetPositionRisk()
+#     opened = [i for i in response if float(i['positionAmt']) != 0]
+#     closed = [i for i in response if float(i['positionAmt']) == 0]
+#
+#     if opened:
+#
+#         for position in opened:
+#             market = Market.objects.get(exchange=account.exchange, response__id=position['symbol'], type='derivative')
+#             code = market.base.code
+#             quantity = float(position['positionAmt'])
+#             account.balances.loc[code, ('position', 'open', 'quantity')] = quantity
+#             account.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
+#             account.balances.loc[code, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
+#             account.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
+#             account.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
+#             account.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+#             account.save()
+#
+#     log.info('Get positions done')
 
 
 # Sell coins in spot markets
 @app.task(base=BaseTaskWithRetry)
-def sell_spot(account_id):
+def place_order(account_id, wallet, symbol, size, price, order_type, side, reduce_only):
     #
     account = Account.objects.get(id=account_id)
-    for coin, quantity in account.to_sell_spot().items():
-        size = account.order_size(coin, quantity, 'sell_spot')
-        place_order.delay(coin, size, 'sell_spot')
+    client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = wallet
+
+    kwargs = dict(
+        symbol=symbol,
+        type=order_type,
+        side=side,
+        amount=size,
+        price=price
+    )
+
+    # Set parameters
+    if reduce_only:
+        kwargs['params'] = dict(reduceonly=True)
+
+    client.create_order(**kwargs)
 
 
 @app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)

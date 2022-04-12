@@ -6,10 +6,11 @@ from django.utils import timezone
 from django.db.models import Q
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from capital.methods import *
-from strategy.models import Strategy, Allocation
+from strategy.models import Strategy
 from marketsdata.models import Exchange, Market, Currency
 from trading.error import *
 from trading.methods import *
+from trading.tasks import *
 import structlog
 from datetime import timedelta, datetime
 from pprint import pprint
@@ -20,6 +21,7 @@ import traceback
 import sys
 from timeit import default_timer as timer
 import collections
+import math
 
 import warnings
 
@@ -168,7 +170,6 @@ class Account(models.Model):
 
             # Keep only wallets
             if level not in ['position', 'account']:
-
                 # Sum value of all coins
                 wallets.append(self.balances[level].total.value.sum())
 
@@ -271,14 +272,14 @@ class Account(models.Model):
     def to_sell_spot(self):
         codes = self.codes_to_sell()
         codes = self.balances.spot.free.quantity[codes].dropna().index.values.tolist()
-        target = self.balances.account.target.quantity[codes]
+        target_quantity = self.balances.account.target.quantity[codes]
 
-        # Select coins to sell entirely
-        zero = target <= 0
+        # Select free quantity if coin must be sold entirely
+        zero = target_quantity <= 0
         s1 = self.balances.spot.free.quantity[zero[zero].index]
 
-        # Add coins to sell partially
-        keep = target > 0
+        # Select delta quantity if coin must be sold partially
+        keep = target_quantity > 0
         return s1.append(self.balances.account.target.delta[keep[keep].index])
 
     # Return a Series with codes/quantity to close short
@@ -290,11 +291,12 @@ class Account(models.Model):
             to_close = [c for c in codes if c in opened_short]
             delta = self.balances.account.target.delta
 
-            # Return min values between what is actually opened and delta qty
+            # Determine the min values between the size of the opened short and delta quantity
             s1 = abs(qty[to_close])
             s2 = abs(delta[to_close])
+            s3 = s1.append(s2).groupby(level=0).min()
 
-            return s1.append(s2).groupby(level=0).min()
+            return s3
 
     # Return a Series with codes/quantity to buy spot
     def to_buy_spot(self):
@@ -308,11 +310,118 @@ class Account(models.Model):
         to_short = [i for i in target.loc[target < 0].index.values.tolist()]
         return abs(target[to_short][codes])
 
-    # Determine order size
-    def order_size(self, coin, quantity, action):
+    # Determine order size based on available resources
+    def size_order(self, code, quantity, action):
 
+        # Liberate USDT resources
         if action == 'sell_spot':
-            pass
+            order_size = quantity
+
+        elif action == 'close_short':
+            order_size = quantity
+
+        # Allocate USDT resources
+        else:
+
+            if action == 'buy_spot':
+                available = self.balances.spot.free.quantity[self.quote]
+                price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
+
+            if action == 'open_short':
+                available = self.balances.future.free.quantity[self.quote]
+                price = Market.objects.get(base__code=code, quote__base=self.quote, derivative='perpetual',
+                                           exchange=self.exchange).get_latest_price('last')
+
+            # Determine order value and size
+            value = math.trunc(quantity * price)
+            order_value = min(available, value)
+            order_size = order_value / price
+
+            # Update free and used quantities
+            if action == 'buy_spot':
+                self.balances.loc[self.quote, ('spot', 'free', 'quantity')] -= order_value
+                self.balances.loc[self.quote, ('spot', 'used', 'quantity')] += order_value
+            if action == 'open_short':
+                self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= order_value
+                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += order_value
+
+        return dict(order_size=order_size,
+                    order_value=order_value,
+                    price=price,
+                    action=action,
+                    code=code,
+                    )
+
+    # Format decimal and check limits
+    def prep_order(self, code, order_size, order_value, price, action):
+
+        # Select market
+        markets = Market.objects.filter(base__code=code,
+                                        quote__code=self.quote,
+                                        exchange=self.exchange)
+
+        if action in ['sell_spot', 'buy_spot']:
+            market = markets.filter(type='spot')
+        elif action in ['close_short', 'open_short']:
+            market = markets.filter(type='perpetual')
+
+        # Format decimal
+        size = format_decimal(counting_mode=self.exchange.precision_mode,
+                              precision=market.precision['amount'],
+                              n=order_size)
+
+        # Test amount limits MIN and MAX
+        if limit_amount(market, size):
+
+            # Test cost limits MIN and MAX
+            cost = order_value
+            min_notional = limit_cost(market, cost)
+            reduce_only = False
+
+            # If cost limit not satisfied and close short set reduce_only = True
+            if not min_notional:
+                if market.exchange.exid == 'binance':
+                    if market.type == 'derivative':
+                        if market.margined.code == 'USDT':
+                            if action == 'close_short':
+                                reduce_only = True
+
+                # Else return
+                if not reduce_only:
+                    log.info('Cost not satisfied to {0} {2} {1}'.format(action, market.base.code, size))
+                    return dict(valid=False)
+
+            # Determine order side
+            if action in ['sell_spot', 'open_short']:
+                side = 'sell'
+            elif action in ['buy_spot', 'close_short']:
+                side = 'buy'
+
+            order = dict(symbol=market.symbol,
+                         market=market.type,
+                         wallet=market.wallet,
+                         size=size,
+                         price=price,
+                         action=action,
+                         reduce_only=reduce_only,
+                         valid=True,
+                         side=side,
+                         account_id=self.id,
+                         order_type=self.order_type
+                         )
+
+            return order
+
+        else:
+            return dict(valid=False)
+
+    # Sell spot
+    def sell_spot_all(self):
+        for code, quantity in self.to_sell_spot().items():
+            kwargs = self.size_order(code, quantity, 'sell_spot')
+            order = self.prep_order(**kwargs)
+            if order['valid']:
+                place_order.delay(**order)
 
     #################################
 
@@ -420,7 +529,6 @@ class Account(models.Model):
 
                             # Don't close short if an order is open
                             if not self.has_order(market):
-
                                 log.info(' ')
                                 log.info('-> {0}'.format(code))
 
@@ -883,7 +991,6 @@ class Account(models.Model):
                     # New trades occurred since last update ?
                     new = float(response['filled']) - order.filled
                     if new > 0:
-
                         log.info('Update {0} order'.format(market.base.code), account=self.name, id=response['id'])
                         log.info('Trade detected', account=self.name)
                         log.info('Order filled at {0}%'.format(round(new / order.amount, 3) * 100),
@@ -988,14 +1095,14 @@ class Account(models.Model):
         log.info(' ')
 
         current = self.balances.account.current.percent
-        for coin, val in current[current!=0].sort_values(ascending=False).items():
+        for coin, val in current[current != 0].sort_values(ascending=False).items():
             if coin != self.quote:
                 log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 2)))
 
         log.info(' ')
 
         target = self.balances.account.target.percent
-        for coin, val in target[target!=0].sort_values(ascending=False).items():
+        for coin, val in target[target != 0].sort_values(ascending=False).items():
             log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 2)))
 
     # Mark the account as currently trading (busy) or not

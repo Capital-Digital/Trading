@@ -95,7 +95,9 @@ def rebalance_all(strategy_id):
 
 @app.task(name='Trading_Rebalance_account')
 def rebalance(account_id):
+    #
     account = Account.objects.get(id=account_id)
+    log.info('Rebalance account', account=account.name)
     account.create_balances()
     account.sell_spot_all()
 

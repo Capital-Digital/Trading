@@ -342,7 +342,7 @@ class Account(models.Model):
             if action == 'open_short':
                 available = self.balances.future.free.quantity[self.quote]
                 price = Market.objects.get(base__code=code,
-                                           quote__base=self.quote,
+                                           quote__code=self.quote,
                                            type='derivative',
                                            contract_type='perpetual',
                                            exchange=self.exchange

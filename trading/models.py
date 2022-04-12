@@ -102,6 +102,7 @@ class Account(models.Model):
                     # self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
                     self.balances[(wallet, key, 'quantity')] = 0
 
+        print(self.balances)
         log.info('Get balances qty done')
 
     # Convert quantity in dollar in balances dataframe

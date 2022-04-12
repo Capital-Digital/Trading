@@ -364,7 +364,7 @@ class Account(models.Model):
             self.balances.loc[self.quote, (market, 'used', 'quantity')] += order_value
 
             print(order_value)
-            print(self.balances.spot)
+            print(self.balances)
 
         return dict(order_size=order_size,
                     order_value=order_value,

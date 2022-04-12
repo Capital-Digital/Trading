@@ -195,7 +195,7 @@ def place_order(account_id, wallet, symbol, size, price, order_type, side, reduc
     if reduce_only:
         kwargs['params'] = dict(reduceonly=True)
 
-    log.info('Place order to {0} {1} in {2}'.format(side, symbol, wallet))
+    log.info('Place order to {0} {3} {1} in {2}'.format(side, symbol, wallet, size))
     client.create_order(**kwargs)
 
 

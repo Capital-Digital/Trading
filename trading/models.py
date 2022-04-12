@@ -99,7 +99,6 @@ class Account(models.Model):
                     self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                     self.balances = self.balances.groupby(level=0).last()
                 else:
-                    print('empty', wallet, key)
                     self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
 
         log.info('Get balances qty done')
@@ -355,11 +354,12 @@ class Account(models.Model):
 
             # Update free and used quantities
             if action == 'buy_spot':
-                self.balances.loc[self.quote, ('spot', 'free', 'quantity')] -= order_value
-                self.balances.loc[self.quote, ('spot', 'used', 'quantity')] += order_value
+                market = 'spot'
             if action == 'open_short':
-                self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= order_value
-                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += order_value
+                market = 'future'
+
+            self.balances.loc[self.quote, (market, 'free', 'quantity')] -= order_value
+            self.balances.loc[self.quote, (market, 'used', 'quantity')] += order_value
 
         return dict(order_size=order_size,
                     order_value=order_value,

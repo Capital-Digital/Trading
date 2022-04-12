@@ -88,6 +88,8 @@ class Account(models.Model):
             response = client.fetchBalance()
             for key in ['total', 'free', 'used']:
 
+                print(wallet, key)
+
                 # Exclude LBTC from dictionary (staking or earning account)
                 dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
 

@@ -474,7 +474,7 @@ class Account(models.Model):
     # Open short
     def open_short_all(self):
         from trading.tasks import place_order
-        for code, quantity in self.to_buy_spot().items():
+        for code, quantity in self.to_open_short().items():
             log.info('Open short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'open_short')
             order = self.prep_order(**kwargs)

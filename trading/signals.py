@@ -14,7 +14,7 @@ log = structlog.get_logger(__name__)
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
     if task.name == 'Trading_place_order':
-        log.info('Order placed', task=task.name)
+        log.info('Order placed', task=task.name, state=state)
         if state == 'SUCCESS':
             Account.objects.get(id=args).get_balances_value()
             log.info(*args)

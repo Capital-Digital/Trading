@@ -318,7 +318,7 @@ class Account(models.Model):
 
         elif action in ['open_short', 'close_short']:
             price = Market.objects.get(base__code=code,
-                                       quote__base=self.quote,
+                                       quote__code=self.quote,
                                        type='derivative',
                                        contract_type='perpetual',
                                        exchange=self.exchange

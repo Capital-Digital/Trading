@@ -454,6 +454,30 @@ class Account(models.Model):
             else:
                 log.info('Invalid order')
 
+    # Buy spot
+    def buy_spot_all(self):
+        from trading.tasks import place_order
+        for code, quantity in self.to_buy_spot().items():
+            log.info('Buy spot {0}'.format(code))
+            kwargs = self.size_order(code, quantity, 'buy_spot')
+            order = self.prep_order(**kwargs)
+            if order['valid']:
+                place_order.delay(**order)
+            else:
+                log.info('Invalid order')
+
+    # Open short
+    def open_short_all(self):
+        from trading.tasks import place_order
+        for code, quantity in self.to_buy_spot().items():
+            log.info('Open short {0}'.format(code))
+            kwargs = self.size_order(code, quantity, 'open_short')
+            order = self.prep_order(**kwargs)
+            if order['valid']:
+                place_order.delay(**order)
+            else:
+                log.info('Invalid order')
+
     #################################
 
     # Sell in spot market

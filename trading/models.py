@@ -99,7 +99,6 @@ class Account(models.Model):
                     self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                     self.balances = self.balances.groupby(level=0).last()
                 else:
-                    # self.balances = pd.DataFrame() if not hasattr(self, 'balances') else self.balances
                     self.balances[(wallet, key, 'quantity')] = np.nan
 
         log.info('Get balances qty done')

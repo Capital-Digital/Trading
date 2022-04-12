@@ -11,19 +11,14 @@ log = structlog.get_logger(__name__)
 
 
 @task_postrun.connect
-def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
+def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
-    if task.name == 'trading.get_balances_qty':
+    if task.name == 'trading.place_order':
+        log.info('Order signal')
         if state == 'SUCCESS':
             Account.objects.get(id=args).get_balances_value()
-            get_positions.delay(args)
-
-    if task.name == 'trading.get_positions':
-        if state == 'SUCCESS':
-            Account.objects.get(id=args).get_target()
-            Account.objects.get(id=args).get_delta()
-            sell_spot.delay(args)
-
+            log.info(retval)
+            
 
 @receiver(pre_delete, sender=Order)
 def cancel_order(sender, instance, **kwargs):

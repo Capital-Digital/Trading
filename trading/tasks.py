@@ -104,7 +104,8 @@ def rebalance(account_id):
     account.close_short_all()
     account.buy_spot_all()
     account.open_short_all()
-    print(account.balances.spot)
+
+    print(account.balances)
 
 
 # # Fetch account balances and create a dataframe
@@ -176,7 +177,7 @@ def rebalance(account_id):
 
 
 # Sell coins in spot markets
-@app.task(base=BaseTaskWithRetry)
+@app.task(base=BaseTaskWithRetry, name='Trading_place_order')
 def place_order(account_id, wallet, symbol, size, price, order_type, side, reduce_only, valid):
     #
     account = Account.objects.get(id=account_id)
@@ -196,7 +197,7 @@ def place_order(account_id, wallet, symbol, size, price, order_type, side, reduc
         kwargs['params'] = dict(reduceonly=True)
 
     log.info('Place order to {0} {3} {1} in {2}'.format(side, symbol, wallet, size))
-    client.create_order(**kwargs)
+    return client.create_order(**kwargs)
 
 
 @app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)

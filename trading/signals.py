@@ -28,7 +28,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info('account', id=account_id)
             account = Account.objects.get(id=account_id)
 
-            if isinstance(account, 'balances'):
+            if hasattr(account, 'balances'):
                 log.info('Balances found !')
 
 

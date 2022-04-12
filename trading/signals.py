@@ -17,7 +17,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         log.info('Order placed', task=task.name, state=state)
         if state == 'SUCCESS':
             Account.objects.get(id=args).get_balances_value()
-            log.info(*args)
+            log.info(args)
             log.info(retval['info']['orderId'])
             log.info(retval['info']['status'])
             pprint(retval)

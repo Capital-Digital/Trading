@@ -378,7 +378,7 @@ class Account(models.Model):
         if action in ['sell_spot', 'buy_spot']:
             market = markets.get(type='spot')
         elif action in ['close_short', 'open_short']:
-            market = markets.get(type='future')
+            market = markets.get(type='derivative')
 
         # Format decimal
         size = format_decimal(counting_mode=self.exchange.precision_mode,

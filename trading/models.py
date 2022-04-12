@@ -312,26 +312,40 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
-        # Liberate USDT resources
+        # Determine price
+        if action in ['sell_spot', 'buy_spot']:
+            price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
+
+        elif action in ['open_short', 'close_short']:
+            price = Market.objects.get(base__code=code,
+                                       quote__base=self.quote,
+                                       derivative='perpetual',
+                                       exchange=self.exchange
+                                       ).get_latest_price('last')
+
+        # Determine order value and size when USDT resources are released
         if action == 'sell_spot':
             order_size = quantity
+            order_value = order_size * price
 
         elif action == 'close_short':
             order_size = quantity
+            order_value = order_size * price
 
-        # Allocate USDT resources
         else:
-
+            # Determine order value and size when USDT resources are allocated
             if action == 'buy_spot':
                 available = self.balances.spot.free.quantity[self.quote]
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
 
             if action == 'open_short':
                 available = self.balances.future.free.quantity[self.quote]
-                price = Market.objects.get(base__code=code, quote__base=self.quote, derivative='perpetual',
-                                           exchange=self.exchange).get_latest_price('last')
+                price = Market.objects.get(base__code=code,
+                                           quote__base=self.quote,
+                                           derivative='perpetual',
+                                           exchange=self.exchange
+                                           ).get_latest_price('last')
 
-            # Determine order value and size
             value = math.trunc(quantity * price)
             order_value = min(available, value)
             order_size = order_value / price

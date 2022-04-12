@@ -27,7 +27,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
             log.info('account', id=account_id)
             account = Account.objects.get(id=account_id)
-            log.info(account.balances)
+
+            if isinstance(account, 'balances'):
+                log.info('Balances found !')
 
 
 @receiver(pre_delete, sender=Order)

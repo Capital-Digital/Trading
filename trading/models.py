@@ -364,6 +364,8 @@ class Account(models.Model):
             else:
                 self.balances.loc[self.quote, (market, 'used', 'quantity')] = order_value
 
+            print(self.balances.spot.columns.get_level_values(0))
+
         return dict(order_size=order_size,
                     order_value=order_value,
                     price=price,

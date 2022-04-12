@@ -319,7 +319,6 @@ class Account(models.Model):
             price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
 
         elif action in ['open_short', 'close_short']:
-            print(code, self.quote)
             price = Market.objects.get(base__code=code,
                                        quote__code=self.quote,
                                        type='derivative',
@@ -363,9 +362,6 @@ class Account(models.Model):
 
             self.balances.loc[self.quote, (market, 'free', 'quantity')] -= order_value
             self.balances.loc[self.quote, (market, 'used', 'quantity')] += order_value
-
-            print(order_value)
-            print(self.balances)
 
         return dict(order_size=order_size,
                     order_value=order_value,
@@ -917,11 +913,6 @@ class Account(models.Model):
                                                                 market.type
                                                                 )
                      )
-
-            # print('\nFree quantity\n')
-            # print(self.balances.spot.free.quantity)
-            # print('\nMarket:', market.type, '\n')
-            # pprint(args)
 
             try:
                 response = client.create_order(**args)

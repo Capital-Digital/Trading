@@ -23,10 +23,11 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info(retval['info']['status'])
             log.info(len(args))
 
-            account_id, wallet, symbol, size, price, order_type, side, reduce_only, valid = args
+            account_id = args
 
             log.info('account', id=account_id)
             account = Account.objects.get(id=account_id)
+            log.info(account.balances)
 
 
 @receiver(pre_delete, sender=Order)

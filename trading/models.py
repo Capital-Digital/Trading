@@ -342,7 +342,8 @@ class Account(models.Model):
                 available = self.balances.future.free.quantity[self.quote]
                 price = Market.objects.get(base__code=code,
                                            quote__base=self.quote,
-                                           derivative='perpetual',
+                                           type='derivative',
+                                           contract_type='perpetual',
                                            exchange=self.exchange
                                            ).get_latest_price('last')
 

@@ -16,10 +16,11 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
     if task.name == 'Trading_place_order':
         log.info('Order placed', task=task.name, state=state)
         if state == 'SUCCESS':
-            Account.objects.get(id=args).get_balances_value()
-            log.info(args)
+            log.info('SUCCESS')
             log.info(retval['info']['orderId'])
             log.info(retval['info']['status'])
+            Account.objects.get(id=args).get_balances_value()
+            log.info(args)
             pprint(retval)
 
 

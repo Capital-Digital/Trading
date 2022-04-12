@@ -23,7 +23,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info(retval['info']['status'])
             log.info(len(args))
 
-            account_id = args
+            account_id = args[0]
 
             log.info('account', id=account_id)
             account = Account.objects.get(id=account_id)

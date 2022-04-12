@@ -437,6 +437,15 @@ class Account(models.Model):
             if order['valid']:
                 place_order.delay(**order)
 
+    # Close short
+    def close_short_all(self):
+        from trading.tasks import place_order
+        for code, quantity in self.to_close_short().items():
+            kwargs = self.size_order(code, quantity, 'close_short')
+            order = self.prep_order(**kwargs)
+            if order['valid']:
+                place_order.delay(**order)
+
     #################################
 
     # Sell in spot market

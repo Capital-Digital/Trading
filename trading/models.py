@@ -285,7 +285,9 @@ class Account(models.Model):
             opened_short = qty[qty < 0].index.tolist()
             to_close = [c for c in codes if c in opened_short]
             delta = self.balances.account.target.delta
-            return min(abs(qty[to_close]), abs(delta[to_close]))
+            print(abs(qty[to_close]))
+            print(abs(delta[to_close]))
+            # return min(abs(qty[to_close]), abs(delta[to_close]))
 
     #################################
 

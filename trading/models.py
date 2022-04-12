@@ -437,6 +437,7 @@ class Account(models.Model):
             log.info('Sell spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'sell_spot')
             order = self.prep_order(**kwargs)
+            pprint(order)
             if order['valid']:
                 place_order.delay(**order)
 
@@ -447,6 +448,7 @@ class Account(models.Model):
             log.info('Close short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'close_short')
             order = self.prep_order(**kwargs)
+            pprint(order)
             if order['valid']:
                 place_order.delay(**order)
 

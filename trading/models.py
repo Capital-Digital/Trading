@@ -268,26 +268,51 @@ class Account(models.Model):
         return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
     # Return a Series with codes/quantity to sell spot
-    def qty_to_sell_spot(self):
+    def to_sell_spot(self):
         codes = self.codes_to_sell()
         codes = self.balances.spot.free.quantity[codes].dropna().index.values.tolist()
         target = self.balances.account.target.quantity[codes]
+
+        # Select coins to sell entirely
         zero = target <= 0
-        keep = target > 0
         s1 = self.balances.spot.free.quantity[zero[zero].index]
+
+        # Add coins to sell partially
+        keep = target > 0
         return s1.append(self.balances.account.target.delta[keep[keep].index])
 
     # Return a Series with codes/quantity to close short
-    def qty_to_close_short(self):
+    def to_close_short(self):
         codes = self.codes_to_buy()
         if 'position' in self.balances.columns.get_level_values(0):
             qty = self.balances.position.open.quantity.dropna()
             opened_short = qty[qty < 0].index.tolist()
             to_close = [c for c in codes if c in opened_short]
             delta = self.balances.account.target.delta
-            print(abs(qty[to_close]))
-            print(abs(delta[to_close]))
-            # return min(abs(qty[to_close]), abs(delta[to_close]))
+
+            # Return min values between what is actually opened and delta qty
+            s1 = abs(qty[to_close])
+            s2 = abs(delta[to_close])
+
+            return s1.append(s2).groupby(level=0).min()
+
+    # Return a Series with codes/quantity to buy spot
+    def to_buy_spot(self):
+        codes = self.codes_to_buy()
+        return abs(self.balances.account.target.delta[codes])
+
+    # Return a Series with codes/quantity to open short
+    def to_open_short(self):
+        codes = self.codes_to_sell()
+        target = self.balances.account.target.quantity.dropna()
+        to_short = [i for i in target.loc[target < 0].index.values.tolist()]
+        return to_short[codes]
+
+    # Determine order size
+    def order_size(self, coin, quantity, action):
+
+        if action == 'sell_spot':
+            pass
 
     #################################
 

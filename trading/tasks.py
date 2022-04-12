@@ -93,6 +93,7 @@ def create_accounts_balances(strategy_id):
         get_balances_qty.delay(account.id)
 
 
+# Fetch account balances and create a dataframe
 @app.task(base=BaseTaskWithRetry)
 def get_balances_qty(account_id):
     #
@@ -129,6 +130,7 @@ def get_balances_qty(account_id):
     log.info('Get balances qty done')
 
 
+# Fetch opened positions and add to dataframe
 @app.task(base=BaseTaskWithRetry)
 def get_positions(account_id):
     #
@@ -157,6 +159,16 @@ def get_positions(account_id):
             account.save()
 
     log.info('Get positions done')
+
+
+# Sell coins in spot markets
+@app.task(base=BaseTaskWithRetry)
+def sell_spot(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    for coin, quantity in account.to_sell_spot().items():
+        size = account.order_size(coin, quantity, 'sell_spot')
+        place_order.delay(coin, size, 'sell_spot')
 
 
 @app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)

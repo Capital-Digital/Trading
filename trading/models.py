@@ -421,7 +421,6 @@ class Account(models.Model):
                          reduce_only=reduce_only,
                          valid=True,
                          side=side,
-                         account_id=self.id,
                          order_type='limit'
                          )
 
@@ -450,7 +449,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'close_short')
             order = self.prep_order(**kwargs)
             if order['valid']:
-                place_order.delay(**order)
+                place_order.delay(self.id, **order)
             else:
                 log.info('Invalid order')
 

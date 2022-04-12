@@ -109,8 +109,8 @@ class Account(models.Model):
         log.info('Get balances value start')
 
         # Iterate through wallets, free, used and total quantities
-        for wallet in list(set(self.balances.columns.get_level_values(0))):
-            for tp in list(set(self.balances[wallet].columns.get_level_values(0))):
+        for wallet in self.exchange.get_wallets():
+            for tp in ['free', 'total', 'used']:
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
                     try:
@@ -125,7 +125,7 @@ class Account(models.Model):
                             value = price * funds[coin]
                             self.balances.loc[coin, (wallet, tp, 'value')] = value
                         else:
-                            log.warning('Drop coin {0} from wallet balance'.format(coin))
+                            log.warning('Price not foun, drop coin {0} from dataframe'.format(coin))
                             self.balances = self.balances.drop(coin)
 
         # Drop dust < $10
@@ -167,7 +167,7 @@ class Account(models.Model):
         wallets = []
         for level in list(set(self.balances.columns.get_level_values(0))):
 
-            # Keep only wallets
+            # Exclude positions
             if level not in ['position', 'account']:
                 # Sum value of all coins
                 wallets.append(self.balances[level].total.value.sum())

@@ -29,9 +29,13 @@ from marketsdata.models import Market, Currency, Exchange
 from strategy.models import Strategy
 from trading.methods import *
 from trading.models import Account, Order, Fund, Position, Transfer
+import threading
 
 log = structlog.get_logger(__name__)
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
+
+log.info('THREAD {0}'.format(threading.active_count()))
 
 
 class BaseTaskWithRetry(Task):

@@ -10,7 +10,6 @@ from strategy.models import Strategy
 from marketsdata.models import Exchange, Market, Currency
 from trading.error import *
 from trading.methods import *
-from trading.tasks import place_order
 import structlog
 from datetime import timedelta, datetime
 from pprint import pprint
@@ -417,6 +416,7 @@ class Account(models.Model):
 
     # Sell spot
     def sell_spot_all(self):
+        from trading.tasks import place_order
         for code, quantity in self.to_sell_spot().items():
             kwargs = self.size_order(code, quantity, 'sell_spot')
             order = self.prep_order(**kwargs)

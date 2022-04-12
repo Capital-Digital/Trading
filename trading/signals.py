@@ -14,12 +14,17 @@ log = structlog.get_logger(__name__)
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
     if task.name == 'Trading_place_order':
+        
         log.info('Order placed', task=task.name, state=state)
         if state == 'SUCCESS':
+
             log.info('SUCCESS')
             log.info(retval['info']['orderId'])
             log.info(retval['info']['status'])
-            account = Account.objects.get(id=args)
+
+            account_id, wallet, symbol, size, price, order_type, side, reduce_only, valid = args
+
+            account = Account.objects.get(id=account_id)
             log.info(account.balances)
 
 

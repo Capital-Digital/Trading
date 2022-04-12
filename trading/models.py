@@ -268,16 +268,11 @@ class Account(models.Model):
         target = self.balances.account.target.quantity[codes]
         qty_delta = self.balances.account.target.delta[codes]
 
-        # Sell all resources available if coin must be shorted
-        if target < 0:
-            amount = free
+        zero = target <= 0
+        keep = target > 0
 
-        # Sell all resources available if coin is not allocated
-        elif target == 0:
-            amount = free
-
-        else:
-            amount = qty_delta
+        s1 = self.balances.spot.free.quantity[zero[zero].index]
+        return s1.append(self.balances.account.target.delta[keep[keep].index])
 
     # Sell in spot market
     def sell_spot(self):

@@ -318,6 +318,7 @@ class Account(models.Model):
             price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
 
         elif action in ['open_short', 'close_short']:
+            print(code, self.quote)
             price = Market.objects.get(base__code=code,
                                        quote__code=self.quote,
                                        type='derivative',

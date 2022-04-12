@@ -308,6 +308,10 @@ class Account(models.Model):
         codes = self.codes_to_sell()
         target = self.balances.account.target.quantity.dropna()
         to_short = [i for i in target.loc[target < 0].index.values.tolist()]
+
+        print(codes)
+        print(target)
+        print(to_short)
         return abs(target[to_short][codes])
 
     # Determine order size based on available resources

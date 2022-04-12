@@ -306,7 +306,7 @@ class Account(models.Model):
         codes = self.codes_to_sell()
         target = self.balances.account.target.quantity.dropna()
         to_short = [i for i in target.loc[target < 0].index.values.tolist()]
-        return target[to_short][codes]
+        return abs(target[to_short][codes])
 
     # Determine order size
     def order_size(self, coin, quantity, action):

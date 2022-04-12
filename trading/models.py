@@ -426,7 +426,7 @@ class Account(models.Model):
                          valid=True,
                          side=side,
                          account_id=self.id,
-                         order_type=self.order_type
+                         order_type='limit'
                          )
 
             return order

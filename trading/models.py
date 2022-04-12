@@ -433,8 +433,8 @@ class Account(models.Model):
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import place_order
-        log.info('Sell spot')
         for code, quantity in self.to_sell_spot().items():
+            log.info('Sell spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'sell_spot')
             order = self.prep_order(**kwargs)
             if order['valid']:
@@ -443,8 +443,8 @@ class Account(models.Model):
     # Close short
     def close_short_all(self):
         from trading.tasks import place_order
-        log.info('Close short')
         for code, quantity in self.to_close_short().items():
+            log.info('Close short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'close_short')
             order = self.prep_order(**kwargs)
             if order['valid']:

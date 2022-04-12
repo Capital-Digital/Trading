@@ -207,6 +207,8 @@ class Account(models.Model):
         finally:
             self.save()
 
+    ##################################
+
     # Calculate net exposure and delta
     def get_delta(self):
 
@@ -255,24 +257,37 @@ class Account(models.Model):
         self.save()
         log.info('Get delta done')
 
-    # Return a list of codes sell
+    # Return a list of codes to sell
     def codes_to_sell(self):
         delta = self.balances.account.target.delta
-        codes = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
-        return [i for i in codes if i in self.balances.spot.free.quantity.dropna().index.values.tolist()]
+        return [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
 
-    # Return a list of codes and quantity to sell spot
+    # Return a list of codes to buy
+    def codes_to_buy(self):
+        delta = self.balances.account.target.delta
+        return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
+
+    # Return a Series with codes/quantity to sell spot
     def qty_to_sell_spot(self):
         codes = self.codes_to_sell()
         codes = self.balances.spot.free.quantity[codes].dropna().index.values.tolist()
         target = self.balances.account.target.quantity[codes]
-        qty_delta = self.balances.account.target.delta[codes]
-
         zero = target <= 0
         keep = target > 0
-
         s1 = self.balances.spot.free.quantity[zero[zero].index]
         return s1.append(self.balances.account.target.delta[keep[keep].index])
+
+    # Return a Series with codes/quantity to close short
+    def qty_to_close_short(self):
+        codes = self.codes_to_buy()
+        if 'position' in self.balances.columns.get_level_values(0):
+            qty = self.balances.position.open.quantity.dropna()
+            opened_short = qty[qty < 0].index.tolist()
+            to_close = [c for c in codes if c in opened_short]
+            delta = self.balances.account.target.delta
+            return min(abs(qty[to_close]), abs(delta[to_close]))
+
+    #################################
 
     # Sell in spot market
     def sell_spot(self):

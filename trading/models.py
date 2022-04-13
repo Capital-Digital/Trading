@@ -347,15 +347,8 @@ class Account(models.Model):
             if isinstance(self.orders, pd.DataFrame):
                 if code in self.orders.index.tolist():
 
-                    print('orders already placed')
-
                     # Another order is already open (or filled) ?
                     if wallet in self.orders.loc[code].index.get_level_values(0):
-                        print('orders already placed in the wallet')
-
-                        log.info('')
-                        log.info('Open orders found for {0} {1}'.format(code, wallet))
-                        log.info('')
                         other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
                         other_qty = other.quantity
 
@@ -380,24 +373,28 @@ class Account(models.Model):
             order_value = order_size * price
 
         else:
+
             # Determine order value and size when USDT resources are allocated
             if action == 'buy_spot':
                 available = self.balances.spot.free.quantity[self.quote]
-
-            if action == 'open_short':
+            elif action == 'open_short':
                 available = self.balances.future.free.quantity[self.quote]
 
-            log.info('Available resources {0} {1}'.format(code, available))
+            if not np.isnan(available):
 
-            value = math.trunc(quantity * price)
-            order_value = min(available, value)
-            order_size = order_value / price
+                value = math.trunc(quantity * price)
+                order_value = min(available, value)
+                order_size = order_value / price
 
-            # Offset order size with size from another order
-            order_size -= other_qty
-            order_value = order_size * price
+                # Offset order size with size from another order
+                order_size -= other_qty
+                order_value = order_size * price
 
-            log.info('Order size and value {0} {1}'.format(order_size, order_value))
+                log.info('Order size and value {0} {1}'.format(order_size, order_value))
+
+            else:
+                order_size = 0
+                order_value = 0
 
         log.info('Size order complete')
 
@@ -511,9 +508,9 @@ class Account(models.Model):
             status = dic['info']['status']
 
             print(self.orders)
-            
+
             # Update order status
-            self.orders.loc[code, (wallet, order_id, 'status')] = status
+            self.orders.loc[code, (wallet, order_id, 'status')] = status.lower()
 
             filled = dic['filled']
             if filled:

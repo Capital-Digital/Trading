@@ -532,7 +532,7 @@ class Account(models.Model):
                 self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
                 self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
                 self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
-        
+
         self.save()
         log.info('Update dataframes done')
 

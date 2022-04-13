@@ -41,7 +41,7 @@ class Account(models.Model):
     quote = models.CharField(max_length=10, null=True, choices=(('USDT', 'USDT'), ('BUSD', 'BUSD')), default='USDT')
 
     balances = PickledObjectField(null=True)
-    orders = PickledObjectField(null=True)
+    # orders = PickledObjectField(null=True)
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     active = models.BooleanField(null=True, blank=False, default=False)

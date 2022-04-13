@@ -414,8 +414,6 @@ class Account(models.Model):
     # Format decimal and check limits
     def prep_order(self, wallet, code, order_size, order_value, price, action, side):
 
-        log.info('Prepare order to {0} {1} {2} in {3}'.format(side, order_size, code, wallet))
-
         # Select market
         markets = Market.objects.filter(base__code=code,
                                         quote__code=self.quote,

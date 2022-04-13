@@ -476,16 +476,17 @@ class Account(models.Model):
 
             log.info('Prepare order complete')
 
-            return dict(account_id=self.id,
-                        order_type='limit',
-                        price=price,
-                        reduce_only=reduce_only,
-                        side=side,
-                        size=size,
-                        symbol=market.symbol,
-                        valid=True,
-                        wallet=market.wallet
-                        )
+            lst = [self.id,
+                   'limit',
+                   price,
+                   reduce_only,
+                   side,
+                   size,
+                   market.symbol,
+                   True,
+                   market.wallet]
+
+            return lst
 
         else:
             return dict(valid=False)
@@ -504,7 +505,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'sell_spot')
             order = self.prep_order(**kwargs)
             if order['valid']:
-                place_order.delay(order.values())
+                place_order.delay(*order)
             else:
                 log.info('Invalid order')
 
@@ -516,7 +517,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'close_short')
             order = self.prep_order(**kwargs)
             if order['valid']:
-                place_order.delay(order.values())
+                place_order.delay(*order)
             else:
                 log.info('Invalid order')
 
@@ -528,7 +529,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'buy_spot')
             order = self.prep_order(**kwargs)
             if order['valid']:
-                place_order.delay(order.values())
+                place_order.delay(*order)
             else:
                 log.info('Invalid order')
 
@@ -542,7 +543,7 @@ class Account(models.Model):
             order = self.prep_order(**kwargs)
 
             if order['valid']:
-                place_order.delay(order.values())
+                place_order.delay(*order)
             else:
                 log.info('Invalid order')
 

@@ -343,15 +343,15 @@ class Account(models.Model):
         open_qty = 0
 
         if hasattr(self, 'orders'):
-            log.info(self.orders)
-            if code in self.orders.index:
+            if isinstance(self.orders, pd.DataFrame):
+                if code in self.orders.index:
 
-                # Another order is already open (or filled) ?
-                if wallet in self.orders.loc[code].index.get_level_values(0):
-                    log.info('Open orders found for {0} {1}'.format(code, wallet))
-                    log.info(self.orders)
-                    other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
-                    other_qty = other.quantity
+                    # Another order is already open (or filled) ?
+                    if wallet in self.orders.loc[code].index.get_level_values(0):
+                        log.info('Open orders found for {0} {1}'.format(code, wallet))
+                        log.info(self.orders)
+                        other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
+                        other_qty = other.quantity
 
         # Determine price
         if wallet == 'spot':

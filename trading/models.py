@@ -501,10 +501,10 @@ class Account(models.Model):
     def sell_spot_all(self):
         from trading.tasks import place_order
         for code, quantity in self.to_sell_spot().items():
-            log.info('Sell spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'sell_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
+                log.info('Sell spot {0}'.format(code))
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -513,10 +513,10 @@ class Account(models.Model):
     def close_short_all(self):
         from trading.tasks import place_order
         for code, quantity in self.to_close_short().items():
-            log.info('Close short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'close_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
+                log.info('Close short {0}'.format(code))
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -525,10 +525,10 @@ class Account(models.Model):
     def buy_spot_all(self):
         from trading.tasks import place_order
         for code, quantity in self.to_buy_spot().items():
-            log.info('Buy spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'buy_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
+                log.info('Buy spot {0}'.format(code))
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -537,11 +537,10 @@ class Account(models.Model):
     def open_short_all(self):
         from trading.tasks import place_order
         for code, quantity in self.to_open_short().items():
-
-            log.info('Open short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'open_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
+                log.info('Place short {0}'.format(code))
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')

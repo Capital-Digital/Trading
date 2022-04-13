@@ -539,6 +539,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'open_short')
             order = self.prep_order(**kwargs)
             if order['valid']:
+                log.indo('Place order...')
                 place_order.delay(self.id, **order)
             else:
                 log.info('Invalid order')

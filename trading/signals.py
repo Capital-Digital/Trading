@@ -17,7 +17,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         log.info(len(args))
         log.info(args[0])
-        
+
         if state == 'SUCCESS':
 
             if retval['info']['status'] in ['FILLED', 'PARTIALLY_FILLED']:

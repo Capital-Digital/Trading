@@ -20,6 +20,8 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             # Unpack arguments
             account_id, action, code, order_type, price, reduce_only, side, size, symbol, wallet = args
 
+            log.info(retval['info']['status'])
+
             if retval['info']['status'] in ['NEW', 'FILLED', 'PARTIALLY_FILLED']:
                 account = Account.objects.get(id=account_id)
                 account.update_df(action, wallet, code, retval)

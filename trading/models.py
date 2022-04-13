@@ -326,6 +326,7 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
+        log.info(' ')
         log.info('Size order to {0} {1} {2}'.format(action, quantity, code))
 
         # Determine wallet
@@ -447,7 +448,10 @@ class Account(models.Model):
             order_id = ''.join((random.choice(alphanumeric)) for x in range(10))
 
             if not hasattr(self, 'orders'):
-                self.orders = pd.DataFrame()
+                # Create an empty df with multiindexes columns
+                self.orders = pd.DataFrame(index=[code], data=[],
+                                           columns=pd.MultiIndex.from_product([[wallet], [order_id], ['side']])
+                                           )
 
             # Update orders df
             self.orders.loc[code, (wallet, order_id, 'side')] = side

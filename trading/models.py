@@ -468,6 +468,9 @@ class Account(models.Model):
             self.orders.loc[(code, market, order_id), 'size'] = order_size
             self.orders.loc[(code, market, order_id), 'status'] = 'preparation'
 
+            print('\nORDERS\n')
+            print(self.orders)
+            
             # Determine code and quantity of resources used
             if action in ['buy_spot', 'open_short']:
                 code_res = self.quote

@@ -445,7 +445,7 @@ class Account(models.Model):
 
             # Generate order_id
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
-            order_id = ''.join((random.choice(alphanumeric)) for x in range(10))
+            order_id = 'boter' + ''.join((random.choice(alphanumeric)) for x in range(10))
 
             if self.orders.empty:
                 self.orders = pd.DataFrame(index=[code], data=[],
@@ -494,14 +494,19 @@ class Account(models.Model):
     # Update orders dataframe
     def update_df(self, action, wallet, code, dic):
 
+        log.info(' ')
+        log.info('Update dataframes')
+
+        order_id = dic['info']['clientOrderId']
+        status = dic['info']['status']
         filled = dic['info']['filled']
+
+        # Update order status
+        self.orders.loc[code, (wallet, order_id, 'status')] = status
+
         if filled:
 
-            log.info(' ')
-            log.info('Update dataframes')
-
-            # Update orders df
-            order_id = dic['info']['ClientOrderId']
+            # Update order filled quantity
             self.orders.loc[code, (wallet, order_id, 'filled')] = filled
 
             # Determine filled value
@@ -523,12 +528,12 @@ class Account(models.Model):
                 self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
 
             else:
-                # Update spot
+                # Or update spot
                 self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
                 self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
                 self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
 
-            log.info('Update dataframes done')
+        log.info('Update dataframes done')
 
     # Sell spot
     def sell_spot_all(self):

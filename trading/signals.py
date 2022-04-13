@@ -20,19 +20,14 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             # Unpack arguments
             account_id, action, code, order_type, price, reduce_only, side, size, symbol, wallet = args
 
-            if retval['info']['status'] in ['FILLED', 'PARTIALLY_FILLED']:
-                log.info('Order filled')
+            if retval['info']['status'] in ['NEW', 'FILLED', 'PARTIALLY_FILLED']:
                 account = Account.objects.get(id=account_id)
                 account.update_df(action, wallet, code, retval)
-
-            elif retval['info']['status'] == 'NEW':
-                log.info('Order is open')
 
             elif retval['info']['status'] == 'CANCELED':
                 log.info('Order has been canceled')
 
         else:
-            log.info('State {0}'.format(state))
             log.info('Retval {0}'.format(retval))
 
 

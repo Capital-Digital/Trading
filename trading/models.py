@@ -423,7 +423,7 @@ class Account(models.Model):
                               n=order_size)
 
         # Test amount limits MIN and MAX
-        if limit_amount(market, size):
+        if limit_amount(market, size) or 1==1:
 
             # Test cost limits MIN and MAX
             cost = order_value

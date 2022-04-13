@@ -326,6 +326,8 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
+        log.info('Size order to {0} {1} {2}'.format(action, quantity, code))
+
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
             wallet = 'spot'
@@ -340,14 +342,15 @@ class Account(models.Model):
 
         open_qty = 0
 
-        # Check if an order is already open
         if hasattr(self, 'orders'):
             if code in self.orders.index:
+
+                # Another order is already open (or filled) ?
                 if wallet in self.orders.loc[code].index.get_level_values(0):
                     log.info('Open orders found for {0} {1}'.format(code, wallet))
                     log.info(self.orders)
-                    open = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
-                    open_qty = open.quantity
+                    other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
+                    other_qty = other.quantity
 
         # Determine price
         if wallet == 'spot':
@@ -363,35 +366,30 @@ class Account(models.Model):
 
         # Determine order value and size when USDT resources are released
         if action == 'sell_spot':
-            order_size = quantity - open_qty
+            order_size = quantity - other_qty  # offset qty of open/filled order
             order_value = order_size * price
 
         elif action == 'close_short':
-            order_size = quantity - open_qty
+            order_size = quantity - other_qty
             order_value = order_size * price
 
         else:
             # Determine order value and size when USDT resources are allocated
             if action == 'buy_spot':
                 available = self.balances.spot.free.quantity[self.quote]
-                price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
 
             if action == 'open_short':
                 available = self.balances.future.free.quantity[self.quote]
-                price = Market.objects.get(base__code=code,
-                                           quote__code=self.quote,
-                                           type='derivative',
-                                           contract_type='perpetual',
-                                           exchange=self.exchange
-                                           ).get_latest_price('last')
 
             value = math.trunc(quantity * price)
             order_value = min(available, value)
             order_size = order_value / price
 
-            # Offset open order
-            order_size -= open_qty
+            # Offset order size with size from another order
+            order_size -= other_qty
             order_value = order_size * price
+
+        log.info('Size order complete')
 
         return dict(order_size=order_size,
                     order_value=order_value,
@@ -404,6 +402,8 @@ class Account(models.Model):
 
     # Format decimal and check limits
     def prep_order(self, wallet, code, order_size, order_value, price, action, side):
+
+        log.info('Prepare order to {0} {1} {2} in {3}'.format(side, order_size, code, wallet))
 
         # Select market
         markets = Market.objects.filter(base__code=code,
@@ -448,12 +448,32 @@ class Account(models.Model):
             if not hasattr(self, 'orders'):
                 self.orders = pd.DataFrame()
 
-            # Update orders dataframe
+            # Update orders df
             self.orders.loc[code, (wallet, order_id, 'side')] = side
+            self.orders.loc[code, (wallet, order_id, 'action')] = action
             self.orders.loc[code, (wallet, order_id, 'quantity')] = order_size
             self.orders.loc[code, (wallet, order_id, 'filled')] = 0
             self.orders.loc[code, (wallet, order_id, 'status')] = 'preparation'
+
+            log.info(self.orders.loc[code][wallet][order_id])
+
+            # Determine code and quantity of resources used
+            if action == ['buy_spot', 'open_short']:
+                code_res = self.quote
+                used_qty = order_value
+            else:
+                code_res = code
+                used_qty = order_size
+
+            # Update free and used resources in balances df
+            self.balances.loc[code_res, (wallet, 'used', 'quantity')] += used_qty
+            self.balances.loc[code_res, (wallet, 'used', 'value')] += order_value
+            self.balances.loc[code_res, (wallet, 'free', 'quantity')] -= used_qty
+            self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
             self.save()
+
+            log.info(self.balances.loc[code_res][wallet])
+            log.info('Prepare order complete')
 
             return dict(symbol=market.symbol,
                         wallet=market.wallet,

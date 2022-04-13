@@ -500,46 +500,52 @@ class Account(models.Model):
         log.info(' ')
         log.info('Update dataframes')
 
-        order_id = dic['info']['clientOrderId']
-        status = dic['info']['status']
-        filled = dic['info']['filled']
+        try:
 
-        log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
+            order_id = dic['info']['clientOrderId']
+            status = dic['info']['status']
+            filled = dic['info']['filled']
 
-        # Update order status
-        self.orders.loc[code, (wallet, order_id, 'status')] = status
+            log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
 
-        if filled:
+            # Update order status
+            self.orders.loc[code, (wallet, order_id, 'status')] = status
 
-            # Update order filled quantity
-            self.orders.loc[code, (wallet, order_id, 'filled')] = filled
+            if filled:
 
-            # Determine filled value
-            price = Currency.objects.get(code=code).get_lateste_price(self.exchange, self.quote, 'last')
-            filled_value = filled * price
+                # Update order filled quantity
+                self.orders.loc[code, (wallet, order_id, 'filled')] = filled
 
-            # Determine offsets
-            if action in ['sell_spot', 'open_short']:
-                filled = -filled
-                filled_value = -filled_value
+                # Determine filled value
+                price = Currency.objects.get(code=code).get_lateste_price(self.exchange, self.quote, 'last')
+                filled_value = filled * price
 
-            # Update position and free margin
-            if action in ['open_short', 'close_short']:
+                # Determine offsets
+                if action in ['sell_spot', 'open_short']:
+                    filled = -filled
+                    filled_value = -filled_value
 
-                self.balances.loc[code, ('position', 'open', 'quantity')] += filled
-                self.balances.loc[code, ('position', 'open', 'value')] += filled_value
-                self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
-                self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
-                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
+                # Update position and free margin
+                if action in ['open_short', 'close_short']:
 
-            else:
-                # Or update spot
-                self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
-                self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
-                self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
+                    self.balances.loc[code, ('position', 'open', 'quantity')] += filled
+                    self.balances.loc[code, ('position', 'open', 'value')] += filled_value
+                    self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
+                    self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
+                    self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
 
-        self.save()
-        log.info('Update dataframes done')
+                else:
+                    # Or update spot
+                    self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
+                    self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
+                    self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
+
+        except Exception as e:
+            log.error(e)
+
+        else:
+            self.save()
+            log.info('Update dataframes done')
 
     # Sell spot
     def sell_spot_all(self):

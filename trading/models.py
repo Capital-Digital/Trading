@@ -344,16 +344,15 @@ class Account(models.Model):
         other_qty = 0
 
         if hasattr(self, 'orders'):
-            print('orders attribute founds')
             if isinstance(self.orders, pd.DataFrame):
-                print('orders attribute is df')
-                if code in self.orders.index:
+                if code in self.orders.index.tolist():
+
                     print('orders already placed')
 
                     # Another order is already open (or filled) ?
                     if wallet in self.orders.loc[code].index.get_level_values(0):
                         print('orders already placed in the wallet')
-                        
+
                         log.info('')
                         log.info('Open orders found for {0} {1}'.format(code, wallet))
                         log.info('')
@@ -511,6 +510,8 @@ class Account(models.Model):
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
+            print(self.orders)
+            
             # Update order status
             self.orders.loc[code, (wallet, order_id, 'status')] = status
 

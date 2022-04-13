@@ -380,7 +380,7 @@ class Account(models.Model):
             elif action == 'open_short':
                 available = self.balances.future.free.quantity[self.quote]
 
-            if not np.isnan(available):
+            if not pd.isna(available):
 
                 value = math.trunc(quantity * price)
                 order_value = min(available, value)

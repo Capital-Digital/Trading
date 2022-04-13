@@ -363,8 +363,7 @@ class Account(models.Model):
                                        quote__code=self.quote,
                                        type='derivative',
                                        contract_type='perpetual',
-                                       exchange=self.exchange
-                                       ).get_latest_price('last')
+                                       exchange=self.exchange).get_latest_price('last')
 
         # Determine order value and size when USDT resources are released
         if action == 'sell_spot':
@@ -383,6 +382,8 @@ class Account(models.Model):
             if action == 'open_short':
                 available = self.balances.future.free.quantity[self.quote]
 
+            log.info('Available resources {0} {1}'.format(code, available))
+
             value = math.trunc(quantity * price)
             order_value = min(available, value)
             order_size = order_value / price
@@ -390,6 +391,8 @@ class Account(models.Model):
             # Offset order size with size from another order
             order_size -= other_qty
             order_value = order_size * price
+
+            log.info('Order size and value {0} {1}'.format(order_size, order_value))
 
         log.info('Size order complete')
 

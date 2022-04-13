@@ -41,6 +41,7 @@ class Account(models.Model):
     quote = models.CharField(max_length=10, null=True, choices=(('USDT', 'USDT'), ('BUSD', 'BUSD')), default='USDT')
 
     balances = PickledObjectField(null=True)
+    orders = PickledObjectField(null=True)
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     active = models.BooleanField(null=True, blank=False, default=False)
@@ -103,6 +104,8 @@ class Account(models.Model):
                 else:
                     self.balances[(wallet, key, 'quantity')] = np.nan
 
+        self.save()
+
         log.info('Get balances qty done')
 
     # Convert quantity in dollar in balances dataframe
@@ -160,7 +163,8 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
-                self.save()
+
+        self.save()
 
         log.info('Get positions done')
 
@@ -200,13 +204,14 @@ class Account(models.Model):
 
         except AttributeError as e:
             self.trading = False
-            raise Exception('Exception {0}'.format(e.__class__.__name__))
+            raise Exception('Unable to get targets weights {0}'.format(e.__class__.__name__))
 
         except ValueError as e:
             self.trading = False
-            raise Exception('Exception {0}'.format(e))
+            raise Exception('Unable to get targets weights {0}'.format(e))
 
         finally:
+
             self.save()
 
     ##################################
@@ -355,24 +360,15 @@ class Account(models.Model):
             order_value = min(available, value)
             order_size = order_value / price
 
-            # Update free and used quantities
-            if action == 'buy_spot':
-                market = 'spot'
-            if action == 'open_short':
-                market = 'future'
-
-            self.balances.loc[self.quote, (market, 'free', 'quantity')] -= order_value
-            self.balances.loc[self.quote, (market, 'used', 'quantity')] += order_value
-
         return dict(order_size=order_size,
                     order_value=order_value,
                     price=price,
                     action=action,
-                    code=code,
+                    code=code
                     )
 
     # Format decimal and check limits
-    def prep_order(self, code, order_size, order_value, price, action):
+    def prep_order(self, code, order_size, order_value, price, action, side):
 
         # Select market
         markets = Market.objects.filter(base__code=code,
@@ -410,23 +406,36 @@ class Account(models.Model):
                     log.info('Cost not satisfied to {0} {2} {1}'.format(action, market.base.code, size))
                     return dict(valid=False)
 
-            # Determine order side
-            if action in ['sell_spot', 'open_short']:
-                side = 'sell'
-            elif action in ['buy_spot', 'close_short']:
+            # Determine wallet
+            if action in ['buy_spot', 'sell_spot']:
+                wallet = 'spot'
+            if action == ['open_short', 'close_short']:
+                wallet = 'future'
+
+            # Determine side
+            if action in ['buy_spot', 'close_short']:
                 side = 'buy'
+            if action == ['open_short', 'sell_spot']:
+                side = 'sell'
 
-            order = dict(symbol=market.symbol,
-                         wallet=market.wallet,
-                         size=size,
-                         price=price,
-                         reduce_only=reduce_only,
-                         valid=True,
-                         side=side,
-                         order_type='limit'
-                         )
+            if not hasattr(self, 'orders'):
+                self.orders = pd.DataFrame()
 
-            return order
+            # Update order dataframe
+            self.orders.loc[code, (wallet, 'side')] = side
+            self.orders.loc[code, (wallet, 'quantity')] = order_size
+            self.orders.loc[code, (wallet, 'status')] = 'preparation'
+            self.save()
+
+            return dict(symbol=market.symbol,
+                        wallet=market.wallet,
+                        size=size,
+                        price=price,
+                        reduce_only=reduce_only,
+                        valid=True,
+                        side=side,
+                        order_type='limit'
+                        )
 
         else:
             return dict(valid=False)

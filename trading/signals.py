@@ -20,9 +20,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         if state == 'SUCCESS':
 
             # Unpack arguments
-            account_id, action, code, order_type, price, reduce_only, side, size, symbol, wallet = args
-            
-            print(retval)
+            account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet = args
+
+            print(type(retval))
             log.info('Order status'.format(retval['info']['status']))
 
             if retval['info']['status'] in ['NEW', 'FILLED', 'PARTIALLY_FILLED']:

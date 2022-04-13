@@ -459,8 +459,6 @@ class Account(models.Model):
             self.orders.loc[code, (wallet, order_id, 'filled')] = 0
             self.orders.loc[code, (wallet, order_id, 'status')] = 'preparation'
 
-            log.info(self.orders.loc[code][wallet][order_id])
-
             # Determine code and quantity of resources used
             if action in ['buy_spot', 'open_short']:
                 code_res = self.quote
@@ -476,7 +474,6 @@ class Account(models.Model):
             self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
             self.save()
 
-            log.info(self.balances.loc[code_res][wallet])
             log.info('Prepare order complete')
 
             return dict(symbol=market.symbol,

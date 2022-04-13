@@ -510,17 +510,19 @@ class Account(models.Model):
         log.info(' ')
         log.info('Update dataframes')
 
+        print('DATAFRAMES\n')
+        print(self.orders)
+        print(self.balances)
+
         try:
 
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
+            print('\nINDEX', code, wallet, order_id)
+
             # Update order status
             self.orders.loc[(code, wallet, order_id), 'status'] = status.lower()
-
-            print('DATAFRAMES\n')
-            print(self.orders)
-            print(self.balances)
 
             filled = dic['filled']
             if filled:

@@ -30,7 +30,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
                 print('\nSIGNAL\n')
                 print(account.orders)
                 print('\n')
-                
+
                 account.update_df(action, wallet, code, retval)
 
             elif retval['info']['status'] == 'CANCELED':

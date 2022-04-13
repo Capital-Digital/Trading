@@ -21,7 +21,7 @@ import sys
 from timeit import default_timer as timer
 import collections
 import math
-
+from picklefield.fields import PickledObjectField
 import warnings
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
@@ -39,6 +39,8 @@ class Account(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='account', blank=True, null=True)
     strategy = models.ForeignKey(Strategy, related_name='account', on_delete=models.SET_NULL, blank=True, null=True)
     quote = models.CharField(max_length=10, null=True, choices=(('USDT', 'USDT'), ('BUSD', 'BUSD')), default='USDT')
+
+    data = PickledObjectField(null=True)
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     active = models.BooleanField(null=True, blank=False, default=False)

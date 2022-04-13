@@ -23,6 +23,8 @@ import collections
 import math
 from picklefield.fields import PickledObjectField
 import warnings
+import random
+import string
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
@@ -83,6 +85,10 @@ class Account(models.Model):
         # Del attribute
         if hasattr(self, 'balances'):
             del self.balances
+
+        # Del attribute
+        if hasattr(self, 'orders'):
+            del self.orders
 
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
@@ -320,11 +326,34 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
+        # Determine wallet
+        if action in ['buy_spot', 'sell_spot']:
+            wallet = 'spot'
+        if action == ['open_short', 'close_short']:
+            wallet = 'future'
+
+        # Determine side
+        if action in ['buy_spot', 'close_short']:
+            side = 'buy'
+        if action == ['open_short', 'sell_spot']:
+            side = 'sell'
+
+        open_qty = 0
+
+        # Check if an order is already open
+        if hasattr(self, 'orders'):
+            if code in self.orders.index:
+                if wallet in self.orders.loc[code].index.get_level_values(0):
+                    log.info('Open orders found for {0} {1}'.format(code, wallet))
+                    log.info(self.orders)
+                    open = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
+                    open_qty = open.quantity
+
         # Determine price
-        if action in ['sell_spot', 'buy_spot']:
+        if wallet == 'spot':
             price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
 
-        elif action in ['open_short', 'close_short']:
+        else:
             price = Market.objects.get(base__code=code,
                                        quote__code=self.quote,
                                        type='derivative',
@@ -334,11 +363,11 @@ class Account(models.Model):
 
         # Determine order value and size when USDT resources are released
         if action == 'sell_spot':
-            order_size = quantity
+            order_size = quantity - open_qty
             order_value = order_size * price
 
         elif action == 'close_short':
-            order_size = quantity
+            order_size = quantity - open_qty
             order_value = order_size * price
 
         else:
@@ -360,24 +389,30 @@ class Account(models.Model):
             order_value = min(available, value)
             order_size = order_value / price
 
+            # Offset open order
+            order_size -= open_qty
+            order_value = order_size * price
+
         return dict(order_size=order_size,
                     order_value=order_value,
                     price=price,
                     action=action,
-                    code=code
+                    code=code,
+                    side=side,
+                    wallet=wallet
                     )
 
     # Format decimal and check limits
-    def prep_order(self, code, order_size, order_value, price, action, side):
+    def prep_order(self, wallet, code, order_size, order_value, price, action, side):
 
         # Select market
         markets = Market.objects.filter(base__code=code,
                                         quote__code=self.quote,
                                         exchange=self.exchange)
 
-        if action in ['sell_spot', 'buy_spot']:
+        if wallet == 'spot':
             market = markets.get(type='spot')
-        elif action in ['close_short', 'open_short']:
+        else:
             market = markets.get(type='derivative', contract_type='perpetual')
 
         # Format decimal
@@ -406,25 +441,18 @@ class Account(models.Model):
                     log.info('Cost not satisfied to {0} {2} {1}'.format(action, market.base.code, size))
                     return dict(valid=False)
 
-            # Determine wallet
-            if action in ['buy_spot', 'sell_spot']:
-                wallet = 'spot'
-            if action == ['open_short', 'close_short']:
-                wallet = 'future'
-
-            # Determine side
-            if action in ['buy_spot', 'close_short']:
-                side = 'buy'
-            if action == ['open_short', 'sell_spot']:
-                side = 'sell'
+            # Generate order_id
+            alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
+            order_id = ''.join((random.choice(alphanumeric)) for x in range(10))
 
             if not hasattr(self, 'orders'):
                 self.orders = pd.DataFrame()
 
-            # Update order dataframe
-            self.orders.loc[code, (wallet, 'side')] = side
-            self.orders.loc[code, (wallet, 'quantity')] = order_size
-            self.orders.loc[code, (wallet, 'status')] = 'preparation'
+            # Update orders dataframe
+            self.orders.loc[code, (wallet, order_id, 'side')] = side
+            self.orders.loc[code, (wallet, order_id, 'quantity')] = order_size
+            self.orders.loc[code, (wallet, order_id, 'filled')] = 0
+            self.orders.loc[code, (wallet, order_id, 'status')] = 'preparation'
             self.save()
 
             return dict(symbol=market.symbol,

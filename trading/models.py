@@ -441,7 +441,7 @@ class Account(models.Model):
                 # Else return
                 if not reduce_only:
                     log.info('Cost not satisfied to {0} {2} {1}'.format(action, market.base.code, size))
-                    return dict(valid=False)
+                    return False, []
 
             # Generate order_id
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
@@ -476,7 +476,7 @@ class Account(models.Model):
 
             log.info('Prepare order complete')
 
-            lst = [self.id,
+            params = [self.id,
                    'limit',
                    price,
                    reduce_only,
@@ -486,10 +486,10 @@ class Account(models.Model):
                    True,
                    market.wallet]
 
-            return lst
+            return True, params
 
         else:
-            return dict(valid=False)
+            return False, []
 
     def update_orders_df(self, dic):
 
@@ -503,8 +503,8 @@ class Account(models.Model):
         for code, quantity in self.to_sell_spot().items():
             log.info('Sell spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'sell_spot')
-            order = self.prep_order(**kwargs)
-            if order[7] == True:
+            valid, order = self.prep_order(**kwargs)
+            if valid:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -515,10 +515,8 @@ class Account(models.Model):
         for code, quantity in self.to_close_short().items():
             log.info('Close short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'close_short')
-            order = self.prep_order(**kwargs)
-            print(order)
-            print('indice 7', order[7])
-            if order[7] == True:
+            valid, order = self.prep_order(**kwargs)
+            if valid:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -529,8 +527,8 @@ class Account(models.Model):
         for code, quantity in self.to_buy_spot().items():
             log.info('Buy spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'buy_spot')
-            order = self.prep_order(**kwargs)
-            if order[7] == True:
+            valid, order = self.prep_order(**kwargs)
+            if valid:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -542,9 +540,8 @@ class Account(models.Model):
 
             log.info('Open short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'open_short')
-            order = self.prep_order(**kwargs)
-
-            if order[7] == True:
+            valid, order = self.prep_order(**kwargs)
+            if valid:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')

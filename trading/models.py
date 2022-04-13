@@ -510,9 +510,9 @@ class Account(models.Model):
         log.info(' ')
         log.info('Update dataframes')
 
-        print('DATAFRAMES\n')
-        print(self.orders)
-        print(self.balances)
+        log.info('DATAFRAMES\n')
+        log.info(self.orders)
+        log.info(self.balances)
 
         try:
 

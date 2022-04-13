@@ -349,8 +349,9 @@ class Account(models.Model):
 
                     # Another order is already open (or filled) ?
                     if wallet in self.orders.loc[code].index.get_level_values(0):
+                        log.info('')
                         log.info('Open orders found for {0} {1}'.format(code, wallet))
-                        log.info(self.orders)
+                        log.info('')
                         other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
                         other_qty = other.quantity
 

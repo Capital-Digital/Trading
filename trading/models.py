@@ -381,6 +381,8 @@ class Account(models.Model):
                 available = self.balances.future.free.quantity[self.quote]
 
             if not pd.isna(available):
+                
+                print('\nqty', quantity, 'available', available)
 
                 value = math.trunc(quantity * price)
                 order_value = min(available, value)

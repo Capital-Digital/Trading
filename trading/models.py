@@ -505,14 +505,14 @@ class Account(models.Model):
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
-            pprint(dic.keys())
-            pprint(dic['info'].keys())
+            print(dic.keys())
+            print(dic['info'].keys())
 
             # Update order status
             self.orders.loc[code, (wallet, order_id, 'status')] = status
 
-            if 'filled' in dic['info'].keys():
-                filled = dic['info']['filled']
+            if 'filled' in dic.keys():
+                filled = dic['filled']
 
                 log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
 

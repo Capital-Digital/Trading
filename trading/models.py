@@ -517,7 +517,7 @@ class Account(models.Model):
                 self.orders.loc[code, (wallet, order_id, 'filled')] = filled
 
                 # Determine filled value
-                price = Currency.objects.get(code=code).get_lateste_price(self.exchange, self.quote, 'last')
+                price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
                 filled_value = filled * price
 
                 # Determine offsets

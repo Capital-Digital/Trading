@@ -552,7 +552,7 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Close short {0}'.format(code))
-                place_order.delay(*p)
+                place_order.delay(order.values())
             else:
                 log.info('Invalid order')
 

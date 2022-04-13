@@ -343,6 +343,7 @@ class Account(models.Model):
         open_qty = 0
 
         if hasattr(self, 'orders'):
+            log.info(self.orders)
             if code in self.orders.index:
 
                 # Another order is already open (or filled) ?

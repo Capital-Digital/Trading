@@ -203,6 +203,10 @@ def place_order(account_id, action, code, order_id, order_type, price, reduce_on
 
     print(kwargs)
 
+    print('\nPLASE ORDER\n')
+    print(account.orders)
+    print('\n')
+
     log.info('Place order to {0} {3} {1} in {2}'.format(side, symbol, wallet, size))
     return client.create_order(**kwargs)
 

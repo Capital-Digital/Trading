@@ -504,14 +504,14 @@ class Account(models.Model):
 
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
-            filled = dic['info']['filled']
-
-            log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
 
             # Update order status
             self.orders.loc[code, (wallet, order_id, 'status')] = status
 
-            if filled:
+            if 'filled' in dic['info'].keys():
+                filled = dic['info']['filled']
+
+                log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
 
                 # Update order filled quantity
                 self.orders.loc[code, (wallet, order_id, 'filled')] = filled
@@ -541,7 +541,7 @@ class Account(models.Model):
                     self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
 
         except Exception as e:
-            log.error(e)
+            log.error('Exception'.format(e))
 
         else:
             self.save()

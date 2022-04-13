@@ -331,13 +331,13 @@ class Account(models.Model):
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
             wallet = 'spot'
-        if action == ['open_short', 'close_short']:
+        if action in ['open_short', 'close_short']:
             wallet = 'future'
 
         # Determine side
         if action in ['buy_spot', 'close_short']:
             side = 'buy'
-        if action == ['open_short', 'sell_spot']:
+        if action in ['open_short', 'sell_spot']:
             side = 'sell'
 
         open_qty = 0
@@ -459,7 +459,7 @@ class Account(models.Model):
             log.info(self.orders.loc[code][wallet][order_id])
 
             # Determine code and quantity of resources used
-            if action == ['buy_spot', 'open_short']:
+            if action in ['buy_spot', 'open_short']:
                 code_res = self.quote
                 used_qty = order_value
             else:

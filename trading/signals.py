@@ -17,16 +17,23 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         if state == 'SUCCESS':
 
+            # Unpack arguments
+            account_id, action, code, order_type, price, reduce_only, side, size, symbol, wallet = args
+
             if retval['info']['status'] in ['FILLED', 'PARTIALLY_FILLED']:
                 log.info('Order filled')
-                account = Account.objects.get(id=args[0])
-                account.update_orders(retval)
+                account = Account.objects.get(id=account_id)
+                account.update_df(action, wallet, code, retval)
 
             elif retval['info']['status'] == 'NEW':
                 log.info('Order is open')
 
             elif retval['info']['status'] == 'CANCELED':
                 log.info('Order has been canceled')
+
+        else:
+            log.info('State {0}'.format(state))
+            log.info('Retval {0}'.format(retval))
 
 
 @receiver(pre_delete, sender=Order)

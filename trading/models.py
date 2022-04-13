@@ -477,6 +477,9 @@ class Account(models.Model):
             log.info('Prepare order complete')
 
             dic = dict(account_id=self.id,
+                       action=action,
+                       code=code,
+                       order_id=order_id,
                        order_type='limit',
                        price=price,
                        reduce_only=reduce_only,
@@ -490,11 +493,44 @@ class Account(models.Model):
         else:
             return False, dict()
 
-    def update_orders_df(self, dic):
+    # Update orders dataframe
+    def update_df(self, action, wallet, code, dic):
 
         filled = dic['info']['filled']
         if filled:
-            dic['symbol']
+
+            log.info(' ')
+            log.info('Update dataframes')
+
+            # Update orders df
+            order_id = dic['info']['ClientOrderId']
+            self.orders.loc[code, (wallet, order_id, 'filled')] = filled
+
+            # Determine filled value
+            price = Currency.objects.get(code=code).get_lateste_price(self.exchange, self.quote, 'last')
+            filled_value = filled * price
+
+            # Determine offsets
+            if action in ['sell_spot', 'open_short']:
+                filled = -filled
+                filled_value = -filled_value
+
+            # Update position and free margin
+            if action in ['open_short', 'close_short']:
+
+                self.balances.loc[code, ('position', 'open', 'quantity')] += filled
+                self.balances.loc[code, ('position', 'open', 'value')] += filled_value
+                self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
+                self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
+                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
+
+            else:
+                # Update spot
+                self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
+                self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
+                self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
+
+            log.info('Update dataframes done')
 
     # Sell spot
     def sell_spot_all(self):
@@ -504,7 +540,6 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Sell spot {0}'.format(code))
-                print(order.values())
                 place_order.delay(order.values())
             else:
                 log.info('Invalid order')
@@ -517,8 +552,6 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Close short {0}'.format(code))
-                p = order.values()
-                print(*p)
                 place_order.delay(*p)
             else:
                 log.info('Invalid order')
@@ -531,7 +564,6 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Buy spot {0}'.format(code))
-                print(order.values())
                 place_order.delay(order.values())
             else:
                 log.info('Invalid order')
@@ -544,7 +576,6 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Place short {0}'.format(code))
-                print(order.values())
                 place_order.delay(order.values())
             else:
                 log.info('Invalid order')

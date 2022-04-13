@@ -340,7 +340,7 @@ class Account(models.Model):
         if action in ['open_short', 'sell_spot']:
             side = 'sell'
 
-        open_qty = 0
+        other_qty = 0
 
         if hasattr(self, 'orders'):
             if isinstance(self.orders, pd.DataFrame):

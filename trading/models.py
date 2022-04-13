@@ -441,7 +441,7 @@ class Account(models.Model):
                 # Else return
                 if not reduce_only:
                     log.info('Cost not satisfied to {0} {2} {1}'.format(action, market.base.code, size))
-                    return False, []
+                    return False, dict()
 
             # Generate order_id
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
@@ -476,20 +476,19 @@ class Account(models.Model):
 
             log.info('Prepare order complete')
 
-            params = [self.id,
-                   'limit',
-                   price,
-                   reduce_only,
-                   side,
-                   size,
-                   market.symbol,
-                   True,
-                   market.wallet]
+            dic = dict(account_id=self.id,
+                       order_type='limit',
+                       price=price,
+                       reduce_only=reduce_only,
+                       side=side,
+                       size=size,
+                       symbol=market.symbol,
+                       wallet=market.wallet)
 
-            return True, params
+            return True, dic
 
         else:
-            return False, []
+            return False, dict()
 
     def update_orders_df(self, dic):
 
@@ -505,7 +504,7 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Sell spot {0}'.format(code))
-                place_order.delay(*order)
+                place_order.delay(*order.values())
             else:
                 log.info('Invalid order')
 
@@ -517,7 +516,7 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Close short {0}'.format(code))
-                place_order.delay(*order)
+                place_order.delay(*order.values())
             else:
                 log.info('Invalid order')
 
@@ -529,7 +528,7 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Buy spot {0}'.format(code))
-                place_order.delay(*order)
+                place_order.delay(*order.values())
             else:
                 log.info('Invalid order')
 
@@ -541,7 +540,7 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 log.info('Place short {0}'.format(code))
-                place_order.delay(*order)
+                place_order.delay(*order.values())
             else:
                 log.info('Invalid order')
 

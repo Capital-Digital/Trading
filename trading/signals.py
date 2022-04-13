@@ -15,12 +15,10 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Trading_place_order':
 
-        log.info(len(args))
-        log.info(args[0])
-
         if state == 'SUCCESS':
 
             if retval['info']['status'] in ['FILLED', 'PARTIALLY_FILLED']:
+                log.info('Order filled')
                 account = Account.objects.get(id=args[0])
                 account.update_orders(retval)
 

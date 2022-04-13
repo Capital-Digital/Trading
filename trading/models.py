@@ -504,7 +504,7 @@ class Account(models.Model):
             log.info('Sell spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'sell_spot')
             order = self.prep_order(**kwargs)
-            if order['valid']:
+            if order[7]:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -516,7 +516,7 @@ class Account(models.Model):
             log.info('Close short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'close_short')
             order = self.prep_order(**kwargs)
-            if order['valid']:
+            if order[7]:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -528,7 +528,7 @@ class Account(models.Model):
             log.info('Buy spot {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'buy_spot')
             order = self.prep_order(**kwargs)
-            if order['valid']:
+            if order[7]:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')
@@ -542,7 +542,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'open_short')
             order = self.prep_order(**kwargs)
 
-            if order['valid']:
+            if order[7]:
                 place_order.delay(*order)
             else:
                 log.info('Invalid order')

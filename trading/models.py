@@ -447,7 +447,7 @@ class Account(models.Model):
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
             order_id = ''.join((random.choice(alphanumeric)) for x in range(10))
 
-            if not hasattr(self, 'orders') or not self.orders:
+            if self.orders.empty:
                 self.orders = pd.DataFrame(index=[code], data=[],
                                            columns=pd.MultiIndex.from_product([[wallet], [order_id], ['side']])
                                            )

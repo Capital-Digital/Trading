@@ -342,14 +342,17 @@ class Account(models.Model):
 
         if hasattr(self, 'orders'):
             if isinstance(self.orders, pd.DataFrame):
-                if code in self.orders.index.tolist():
 
-                    # Another order is already open (or filled) ?
+                # Another order is open ?
+                if code in self.orders.index.get_level_values(0):
                     if wallet in self.orders.loc[code].index.get_level_values(0):
-                        other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
-                        other_qty = other.quantity
+                        others = self.orders.loc[(code, wallet)].sum()
+                        offset = others.size - others.filled
+
                         log.info(' *** ')
-                        log.info('Order found in dataframe for {0} with qty {1}'.format(code, other_qty))
+                        log.info('Other orders found for {0} with size {1}'.format(code, others.size))
+                        log.info('Other orders found for {0} with filled {1}'.format(code, others.filled))
+                        log.info('Other orders found for {0} offset {1}'.format(code, offset))
                         log.info(' *** ')
 
         # Determine price
@@ -365,11 +368,11 @@ class Account(models.Model):
 
         # Determine order value and size when USDT resources are released
         if action == 'sell_spot':
-            order_size = quantity - other_qty  # offset qty of open/filled order
+            order_size = quantity - offset  # offset qty of open/filled order
             order_value = order_size * price
 
         elif action == 'close_short':
-            order_size = quantity - other_qty
+            order_size = quantity - offset
             order_value = order_size * price
 
         else:
@@ -387,7 +390,7 @@ class Account(models.Model):
                 order_size = order_value / price
 
                 # Offset order size with size from another order
-                order_size -= other_qty
+                order_size -= offset
                 order_value = order_size * price
 
                 log.info(' ')
@@ -395,7 +398,7 @@ class Account(models.Model):
                 log.info('Order size {0}'.format(round(order_size, 4)))
                 log.info('Order value {0}'.format(round(order_value, 2)))
                 log.info('Available USDT {0}'.format(round(available, 2)))
-                log.info('Other qty {0}'.format(round(other_qty, 4)))
+                log.info('Offset {0}'.format(round(offset, 4)))
                 log.info(' ')
 
             else:
@@ -455,16 +458,15 @@ class Account(models.Model):
             order_id = 'boter' + ''.join((random.choice(alphanumeric)) for x in range(10))
 
             if self.orders.empty:
-                self.orders = pd.DataFrame(index=[code], data=[],
-                                           columns=pd.MultiIndex.from_product([[wallet], [order_id], ['side']])
-                                           )
+                idx = pd.MultiIndex.from_tuples([(code, market, order_id)], names=["code", 'market', 'order_id'])
+                self.orders = pd.DataFrame(index=idx, data=[], columns=[])
 
             # Update orders df
-            self.orders.loc[code, (wallet, order_id, 'side')] = side
-            self.orders.loc[code, (wallet, order_id, 'action')] = action
-            self.orders.loc[code, (wallet, order_id, 'quantity')] = order_size
-            self.orders.loc[code, (wallet, order_id, 'filled')] = 0
-            self.orders.loc[code, (wallet, order_id, 'status')] = 'preparation'
+            self.orders.loc[(code, market, order_id), 'filled'] = 0
+            self.orders.loc[(code, market, order_id), 'side'] = side
+            self.orders.loc[(code, market, order_id), 'action'] = action
+            self.orders.loc[(code, market, order_id), 'size'] = order_size
+            self.orders.loc[(code, market, order_id), 'status'] = 'preparation'
 
             # Determine code and quantity of resources used
             if action in ['buy_spot', 'open_short']:
@@ -509,10 +511,8 @@ class Account(models.Model):
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
-            print(self.orders)
-
             # Update order status
-            self.orders.loc[code, (wallet, order_id, 'status')] = status.lower()
+            self.orders.loc[(code, wallet, order_id), 'status'] = status.lower()
 
             filled = dic['filled']
             if filled:
@@ -520,7 +520,7 @@ class Account(models.Model):
                 log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
 
                 # Update order filled quantity
-                self.orders.loc[code, (wallet, order_id, 'filled')] = filled
+                self.orders.loc[(code, wallet, order_id), 'filled'] = filled
 
                 # Determine filled value
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')

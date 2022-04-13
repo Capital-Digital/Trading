@@ -33,7 +33,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
                 log.info('Order has been canceled')
 
         else:
-            log.info('Retval {0}'.format(retval))
+            log.info('kwargs {0}'.format(kwargs))
 
 
 @receiver(pre_delete, sender=Order)

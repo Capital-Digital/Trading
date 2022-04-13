@@ -349,11 +349,11 @@ class Account(models.Model):
 
                     # Another order is already open (or filled) ?
                     if wallet in self.orders.loc[code].index.get_level_values(0):
-                        log.info(' ')
-                        log.info('Order found in dataframe for {0}'.format(code))
-                        log.info(' ')
                         other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
                         other_qty = other.quantity
+                        log.info(' ')
+                        log.info('Order found in dataframe for {0} with qty {1}'.format(code, other_qty))
+                        log.info(' ')
 
         # Determine price
         if wallet == 'spot':
@@ -395,7 +395,9 @@ class Account(models.Model):
                 order_size -= other_qty
                 order_value = order_size * price
 
-                log.info('Order size and value {0} {1}'.format(order_size, order_value))
+                log.info('Order size and value {0} {1} available {2} other_qty {3}'.format(order_size,
+                                                                                           order_value,
+                                                                                           available, other_qty))
 
             else:
                 order_size = 0

@@ -489,6 +489,12 @@ class Account(models.Model):
         else:
             return dict(valid=False)
 
+    def update_orders_df(self, dic):
+
+        filled = dic['info']['filled']
+        if filled:
+            dic['symbol']
+
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import place_order

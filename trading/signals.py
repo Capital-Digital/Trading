@@ -15,21 +15,20 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Trading_place_order':
 
-        log.info('Order placed', task=task.name, state=state)
+        log.info(len(args))
+        log.info(args[0])
+        
         if state == 'SUCCESS':
 
-            log.info('SUCCESS')
-            log.info(retval['info']['orderId'])
-            log.info(retval['info']['status'])
-            log.info(len(args))
+            if retval['info']['status'] in ['FILLED', 'PARTIALLY_FILLED']:
+                account = Account.objects.get(id=args[0])
+                account.update_orders(retval)
 
-            account_id = args[0]
+            elif retval['info']['status'] == 'NEW':
+                log.info('Order is open')
 
-            log.info('account', id=account_id)
-            account = Account.objects.get(id=account_id)
-
-            if hasattr(account, 'balances'):
-                log.info('Balances found !')
+            elif retval['info']['status'] == 'CANCELED':
+                log.info('Order has been canceled')
 
 
 @receiver(pre_delete, sender=Order)

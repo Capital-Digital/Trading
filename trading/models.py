@@ -423,7 +423,7 @@ class Account(models.Model):
                               n=order_size)
 
         # Test amount limits MIN and MAX
-        if limit_amount(market, size) or 1==1:
+        if limit_amount(market, size):
 
             # Test cost limits MIN and MAX
             cost = order_value
@@ -476,19 +476,17 @@ class Account(models.Model):
 
             log.info('Prepare order complete')
 
-            dic = dict(account_id=self.id,
-                       action=action,
-                       code=code,
-                       order_id=order_id,
-                       order_type='limit',
-                       price=price,
-                       reduce_only=reduce_only,
-                       side=side,
-                       size=size,
-                       symbol=market.symbol,
-                       wallet=market.wallet)
-
-            return True, dic
+            return True, dict(account_id=self.id,
+                              action=action,
+                              code=code,
+                              order_id=order_id,
+                              order_type='limit',
+                              price=price,
+                              reduce_only=reduce_only,
+                              side=side,
+                              size=size,
+                              symbol=market.symbol,
+                              wallet=market.wallet)
 
         else:
             return False, dict()

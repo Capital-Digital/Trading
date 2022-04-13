@@ -326,9 +326,6 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
-        log.info(' ')
-        log.info('Size order to {0} {1} {2}'.format(action, quantity, code))
-
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
             wallet = 'spot'
@@ -351,9 +348,9 @@ class Account(models.Model):
                     if wallet in self.orders.loc[code].index.get_level_values(0):
                         other = self.orders.loc[code][wallet].droplevel(0)  # drop order_id level
                         other_qty = other.quantity
-                        log.info(' ')
+                        log.info(' *** ')
                         log.info('Order found in dataframe for {0} with qty {1}'.format(code, other_qty))
-                        log.info(' ')
+                        log.info(' *** ')
 
         # Determine price
         if wallet == 'spot':
@@ -395,10 +392,10 @@ class Account(models.Model):
 
                 log.info(' ')
                 log.info(' *** {0} {1} ***'.format(code, wallet))
-                log.info('Order size {0}'.format(round(order_size, 2)))
+                log.info('Order size {0}'.format(round(order_size, 4)))
                 log.info('Order value {0}'.format(round(order_value, 2)))
                 log.info('Available USDT {0}'.format(round(available, 2)))
-                log.info('Other qty {0}'.format(round(other_qty, 2)))
+                log.info('Other qty {0}'.format(round(other_qty, 4)))
                 log.info(' ')
 
             else:

@@ -88,7 +88,7 @@ class Account(models.Model):
 
         # Del attribute
         if hasattr(self, 'orders'):
-            del self.orders
+            self.orders = pd.DataFrame()
 
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
@@ -447,8 +447,7 @@ class Account(models.Model):
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
             order_id = ''.join((random.choice(alphanumeric)) for x in range(10))
 
-            if not hasattr(self, 'orders'):
-                # Create an empty df with multiindexes columns
+            if not hasattr(self, 'orders') or not self.orders:
                 self.orders = pd.DataFrame(index=[code], data=[],
                                            columns=pd.MultiIndex.from_product([[wallet], [order_id], ['side']])
                                            )

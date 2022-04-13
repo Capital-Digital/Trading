@@ -505,6 +505,9 @@ class Account(models.Model):
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
+            pprint(dic.keys())
+            pprint(dic['info'].keys())
+
             # Update order status
             self.orders.loc[code, (wallet, order_id, 'status')] = status
 

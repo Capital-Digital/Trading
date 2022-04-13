@@ -476,14 +476,15 @@ class Account(models.Model):
 
             log.info('Prepare order complete')
 
-            return dict(symbol=market.symbol,
-                        wallet=market.wallet,
-                        size=size,
+            return dict(account_id=self.id,
+                        order_type='limit',
                         price=price,
                         reduce_only=reduce_only,
-                        valid=True,
                         side=side,
-                        order_type='limit'
+                        size=size,
+                        symbol=market.symbol,
+                        valid=True,
+                        wallet=market.wallet
                         )
 
         else:
@@ -535,13 +536,13 @@ class Account(models.Model):
     def open_short_all(self):
         from trading.tasks import place_order
         for code, quantity in self.to_open_short().items():
+
             log.info('Open short {0}'.format(code))
             kwargs = self.size_order(code, quantity, 'open_short')
             order = self.prep_order(**kwargs)
+
             if order['valid']:
-                log.info('Place order...')
-                pprint(order)
-                place_order.delay(self.id, **order)
+                place_order.delay(order.values())
             else:
                 log.info('Invalid order')
 

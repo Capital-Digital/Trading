@@ -385,8 +385,6 @@ class Account(models.Model):
 
             if not pd.isna(available):
 
-                print('\nqty', quantity, code, 'available', available, 'USDT')
-
                 value = math.trunc(quantity * price)
                 order_value = min(available, value)
                 order_size = order_value / price
@@ -395,15 +393,17 @@ class Account(models.Model):
                 order_size -= other_qty
                 order_value = order_size * price
 
-                log.info('Order size and value {0} {1} available {2} other_qty {3}'.format(order_size,
-                                                                                           order_value,
-                                                                                           available, other_qty))
+                log.info(' ')
+                log.info(' *** {0} {1} ***'.format(code, wallet))
+                log.info('Order size {0}'.format(round(order_size, 2)))
+                log.info('Order value {0}'.format(round(order_value, 2)))
+                log.info('Available USDT {0}'.format(round(available, 2)))
+                log.info('Other qty {0}'.format(round(other_qty, 2)))
+                log.info(' ')
 
             else:
                 order_size = 0
                 order_value = 0
-
-        log.info('Size order complete')
 
         return dict(order_size=order_size,
                     order_value=order_value,

@@ -470,6 +470,7 @@ class Account(models.Model):
 
             print('\nORDERS\n')
             print(self.orders)
+            print('\n')
 
             # Determine code and quantity of resources used
             if action in ['buy_spot', 'open_short']:
@@ -517,6 +518,10 @@ class Account(models.Model):
             # Update order status
             self.orders.loc[(code, wallet, order_id), 'status'] = status.lower()
 
+            print('DATAFRAMES\n')
+            print(self.orders)
+            print(self.balances)
+
             filled = dic['filled']
             if filled:
 
@@ -554,10 +559,6 @@ class Account(models.Model):
             log.error('Exception {0}'.format(e))
 
         else:
-
-            print('DATAFRAMES\n')
-            print(self.orders)
-            print(self.balances)
 
             self.save()
             log.info('Update dataframes done')

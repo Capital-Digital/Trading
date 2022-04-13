@@ -458,19 +458,19 @@ class Account(models.Model):
             order_id = 'boter' + ''.join((random.choice(alphanumeric)) for x in range(10))
 
             if self.orders.empty:
-                idx = pd.MultiIndex.from_tuples([(code, market, order_id)], names=["code", 'market', 'order_id'])
+                idx = pd.MultiIndex.from_tuples([(code, wallet, order_id)], names=["code", 'wallet', 'order_id'])
                 self.orders = pd.DataFrame(index=idx, data=[], columns=[])
 
             # Update orders df
-            self.orders.loc[(code, market, order_id), 'filled'] = 0
-            self.orders.loc[(code, market, order_id), 'side'] = side
-            self.orders.loc[(code, market, order_id), 'action'] = action
-            self.orders.loc[(code, market, order_id), 'size'] = order_size
-            self.orders.loc[(code, market, order_id), 'status'] = 'preparation'
+            self.orders.loc[(code, wallet, order_id), 'filled'] = 0
+            self.orders.loc[(code, wallet, order_id), 'side'] = side
+            self.orders.loc[(code, wallet, order_id), 'action'] = action
+            self.orders.loc[(code, wallet, order_id), 'size'] = order_size
+            self.orders.loc[(code, wallet, order_id), 'status'] = 'preparation'
 
             print('\nORDERS\n')
             print(self.orders)
-            
+
             # Determine code and quantity of resources used
             if action in ['buy_spot', 'open_short']:
                 code_res = self.quote
@@ -554,6 +554,11 @@ class Account(models.Model):
             log.error('Exception {0}'.format(e))
 
         else:
+
+            print('DATAFRAMES\n')
+            print(self.orders)
+            print(self.balances)
+
             self.save()
             log.info('Update dataframes done')
 

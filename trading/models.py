@@ -507,30 +507,31 @@ class Account(models.Model):
     # Update orders dataframe
     def update_df(self, action, wallet, code, dic):
 
-        log.info(' ')
-        log.info('Update dataframes')
-
-        log.info('DATAFRAMES\n')
-        log.info(self.orders)
-        log.info(self.balances)
-
         try:
 
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
-            print('\nINDEX', code, wallet, order_id)
+            log.info('  ***  UPDATE *** ')
+            log.info('code {0}'.format(code))
+            log.info('wallet {0}'.format(wallet))
+            log.info('status {0}'.format(status))
+            log.info('order_id {0}'.format(order_id))
+            log.info('action {0}'.format(action))
 
             # Update order status
-            self.orders.loc[(code, wallet, order_id), 'status'] = status.lower()
+            self.orders.loc[(code, wallet, order_id)]['status'] = status.lower()
+            self.save()
 
             filled = dic['filled']
             if filled:
 
-                log.info('UPDATE DF {0}, {1}, {2}'.format(order_id, status, filled))
+                log.info('filled {0}'.format(filled))
+                log.info('  ***   ')
 
                 # Update order filled quantity
                 self.orders.loc[(code, wallet, order_id), 'filled'] = filled
+                self.save()
 
                 # Determine filled value
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
@@ -549,21 +550,19 @@ class Account(models.Model):
                     self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
                     self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
                     self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
+                    self.save()
 
                 else:
                     # Or update spot
                     self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
                     self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
                     self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
+                    self.save()
 
         except Exception as e:
             log.error('Exception {0}'.format(e.__class__.__name__))
             log.error('Exception {0}'.format(e))
 
-        else:
-
-            self.save()
-            log.info('Update dataframes done')
 
     # Sell spot
     def sell_spot_all(self):

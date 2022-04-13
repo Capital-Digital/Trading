@@ -517,6 +517,7 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'close_short')
             order = self.prep_order(**kwargs)
             print(order)
+            print('indice 7', order[7])
             if order[7] == True:
                 place_order.delay(*order)
             else:

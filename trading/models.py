@@ -349,7 +349,7 @@ class Account(models.Model):
             for other in others:
                 log.info('Other order with size {0}'.format(other.amount))
                 log.info('Other order with filled {0}'.format(other.filled))
-                log.info('Offset: {0}'.format(other.size - other.filled))
+                log.info('Offset: {0}'.format(other.amount - other.filled))
                 log.info('')
 
         # Determine price

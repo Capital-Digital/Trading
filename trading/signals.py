@@ -52,6 +52,13 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.error('Error while updating orders')
 
 
+@task_failure.connect
+def task_failure_notifier(sender=None, **kwargs):
+    log.error('FAILED')
+    if sender.name == 'Trading_place_order':
+        log.error('TASK FAILED')
+
+
 @receiver(pre_delete, sender=Order)
 def cancel_order(sender, instance, **kwargs):
     pass

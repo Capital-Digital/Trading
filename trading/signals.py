@@ -27,7 +27,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
             if retval['info']['status'] in ['NEW', 'FILLED', 'PARTIALLY_FILLED']:
                 account = Account.objects.get(id=account_id)
-                account.update_df(action, wallet, code, retval)
+                account.update_order(retval)
 
             elif retval['info']['status'] == 'CANCELED':
                 log.info('Order has been canceled')

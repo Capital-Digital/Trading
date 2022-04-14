@@ -211,6 +211,43 @@ def place_order(account_id, action, code, order_id, order_type, price, reduce_on
     return client.create_order(**kwargs)
 
 
+@app.task(name='Trading_____Update_accounts_orders', base=BaseTaskWithRetry)
+def update_accounts_orders():
+    #
+    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
+        update_account_orders.delay(account.id)
+
+
+@app.task(name='Trading_____Update_accounts_orders', base=BaseTaskWithRetry)
+def update_account_orders(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    orders = Order.objects.filter(account=account, status='new')
+
+    if orders.exists():
+        for order in orders:
+            fetch_order.delay(account_id, order.orderid)
+
+
+@app.task(name='Trading_____Fetch_order', base=BaseTaskWithRetry)
+def fetch_order(account_id, order_id):
+    #
+    order = Order.objects.get(orderid=order_id)
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    log.info('')
+    log.info(' *** FETCH ORDER ***')
+    log.info('code {0} {1}'.format(order.market__base__code, order.market.wallet))
+    log.info('')
+
+    # Set options
+    client.options['defaultType'] = order.market.wallet
+
+    responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
+    account.update_order(responses)
+
+
 @app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
     # Iterate through accounts and update open orders

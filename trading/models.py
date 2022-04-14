@@ -510,13 +510,23 @@ class Account(models.Model):
         else:
             return False, dict()
 
-    # Update orders dataframe
-    def update_df(self, action, wallet, code, dic):
+    # Update orders
+    def update_order(self, response):
 
         try:
 
-            order_id = dic['info']['clientOrderId']
-            status = dic['info']['status']
+            order_id = response['info']['clientOrderId']
+            status = response['info']['status']
+            filled = response['filled']
+
+            # Select order and update its status
+            order = Order.objects.get(account=self, orderid=order_id)
+            order.status = status.lower()
+
+            # Select attributes
+            code = order.market.base.code
+            wallet = order.market.wallet
+            action = order.action
 
             log.info(' ')
             log.info('  ***  UPDATE *** ')
@@ -525,45 +535,48 @@ class Account(models.Model):
             log.info('status {0}'.format(status))
             log.info('order_id {0}'.format(order_id))
             log.info('action {0}'.format(action))
+            log.info('filled {0}'.format(filled))
             log.info(' ')
 
-            # Update order status
-            order = Order.objects.get(account=self, orderid=order_id)
-            order.status = status.lower()
-
-            filled = dic['filled']
             if filled:
 
-                log.info(' ')
-                log.info('filled {0}'.format(filled))
-                log.info('  ***   ')
-
-                # Update order filled quantity
-                order.filled = filled
-
-                # Determine filled value
+                # Determine traded quantity and value
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
-                filled_value = filled * price
+                trade_qty = filled - order.filled
+                trade_value = filled * price
+
+                order.filled = filled
 
                 # Determine offsets
                 if action in ['sell_spot', 'open_short']:
-                    filled = -filled
-                    filled_value = -filled_value
+                    trade_qty = -trade_qty
+                    trade_value = -trade_value
 
                 # Update position and free margin
                 if action in ['open_short', 'close_short']:
 
-                    self.balances.loc[code, ('position', 'open', 'quantity')] += filled
-                    self.balances.loc[code, ('position', 'open', 'value')] += filled_value
-                    self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
-                    self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
-                    self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
+                    log.info('')
+                    log.info(self.balance.future)
+                    log.info('')
+                    log.info(self.balance.position)
+                    log.info('')
+
+                    self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
+                    self.balances.loc[code, ('position', 'open', 'value')] += trade_value
+                    self.balances.loc[self.quote, ('future', 'total', 'quantity')] += trade_value
+                    self.balances.loc[self.quote, ('future', 'free', 'quantity')] += trade_value
+                    self.balances.loc[self.quote, ('future', 'used', 'quantity')] += trade_value
 
                 else:
+
+                    log.info('')
+                    log.info(self.balance.spot)
+                    log.info('')
+
                     # Or update spot
-                    self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
-                    self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
-                    self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
+                    self.balances.loc[code, (wallet, 'total', 'quantity')] += trade_qty
+                    self.balances.loc[code, (wallet, 'free', 'quantity')] += trade_qty
+                    self.balances.loc[code, (wallet, 'used', 'quantity')] += trade_qty
 
         except Exception as e:
             log.error('Exception {0}'.format(e.__class__.__name__))

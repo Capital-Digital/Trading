@@ -225,7 +225,7 @@ def update_account_orders(account_id):
 
     while True:
 
-        orders = Order.objects.filter(account=account, status='new')
+        orders = Order.objects.filter(account=account, status='new').exclude(orderid__isnull=True)
 
         log.info(' *** UPDATE {0} ORDER ***'.format(len(orders)))
 

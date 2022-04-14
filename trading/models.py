@@ -556,9 +556,9 @@ class Account(models.Model):
                 if action in ['open_short', 'close_short']:
 
                     log.info('')
-                    log.info(self.balance.future)
+                    log.info(self.balances.future)
                     log.info('')
-                    log.info(self.balance.position)
+                    log.info(self.balances.position)
                     log.info('')
 
                     self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
@@ -570,7 +570,7 @@ class Account(models.Model):
                 else:
 
                     log.info('')
-                    log.info(self.balance.spot)
+                    log.info(self.balances.spot)
                     log.info('')
 
                     # Or update spot

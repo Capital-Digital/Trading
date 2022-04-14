@@ -53,10 +53,11 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
 
 @task_failure.connect
-def task_failure_notifier(sender=None, **kwargs):
+def task_failure_notifier(sender=None, exception=None, **kwargs):
     log.error('FAILED')
     if sender.name == 'Trading_place_order':
         log.error('TASK FAILED')
+        log.info(exception)
 
 
 @receiver(pre_delete, sender=Order)

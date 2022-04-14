@@ -64,7 +64,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'account', 'dt_create', 'market', 'action', 'status', 'side', 'amount', 'get_cost',
+    list_display = ('id', 'account', 'dt_create', 'market', 'orderid', 'action', 'status', 'side', 'amount', 'get_cost',
                     'get_price', 'filled',  'dt_update')
 
     readonly_fields = ('orderid', 'user', 'account', 'market', 'status',  'action', 'type', 'amount', 'side', 'params',

@@ -572,8 +572,6 @@ class Account(models.Model):
                 log.info('Sell spot {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
-            else:
-                log.info('Invalid order')
 
     # Close short
     def close_short_all(self):
@@ -585,8 +583,6 @@ class Account(models.Model):
                 log.info('Close short {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
-            else:
-                log.info('Invalid order')
 
     # Buy spot
     def buy_spot_all(self):
@@ -598,8 +594,6 @@ class Account(models.Model):
                 log.info('Buy spot {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
-            else:
-                log.info('Invalid order')
 
     # Open short
     def open_short_all(self):
@@ -611,8 +605,6 @@ class Account(models.Model):
                 log.info('Place short {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
-            else:
-                log.info('Invalid order')
 
     #################################
 

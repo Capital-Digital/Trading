@@ -347,7 +347,7 @@ class Account(models.Model):
             log.info('Order object found for {1} : {0}'.format(len(others), code))
 
             for other in others:
-                log.info('Other order with size {0}'.format(other.size))
+                log.info('Other order with size {0}'.format(other.amount))
                 log.info('Other order with filled {0}'.format(other.filled))
                 log.info('Offset: {0}'.format(other.size - other.filled))
                 log.info('')

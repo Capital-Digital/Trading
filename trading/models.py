@@ -339,7 +339,8 @@ class Account(models.Model):
         others = Order.objects.filter(account=self,
                                       market__wallet=wallet,
                                       market__base__code=code,
-                                      action=action
+                                      action=action,
+                                      status__in=['preparation', 'new']
                                       )
 
         if others.exists():
@@ -347,7 +348,7 @@ class Account(models.Model):
             log.info(' *** DETERMINE OFFSET ***')
             log.info('Order object found for {1} : {0}'.format(len(others), code))
 
-            filled = others.aggregate(Sum('amount'))
+            filled = others.aggregate(Sum('filled'))['filled__sum']
             offset = quantity - filled
 
             log.info('Already filled {0}'.format(filled))

@@ -348,10 +348,8 @@ class Account(models.Model):
             log.info(' *** OFFSET ***')
             log.info('Order object found for {1} : {0}'.format(len(others), code))
 
-            filled = others.aggregate(Sum('filled'))['filled__sum']
-            offset = quantity - filled
+            offset = others.aggregate(Sum('filled'))['filled__sum']
 
-            log.info('Already filled {0}'.format(filled))
             log.info('Offset {0}'.format(offset))
             log.info('')
         else:

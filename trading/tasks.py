@@ -251,9 +251,12 @@ def fetch_order(account_id, order_id):
 
     # Set options
     client.options['defaultType'] = order.market.wallet
-
-    responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
-    account.update_order(responses)
+    if order.orderid:
+        log.error('orderId {0}'.format(order.orderid))
+        responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
+        account.update_order(responses)
+    else:
+        log.error('orderId not found')
 
 
 @app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)

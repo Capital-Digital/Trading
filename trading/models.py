@@ -88,6 +88,7 @@ class Account(models.Model):
 
         # Del attribute
         if hasattr(self, 'orders'):
+            log.warning('Drop attribute orders')
             self.orders = pd.DataFrame()
 
         # Iterate through exchange's wallets

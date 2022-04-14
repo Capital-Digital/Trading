@@ -499,7 +499,8 @@ class Account(models.Model):
                               side=side,
                               size=size,
                               symbol=market.symbol,
-                              wallet=market.wallet)
+                              wallet=market.wallet
+                              )
 
         else:
             return False, dict()
@@ -512,12 +513,14 @@ class Account(models.Model):
             order_id = dic['info']['clientOrderId']
             status = dic['info']['status']
 
+            log.info(' ')
             log.info('  ***  UPDATE *** ')
             log.info('code {0}'.format(code))
             log.info('wallet {0}'.format(wallet))
             log.info('status {0}'.format(status))
             log.info('order_id {0}'.format(order_id))
             log.info('action {0}'.format(action))
+            log.info(' ')
 
             # Update order status
             self.orders.loc[(code, wallet, order_id)]['status'] = status.lower()
@@ -526,6 +529,7 @@ class Account(models.Model):
             filled = dic['filled']
             if filled:
 
+                log.info(' ')
                 log.info('filled {0}'.format(filled))
                 log.info('  ***   ')
 

@@ -201,13 +201,15 @@ def place_order(account_id, action, code, order_id, order_type, price, reduce_on
     if reduce_only:
         kwargs['params']['reduceOnly'] = True
 
-    print(kwargs)
+    log.info(' ')
+    log.info(' *** PLACE ORDER ***')
+    log.info('Symbol {0}'.format(symbol))
+    log.info('order_type {0}'.format(order_type))
+    log.info('side {0}'.format(side))
+    log.info('size {0}'.format(size))
+    log.info('order_id {0}'.format(order_id))
+    log.info(' ')
 
-    print('\nPLASE ORDER\n')
-    print(account.orders)
-    print('\n')
-
-    log.info('Place order to {0} {3} {1} in {2}'.format(side, symbol, wallet, size))
     return client.create_order(**kwargs)
 
 

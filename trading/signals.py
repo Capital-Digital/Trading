@@ -53,19 +53,28 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
 
 @task_failure.connect
-def task_failure_notifier(sender=None, args=None, exception=None, **kwargs):
+def task_failure_notifier(sender=None, task_id=None, args=None, exception=None, traceback=None, einfo=None, **kwargs):
 
     if sender.name == 'Trading_place_order':
+        
+        exc_info = (type(exception), exception, traceback)
+        log.error(
+            'Celery job exception: %s (%s)' % (exception.__class__.__name__, exception),
+            exc_info=exc_info,
+            extra={
+                'data': {
+                    'task_id': task_id,
+                    'sender': sender,
+                    'args': args,
+                    'kwargs': kwargs,
+                }
+            }
+        )
 
-        log.info(exception)
-        log.info(type(exception))
+        # Unpack arguments
+        account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet = args
 
-        if exception == ccxt.base.errors.InsufficientFunds:
-
-            # Unpack arguments
-            account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet = args
-
-            log.error('TASK {0} FAILED'.format(action))
+        log.error('TASK {0} FAILED'.format(action))
 
 
 @receiver(pre_delete, sender=Order)

@@ -459,7 +459,7 @@ class Account(models.Model):
 
             # Generate order_id
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
-            order_id = 'boter' + ''.join((random.choice(alphanumeric)) for x in range(10))
+            order_id = ''.join((random.choice(alphanumeric)) for x in range(5))
 
             if self.orders.empty:
                 idx = pd.MultiIndex.from_tuples([(code, wallet, order_id)], names=["code", 'wallet', 'order_id'])

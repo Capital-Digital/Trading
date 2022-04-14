@@ -39,7 +39,6 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             if retval:
 
                 log.info('New resources available')
-
                 account = Account.objects.get(id=retval)
 
                 # Calculate new delta

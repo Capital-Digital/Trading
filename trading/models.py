@@ -1278,10 +1278,6 @@ class Account(models.Model):
         self.get_target()
         self.get_delta()
 
-        log.info(' ')
-
-        print(self.balances.account)
-
         current = self.balances.account.current.percent
         for coin, val in current[current != 0].sort_values(ascending=False).items():
             if coin != self.quote:

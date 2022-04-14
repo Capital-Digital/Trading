@@ -211,8 +211,8 @@ def place_order(account_id, action, code, order_id, order_type, price, reduce_on
     return client.create_order(**kwargs)
 
 
-@app.task(name='Trading_____Update_accounts_orders', base=BaseTaskWithRetry)
-def update_accounts_orders():
+@app.task(bind=True, name='Trading_____Update_accounts_orders', base=BaseTaskWithRetry)
+def update_accounts_orders(self):
     #
     for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
         update_account_orders.delay(account.id)

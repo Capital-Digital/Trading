@@ -345,9 +345,12 @@ class Account(models.Model):
 
                 # Another order is open ?
                 if code in self.orders.index.get_level_values(0):
+                    log.info('{0} found in df'.format(code))
                     if wallet in self.orders.loc[code].index.get_level_values(0):
+                        log.info('{0} found in df (wallet {1})'.format(code, wallet))
                         others = self.orders.loc[(code, wallet)].sum()
                         offset = others.size - others.filled
+                        log.info('{0} found in df (offset {1})'.format(code, offset))
 
                         log.info(' *** ')
                         log.info('Other orders found for {0} with size {1}'.format(code, others.size))

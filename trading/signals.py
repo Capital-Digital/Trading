@@ -60,7 +60,7 @@ def task_failure_notifier(sender=None, args=None, exception=None, **kwargs):
         log.info(exception)
         log.info(type(exception))
 
-        if exception == ccxt.InsufficientFunds:
+        if exception == ccxt.base.errors.InsufficientFunds:
 
             # Unpack arguments
             account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet = args

@@ -323,6 +323,9 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
+        log.info(' ')
+        log.info(' *** Size order to {0} {1} ***'.format(action, code))
+
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
             wallet = 'spot'
@@ -345,18 +348,10 @@ class Account(models.Model):
                                       )
 
         if others.exists():
-            log.info('')
-            log.info(' *** OFFSET ***')
-            log.info('Order object found for {1} : {0}'.format(len(others), code))
-
             offset = others.aggregate(Sum('filled'))['filled__sum']
-
-            log.info('Offset {0}'.format(offset))
-            log.info('')
-        else:
-            log.info(' *** OFFSET ***')
-            log.info('No offset required for {0}'.format(code))
-            log.info('')
+            log.info('{0} order(s) object found (offset {1})'.format(len(others), offset))
+            for other in others:
+                log.info('client_id -> {0}'.format(other.clientid))
 
         # Determine price
         if wallet == 'spot':
@@ -396,13 +391,11 @@ class Account(models.Model):
                 order_size -= offset
                 order_value = order_size * price
 
-                log.info(' ')
-                log.info(' *** SIZE ORDER ***')
-                log.info('Code {0} {1}'.format(code, wallet))
-                log.info('Order size {0}'.format(round(order_size, 4)))
-                log.info('Order value {0}'.format(round(order_value, 2)))
-                log.info('Available USDT {0}'.format(round(available, 2)))
-                log.info('Offset {0}'.format(round(offset, 4)))
+                log.info('wallet {0}'.format(wallet))
+                log.info('order size {0}'.format(round(order_size, 4)))
+                log.info('order value {0}'.format(round(order_value, 2)))
+                log.info('available USDT {0}'.format(round(available, 2)))
+                log.info('offset {0}'.format(round(offset, 4)))
                 log.info(' ')
 
             else:
@@ -519,6 +512,11 @@ class Account(models.Model):
     # Update balances after new trade
     def update_balances(self, action, wallet, code, filled_new):
 
+        log.info('')
+        log.info('Update balances dataframe')
+        log.info('action {0}'.format(action))
+        log.info('-> {0} {1}'.format(code, wallet))
+
         # Calculate trade value
         price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
         filled_value = filled_new * price
@@ -533,34 +531,40 @@ class Account(models.Model):
         # Update position and free margin
         if action in ['open_short', 'close_short']:
 
-            log.info('')
-            log.info(self.balances.future)
-            log.info('')
-            log.info(self.balances.position)
-            log.info('')
+            log.info('Filled new {0}'.format(filled_new))
+            log.info('Filled value {0}'.format(filled_value))
+
+            log.info('Position open before')
+            log.info(self.balances.position.open)
 
             self.balances.loc[code, ('position', 'open', 'quantity')] += filled_new
             self.balances.loc[code, ('position', 'open', 'value')] += filled_value
+
+            log.info('Position open after')
+            log.info(self.balances.position.open)
+
+            log.info('Future total quantity before')
+            log.info(self.balances.future.total.quantity)
+
             self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
             self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
             self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
 
+            log.info('Future total quantity after')
+            log.info(self.balances.future.total.quantity)
+
         else:
 
-            log.info('')
-            log.info(self.balances.spot)
-            log.info('')
+            log.info('Spot total quantity before')
+            log.info(self.balances.spot.total.quantity)
 
             # Or update spot
             self.balances.loc[code, (wallet, 'total', 'quantity')] += filled_new
             self.balances.loc[code, (wallet, 'free', 'quantity')] += filled_new
             self.balances.loc[code, (wallet, 'used', 'quantity')] += filled_new
 
-        log.info('')
-        log.info('Balance comparison')
-        log.info('')
-
-        self.balances.compare(old)
+            log.info('Spot total quantity after')
+            log.info(self.balances.spot.total.quantity)
 
     # Sell spot
     def sell_spot_all(self):

@@ -86,11 +86,6 @@ class Account(models.Model):
         if hasattr(self, 'balances'):
             del self.balances
 
-        # Del attribute
-        if hasattr(self, 'orders'):
-            log.warning('Drop attribute orders')
-            self.orders = pd.DataFrame()
-
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
 
@@ -341,23 +336,22 @@ class Account(models.Model):
 
         offset = 0
 
-        if hasattr(self, 'orders'):
-            if isinstance(self.orders, pd.DataFrame):
+        others = Order.objects.filter(
+            account=self,
+            market__base__code=code,
+            market__wallet=wallet,
+            status__in=['new']
+        )
+        if others.exists():
+            log.info('')
+            log.info(' *** OFFSET ***')
+            log.info('Order object found for {1} : {0}'.format(len(others), code))
 
-                # Another order is open ?
-                if code in self.orders.index.get_level_values(0):
-                    log.info('{0} found in df'.format(code))
-                    if wallet in self.orders.loc[code].index.get_level_values(0):
-                        log.info('{0} found in df (wallet {1})'.format(code, wallet))
-                        others = self.orders.loc[(code, wallet)].sum()
-                        offset = others.size - others.filled
-                        log.info('{0} found in df (offset {1})'.format(code, offset))
-
-                        log.info(' *** ')
-                        log.info('Other orders found for {0} with size {1}'.format(code, others.size))
-                        log.info('Other orders found for {0} with filled {1}'.format(code, others.filled))
-                        log.info('Other orders found for {0} offset {1}'.format(code, offset))
-                        log.info(' *** ')
+            for other in others:
+                log.info('Other order with size {0}'.format(other.size))
+                log.info('Other order with filled {0}'.format(other.filled))
+                log.info('Offset: {0}'.format(other.size - other.filled))
+                log.info('')
 
         # Determine price
         if wallet == 'spot':
@@ -462,16 +456,17 @@ class Account(models.Model):
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
             order_id = ''.join((random.choice(alphanumeric)) for x in range(5))
 
-            if self.orders.empty:
-                idx = pd.MultiIndex.from_tuples([(code, wallet, order_id)], names=["code", 'wallet', 'order_id'])
-                self.orders = pd.DataFrame(index=idx, data=[], columns=[])
-
-            # Update orders df
-            self.orders.loc[(code, wallet, order_id), 'filled'] = 0
-            self.orders.loc[(code, wallet, order_id), 'side'] = side
-            self.orders.loc[(code, wallet, order_id), 'action'] = action
-            self.orders.loc[(code, wallet, order_id), 'size'] = size
-            self.orders.loc[(code, wallet, order_id), 'status'] = 'preparation'
+            Order.objects.create(
+                account=self,
+                market=market,
+                orderid=order_id,
+                type='limit',
+                filled=0,
+                side=side,
+                action=action,
+                amount=size,
+                state='preparation'
+            )
 
             # Determine resources used (code and quantity)
             if action in ['buy_spot', 'open_short']:
@@ -534,8 +529,8 @@ class Account(models.Model):
             log.info(' ')
 
             # Update order status
-            self.orders.loc[(code, wallet, order_id)]['status'] = status.lower()
-            self.save()
+            order = Order.objects.get(account=self, orderid=order_id)
+            order.status = status.lower()
 
             filled = dic['filled']
             if filled:
@@ -545,8 +540,7 @@ class Account(models.Model):
                 log.info('  ***   ')
 
                 # Update order filled quantity
-                self.orders.loc[(code, wallet, order_id), 'filled'] = filled
-                self.save()
+                order.filled = filled
 
                 # Determine filled value
                 price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
@@ -565,18 +559,20 @@ class Account(models.Model):
                     self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
                     self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
                     self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
-                    self.save()
 
                 else:
                     # Or update spot
                     self.balances.loc[code, (wallet, 'total', 'quantity')] += filled
                     self.balances.loc[code, (wallet, 'free', 'quantity')] += filled
                     self.balances.loc[code, (wallet, 'used', 'quantity')] += filled
-                    self.save()
 
         except Exception as e:
             log.error('Exception {0}'.format(e.__class__.__name__))
             log.error('Exception {0}'.format(e))
+
+        else:
+            self.save()
+            order.save()
 
     # Sell spot
     def sell_spot_all(self):

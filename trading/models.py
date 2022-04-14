@@ -1,5 +1,6 @@
 import ccxt
 from django.db import models
+from django.db.models import Sum
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
@@ -335,22 +336,23 @@ class Account(models.Model):
 
         offset = 0
 
-        others = Order.objects.filter(
-            account=self,
-            market__base__code=code,
-            market__wallet=wallet,
-            status__in=['new']
-        )
+        others = Order.objects.filter(account=self,
+                                      market__wallet=wallet,
+                                      market__base__code=code,
+                                      action=action
+                                      )
+
         if others.exists():
             log.info('')
-            log.info(' *** OFFSET ***')
+            log.info(' *** DETERMINE OFFSET ***')
             log.info('Order object found for {1} : {0}'.format(len(others), code))
 
-            for other in others:
-                log.info('Other order with size {0}'.format(other.amount))
-                log.info('Other order with filled {0}'.format(other.filled))
-                log.info('Offset: {0}'.format(other.amount - other.filled))
-                log.info('')
+            filled = others.aggregate(Sum('amount'))
+            offset = quantity - filled
+
+            log.info('Already filled {0}'.format(filled))
+            log.info('Offset {0}'.format(offset))
+            log.info('')
 
         # Determine price
         if wallet == 'spot':

@@ -244,9 +244,7 @@ def fetch_order(account_id, order_id):
     client = account.exchange.get_ccxt_client(account)
 
     log.info('')
-    log.info(' *** FETCH ORDER ***')
-    log.info('order_id {0}'.format(order.orderid))
-    log.info('code {0} {1}'.format(order.market.base.code, order.market.wallet))
+    log.info('Fetch order clientid {0}'.format(order.clientid))
     log.info('')
 
     # Set options

@@ -225,9 +225,9 @@ def update_account_orders(account_id):
 
     while True:
 
-        orders = Order.objects.filter(account=account, status='new').exclude(orderid__isnull=True)
-
-        log.info(' *** UPDATE {0} ORDER ***'.format(len(orders)))
+        orders = Order.objects.filter(account=account,
+                                      status__in=['new', 'partially_filled']
+                                      ).exclude(orderid__isnull=True)
 
         if orders.exists():
             for order in orders:
@@ -250,9 +250,69 @@ def fetch_order(account_id, order_id):
     # Set options
     client.options['defaultType'] = order.market.wallet
     responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
-    account.update_order(responses)
+    update_order.delay(account_id, responses)
 
 
+# Update order
+@app.task(name='Trading_____Update_order')
+def update_order(account_id, response):
+    #
+    account = Account.objects.get(id=account_id)
+    filled_new = 0
+
+    try:
+
+        orderid = response['id']
+        clientid = response['info']['clientOrderId']
+        status = response['info']['status']
+        filled_total = response['filled']
+
+        log.info('Update order {0}'.format(clientid))
+
+        # Select order and update its status
+        order = Order.objects.get(account=account, clientid=clientid)
+        order.status = status.lower()
+        order.orderid = orderid
+
+        # Select attributes
+        code = order.market.base.code
+        wallet = order.market.wallet
+        action = order.action
+
+        # log.info(' ')
+        # log.info('  ***  UPDATE *** ')
+        # log.info('code {0}'.format(code))
+        # log.info('wallet {0}'.format(wallet))
+        # log.info('status {0}'.format(status))
+        # log.info('clientid {0}'.format(clientid))
+        # log.info('action {0}'.format(action))
+        # log.info('filled {0}'.format(filled))
+        # log.info(' ')
+
+        if filled_total:
+
+            # Determine trade quantity since last update an update object
+            filled_new = filled_total - order.filled
+            order.filled = filled_total
+
+            # Update balances dataframe
+            account.update_balances(action, wallet, code, filled_new)
+
+    except Exception as e:
+        log.error('Exception {0}'.format(e.__class__.__name__))
+        log.error('Exception {0}'.format(e))
+
+    else:
+        order.response = response
+        order.save()
+
+        # Return account ID to signal new available resources
+        if action in ['sell_spot', 'close_short']:
+            if filled_new:
+                return account_id
+
+
+# Update orders
 @app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)
 def update_orders():
     # Iterate through accounts and update open orders

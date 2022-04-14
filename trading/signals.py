@@ -14,7 +14,6 @@ log = structlog.get_logger(__name__)
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
     if task.name == 'Trading_place_order':
-
         if state == 'SUCCESS':
 
             # Unpack arguments
@@ -26,14 +25,32 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info('')
 
             if retval['info']['status'] in ['NEW', 'FILLED', 'PARTIALLY_FILLED']:
-                account = Account.objects.get(id=account_id)
-                account.update_order(retval)
+                update_order.delay(account_id, retval)
 
             elif retval['info']['status'] == 'CANCELED':
                 log.info('Order has been canceled')
 
         else:
             log.info('kwargs {0}'.format(kwargs))
+
+    # Recalculate balances and trades size after new resources become available
+    if task.name == 'Trading_____Update_order':
+        if state == 'SUCCESS':
+            if retval:
+
+                log.info('New resources available')
+
+                account = Account.objects.get(id=retval)
+
+                # Calculate new delta
+                account.get_delta()
+
+                # Allocate available resources
+                account.buy_spot_all()
+                account.open_short_all()
+
+        else:
+            log.error('Error while updating orders')
 
 
 @receiver(pre_delete, sender=Order)

@@ -192,6 +192,7 @@ class Account(models.Model):
             target_pct = self.strategy.load_targets()
 
             for coin, pct in target_pct.items():
+                pct = pct.mul(100).astype(int).astype(str).add('%')
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values
@@ -221,16 +222,17 @@ class Account(models.Model):
     # Calculate net exposure and delta
     def get_delta(self):
 
-        log.info('Get delta start')
+        log.info('Calculate delta')
         target = self.balances.account.target.quantity.dropna()
         acc_value = self.account_value()
 
-        #  Select quantities from wallet total balances and open positions
+        #  Select total quantities of wallets and open positions
         df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
         mask = df.columns.get_level_values(1).isin(['total', 'open'])
         df = df.loc[:, mask]
+        df = df.dropna(axis=1, how='all')  # drop wallet with nan
 
-        # Determine total exposure
+        # Sum sum to determine exposure per coin
         self.balances.loc[:, ('account', 'current', 'exposure')] = df.sum(axis=1)
 
         # Calculate percentage for each coin
@@ -238,9 +240,10 @@ class Account(models.Model):
             if coin != self.quote:
                 price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                 percent = (exp * price) / acc_value
+                percent = percent.mul(100).astype(int).astype(str).add('%')
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
-            # Iterate through target coins and calculate delta
+        # Iterate through target coins and calculate delta
         for coin in target.index.values.tolist():
 
             # Coins already in account ?
@@ -260,7 +263,7 @@ class Account(models.Model):
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
                 self.balances.loc[coin, ('account', 'target', 'delta')] = qty
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = 0
-                self.balances.loc[coin, ('account', 'target', 'percent')] = 0
+                self.balances.loc[coin, ('account', 'target', 'percent')] = '0%'
                 self.balances.loc[coin, ('account', 'target', 'value')] = 0
 
         self.save()
@@ -515,86 +518,51 @@ class Account(models.Model):
         else:
             return False, dict()
 
-    # Update orders
-    def update_order(self, response):
+    # Update balances after new trade
+    def update_balances(self, action, wallet, code, filled_new):
 
-        try:
+        # Calculate trade value
+        price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
+        trade_value = filled_new * price
 
-            orderid = response['id']
-            clientid = response['info']['clientOrderId']
-            status = response['info']['status']
-            filled = response['filled']
+        # Determine amounts to offset
+        if action in ['sell_spot', 'open_short']:
+            trade_qty = -filled_new
+            trade_value = -trade_value
 
-            log.info('Update clientid {0}'.format(clientid))
+        old = self.balances.copy()
 
-            # Select order and update its status
-            order = Order.objects.get(account=self, clientid=clientid)
-            order.status = status.lower()
-            order.orderid = orderid
+        # Update position and free margin
+        if action in ['open_short', 'close_short']:
 
-            # Select attributes
-            code = order.market.base.code
-            wallet = order.market.wallet
-            action = order.action
+            log.info('')
+            log.info(self.balances.future)
+            log.info('')
+            log.info(self.balances.position)
+            log.info('')
 
-            # log.info(' ')
-            # log.info('  ***  UPDATE *** ')
-            # log.info('code {0}'.format(code))
-            # log.info('wallet {0}'.format(wallet))
-            # log.info('status {0}'.format(status))
-            # log.info('clientid {0}'.format(clientid))
-            # log.info('action {0}'.format(action))
-            # log.info('filled {0}'.format(filled))
-            # log.info(' ')
-
-            if filled:
-
-                # Determine traded quantity and value
-                price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
-                trade_qty = filled - order.filled
-                trade_value = filled * price
-
-                order.filled = filled
-
-                # Determine offsets
-                if action in ['sell_spot', 'open_short']:
-                    trade_qty = -trade_qty
-                    trade_value = -trade_value
-
-                # Update position and free margin
-                if action in ['open_short', 'close_short']:
-
-                    log.info('')
-                    log.info(self.balances.future)
-                    log.info('')
-                    log.info(self.balances.position)
-                    log.info('')
-
-                    self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
-                    self.balances.loc[code, ('position', 'open', 'value')] += trade_value
-                    self.balances.loc[self.quote, ('future', 'total', 'quantity')] += trade_value
-                    self.balances.loc[self.quote, ('future', 'free', 'quantity')] += trade_value
-                    self.balances.loc[self.quote, ('future', 'used', 'quantity')] += trade_value
-
-                else:
-
-                    log.info('')
-                    log.info(self.balances.spot)
-                    log.info('')
-
-                    # Or update spot
-                    self.balances.loc[code, (wallet, 'total', 'quantity')] += trade_qty
-                    self.balances.loc[code, (wallet, 'free', 'quantity')] += trade_qty
-                    self.balances.loc[code, (wallet, 'used', 'quantity')] += trade_qty
-
-        except Exception as e:
-            log.error('Exception {0}'.format(e.__class__.__name__))
-            log.error('Exception {0}'.format(e))
+            self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
+            self.balances.loc[code, ('position', 'open', 'value')] += trade_value
+            self.balances.loc[self.quote, ('future', 'total', 'quantity')] += trade_value
+            self.balances.loc[self.quote, ('future', 'free', 'quantity')] += trade_value
+            self.balances.loc[self.quote, ('future', 'used', 'quantity')] += trade_value
 
         else:
-            order.response = response
-            self.save()
-            order.save()
+
+            log.info('')
+            log.info(self.balances.spot)
+            log.info('')
+
+            # Or update spot
+            self.balances.loc[code, (wallet, 'total', 'quantity')] += trade_qty
+            self.balances.loc[code, (wallet, 'free', 'quantity')] += trade_qty
+            self.balances.loc[code, (wallet, 'used', 'quantity')] += trade_qty
+
+        log.info('')
+        log.info('Balance comparison')
+        log.info('')
+
+        self.balance.compare(old)
 
     # Sell spot
     def sell_spot_all(self):

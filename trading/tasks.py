@@ -108,6 +108,7 @@ def rebalance(account_id):
     account.close_short_all()
     account.buy_spot_all()
     account.open_short_all()
+    account.save()
 
     print(account.balances)
     print(account.orders)

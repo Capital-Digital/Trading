@@ -192,7 +192,6 @@ class Account(models.Model):
             target_pct = self.strategy.load_targets()
 
             for coin, pct in target_pct.items():
-                pct = str(round(pct * 100, 1)) + '%'
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values
@@ -240,7 +239,6 @@ class Account(models.Model):
             if coin != self.quote:
                 price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                 percent = (exp * price) / acc_value
-                percent = str(round(percent * 100, 1)) + '%'
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Iterate through target coins and calculate delta
@@ -263,7 +261,7 @@ class Account(models.Model):
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
                 self.balances.loc[coin, ('account', 'target', 'delta')] = qty
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = 0
-                self.balances.loc[coin, ('account', 'target', 'percent')] = '0%'
+                self.balances.loc[coin, ('account', 'target', 'percent')] = 0
                 self.balances.loc[coin, ('account', 'target', 'value')] = 0
 
         self.save()

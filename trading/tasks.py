@@ -182,9 +182,7 @@ def fetch_order(account_id, order_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    log.info('')
-    log.info('Fetch clientid {0}'.format(order.clientid))
-    log.info('')
+    log.info('Fetch order {0}'.format(order.clientid))
 
     # Set options
     client.options['defaultType'] = order.market.wallet

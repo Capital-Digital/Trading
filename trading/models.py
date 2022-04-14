@@ -520,15 +520,17 @@ class Account(models.Model):
 
         try:
 
-            order_id = response['info']['clientOrderId']
+            orderid = response['id']
+            clientid = response['info']['clientOrderId']
             status = response['info']['status']
             filled = response['filled']
 
-            log.info('Update order object {0}'.format(order_id))
+            log.info('Update order object {0}'.format(clientid))
 
             # Select order and update its status
-            order = Order.objects.get(account=self, orderid=order_id)
+            order = Order.objects.get(account=self, clientid=clientid)
             order.status = status.lower()
+            order.orderid = orderid
 
             # Select attributes
             code = order.market.base.code
@@ -540,7 +542,7 @@ class Account(models.Model):
             log.info('code {0}'.format(code))
             log.info('wallet {0}'.format(wallet))
             log.info('status {0}'.format(status))
-            log.info('order_id {0}'.format(order_id))
+            log.info('clientid {0}'.format(clientid))
             log.info('action {0}'.format(action))
             log.info('filled {0}'.format(filled))
             log.info(' ')

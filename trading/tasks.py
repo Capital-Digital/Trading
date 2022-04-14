@@ -109,9 +109,6 @@ def rebalance(account_id):
     account.buy_spot_all()
     account.open_short_all()
 
-    print(account.balances)
-    print(account.orders)
-
 
 # # Fetch account balances and create a dataframe
 # @app.task(base=BaseTaskWithRetry)

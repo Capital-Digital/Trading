@@ -56,11 +56,11 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 def task_failure_notifier(sender=None, args=None, exception=None, **kwargs):
 
     if sender.name == 'Trading_place_order':
-        
+
         log.info(exception)
         log.info(type(exception))
 
-        if 'insufficient balance' in exception:
+        if exception == ccxt.InsufficientFunds:
 
             # Unpack arguments
             account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet = args

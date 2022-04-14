@@ -240,7 +240,7 @@ class Account(models.Model):
             if coin != self.quote:
                 price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                 percent = (exp * price) / acc_value
-                percent = percent.mul(100).astype(float).round(1).astype(str).add('%')
+                percent = str(round(percent * 100, 1)) + '%'
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Iterate through target coins and calculate delta

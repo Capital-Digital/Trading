@@ -1402,6 +1402,7 @@ class Order(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='order', null=True)
     market = models.ForeignKey(Market, on_delete=models.SET_NULL, related_name='order', null=True)
     orderid = models.CharField(max_length=150, null=True)  # order exchange's ID
+    clientid = models.CharField(max_length=150, null=True)  # order exchange's ID
     status, type = [models.CharField(max_length=150, null=True) for i in range(2)]
     amount, remaining, max_qty = [models.FloatField(max_length=10, null=True) for i in range(3)]
     filled = models.FloatField(max_length=10, null=True, default=0)

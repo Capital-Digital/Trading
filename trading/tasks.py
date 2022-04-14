@@ -252,7 +252,7 @@ def fetch_order(account_id, order_id):
     # Set options
     client.options['defaultType'] = order.market.wallet
 
-    responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
+    responses = client.fetchOrder(id=order.id, symbol=order.market.symbol)
     account.update_order(responses)
 
 

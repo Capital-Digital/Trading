@@ -704,7 +704,7 @@ def update_exchanges(self):
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
-    log.info('Update dataframe ({0})'.format(current_process().index))
+    #log.info('Update dataframe ({0})'.format(current_process().index))
     log.bind(exid=exid)
 
     # Select instance and create self.data dataframe with available prices
@@ -786,7 +786,7 @@ def update_prices(self):
 def update_tickers(self, exid):
     log.info('#')
     log.info('#')
-    log.info('Update tickers ({0})'.format(current_process().index))
+    #log.info('Update tickers ({0})'.format(current_process().index))
     log.info('#')
     log.info('#')
 
@@ -895,7 +895,7 @@ def update_strategies(self, exid, signal):
 # Update a strategy
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
 def update_strategy(self, name, signal):
-    log.info('Update strategy {0} ({1})'.format(name, current_process().index))
+    # log.info('Update strategy {0} ({1})'.format(name, current_process().index))
     from strategy.models import Strategy
     strategy = Strategy.objects.get(name=name)
     strategy.execute()
@@ -915,7 +915,7 @@ def update_accounts(self, strategy_name, signal):
 def update_account(self, account_id, signal):
     from trading.models import Account
     account = Account.objects.get(id=account_id)
-    log.info('Update account {0} ({1})'.format(account.name, current_process().index))
+    #log.info('Update account {0} ({1})'.format(account.name, current_process().index))
     account.trade()
 
 

@@ -279,17 +279,19 @@ class Account(models.Model):
 
     # Return a Series with codes/quantity to sell spot
     def to_sell_spot(self):
+
+        # Select codes to sell in spot
         codes = self.codes_to_sell()
-        codes = self.balances.spot.free.quantity[codes].dropna().index.values.tolist()
-        target_quantity = self.balances.account.target.quantity[codes]
+        spot = self.balances.spot.free.quantity[codes].dropna()
 
-        # Select free quantity if coin must be sold entirely
-        zero = target_quantity <= 0
-        s1 = self.balances.spot.free.quantity[zero[zero].index]
+        # Select corresponding target
+        target = self.balances.account.target.quantity[spot.index]
 
-        # Select delta quantity if coin must be sold partially
-        keep = target_quantity > 0
-        return s1.append(self.balances.account.target.delta[keep[keep].index])
+        # Determine delta
+        delta = spot - target
+
+        # Select minimum between spot and delta
+        return spot.append(delta).groupby(level=0).min()
 
     # Return a Series with codes/quantity to close short
     def to_close_short(self):

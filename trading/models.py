@@ -192,7 +192,7 @@ class Account(models.Model):
             target_pct = self.strategy.load_targets()
 
             for coin, pct in target_pct.items():
-                pct = pct.mul(100).astype(int).astype(str).add('%')
+                pct = str(round(pct * 100, 1)) + '%'
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Insert target values
@@ -211,7 +211,7 @@ class Account(models.Model):
 
         except ValueError as e:
             self.trading = False
-            raise Exception('Unable to get targets weights {0}'.format(e))
+            raise Exception('Unable to get targets weights {0}'.format(e.__class__.__name__))
 
         finally:
 
@@ -240,7 +240,7 @@ class Account(models.Model):
             if coin != self.quote:
                 price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
                 percent = (exp * price) / acc_value
-                percent = percent.mul(100).astype(int).astype(str).add('%')
+                percent = percent.mul(100).astype(float).round(1).astype(str).add('%')
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Iterate through target coins and calculate delta

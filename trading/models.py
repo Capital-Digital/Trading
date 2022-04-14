@@ -394,7 +394,8 @@ class Account(models.Model):
                 order_value = order_size * price
 
                 log.info(' ')
-                log.info(' *** {0} {1} ***'.format(code, wallet))
+                log.info(' *** SIZE ORDER ***')
+                log.info('Code'.format(code, wallet))
                 log.info('Order size {0}'.format(round(order_size, 4)))
                 log.info('Order value {0}'.format(round(order_value, 2)))
                 log.info('Available USDT {0}'.format(round(available, 2)))

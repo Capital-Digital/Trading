@@ -246,7 +246,7 @@ def fetch_order(account_id, order_id):
     log.info('')
     log.info(' *** FETCH ORDER ***')
     log.info('order_id {0}'.format(order.orderid))
-    log.info('code {0} {1}'.format(order.market__base__code, order.market.wallet))
+    log.info('code {0} {1}'.format(order.market.base.code, order.market.wallet))
     log.info('')
 
     # Set options

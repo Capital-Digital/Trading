@@ -53,11 +53,16 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
 
 @task_failure.connect
-def task_failure_notifier(sender=None, exception=None, **kwargs):
-    log.error('FAILED')
+def task_failure_notifier(sender=None, args=None, exception=None, **kwargs):
+
     if sender.name == 'Trading_place_order':
-        log.error('TASK FAILED')
-        log.info(exception)
+
+        if 'insufficient balance' in exception:
+
+            # Unpack arguments
+            account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet = args
+
+            log.error('TASK {0} FAILED'.format(action))
 
 
 @receiver(pre_delete, sender=Order)

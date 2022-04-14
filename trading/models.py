@@ -465,20 +465,16 @@ class Account(models.Model):
             self.orders.loc[(code, wallet, order_id), 'filled'] = 0
             self.orders.loc[(code, wallet, order_id), 'side'] = side
             self.orders.loc[(code, wallet, order_id), 'action'] = action
-            self.orders.loc[(code, wallet, order_id), 'size'] = order_size
+            self.orders.loc[(code, wallet, order_id), 'size'] = size
             self.orders.loc[(code, wallet, order_id), 'status'] = 'preparation'
 
-            print('\nORDERS\n')
-            print(self.orders)
-            print('\n')
-
-            # Determine code and quantity of resources used
+            # Determine resources used (code and quantity)
             if action in ['buy_spot', 'open_short']:
                 code_res = self.quote
                 used_qty = order_value
             else:
                 code_res = code
-                used_qty = order_size
+                used_qty = size
 
             # Update free and used resources in balances df
             self.balances.loc[code_res, (wallet, 'used', 'quantity')] += used_qty
@@ -487,7 +483,17 @@ class Account(models.Model):
             self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
             self.save()
 
-            log.info('Prepare order complete')
+            log.info(' ')
+            log.info('  ***  PREPARE ORDER *** ')
+            log.info('code {0}'.format(code))
+            log.info('wallet {0}'.format(wallet))
+            log.info('order size {0}'.format(size))
+            log.info('order value {0}'.format(order_value))
+            log.info('order_id {0}'.format(order_id))
+            log.info('action {0}'.format(action))
+            log.info('resource used {0}'.format(used_qty))
+            log.info('resource code {0}'.format(code_res))
+            log.info(' ')
 
             return True, dict(account_id=self.id,
                               action=action,

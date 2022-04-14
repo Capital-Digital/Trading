@@ -61,12 +61,16 @@ def task_failure_notifier(sender=None, task_id=None, args=None, exception=None, 
         account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet = args
 
         if exception.__class__.__name__ == 'InsufficientFunds':
-            
+
+            log.info('FAILURE')
+
             # Update order status
             order = Order.objects.get(clientid=clientid)
             order.status = 'failed'
-            order.response = traceback
+            # order.response = traceback
             order.save()
+
+            log.info('FAILURE')
 
 
 @receiver(pre_delete, sender=Order)

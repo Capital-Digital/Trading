@@ -560,7 +560,7 @@ class Account(models.Model):
         log.info('Balance comparison')
         log.info('')
 
-        self.balance.compare(old)
+        self.balances.compare(old)
 
     # Sell spot
     def sell_spot_all(self):

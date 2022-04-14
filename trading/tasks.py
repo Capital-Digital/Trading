@@ -103,7 +103,7 @@ def rebalance(account_id):
     account = Account.objects.get(id=account_id)
     log.info('Rebalance account', account=account.name)
 
-    account.create_balances()
+    # account.create_balances()
     account.sell_spot_all()
     account.close_short_all()
     account.buy_spot_all()

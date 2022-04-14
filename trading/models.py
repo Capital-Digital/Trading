@@ -518,83 +518,83 @@ class Account(models.Model):
     # Update orders
     def update_order(self, response):
 
-        try:
+        #try:
 
-            orderid = response['id']
-            clientid = response['info']['clientOrderId']
-            status = response['info']['status']
-            filled = response['filled']
+        orderid = response['id']
+        clientid = response['info']['clientOrderId']
+        status = response['info']['status']
+        filled = response['filled']
 
-            log.info('Update order object {0}'.format(clientid))
+        log.info('Update order object {0}'.format(clientid))
 
-            # Select order and update its status
-            order = Order.objects.get(account=self, clientid=clientid)
-            order.status = status.lower()
-            order.orderid = orderid
+        # Select order and update its status
+        order = Order.objects.get(account=self, clientid=clientid)
+        order.status = status.lower()
+        order.orderid = orderid
 
-            # Select attributes
-            code = order.market.base.code
-            wallet = order.market.wallet
-            action = order.action
+        # Select attributes
+        code = order.market.base.code
+        wallet = order.market.wallet
+        action = order.action
 
-            log.info(' ')
-            log.info('  ***  UPDATE *** ')
-            log.info('code {0}'.format(code))
-            log.info('wallet {0}'.format(wallet))
-            log.info('status {0}'.format(status))
-            log.info('clientid {0}'.format(clientid))
-            log.info('action {0}'.format(action))
-            log.info('filled {0}'.format(filled))
-            log.info(' ')
+        log.info(' ')
+        log.info('  ***  UPDATE *** ')
+        log.info('code {0}'.format(code))
+        log.info('wallet {0}'.format(wallet))
+        log.info('status {0}'.format(status))
+        log.info('clientid {0}'.format(clientid))
+        log.info('action {0}'.format(action))
+        log.info('filled {0}'.format(filled))
+        log.info(' ')
 
-            if filled:
+        if filled:
 
-                # Determine traded quantity and value
-                price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
-                trade_qty = filled - order.filled
-                trade_value = filled * price
+            # Determine traded quantity and value
+            price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
+            trade_qty = filled - order.filled
+            trade_value = filled * price
 
-                order.filled = filled
+            order.filled = filled
 
-                # Determine offsets
-                if action in ['sell_spot', 'open_short']:
-                    trade_qty = -trade_qty
-                    trade_value = -trade_value
+            # Determine offsets
+            if action in ['sell_spot', 'open_short']:
+                trade_qty = -trade_qty
+                trade_value = -trade_value
 
-                # Update position and free margin
-                if action in ['open_short', 'close_short']:
+            # Update position and free margin
+            if action in ['open_short', 'close_short']:
 
-                    log.info('')
-                    log.info(self.balances.future)
-                    log.info('')
-                    log.info(self.balances.position)
-                    log.info('')
+                log.info('')
+                log.info(self.balances.future)
+                log.info('')
+                log.info(self.balances.position)
+                log.info('')
 
-                    self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
-                    self.balances.loc[code, ('position', 'open', 'value')] += trade_value
-                    self.balances.loc[self.quote, ('future', 'total', 'quantity')] += trade_value
-                    self.balances.loc[self.quote, ('future', 'free', 'quantity')] += trade_value
-                    self.balances.loc[self.quote, ('future', 'used', 'quantity')] += trade_value
+                self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
+                self.balances.loc[code, ('position', 'open', 'value')] += trade_value
+                self.balances.loc[self.quote, ('future', 'total', 'quantity')] += trade_value
+                self.balances.loc[self.quote, ('future', 'free', 'quantity')] += trade_value
+                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += trade_value
 
-                else:
+            else:
 
-                    log.info('')
-                    log.info(self.balances.spot)
-                    log.info('')
+                log.info('')
+                log.info(self.balances.spot)
+                log.info('')
 
-                    # Or update spot
-                    self.balances.loc[code, (wallet, 'total', 'quantity')] += trade_qty
-                    self.balances.loc[code, (wallet, 'free', 'quantity')] += trade_qty
-                    self.balances.loc[code, (wallet, 'used', 'quantity')] += trade_qty
+                # Or update spot
+                self.balances.loc[code, (wallet, 'total', 'quantity')] += trade_qty
+                self.balances.loc[code, (wallet, 'free', 'quantity')] += trade_qty
+                self.balances.loc[code, (wallet, 'used', 'quantity')] += trade_qty
 
-        except Exception as e:
-            log.error('Exception {0}'.format(e.__class__.__name__))
-            log.error('Exception {0}'.format(e))
-
-        else:
-            order.response = response
-            self.save()
-            order.save()
+    # except Exception as e:
+    #     log.error('Exception {0}'.format(e.__class__.__name__))
+    #     log.error('Exception {0}'.format(e))
+    #
+    # else:
+        order.response = response
+        self.save()
+        order.save()
 
     # Sell spot
     def sell_spot_all(self):

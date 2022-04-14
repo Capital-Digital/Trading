@@ -180,7 +180,7 @@ def rebalance(account_id):
 
 # Sell coins in spot markets
 @app.task(base=BaseTaskWithRetry, name='Trading_place_order')
-def place_order(account_id, action, code, order_id, order_type, price, reduce_only, side, size, symbol, wallet):
+def place_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet):
     #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
@@ -192,7 +192,7 @@ def place_order(account_id, action, code, order_id, order_type, price, reduce_on
         side=side,
         amount=size,
         price=price,
-        params=dict(newClientOrderId=order_id)
+        params=dict(newClientOrderId=clientid)
     )
 
     # Set parameters
@@ -205,7 +205,7 @@ def place_order(account_id, action, code, order_id, order_type, price, reduce_on
     log.info('order_type {0}'.format(order_type))
     log.info('side {0}'.format(side))
     log.info('size {0}'.format(size))
-    log.info('order_id {0}'.format(order_id))
+    log.info('clientid {0}'.format(clientid))
     log.info(' ')
 
     return client.create_order(**kwargs)

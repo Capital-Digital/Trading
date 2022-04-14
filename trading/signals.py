@@ -56,6 +56,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 def task_failure_notifier(sender=None, args=None, exception=None, **kwargs):
 
     if sender.name == 'Trading_place_order':
+        
+        log.info(exception)
+        log.info(type(exception))
 
         if 'insufficient balance' in exception:
 

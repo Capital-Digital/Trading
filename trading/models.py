@@ -465,7 +465,7 @@ class Account(models.Model):
                 side=side,
                 action=action,
                 amount=size,
-                state='preparation'
+                status='preparation'
             )
 
             # Determine resources used (code and quantity)

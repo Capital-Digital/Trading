@@ -521,12 +521,12 @@ class Account(models.Model):
 
         # Calculate trade value
         price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
-        trade_value = filled_new * price
+        filled_value = filled_new * price
 
         # Determine amounts to offset
         if action in ['sell_spot', 'open_short']:
-            trade_qty = -filled_new
-            trade_value = -trade_value
+            filled_new = -filled_new
+            filled_value = -filled_value
 
         old = self.balances.copy()
 
@@ -539,11 +539,11 @@ class Account(models.Model):
             log.info(self.balances.position)
             log.info('')
 
-            self.balances.loc[code, ('position', 'open', 'quantity')] += trade_qty
-            self.balances.loc[code, ('position', 'open', 'value')] += trade_value
-            self.balances.loc[self.quote, ('future', 'total', 'quantity')] += trade_value
-            self.balances.loc[self.quote, ('future', 'free', 'quantity')] += trade_value
-            self.balances.loc[self.quote, ('future', 'used', 'quantity')] += trade_value
+            self.balances.loc[code, ('position', 'open', 'quantity')] += filled_new
+            self.balances.loc[code, ('position', 'open', 'value')] += filled_value
+            self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
+            self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
+            self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
 
         else:
 
@@ -552,9 +552,9 @@ class Account(models.Model):
             log.info('')
 
             # Or update spot
-            self.balances.loc[code, (wallet, 'total', 'quantity')] += trade_qty
-            self.balances.loc[code, (wallet, 'free', 'quantity')] += trade_qty
-            self.balances.loc[code, (wallet, 'used', 'quantity')] += trade_qty
+            self.balances.loc[code, (wallet, 'total', 'quantity')] += filled_new
+            self.balances.loc[code, (wallet, 'free', 'quantity')] += filled_new
+            self.balances.loc[code, (wallet, 'used', 'quantity')] += filled_new
 
         log.info('')
         log.info('Balance comparison')

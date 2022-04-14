@@ -298,7 +298,7 @@ def cancel_order(account_id, order_id):
         order.filled = filled_total
         order.status = status.lower()
 
-        if status == 'CANCELLED':
+        if status == 'CANCELED':
             log.info('Cancel order {0}'.format(order.clientid))
         else:
             log.warning('Unable to cancel order {0}, order status is now {1}'.format(order.clientid, status))

@@ -345,7 +345,7 @@ class Account(models.Model):
 
         if others.exists():
             log.info('')
-            log.info(' *** DETERMINE OFFSET ***')
+            log.info(' *** OFFSET ***')
             log.info('Order object found for {1} : {0}'.format(len(others), code))
 
             filled = others.aggregate(Sum('filled'))['filled__sum']
@@ -353,6 +353,10 @@ class Account(models.Model):
 
             log.info('Already filled {0}'.format(filled))
             log.info('Offset {0}'.format(offset))
+            log.info('')
+        else:
+            log.info(' *** OFFSET ***')
+            log.info('No offset required for {0}'.format(code))
             log.info('')
 
         # Determine price
@@ -521,6 +525,8 @@ class Account(models.Model):
             order_id = response['info']['clientOrderId']
             status = response['info']['status']
             filled = response['filled']
+
+            log.info('Update order object {0}'.format(order_id))
 
             # Select order and update its status
             order = Order.objects.get(account=self, orderid=order_id)

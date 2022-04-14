@@ -222,11 +222,18 @@ def update_accounts_orders():
 def update_account_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
-    orders = Order.objects.filter(account=account, status='new')
 
-    if orders.exists():
-        for order in orders:
-            fetch_order.delay(account_id, order.orderid)
+    while True:
+
+        orders = Order.objects.filter(account=account, status='new')
+
+        log.info(' *** UPDATE {0} ORDER ***'.format(len(orders)))
+
+        if orders.exists():
+            for order in orders:
+                fetch_order.delay(account_id, order.orderid)
+
+        time.sleep(15)
 
 
 @app.task(name='Trading_____Fetch_order', base=BaseTaskWithRetry)
@@ -238,6 +245,7 @@ def fetch_order(account_id, order_id):
 
     log.info('')
     log.info(' *** FETCH ORDER ***')
+    log.info('order_id {0}'.format(order.orderid))
     log.info('code {0} {1}'.format(order.market__base__code, order.market.wallet))
     log.info('')
 

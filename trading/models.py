@@ -398,7 +398,7 @@ class Account(models.Model):
 
                 log.info(' ')
                 log.info(' *** SIZE ORDER ***')
-                log.info('Code'.format(code, wallet))
+                log.info('Code {0} {1}'.format(code, wallet))
                 log.info('Order size {0}'.format(round(order_size, 4)))
                 log.info('Order value {0}'.format(round(order_value, 2)))
                 log.info('Available USDT {0}'.format(round(available, 2)))
@@ -576,7 +576,6 @@ class Account(models.Model):
         except Exception as e:
             log.error('Exception {0}'.format(e.__class__.__name__))
             log.error('Exception {0}'.format(e))
-
 
     # Sell spot
     def sell_spot_all(self):

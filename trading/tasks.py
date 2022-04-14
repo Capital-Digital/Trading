@@ -110,6 +110,7 @@ def rebalance(account_id):
     account.open_short_all()
 
     print(account.balances)
+    print(account.orders)
 
 
 # # Fetch account balances and create a dataframe

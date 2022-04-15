@@ -354,6 +354,10 @@ class Account(models.Model):
             log.info('{0} order(s) object found (offset {1})'.format(len(others), offset))
             for other in others:
                 log.info('client_id -> {0}'.format(other.clientid))
+                log.info('order_id -> {0}'.format(other.orderid))
+                log.info('status -> {0}'.format(other.status))
+                log.info('filled -> {0}'.format(other.filled))
+                log.info(' ')
 
         # Determine price
         if wallet == 'spot':
@@ -482,9 +486,7 @@ class Account(models.Model):
             self.save()
 
             log.info(' ')
-            log.info('Prepare order')
-            log.info('*************')
-            log.info('code {0}'.format(code))
+            log.info('Prepare order {0}'.format(code))
             log.info('wallet {0}'.format(wallet))
             log.info('order size {0}'.format(size))
             log.info('order value {0}'.format(order_value))
@@ -583,7 +585,6 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'sell_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
-                log.info('Sell spot {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
 
@@ -597,7 +598,6 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'close_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
-                log.info('Close short {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
 
@@ -611,7 +611,6 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'buy_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
-                log.info('Buy spot {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
 
@@ -625,7 +624,6 @@ class Account(models.Model):
             kwargs = self.size_order(code, quantity, 'open_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
-                log.info('Place short {0}'.format(code))
                 args = order.values()
                 place_order.delay(*args)
 

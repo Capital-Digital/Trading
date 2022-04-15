@@ -174,7 +174,7 @@ def close_position_market(account_id):
                 symbol=symbol,
                 type='market',
                 side=side,
-                amount=size
+                amount=abs(size)
             )
 
             client.create_order(**kwargs)

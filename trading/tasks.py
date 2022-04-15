@@ -153,8 +153,10 @@ def place_order(account_id, action, code, clientid, order_type, price, reduce_on
 def close_position_market(account_id):
     #
     account = Account.objects.get(id=account_id)
-    positions = account.balances.position.open
-    for code, value in positions.T.items():
+    client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = 'future'
+
+    for code, value in account.balances.position.open.T.items():
         size = value['quantity']
         if not np.isnan(size):
 
@@ -163,19 +165,19 @@ def close_position_market(account_id):
             # Construct symbol
             symbol = code + '/USDT'
 
-            # Determine action
-            side = value['side']
-            if side == 'buy':
-                action = 'close_long'
-            elif side == 'sell':
-                action = 'close_short'
+            if value['side'] == 'buy':
+                side = 'sell'
+            else:
+                side= 'buy'
+                
+            kwargs = dict(
+                symbol=symbol,
+                type='market',
+                side=side,
+                amount=size
+            )
 
-            alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
-            clientid = ''.join((random.choice(alphanumeric)) for x in range(5))
-            
-            log.info(account_id, action, code, clientid, 'market', None, False, side, size, symbol, 'future')
-
-            place_order.delay(account_id, action, code, clientid, 'market', None, False, side, size, symbol, 'future')
+            client.create_order(**kwargs)
 
 
 # Update

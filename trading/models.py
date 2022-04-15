@@ -510,6 +510,7 @@ class Account(models.Model):
                               )
 
         else:
+            log.info('Conditions not satisfied')
             return False, dict()
 
     # Update balances after new trade

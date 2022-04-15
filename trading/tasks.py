@@ -171,7 +171,7 @@ def close_position_market(account_id):
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
             clientid = ''.join((random.choice(alphanumeric)) for x in range(5))
 
-            place_order(account_id, action, code, clientid, 'market', None, False, side, size, symbol, 'future')
+            place_order.delay(account_id, action, code, clientid, 'market', None, False, side, size, symbol, 'future')
 
 
 # Update

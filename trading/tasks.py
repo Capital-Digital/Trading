@@ -169,7 +169,7 @@ def close_position_market(account_id):
                 side = 'sell'
             else:
                 side= 'buy'
-                
+
             kwargs = dict(
                 symbol=symbol,
                 type='market',

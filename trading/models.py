@@ -576,7 +576,7 @@ class Account(models.Model):
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import place_order
-        log.info('***')
+        log.info('')
         log.info('Sell spot')
         log.info('***')
         for code, quantity in self.to_sell_spot().items():
@@ -589,7 +589,7 @@ class Account(models.Model):
 
     # Close short
     def close_short_all(self):
-        log.info('***')
+        log.info('')
         log.info('Close short')
         log.info('***')
         from trading.tasks import place_order
@@ -603,7 +603,7 @@ class Account(models.Model):
 
     # Buy spot
     def buy_spot_all(self):
-        log.info('***')
+        log.info('')
         log.info('Buy spot')
         log.info('***')
         from trading.tasks import place_order
@@ -617,7 +617,7 @@ class Account(models.Model):
 
     # Open short
     def open_short_all(self):
-        log.info('***')
+        log.info('')
         log.info('Open short')
         log.info('***')
         from trading.tasks import place_order

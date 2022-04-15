@@ -326,7 +326,7 @@ class Account(models.Model):
     def size_order(self, code, quantity, action):
 
         log.info(' ')
-        log.info(' *** Size order to {0} {1} ***'.format(action, code))
+        log.info('Size order to {0} {1}'.format(action, code))
 
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
@@ -484,7 +484,8 @@ class Account(models.Model):
             self.save()
 
             log.info(' ')
-            log.info('  ***  PREPARE ORDER *** ')
+            log.info('Prepare order')
+            log.info('*************')
             log.info('code {0}'.format(code))
             log.info('wallet {0}'.format(wallet))
             log.info('order size {0}'.format(size))

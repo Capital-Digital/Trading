@@ -449,7 +449,7 @@ class Account(models.Model):
 
                 # Else return
                 if not reduce_only:
-                    log.info('Cost not satisfied to {0} {2} {1}'.format(action, market.base.code, size))
+                    log.info('Cost not satisfied to trade {2} {1} {0}'.format(wallet, market.base.code, size))
                     return False, dict()
 
             # Generate order_id
@@ -510,7 +510,7 @@ class Account(models.Model):
                               )
 
         else:
-            log.info('Conditions not satisfied')
+            log.info('Conditions not satisfied to trade {2} {1} {0}'.format(wallet, market.base.code, size))
             return False, dict()
 
     # Update balances after new trade

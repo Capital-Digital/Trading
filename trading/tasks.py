@@ -306,8 +306,11 @@ def cancel_account_orders(account_id):
     orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
                                   ).exclude(orderid__isnull=True)
     if orders.exists():
+        log.info('Cancel {0} orders(s)'.format(orders.count()))
         for order in orders:
             cancel_order.delay(account_id, order.orderid)
+    else:
+        log.info('Cancel not found')
 
 
 # Cancel an order by its orderid

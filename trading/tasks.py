@@ -160,7 +160,7 @@ def close_position_market(account_id):
 
             # Construct symbol
             symbol = code + '/USDT'
-            
+
             # Determine action
             side = value['side']
             if side == 'buy':

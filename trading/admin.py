@@ -21,7 +21,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'user', 'exchange', 'quote', 'active', 'trading', 'valid_credentials',
                     'get_limit_price_tolerance', 'updated_at',)
     readonly_fields = ('valid_credentials', 'user')
-    actions = ['check_credentials', 'rebalance_account']
+    actions = ['check_credentials', 'rebalance_account', 'close_positions']
     save_as = True
     save_on_top = True
 
@@ -38,6 +38,12 @@ class CustomerAdmin(admin.ModelAdmin):
     get_fund.short_description = "Total"
 
     # Actions
+
+    def close_positions(self, request, queryset):
+        for account in queryset:
+            close_position_market.delay(account.id)
+
+    close_positions.short_description = "Close positions"
 
     def rebalance_account(self, request, queryset):
         for account in queryset:

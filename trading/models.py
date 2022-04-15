@@ -576,6 +576,9 @@ class Account(models.Model):
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import place_order
+        log.info('***')
+        log.info('Sell spot')
+        log.info('***')
         for code, quantity in self.to_sell_spot().items():
             kwargs = self.size_order(code, quantity, 'sell_spot')
             valid, order = self.prep_order(**kwargs)
@@ -586,6 +589,9 @@ class Account(models.Model):
 
     # Close short
     def close_short_all(self):
+        log.info('***')
+        log.info('Close short')
+        log.info('***')
         from trading.tasks import place_order
         for code, quantity in self.to_close_short().items():
             kwargs = self.size_order(code, quantity, 'close_short')
@@ -597,6 +603,9 @@ class Account(models.Model):
 
     # Buy spot
     def buy_spot_all(self):
+        log.info('***')
+        log.info('Buy spot')
+        log.info('***')
         from trading.tasks import place_order
         for code, quantity in self.to_buy_spot().items():
             kwargs = self.size_order(code, quantity, 'buy_spot')
@@ -608,6 +617,9 @@ class Account(models.Model):
 
     # Open short
     def open_short_all(self):
+        log.info('***')
+        log.info('Open short')
+        log.info('***')
         from trading.tasks import place_order
         for code, quantity in self.to_open_short().items():
             kwargs = self.size_order(code, quantity, 'open_short')

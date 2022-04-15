@@ -177,7 +177,9 @@ def close_position_market(account_id):
                 amount=abs(size)
             )
 
-            client.create_order(**kwargs)
+            log.info(**kwargs)
+            response = client.create_order(**kwargs)
+            log.info('status {0}'.format(response['status']))
 
 
 # Update

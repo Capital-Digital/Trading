@@ -106,9 +106,9 @@ def rebalance(account_id):
 
     # account.create_balances()
     account.sell_spot_all()
-    account.close_short_all()
-    account.buy_spot_all()
-    account.open_short_all()
+    #account.close_short_all()
+    #account.buy_spot_all()
+    #account.open_short_all()
 
 
 # Place

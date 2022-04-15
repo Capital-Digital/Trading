@@ -158,6 +158,8 @@ def close_position_market(account_id):
         size = value['quantity']
         if not np.isnan(size):
 
+            log.info('Close position {0}'.format(code))
+
             # Construct symbol
             symbol = code + '/USDT'
 
@@ -170,7 +172,6 @@ def close_position_market(account_id):
 
             alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
             clientid = ''.join((random.choice(alphanumeric)) for x in range(5))
-
             place_order.delay(account_id, action, code, clientid, 'market', None, False, side, size, symbol, 'future')
 
 

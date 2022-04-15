@@ -149,7 +149,7 @@ def place_order(account_id, action, code, clientid, order_type, price, reduce_on
 
 
 # Close position
-@app.task(base=BaseTaskWithRetry, name='Trading_place_order')
+@app.task(base=BaseTaskWithRetry, name='Trading_close_positions')
 def close_position_market(account_id):
     #
     account = Account.objects.get(id=account_id)

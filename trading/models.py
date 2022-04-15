@@ -326,7 +326,7 @@ class Account(models.Model):
     def size_order(self, code, quantity, action):
 
         log.info(' ')
-        log.info('Size order to {0} {1}'.format(action, code))
+        log.info('Size order {0}'.format(code))
 
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
@@ -393,10 +393,9 @@ class Account(models.Model):
                 order_size -= offset
                 order_value = order_size * price
 
-                log.info('wallet {0}'.format(wallet))
-                log.info('order size {0}'.format(round(order_size, 4)))
-                log.info('order value {0}'.format(round(order_value, 2)))
-                log.info('available USDT {0}'.format(round(available, 2)))
+                log.info('resources available in {1} : {0}'.format(round(available, 2), wallet))
+                log.info('buy size {0}'.format(round(order_size, 4)))
+                log.info('buy value {0}'.format(round(order_value, 2)))
                 log.info('offset {0}'.format(round(offset, 4)))
                 log.info(' ')
 

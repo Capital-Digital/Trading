@@ -535,16 +535,18 @@ class Account(models.Model):
 
             log.info('Filled new {0}'.format(filled_new))
             log.info('Filled value {0}'.format(filled_value))
-
+            log.info('')
             log.info('Position open before')
             log.info(self.balances.position.open)
 
             self.balances.loc[code, ('position', 'open', 'quantity')] += filled_new
             self.balances.loc[code, ('position', 'open', 'value')] += filled_value
 
+            log.info('')
             log.info('Position open after')
             log.info(self.balances.position.open)
 
+            log.info('')
             log.info('Future total quantity before')
             log.info(self.balances.future.total.quantity)
 
@@ -552,11 +554,13 @@ class Account(models.Model):
             self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
             self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
 
+            log.info('')
             log.info('Future total quantity after')
             log.info(self.balances.future.total.quantity)
 
         else:
 
+            log.info('')
             log.info('Spot total quantity before')
             log.info(self.balances.spot.total.quantity)
 
@@ -565,6 +569,7 @@ class Account(models.Model):
             self.balances.loc[code, (wallet, 'free', 'quantity')] += filled_new
             self.balances.loc[code, (wallet, 'used', 'quantity')] += filled_new
 
+            log.info('')
             log.info('Spot total quantity after')
             log.info(self.balances.spot.total.quantity)
 

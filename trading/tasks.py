@@ -238,6 +238,7 @@ def update_order(account_id, response):
         status = response['info']['status']
         filled_total = response['filled']
 
+        log.info('')
         log.info('Update order {0}'.format(clientid))
 
         # Select order and update its status
@@ -266,8 +267,12 @@ def update_order(account_id, response):
             filled_new = filled_total - order.filled
             order.filled = filled_total
 
-            # Update balances dataframe
-            account.update_balances(action, wallet, code, filled_new)
+            if filled_new:
+
+                log.info('New trade detected')
+
+                # Update balances dataframe
+                account.update_balances(action, wallet, code, filled_new)
 
     except Exception as e:
         log.error('Exception {0}'.format(e.__class__.__name__))

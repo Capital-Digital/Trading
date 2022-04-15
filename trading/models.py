@@ -346,7 +346,7 @@ class Account(models.Model):
                                       market__wallet=wallet,
                                       market__base__code=code,
                                       action=action,
-                                      status__in=['preparation', 'new']
+                                      status__in=['preparation', 'new', 'open']
                                       )
 
         if others.exists():

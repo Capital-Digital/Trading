@@ -338,6 +338,7 @@ def cancel_order(account_id, order_id):
             log.warning('Unable to cancel order {0}, order status is now {1}'.format(order.clientid, status))
 
     finally:
+        order.response = response
         order.save()
 
 

@@ -156,7 +156,7 @@ def close_position_market(account_id):
     positions = account.balances.position.open
     for code, value in positions.T.items():
         size = value['quantity']
-        if size != 0:
+        if not np.isnan(size):
 
             # Construct symbol
             symbol = code + '/USDT'

@@ -202,11 +202,11 @@ class Account(models.Model):
 
             # Insert quantities
             for coin, val in value.items():
-                if coin in self.balances.price.spot.last.dropna().index.tolist():
-                    price = self.balances.price.spot.last[coin]
+                if coin in self.balances.price.spot.dropna().index.tolist():
+                    price = self.balances.price.spot[coin]
                 else:
-                    price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                    self.balances.loc[coin, ('price', 'spot', 'last')] = price
+                    last = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                    self.balances.loc[coin, ('price', 'spot')] = last
                 qty = val / price
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
@@ -243,11 +243,11 @@ class Account(models.Model):
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
             if coin != self.quote:
-                if coin in self.balances.price.spot.last.dropna().index.tolist():
-                    price = self.balances.price.spot.last[coin]
+                if coin in self.balances.price.spot.dropna().index.tolist():
+                    price = self.balances.price.spot[coin]
                 else:
                     price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                    self.balances.loc[coin, ('price', 'spot', 'last')] = price
+                    self.balances.loc[coin, ('price', 'spot')] = price
                 percent = (exp * price) / acc_value
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 

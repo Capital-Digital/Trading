@@ -177,7 +177,7 @@ class Account(models.Model):
         for level in list(set(self.balances.columns.get_level_values(0))):
 
             # Exclude positions
-            if level not in ['position', 'account']:
+            if level in ['spot', 'future']:
                 # Sum value of all coins
                 wallets.append(self.balances[level].total.value.sum())
 

@@ -207,35 +207,34 @@ def place_order(account_id, action, code, clientid, order_type, price, reduce_on
 
 # Market sell spot account
 @app.task(base=BaseTaskWithRetry, name='Trading_market_sell')
-def sell_market(account_id):
+def market_sell(account_id):
     #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
     for code, amount in account.balances.spot.free.quantity.T.items():
-        log.info('Amount')
-        print(amount)
-        if not np.isnan(amount):
+        if code != account.quote:
+            if not np.isnan(amount):
 
-            log.info('Sell {0}'.format(code))
+                log.info('Sell {0}'.format(code))
 
-            # Construct symbol
-            symbol = code + '/USDT'
+                # Construct symbol
+                symbol = code + '/USDT'
 
-            kwargs = dict(
-                symbol=symbol,
-                type='market',
-                side='sell',
-                amount=abs(amount)
-            )
+                kwargs = dict(
+                    symbol=symbol,
+                    type='market',
+                    side='sell',
+                    amount=abs(amount)
+                )
 
-            response = client.create_order(**kwargs)
-            log.info('Order status {0}'.format(response['status']))
+                response = client.create_order(**kwargs)
+                log.info('Order status {0}'.format(response['status']))
 
 
 # Market close position
 @app.task(base=BaseTaskWithRetry, name='Trading_market_close')
-def close_market(account_id):
+def market_close(account_id):
     #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)

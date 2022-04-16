@@ -142,12 +142,12 @@ def rebalance(account_id, sell_close=True):
     log.info('Allocate resources')
     log.info('******************')
 
-    # if spot > futu:
-    #     account.buy_spot_all()
-    #     account.open_short_all()
-    # else:
-    #     account.open_short_all()
-    #     account.buy_spot_all()
+    if spot > futu:
+        account.buy_spot_all()
+        account.open_short_all()
+    else:
+        account.open_short_all()
+        account.buy_spot_all()
 
 # Transfer
 ##########

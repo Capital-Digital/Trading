@@ -117,8 +117,8 @@ def rebalance(account_id, sell_close=True):
         account.close_short_all()
 
     # Determine available and desired resources
-    bal_spot = account.balances.spot.free[account.quote].value
-    bal_futu = account.balances.future.free[account.quote].value
+    bal_spot = account.balances.spot.free.value[account.quote]
+    bal_futu = account.balances.future.free.value[account.quote]
     des_spot = account.to_buy_spot_value().sum()
     des_futu = account.to_open_short_value().sum()
 

@@ -113,7 +113,7 @@ class Account(models.Model):
     # Insert spot and future bid/ask
     def insert_prices(self, code):
 
-        if code not in self.balances.price.spot.bid.dropna.index.tolist():
+        if code not in self.balances.price.spot.bid.dropna().index.tolist():
 
             try:
                 # Spot price

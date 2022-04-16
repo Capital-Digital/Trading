@@ -212,7 +212,7 @@ def sell_market(account_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    for code, amount in account.balances.spot.quantity.T.items():
+    for code, amount in account.balances.spot.free.quantity.T.items():
         log.info('Amount')
         print(amount)
         if not np.isnan(amount):

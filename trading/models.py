@@ -144,7 +144,7 @@ class Account(models.Model):
 
                     else:
                         # Determine value
-                        price = self.balances.price[wallet]['bid']
+                        price = self.balances.price[wallet]['bid'][coin]
                         value = price * funds[coin]
                         self.balances.loc[coin, (wallet, tp, 'value')] = value
 

@@ -13,10 +13,11 @@ log = structlog.get_logger(__name__)
 @task_postrun.connect
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
-    # Unpack arguments
-    account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet = args
-
     if task.name == 'Trading_place_order':
+
+        # Unpack arguments
+        account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet = args
+
         if state == 'SUCCESS':
 
             log.info('')
@@ -28,7 +29,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info('wallet {0}'.format(wallet))
 
             if retval['info']['status'] in ['NEW', 'FILLED', 'PARTIALLY_FILLED']:
-                update_order.delay(account_id, retval)
+                update_order.delay(account_id, retval)  # Update order object
 
             elif retval['info']['status'] == 'CANCELED':
                 log.info('Order has been canceled')
@@ -44,22 +45,63 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     # Recalculate balances and trades size after new resources become available
     if task.name == 'Trading_____Update_order':
+
         if state == 'SUCCESS':
-            if retval:
+
+            # Unpack return
+            account_id, action, filled_new = retval
+            account = Account.objects.get(id=account_id)
+
+            if filled_new:
 
                 log.info('')
-                log.info('New resources available')
-                account = Account.objects.get(id=retval)
+                log.info('New trade detected')
 
-                # Calculate new delta
-                account.get_delta()
+                # Update balances dataframe
+                account.update_balances(action, wallet, code, filled_new)
 
-                # Allocate available resources
-                account.buy_spot_all()
-                account.open_short_all()
+                if action in ['sell_spot', 'close_short']:
+                    log.info('New resources available')
+
+                    # Reallocate funds
+                    rebalance(account_id, sell_close=False)
+
+                elif action == 'buy_spot':
+                    log.info('Coins bought')
+
+                elif action == 'open_short':
+                    log.info('Contract sold')
+            else:
+                log.info('')
+                log.info('No trade executed')
+        else:
+            log.info('')
+            log.error('Error while updating orders')
+
+    if task.name == 'Trading_transfer':
+
+        # Unpack
+        response = retval
+        account_id, source, dest, quantity = args
+        account = Account.objects.get(id=account_id)
+
+        if state == 'SUCCESS':
+
+            log.info('')
+            log.info('Transfer success')
+            log.info('New resources available')
+
+            # Update dataframe
+            account.update_balances_after_transfer(source, dest, quantity)
+
+            # Reallocate funds
+            rebalance(account_id, sell_close=False)
 
         else:
-            log.error('Error while updating orders')
+
+            log.info('')
+            log.info('Transfer failure')
+            print(response)
 
 
 @task_failure.connect

@@ -99,17 +99,74 @@ def rebalance_all(strategy_id):
 
 
 @app.task(name='Trading_Rebalance_account')
-def rebalance(account_id):
+def rebalance(account_id, sell_close=True):
     #
     account = Account.objects.get(id=account_id)
+
+    log.info('')
     log.info('Rebalance account', account=account.name)
+    log.info('*****************')
 
-    # account.create_balances()
-    account.sell_spot_all()
-    account.close_short_all()
-    account.buy_spot_all()
-    account.open_short_all()
+    # Calculate new delta
+    account.get_delta()
 
+    if sell_close:
+
+        # Liberate resources
+        account.sell_spot_all()
+        account.close_short_all()
+
+    # Determine available and desired resources
+    bal_spot = account.balance.spot.free[account.quote].value
+    bal_futu = account.balance.future.free[account.quote].value
+    des_spot = account.to_buy_spot_value().sum()
+    des_futu = account.to_open_short_value().sum()
+
+    # Determine resource to transfer between account
+    need_spot = max(0, des_spot - bal_spot)
+    need_futu = max(0, des_futu - bal_futu)
+
+    # Transfer
+    if need_spot:
+        free_futu = max(0, bal_futu - des_futu)
+        transfer.delay(account_id, 'future', 'spot', free_futu)
+    if need_futu:
+        free_spot = max(0, bal_spot - des_spot)
+        transfer.delay(account_id, 'spot', 'future', free_spot)
+
+    # Determine account to allocate resource first
+    spot = min(bal_spot, des_spot)
+    futu = min(bal_futu, des_futu)
+
+    log.info('')
+    log.info('Allocate resources')
+    log.info('******************')
+    
+    # if spot > futu:
+    #     account.buy_spot_all()
+    #     account.open_short_all()
+    # else:
+    #     account.open_short_all()
+    #     account.buy_spot_all()
+
+# Transfer
+##########
+
+
+# Move resource between accounts
+@app.task(base=BaseTaskWithRetry, name='Trading_transfer')
+def transfer(account_id, source, dest, quantity):
+    #
+    account = Account.objects.get(idd=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    log.info('')
+    log.info('Transfer')
+    log.info('********')
+    log.info('From {0} to {1}'.format(source, dest))
+    log.info('-> {0} {1}'.format(round(quantity, 1), account.quote))
+
+    return client.transfer(account.quote, quantity, source, dest)
 
 # Place
 #######
@@ -119,12 +176,14 @@ def rebalance(account_id):
 @app.task(base=BaseTaskWithRetry, name='Trading_place_order')
 def place_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet):
     #
-    log.info('Place order {0}'.format(symbol))
+    log.info(' ')
+    log.info('Place order')
+    log.info('***********')
+    log.info('symbol {0}'.format(symbol))
     log.info('side {0}'.format(side))
     log.info('size {0}'.format(size))
     log.info('market {0}'.format(wallet))
     log.info('clientid {0}'.format(clientid))
-    log.info(' ')
 
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
@@ -146,9 +205,36 @@ def place_order(account_id, action, code, clientid, order_type, price, reduce_on
     return client.create_order(**kwargs)
 
 
-# Close position
-@app.task(base=BaseTaskWithRetry, name='Trading_close_positions')
-def close_position_market(account_id):
+# Market sell spot account
+@app.task(base=BaseTaskWithRetry, name='Trading_market_sell')
+def sell_market(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    for code, value in account.balances.spot.quantity.T.items():
+        amount = value['quantity']
+        if not np.isnan(amount):
+
+            log.info('Sell {0}'.format(code))
+
+            # Construct symbol
+            symbol = code + '/USDT'
+
+            kwargs = dict(
+                symbol=symbol,
+                type='market',
+                side='sell',
+                amount=abs(amount)
+            )
+
+            response = client.create_order(**kwargs)
+            log.info('Order status {0}'.format(response['status']))
+
+
+# Market close position
+@app.task(base=BaseTaskWithRetry, name='Trading_market_close')
+def close_market(account_id):
     #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
@@ -229,15 +315,16 @@ def update_order(account_id, response):
     account = Account.objects.get(id=account_id)
     filled_new = 0
 
+    log.info(' ')
+    log.info('Update object')
+    log.info('************')
+
     try:
 
         orderid = response['id']
         clientid = response['info']['clientOrderId']
         status = response['info']['status']
         filled_total = response['filled']
-
-        log.info('')
-        log.info('Update order {0}'.format(clientid))
 
         # Select order and update its status
         order = Order.objects.get(account=account, clientid=clientid)
@@ -249,15 +336,12 @@ def update_order(account_id, response):
         wallet = order.market.wallet
         action = order.action
 
-        # log.info(' ')
-        # log.info('  ***  UPDATE *** ')
-        # log.info('code {0}'.format(code))
-        # log.info('wallet {0}'.format(wallet))
-        # log.info('status {0}'.format(status))
-        # log.info('clientid {0}'.format(clientid))
-        # log.info('action {0}'.format(action))
-        # log.info('filled {0}'.format(filled))
-        # log.info(' ')
+        log.info('clientid {0}'.format(clientid))
+        log.info('code {0}'.format(code))
+        log.info('wallet {0}'.format(wallet))
+        log.info('status {0}'.format(status))
+        log.info('action {0}'.format(action))
+        log.info('filled total {0}'.format(filled_total))
 
         if filled_total:
 
@@ -265,12 +349,7 @@ def update_order(account_id, response):
             filled_new = filled_total - order.filled
             order.filled = filled_total
 
-            if filled_new:
-
-                log.info('New trade detected')
-
-                # Update balances dataframe
-                account.update_balances(action, wallet, code, filled_new)
+            log.info('filled new {0}'.format(filled_new))
 
     except Exception as e:
         log.error('Exception {0}'.format(e.__class__.__name__))
@@ -280,10 +359,7 @@ def update_order(account_id, response):
         order.response = response
         order.save()
 
-        # Return account ID to signal new available resources
-        if action in ['sell_spot', 'close_short']:
-            if filled_new:
-                return account_id
+        return account_id, action, filled_new
 
 
 # Cancellation
@@ -310,7 +386,7 @@ def cancel_account_orders(account_id):
         for order in orders:
             cancel_order.delay(account_id, order.orderid)
     else:
-        log.info('Cancel not found')
+        log.info('Open order not found')
 
 
 # Cancel an order by its orderid

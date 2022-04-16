@@ -131,8 +131,9 @@ class Account(models.Model):
                         if price:
                             value = price * funds[coin]
                             self.balances.loc[coin, (wallet, tp, 'value')] = value
+                            self.balances.loc[coin, ('price', 'spot', 'last')] = price
                         else:
-                            log.warning('Price not foun, drop coin {0} from dataframe'.format(coin))
+                            log.warning('Price not found, drop coin {0} from dataframe'.format(coin))
                             self.balances = self.balances.drop(coin)
 
         # Drop dust < $10
@@ -201,7 +202,12 @@ class Account(models.Model):
 
             # Insert quantities
             for coin, val in value.items():
-                qty = val / Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                if coin in self.balances.price.spot.last.dropna().index.tolist():
+                    price = self.balances.price.spot.last[coin]
+                else:
+                    price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                    self.balances.loc[coin, ('price', 'spot', 'last')] = price
+                qty = val / price
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
         except AttributeError as e:
@@ -237,7 +243,11 @@ class Account(models.Model):
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
             if coin != self.quote:
-                price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                if coin in self.balances.price.spot.last.dropna().index.tolist():
+                    price = self.balances.price.spot.last[coin]
+                else:
+                    price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                    self.balances.loc[coin, ('price', 'spot', 'last')] = price
                 percent = (exp * price) / acc_value
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
@@ -314,6 +324,12 @@ class Account(models.Model):
         codes = self.codes_to_buy()
         return abs(self.balances.account.target.delta[codes])
 
+    # Return a Series with codes/value to buy spot
+    def to_buy_spot_value(self):
+        qty = self.to_buy_spot()
+        price = self.balances.price.spot.last[qty.index]
+        return qty * price
+
     # Return a Series with codes/quantity to open short
     def to_open_short(self):
         codes = self.codes_to_sell()
@@ -321,6 +337,12 @@ class Account(models.Model):
         to_short = [i for i in target.loc[target < 0].index.values.tolist()]
         open_short = list(set(codes) & set(to_short))
         return abs(target[open_short])
+
+    # Return a Series with codes/value to open short
+    def to_open_short_value(self):
+        qty = self.to_open_short()
+        price = self.balances.price.spot.last[qty.index]
+        return qty * price
 
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
@@ -350,13 +372,17 @@ class Account(models.Model):
                                       )
 
         if others.exists():
-            offset = others.aggregate(Sum('filled'))['filled__sum']
+            size = others.aggregate(Sum('size'))['size__sum']
+            filled = others.aggregate(Sum('filled'))['filled__sum']
+            offset = size - filled
+
             log.info('{0} order(s) object found (offset {1})'.format(len(others), offset))
+
             for other in others:
                 log.info('client_id -> {0}'.format(other.clientid))
                 log.info('order_id -> {0}'.format(other.orderid))
                 log.info('status -> {0}'.format(other.status))
-                log.info('filled -> {0}'.format(other.filled))
+                log.info('size -> {0}'.format(other.size))
                 log.info(' ')
 
         # Determine price
@@ -517,7 +543,8 @@ class Account(models.Model):
     def update_balances(self, action, wallet, code, filled_new):
 
         log.info('')
-        log.info('Update balances dataframe')
+        log.info('Update balances')
+        log.info('***************')
         log.info('action {0}'.format(action))
         log.info('-> {0} {1}'.format(code, wallet))
 
@@ -574,6 +601,24 @@ class Account(models.Model):
             log.info('')
             log.info('Spot total quantity after')
             log.info(self.balances.spot.total.quantity)
+
+    # Update balances after a transfer
+    def update_balances_after_transfer(self, source, dest, quantity):
+
+        log.info('')
+        log.info('Update balances dataframe')
+
+        # Update source wallet
+        self.balances.loc[self.quote, (source, 'total', 'quantity')] -= quantity
+        self.balances.loc[self.quote, (source, 'total', 'value')] -= quantity
+        self.balances.loc[self.quote, (source, 'free', 'quantity')] -= quantity
+        self.balances.loc[self.quote, (source, 'free', 'value')] -= quantity
+
+        # Update destination
+        self.balances.loc[self.quote, (dest, 'total', 'quantity')] += quantity
+        self.balances.loc[self.quote, (dest, 'total', 'value')] += quantity
+        self.balances.loc[self.quote, (dest, 'free', 'quantity')] += quantity
+        self.balances.loc[self.quote, (dest, 'free', 'value')] += quantity
 
     # Sell spot
     def sell_spot_all(self):

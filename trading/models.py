@@ -377,7 +377,7 @@ class Account(models.Model):
             return abs(target[open_short])
         else:
             return pd.Series()
-            
+
     # Return a Series with codes/value to open short
     def to_open_short_value(self):
         qty = self.to_open_short()
@@ -685,13 +685,12 @@ class Account(models.Model):
         log.info('***********')
         from trading.tasks import place_order
         opened_short = self.to_close_short()
-        if opened_short:
-            for code, quantity in opened_short.items():
-                kwargs = self.size_order(code, quantity, 'close_short')
-                valid, order = self.prep_order(**kwargs)
-                if valid:
-                    args = order.values()
-                    place_order.delay(*args)
+        for code, quantity in opened_short.items():
+            kwargs = self.size_order(code, quantity, 'close_short')
+            valid, order = self.prep_order(**kwargs)
+            if valid:
+                args = order.values()
+                place_order.delay(*args)
 
     # Buy spot
     def buy_spot_all(self):

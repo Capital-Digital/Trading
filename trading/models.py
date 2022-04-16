@@ -359,7 +359,7 @@ class Account(models.Model):
     # Return a Series with codes/value to buy spot
     def to_buy_spot_value(self):
         qty = self.to_buy_spot()
-        price = self.balances.price.spot.last[qty.index]
+        price = self.balances.price.spot.bid[qty.index]
         return qty * price
 
     # Return a Series with codes/quantity to open short
@@ -373,7 +373,7 @@ class Account(models.Model):
     # Return a Series with codes/value to open short
     def to_open_short_value(self):
         qty = self.to_open_short()
-        price = self.balances.price.spot.last[qty.index]
+        price = self.balances.price.spot.bid[qty.index]
         return qty * price
 
     # Determine order size based on available resources

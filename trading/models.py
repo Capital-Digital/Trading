@@ -110,6 +110,38 @@ class Account(models.Model):
 
         log.info('Get balances qty done')
 
+    # Insert spot and future bid/ask
+    def insert_prices(self, code):
+
+        if code not in self.balances.price.spot.bid.dropna.index.tolist():
+
+            try:
+                # Spot price
+                for key in ['bid', 'ask']:
+                    price_spot = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, key)
+                    self.balances.loc[code, ('price', 'spot', key)] = price_spot
+
+            except ObjectDoesNotExist as e:
+                log.error('Spot market {0}/{1} not found'.format(code, self.quote))
+                self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
+                self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
+
+            try:
+                # Contract price
+                for key in ['bid', 'ask']:
+                    price_futu = Market.objects.get(base__code=code,
+                                                    quote__code=self.quote,
+                                                    type='derivative',
+                                                    contract_type='perpetual',
+                                                    exchange=self.exchange).get_latest_price(key)
+
+                    self.balances.loc[code, ('price', 'future', key)] = price_futu
+
+            except ObjectDoesNotExist as e:
+                log.error('Future market {0}{1} not found'.format(code, self.quote))
+                self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
+                self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
+
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
 
@@ -120,33 +152,18 @@ class Account(models.Model):
             for tp in ['free', 'total', 'used']:
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
-                    try:
-                        # Select prices
-                        for key in ['bid', 'ask']:
+                    self.insert_prices(coin)
 
-                            # Spot price
-                            price_spot = Currency.objects.get(code=coin).get_latest_price(self.exchange,
-                                                                                          self.quote,
-                                                                                          key)
-                            # Contract price
-                            price_futu = Market.objects.get(base__code=coin,
-                                                            quote__code=self.quote,
-                                                            type='derivative',
-                                                            contract_type='perpetual',
-                                                            exchange=self.exchange).get_latest_price(key)
+                    if not np.isnan(self.balances.price.spot.bid):
 
-                            self.balances.loc[coin, ('price', 'spot', key)] = price_spot
-                            self.balances.loc[coin, ('price', 'future', key)] = price_futu
-
-                    except ObjectDoesNotExist as e:
-                        log.error('Currency {0} not found'.format(coin))
-                        self.balances = self.balances.drop(coin)
-
-                    else:
                         # Determine value
                         price = self.balances.price[wallet]['bid'][coin]
                         value = price * funds[coin]
                         self.balances.loc[coin, (wallet, tp, 'value')] = value
+
+                    else:
+                        log.warning('Price not found, drop {0}'.format(coin))
+                        self.balances = self.balances.drop(coin)
 
         # Drop dust < $10
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
@@ -215,27 +232,19 @@ class Account(models.Model):
             # Determine quantities
             for coin, val in value.items():
 
-                # Select prices of new coins
+                # Insert prices of new coins
                 if coin not in self.balances.price.spot.bid.dropna().index.tolist():
+                    self.insert_prices(coin)
 
-                    for key in ['bid', 'ask']:
+                # Price found ?
+                if not np.isnan(self.balances.price.spot.bid):
 
-                        # Spot price
-                        price_spot = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, key)
+                    # Calculate quantity
+                    qty = val / self.balances.price.spot.bid[coin]
+                    self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
-                        # Contract price
-                        price_futu = Market.objects.get(base__code=coin,
-                                                        quote__code=self.quote,
-                                                        type='derivative',
-                                                        contract_type='perpetual',
-                                                        exchange=self.exchange).get_latest_price(key)
-
-                        self.balances.loc[coin, ('price', 'spot', key)] = price_spot
-                        self.balances.loc[coin, ('price', 'future', key)] = price_futu
-
-                # Calculate quantity
-                qty = val / self.balances.price.spot.bid[coin]
-                self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
+                else:
+                    log.error('Can not calculate target value of {0}, price not found'.format(coin))
 
         except AttributeError as e:
             self.trading = False

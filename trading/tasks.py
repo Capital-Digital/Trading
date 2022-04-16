@@ -220,7 +220,6 @@ def market_sell(account_id):
 
                 # Construct symbol
                 symbol = code + '/USDT'
-
                 kwargs = dict(
                     symbol=symbol,
                     type='market',
@@ -250,7 +249,6 @@ def market_close(account_id):
 
             # Construct symbol
             symbol = code + '/USDT'
-
             if value['side'] == 'buy':
                 side = 'sell'
             else:

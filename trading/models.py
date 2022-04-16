@@ -84,7 +84,7 @@ class Account(models.Model):
 
         # Del attribute
         if hasattr(self, 'balances'):
-            del self.balances
+            self.balances = pd.DataFrame()
 
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
@@ -116,7 +116,7 @@ class Account(models.Model):
         if code not in self.balances.price.spot.bid.dropna().index.tolist():
 
             log.info(code)
-            
+
             try:
                 # Spot price
                 for key in ['bid', 'ask']:

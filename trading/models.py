@@ -121,20 +121,32 @@ class Account(models.Model):
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
                     try:
-                        price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
+                        # Select prices
+                        for key in ['bid', 'ask']:
+
+                            # Spot price
+                            price_spot = Currency.objects.get(code=coin).get_latest_price(self.exchange,
+                                                                                          self.quote,
+                                                                                          key)
+                            # Contract price
+                            price_futu = Market.objects.get(base__code=coin,
+                                                            quote__code=self.quote,
+                                                            type='derivative',
+                                                            contract_type='perpetual',
+                                                            exchange=self.exchange).get_latest_price(key)
+
+                            self.balances.loc[coin, ('price', 'spot', key)] = price_spot
+                            self.balances.loc[coin, ('price', 'future', key)] = price_futu
 
                     except ObjectDoesNotExist as e:
                         log.error('Currency {0} not found'.format(coin))
                         self.balances = self.balances.drop(coin)
 
                     else:
-                        if price:
-                            value = price * funds[coin]
-                            self.balances.loc[coin, (wallet, tp, 'value')] = value
-                            self.balances.loc[coin, ('price', 'spot', 'last')] = price
-                        else:
-                            log.warning('Price not found, drop coin {0} from dataframe'.format(coin))
-                            self.balances = self.balances.drop(coin)
+                        # Determine value
+                        price = self.balances.price[wallet]['bid']
+                        value = price * funds[coin]
+                        self.balances.loc[coin, (wallet, tp, 'value')] = value
 
         # Drop dust < $10
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
@@ -195,19 +207,34 @@ class Account(models.Model):
             for coin, pct in target_pct.items():
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
-            # Insert target values
+            # Determine values
             value = self.account_value() * target_pct
             for coin, val in value.items():
                 self.balances.loc[coin, ('account', 'target', 'value')] = val
 
-            # Insert quantities
+            # Determine quantities
             for coin, val in value.items():
-                if coin in self.balances.price.spot.dropna().index.tolist():
-                    price = self.balances.price.spot[coin]
-                else:
-                    last = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                    self.balances.loc[coin, ('price', 'spot')] = last
-                qty = val / price
+
+                # Select prices of new coins
+                if coin not in self.balances.price.spot.bid.dropna().index.tolist():
+
+                    for key in ['bid', 'ask']:
+
+                        # Spot price
+                        price_spot = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, key)
+
+                        # Contract price
+                        price_futu = Market.objects.get(base__code=coin,
+                                                        quote__code=self.quote,
+                                                        type='derivative',
+                                                        contract_type='perpetual',
+                                                        exchange=self.exchange).get_latest_price(key)
+
+                        self.balances.loc[coin, ('price', 'spot', key)] = price_spot
+                        self.balances.loc[coin, ('price', 'future', key)] = price_futu
+
+                # Calculate quantity
+                qty = val / self.balances.price.spot.bid[coin]
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
         except AttributeError as e:
@@ -243,12 +270,8 @@ class Account(models.Model):
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
             if coin != self.quote:
-                if coin in self.balances.price.spot.dropna().index.tolist():
-                    price = self.balances.price.spot[coin]
-                else:
-                    price = Currency.objects.get(code=coin).get_latest_price(self.exchange, self.quote, 'last')
-                    self.balances.loc[coin, ('price', 'spot')] = price
-                percent = (exp * price) / acc_value
+                bid = self.balances.price.spot.bid[coin]
+                percent = (exp * bid) / acc_value
                 self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Iterate through target coins and calculate delta
@@ -359,8 +382,10 @@ class Account(models.Model):
         # Determine side
         if action in ['buy_spot', 'close_short']:
             side = 'buy'
+            key = 'ask'
         if action in ['open_short', 'sell_spot']:
             side = 'sell'
+            key = 'bid'
 
         offset = 0
 
@@ -385,16 +410,8 @@ class Account(models.Model):
                 log.info('size -> {0}'.format(other.size))
                 log.info(' ')
 
-        # Determine price
-        if wallet == 'spot':
-            price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
-
-        else:
-            price = Market.objects.get(base__code=code,
-                                       quote__code=self.quote,
-                                       type='derivative',
-                                       contract_type='perpetual',
-                                       exchange=self.exchange).get_latest_price('last')
+        # Select price
+        price = self.balances.price[wallet][key]
 
         # Determine order value and size when USDT resources are released
         if action == 'sell_spot':
@@ -548,8 +565,19 @@ class Account(models.Model):
         log.info('action {0}'.format(action))
         log.info('-> {0} {1}'.format(code, wallet))
 
+        # Determine key
+        if action in ['buy_spot', 'close_short']:
+            key = 'ask'
+        if action in ['open_short', 'sell_spot']:
+            key = 'bid'
+
+        # Determine price
+        if wallet == 'spot':
+            price = self.balances.price.spot[key]
+        else:
+            price = self.balances.price.future[key]
+
         # Calculate trade value
-        price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'last')
         filled_value = filled_new * price
 
         # Determine amounts to offset
@@ -672,6 +700,7 @@ class Account(models.Model):
                 args = order.values()
                 place_order.delay(*args)
 
+    #################################
     #################################
 
     # Sell in spot market
@@ -1339,13 +1368,13 @@ class Account(models.Model):
         current = self.balances.account.current.percent
         for coin, val in current[current != 0].sort_values(ascending=False).items():
             if coin != self.quote:
-                log.info('Percentage for {0}: {1}%'.format(coin, round(val*100, 1)))
+                log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
         log.info(' ')
 
         target = self.balances.account.target.percent
         for coin, val in target[target != 0].sort_values(ascending=False).items():
-            log.info('Target for {0}: {1}%'.format(coin, round(val*100, 1)))
+            log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
     # Mark the account as currently trading (busy) or not
     def set_busy_flag(self, busy):

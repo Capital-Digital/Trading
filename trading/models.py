@@ -113,36 +113,36 @@ class Account(models.Model):
     # Insert spot and future bid/ask
     def insert_prices(self, code):
 
-        if code not in self.balances.price.spot.bid.dropna().index.tolist():
+        if 'price' in self.balances.columns.get_level_values(0).tolist():
+            if code in self.balances.price.spot.bid.dropna().index.tolist():
+                return
 
-            log.info(code)
+        try:
+            # Spot price
+            for key in ['bid', 'ask']:
+                price_spot = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, key)
+                self.balances.loc[code, ('price', 'spot', key)] = price_spot
 
-            try:
-                # Spot price
-                for key in ['bid', 'ask']:
-                    price_spot = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, key)
-                    self.balances.loc[code, ('price', 'spot', key)] = price_spot
+        except ObjectDoesNotExist as e:
+            log.error('Spot market {0}/{1} not found'.format(code, self.quote))
+            self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
+            self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
-            except ObjectDoesNotExist as e:
-                log.error('Spot market {0}/{1} not found'.format(code, self.quote))
-                self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
-                self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
+        try:
+            # Contract price
+            for key in ['bid', 'ask']:
+                price_futu = Market.objects.get(base__code=code,
+                                                quote__code=self.quote,
+                                                type='derivative',
+                                                contract_type='perpetual',
+                                                exchange=self.exchange).get_latest_price(key)
 
-            try:
-                # Contract price
-                for key in ['bid', 'ask']:
-                    price_futu = Market.objects.get(base__code=code,
-                                                    quote__code=self.quote,
-                                                    type='derivative',
-                                                    contract_type='perpetual',
-                                                    exchange=self.exchange).get_latest_price(key)
+                self.balances.loc[code, ('price', 'future', key)] = price_futu
 
-                    self.balances.loc[code, ('price', 'future', key)] = price_futu
-
-            except ObjectDoesNotExist as e:
-                log.error('Future market {0}{1} not found'.format(code, self.quote))
-                self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
-                self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
+        except ObjectDoesNotExist as e:
+            log.error('Future market {0}{1} not found'.format(code, self.quote))
+            self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
+            self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):

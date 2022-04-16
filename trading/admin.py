@@ -41,12 +41,14 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def market_sell(self, request, queryset):
         for account in queryset:
+            log.info('Market sell', account=account.name)
             sell_market.delay(account.id)
 
     market_sell.short_description = "Market sell"
 
     def market_close(self, request, queryset):
         for account in queryset:
+            log.info('Market close', account=account.name)
             close_market.delay(account.id)
 
     market_close.short_description = "Market close"

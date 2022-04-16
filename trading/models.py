@@ -154,7 +154,7 @@ class Account(models.Model):
                 for coin in funds.index:
                     self.insert_prices(coin)
 
-                    if not np.isnan(self.balances.price.spot.bid):
+                    if not np.isnan(self.balances.price.spot.bid[coin]):
 
                         # Determine value
                         price = self.balances.price[wallet]['bid'][coin]
@@ -237,7 +237,7 @@ class Account(models.Model):
                     self.insert_prices(coin)
 
                 # Price found ?
-                if not np.isnan(self.balances.price.spot.bid):
+                if not np.isnan(self.balances.price.spot.bid[coin]):
 
                     # Calculate quantity
                     qty = val / self.balances.price.spot.bid[coin]

@@ -141,7 +141,7 @@ def rebalance(account_id, sell_close=True):
     log.info('')
     log.info('Allocate resources')
     log.info('******************')
-    
+
     # if spot > futu:
     #     account.buy_spot_all()
     #     account.open_short_all()
@@ -212,8 +212,8 @@ def sell_market(account_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    for code, value in account.balances.spot.quantity.T.items():
-        amount = value['quantity']
+    for code, amount in account.balances.spot.quantity.T.items():
+        
         if not np.isnan(amount):
 
             log.info('Sell {0}'.format(code))

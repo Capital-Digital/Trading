@@ -231,6 +231,8 @@ def market_sell(account_id):
                 response = client.create_order(**kwargs)
                 log.info('Order status {0}'.format(response['status']))
 
+    account.create_balances()
+
 
 # Market close position
 @app.task(base=BaseTaskWithRetry, name='Trading_market_close')
@@ -264,6 +266,7 @@ def market_close(account_id):
             response = client.create_order(**kwargs)
             log.info('Order status {0}'.format(response['status']))
 
+            account.create_balances()
 
 # Update
 #########

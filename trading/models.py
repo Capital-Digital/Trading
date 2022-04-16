@@ -428,7 +428,7 @@ class Account(models.Model):
                 log.info(' ')
 
         # Select price
-        price = self.balances.price[wallet][key]
+        price = self.balances.price[wallet][key][code]
 
         # Determine order value and size when USDT resources are released
         if action == 'sell_spot':

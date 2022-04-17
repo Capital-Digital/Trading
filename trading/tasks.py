@@ -250,7 +250,7 @@ def market_sell(account_id):
                         symbol=symbol,
                         type='market',
                         side='sell',
-                        amount=amount
+                        amount=dic['size']
                     )
 
                     try:
@@ -263,9 +263,6 @@ def market_sell(account_id):
                     else:
                         log.info('Order status {0}'.format(response['status']))
 
-                else:
-                    log.info('Conditions not satisfied to sell {0} {1}'.format(amount, code))
-                
     account.create_balances()
 
 

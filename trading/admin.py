@@ -1,6 +1,5 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
-from marketsdata.tasks import update_account
 from trading.models import Account, Fund, Position, Order, Transfer
 from trading.tasks import *
 import structlog

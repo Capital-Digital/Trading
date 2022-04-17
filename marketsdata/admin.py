@@ -5,6 +5,8 @@ import structlog
 import locale
 from celery import group
 from marketsdata.tasks import *
+from strategy.tasks import *
+from trading.tasks import *
 import time
 from celery import chain
 

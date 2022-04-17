@@ -247,8 +247,15 @@ def market_sell(account_id):
                     amount=abs(amount)
                 )
 
-                response = client.create_order(**kwargs)
-                log.info('Order status {0}'.format(response['status']))
+                try:
+                    response = client.create_order(**kwargs)
+
+                except ccxt.InsufficientFunds:
+                    log.error('Insufficient funds to sell {0} {1}'.format(amount, code))
+                except Exception as e:
+                    log.error('Unable to sell {0} {1} order: {2}'.format(amount, code, e))
+                else:
+                    log.info('Order status {0}'.format(response['status']))
 
     account.create_balances()
 

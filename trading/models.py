@@ -117,6 +117,12 @@ class Account(models.Model):
             if code in self.balances.price.spot.bid.dropna().index.tolist():
                 return
 
+        if code == self.quote:
+            for key in ['bid', 'ask']:
+                self.balances.loc[code, ('price', 'spot', key)] = 1
+                self.balances.loc[code, ('price', 'future', key)] = 1
+                return
+
         try:
             # Spot price
             for key in ['bid', 'ask']:

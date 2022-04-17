@@ -704,7 +704,7 @@ def update_exchanges(self):
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
 def update_dataframe(self, exid, signal):
     #
-    #log.info('Update dataframe ({0})'.format(current_process().index))
+    # log.info('Update dataframe ({0})'.format(current_process().index))
     log.bind(exid=exid)
 
     # Select instance and create self.data dataframe with available prices
@@ -716,7 +716,7 @@ def update_dataframe(self, exid, signal):
 
         # wait...
         while datetime.now().minute > 0:
-            log.info('Wait {0} minutes and {1}s'.format(60 - datetime.now().minute, 60 - datetime.now().second))
+            log.info('Wait {0} minutes and {1}s'.format(59 - datetime.now().minute, 60 - datetime.now().second))
             time.sleep(1)
 
     if exchange.is_trading():
@@ -880,43 +880,6 @@ def update_tickers(self, exid):
         log.error('Exchange is not trading')
 
     log.unbind('exid')
-
-
-# Update all strategies
-@app.task(bind=True, name='Update_strategies')
-def update_strategies(self, exid, signal):
-    if Exchange.objects.get(exid=exid).is_data_updated():
-        from strategy.models import Strategy
-        strategies = Strategy.objects.filter(exchange__exid=exid, production=True)
-        for strategy in strategies:
-            update_strategy.delay(strategy.name, signal)
-
-
-# Update a strategy
-@app.task(bind=True, base=BaseTaskWithRetry, name='Update_strategy')
-def update_strategy(self, name, signal):
-    # log.info('Update strategy {0} ({1})'.format(name, current_process().index))
-    from strategy.models import Strategy
-    strategy = Strategy.objects.get(name=name)
-    strategy.execute()
-
-
-# Update all accounts
-@app.task(bind=True, name='Update_accounts')
-def update_accounts(self, strategy_name, signal):
-    from trading.models import Account
-    accounts = Account.objects.filter(strategy__name=strategy_name, active=True)
-    for account in accounts:
-        update_account.delay(account.id, signal)
-
-
-# Update an account
-@app.task(bind=True, base=BaseTaskWithRetry, name='Update_account')
-def update_account(self, account_id, signal):
-    from trading.models import Account
-    account = Account.objects.get(id=account_id)
-    #log.info('Update account {0} ({1})'.format(account.name, current_process().index))
-    account.trade()
 
 
 #########################################

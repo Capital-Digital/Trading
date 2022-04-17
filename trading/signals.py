@@ -13,6 +13,18 @@ log = structlog.get_logger(__name__)
 @task_postrun.connect
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
+    if task.name == 'Update_account':
+        acid, signal = args
+        if state == 'SUCCESS':
+
+            log.info('')
+            log.info('Accounts update successful')
+
+            if signal:
+                pass
+        else:
+            log.error('Accounts update failure')
+
     if task.name == 'Trading_place_order':
 
         # Unpack arguments

@@ -244,7 +244,7 @@ def market_sell(account_id):
                     symbol=symbol,
                     type='market',
                     side='sell',
-                    amount=abs(amount)
+                    amount=amount
                 )
 
                 try:

@@ -4,7 +4,6 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from strategy.models import Strategy
 from celery.signals import task_success, task_postrun, task_failure
-from strategy.tasks import update_strategies
 
 log = structlog.get_logger(__name__)
 
@@ -20,6 +19,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwarg
             log.info('Dataframes update successful')
 
             if signal:
+                from strategy.tasks import update_strategies
                 update_strategies.delay(exid, signal)
         else:
             log.error('Dataframe update failure')

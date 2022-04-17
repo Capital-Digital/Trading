@@ -15,6 +15,7 @@ from django.db.models import Avg
 log = structlog.get_logger(__name__)
 
 
+#
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'user', 'exchange', 'quote', 'active', 'trading', 'valid_credentials',

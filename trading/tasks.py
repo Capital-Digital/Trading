@@ -238,25 +238,34 @@ def market_sell(account_id):
 
                 log.info('Sell {0}'.format(code))
 
-                # Construct symbol
-                symbol = code + '/USDT'
-                kwargs = dict(
-                    symbol=symbol,
-                    type='market',
-                    side='sell',
-                    amount=amount
-                )
+                price = account.balances.price.spot.bid
+                value = amount * price
+                valid, dic = account.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
 
-                try:
-                    response = client.create_order(**kwargs)
+                if valid:
 
-                except ccxt.InsufficientFunds:
-                    log.error('Insufficient funds to sell {0} {1}'.format(amount, code))
-                except Exception as e:
-                    log.error('Unable to sell {0} {1} order: {2}'.format(amount, code, e))
+                    # Construct symbol
+                    symbol = code + '/USDT'
+                    kwargs = dict(
+                        symbol=symbol,
+                        type='market',
+                        side='sell',
+                        amount=amount
+                    )
+
+                    try:
+                        response = client.create_order(**kwargs)
+
+                    except ccxt.InsufficientFunds:
+                        log.error('Insufficient funds to sell {0} {1}'.format(amount, code))
+                    except Exception as e:
+                        log.error('Unable to sell {0} {1} order: {2}'.format(amount, code, e))
+                    else:
+                        log.info('Order status {0}'.format(response['status']))
+
                 else:
-                    log.info('Order status {0}'.format(response['status']))
-
+                    log.info('Conditions not satisfied to sell {0} {1}'.format(amount, code))
+                
     account.create_balances()
 
 

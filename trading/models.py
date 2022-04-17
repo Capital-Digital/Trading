@@ -1385,8 +1385,7 @@ class Account(models.Model):
 
         current = self.balances.account.current.percent
         for coin, val in current[current != 0].sort_values(ascending=False).items():
-            if coin != self.quote:
-                log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
+            log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
         log.info(' ')
 

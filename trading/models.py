@@ -122,7 +122,7 @@ class Account(models.Model):
             for key in ['bid', 'ask']:
                 self.balances.loc[code, ('price', 'spot', key)] = 1
                 self.balances.loc[code, ('price', 'future', key)] = 1
-                return
+            return
 
         try:
             # Spot price
@@ -135,21 +135,26 @@ class Account(models.Model):
             self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
             self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
-        try:
-            # Contract price
-            for key in ['bid', 'ask']:
-                price_futu = Market.objects.get(base__code=code,
-                                                quote__code=self.quote,
-                                                type='derivative',
-                                                contract_type='perpetual',
-                                                exchange=self.exchange).get_latest_price(key)
+        finally:
 
-                self.balances.loc[code, ('price', 'future', key)] = price_futu
+            try:
+                # Contract price
+                for key in ['bid', 'ask']:
+                    price_futu = Market.objects.get(base__code=code,
+                                                    quote__code=self.quote,
+                                                    type='derivative',
+                                                    contract_type='perpetual',
+                                                    exchange=self.exchange).get_latest_price(key)
 
-        except ObjectDoesNotExist as e:
-            log.error('Future market {0}{1} not found'.format(code, self.quote))
-            self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
-            self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
+                    self.balances.loc[code, ('price', 'future', key)] = price_futu
+
+            except ObjectDoesNotExist as e:
+                log.error('Future market {0}{1} not found'.format(code, self.quote))
+                self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
+                self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
+
+            finally:
+                self.save()
 
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):

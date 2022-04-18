@@ -302,6 +302,11 @@ class Account(models.Model):
             percent = (exp * bid) / (acc_value - pos_value)
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
+        # Calculate value allocated to each coin
+        for coin, exp in self.balances.account.current.exposure.items():
+            bid = self.balances.price.spot.bid[coin]
+            self.balances.loc[coin, ('account', 'current', 'value')] = exp * bid
+
         # Iterate through target coins and calculate delta
         for coin in target.index.values.tolist():
 

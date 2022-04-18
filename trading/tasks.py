@@ -374,9 +374,7 @@ def update_order(account_id, response):
         wallet = order.market.wallet
         action = order.action
 
-        log.info('clientid {0}'.format(clientid))
-        log.info('code {0}'.format(code))
-        log.info('wallet {0}'.format(wallet))
+        log.info('code {0} ({1})'.format(code, wallet))
         log.info('status {0}'.format(status))
         log.info('action {0}'.format(action))
         log.info('filled total {0}'.format(filled_total))

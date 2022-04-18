@@ -115,7 +115,8 @@ class Account(models.Model):
 
         if 'price' in self.balances.columns.get_level_values(0).tolist():
             if code in self.balances.price.spot.bid.dropna().index.tolist():
-                return
+                if code in self.balances.price.future.bid.dropna().index.tolist():
+                    return
 
         if code == self.quote:
             for key in ['bid', 'ask']:

@@ -298,7 +298,10 @@ class Account(models.Model):
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
             bid = self.balances.price.spot.bid[coin]
-            pos_value = self.balances.position.open.value.dropna().sum()
+            if 'position' in self.balances.columns.get_level_values(0):
+                pos_value = self.balances.position.open.value.dropna().sum()
+            else:
+                pos_value = 0
             percent = (exp * bid) / (acc_value - pos_value)
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 

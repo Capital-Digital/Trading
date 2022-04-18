@@ -117,7 +117,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def cancel_order(self, request, queryset):
         for order in queryset:
-            order.cancel()
+            cancel_order(order.account.id, order.orderid)
 
     cancel_order.short_description = 'Cancel order'
 

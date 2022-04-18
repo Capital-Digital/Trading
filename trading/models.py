@@ -113,6 +113,8 @@ class Account(models.Model):
     # Insert spot and future bid/ask
     def insert_prices(self, code):
 
+        print('a', code)
+
         if 'price' in self.balances.columns.get_level_values(0).tolist():
             if code in self.balances.price.spot.bid.dropna().index.tolist():
                 if code in self.balances.price.future.bid.dropna().index.tolist():
@@ -126,6 +128,8 @@ class Account(models.Model):
 
         try:
             # Spot price
+            print('b', code)
+
             for key in ['bid', 'ask']:
                 price_spot = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, key)
                 self.balances.loc[code, ('price', 'spot', key)] = price_spot

@@ -467,7 +467,9 @@ class Account(models.Model):
             if action == 'buy_spot':
                 available = self.balances.spot.free.quantity[self.quote]
             elif action == 'open_short':
-                available = self.balances.future.free.quantity[self.quote]
+                total = self.balances.future.total.quantity[self.quote]
+                open_value = abs(self.balances.position.open.value.dropna()).sum()
+                available = max(0, total - open_value)
 
             if not pd.isna(available):
 

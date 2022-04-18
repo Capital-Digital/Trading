@@ -177,7 +177,7 @@ def rebalance(account_id, sell_close=True):
 @app.task(base=BaseTaskWithRetry, name='Trading_transfer')
 def transfer(account_id, source, dest, quantity):
     #
-    account = Account.objects.get(idd=account_id)
+    account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
     log.info('')

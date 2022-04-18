@@ -316,14 +316,20 @@ def update_accounts_orders():
 def update_account_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
-
     orders = Order.objects.filter(account=account,
                                   status__in=['new', 'partially_filled']
                                   ).exclude(orderid__isnull=True)
 
     if orders.exists():
+
+        log.info(' ')
+        log.info('Update {0} order(s)'.format(orders.count()))
+        log.info('********************')
+
         for order in orders:
             fetch_order.delay(account_id, order.orderid)
+    else:
+        log.info('No order to update')
 
 
 # Fetch an open order by its orderid (then update corresponding object)
@@ -334,7 +340,7 @@ def fetch_order(account_id, order_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    log.info('Fetch order {0}'.format(order.clientid))
+    log.info('Update order {0}'.format(order.clientid))
 
     # Set options
     client.options['defaultType'] = order.market.wallet
@@ -349,9 +355,7 @@ def update_order(account_id, response):
     account = Account.objects.get(id=account_id)
     filled_new = 0
 
-    log.info(' ')
-    log.info('Update object')
-    log.info('************')
+    log.info('Update order object')
 
     try:
 

@@ -61,13 +61,15 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         if state == 'SUCCESS':
 
             # Unpack return
-            account_id, action, filled_new = retval
+            account_id, wallet, action, filled_new = retval
             account = Account.objects.get(id=account_id)
 
             if filled_new:
 
                 log.info('')
                 log.info('New trade detected')
+                log.info('Update balances dataframe')
+                log.info(action, wallet, code, filled_new)
 
                 # Update balances dataframe
                 account.update_balances(action, wallet, code, filled_new)

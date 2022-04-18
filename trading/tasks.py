@@ -146,12 +146,23 @@ def rebalance(account_id, sell_close=True):
     need_spot = max(0, des_spot - bal_spot)
     need_futu = max(0, des_futu - bal_futu)
 
+    log.info(' ')
+    log.info('Transfer resources between accounts')
+    log.info('***********************************')
+
     # Transfer
     if need_spot:
+
         free_futu = max(0, bal_futu - des_futu)
+        log.info('Resources are needed in spot')
+        log.info('Move {0} {1} from future'.format(round(free_futu, 1), account.quote))
         transfer.delay(account_id, 'future', 'spot', free_futu)
+
     if need_futu:
+
         free_spot = max(0, bal_spot - des_spot)
+        log.info('Resources are needed in future')
+        log.info('Move {0} {1} from spot'.format(round(free_futu, 1), account.quote))
         transfer.delay(account_id, 'spot', 'future', free_spot)
 
     # Determine account to allocate resource first
@@ -355,6 +366,7 @@ def update_order(account_id, response):
     account = Account.objects.get(id=account_id)
     filled_new = 0
 
+    log.info(' ')
     log.info('Update order object')
 
     try:
@@ -385,7 +397,7 @@ def update_order(account_id, response):
             filled_new = filled_total - order.filled
             order.filled = filled_total
 
-            log.info('filled new {0}'.format(filled_new))
+            log.info('trade {0}'.format(filled_new))
 
     except Exception as e:
         log.error('Exception {0}'.format(e.__class__.__name__))
@@ -395,7 +407,7 @@ def update_order(account_id, response):
         order.response = response
         order.save()
 
-        return account_id, action, filled_new
+        return account_id, wallet, action, filled_new
 
 
 # Cancellation

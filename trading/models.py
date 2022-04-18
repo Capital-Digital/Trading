@@ -113,8 +113,6 @@ class Account(models.Model):
     # Insert spot and future bid/ask
     def insert_prices(self, code):
 
-        print('a', code)
-
         if 'price' in self.balances.columns.get_level_values(0).tolist():
             if code in self.balances.price.spot.bid.dropna().index.tolist():
                 if code in self.balances.price.future.bid.dropna().index.tolist():
@@ -128,8 +126,6 @@ class Account(models.Model):
 
         try:
             # Spot price
-            print('b', code)
-
             for key in ['bid', 'ask']:
                 price_spot = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, key)
                 self.balances.loc[code, ('price', 'spot', key)] = price_spot
@@ -170,6 +166,8 @@ class Account(models.Model):
             for tp in ['free', 'total', 'used']:
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
+
+                    # Insert prices
                     self.insert_prices(coin)
 
                     if not np.isnan(self.balances.price.spot.bid[coin]):
@@ -213,6 +211,9 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+
+                # Insert price
+                self.insert_prices(code)
 
         self.save()
 

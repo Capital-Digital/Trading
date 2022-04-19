@@ -117,11 +117,12 @@ def update_dataframe(self, exid, wait):
 
     # Preload dataframe with prices and volumes
     exchange = Exchange.objects.get(exid=exid)
+
+    log.info('Dataframe preloading...')
     codes = exchange.get_strategies_codes()
     exchange.load_data(10 * 24, codes)
 
     if wait:
-        log.info('Dataframe preloading...')
         while datetime.now().minute > 0:
             time.sleep(1)
 

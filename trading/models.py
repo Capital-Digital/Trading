@@ -504,7 +504,7 @@ class Account(models.Model):
                     )
 
     # Format decimal and check limits
-    def prep_order(self, wallet, code, order_size, order_value, price, action, side, order_type=self.order_type):
+    def prep_order(self, wallet, code, order_size, order_value, price, action, side):
 
         # Select market
         markets = Market.objects.filter(base__code=code,
@@ -550,7 +550,7 @@ class Account(models.Model):
                 account=self,
                 market=market,
                 clientid=clientid,
-                type='limit',
+                type=self.order_type,
                 filled=0,
                 side=side,
                 action=action,
@@ -869,6 +869,48 @@ class Account(models.Model):
         target = self.balances.account.target.percent
         for coin, val in target[target != 0].sort_values(ascending=False).items():
             log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+    # Market sell spot account
+    def market_sell(self):
+        #
+        for code, amount in self.balances.spot.free.quantity.T.items():
+            if code != self.quote:
+                if not np.isnan(amount):
+
+                    log.info('Sell {0}'.format(code))
+
+                    price = self.balances.price.spot.bid
+                    value = amount * price
+                    valid, order = self.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
+
+                    if valid:
+
+                        order['order_type'] = 'market'
+                        args = order.values()
+
+                        from trading.tasks import send_create_order
+                        send_create_order.delay(*args, then_rebalance=False)
+
+    # Market close position
+    def market_close(self):
+        #
+        for code, value in self.balances.position.open.T.items():
+            amount = value['quantity']
+            if not np.isnan(amount):
+
+                log.info('Close position {0}'.format(code))
+
+                price = self.balances.price.spot.bid
+                value = amount * price
+                valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
+
+                if valid:
+
+                    order['order_type'] = 'market'
+                    args = order.values()
+
+                    from trading.tasks import send_create_order
+                    send_create_order.delay(*args, then_rebalance=False)
 
 
 class Fund(models.Model):

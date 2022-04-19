@@ -142,7 +142,8 @@ def cancel_accounts_orders():
 ##########################
 
 
-@app.task(name='Trading_Rebalance_account')
+# Rebalance fund of an account
+@app.task(name='Trading_____Rebalance_account')
 def rebalance(account_id, sell_close=True):
     #
     account = Account.objects.get(id=account_id)
@@ -202,85 +203,7 @@ def rebalance(account_id, sell_close=True):
         account.buy_spot_all()
 
 
-# Market sell spot account
-@app.task(base=BaseTaskWithRetry, name='Trading_market_sell')
-def market_sell(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-
-    for code, amount in account.balances.spot.free.quantity.T.items():
-        if code != account.quote:
-            if not np.isnan(amount):
-
-                log.info('Sell {0}'.format(code))
-
-                price = account.balances.price.spot.bid
-                value = amount * price
-                valid, order = account.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
-
-                if valid:
-                    order['order_type'] = 'market'
-                    args = order.values()
-                    send_create_order.delay(*args)
-
-                    # Construct symbol
-                    symbol = code + '/USDT'
-                    kwargs = dict(
-                        symbol=symbol,
-                        type='market',
-                        side='sell',
-                        amount=order['size']
-                    )
-
-                    try:
-                        response = client.create_order(**kwargs)
-
-                    except ccxt.InsufficientFunds:
-                        log.error('Insufficient funds to sell {0} {1}'.format(amount, code))
-                    except Exception as e:
-                        log.error('Unable to sell {0} {1} order: {2}'.format(amount, code, e))
-                    else:
-                        log.info('Order status {0}'.format(response['status']))
-
-    account.create_balances()
-
-
-# Market close position
-@app.task(base=BaseTaskWithRetry, name='Trading_market_close')
-def market_close(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-    client.options['defaultType'] = 'future'
-
-    for code, value in account.balances.position.open.T.items():
-        size = value['quantity']
-        if not np.isnan(size):
-
-            log.info('Close position {0}'.format(code))
-
-            # Construct symbol
-            symbol = code + '/USDT'
-            if value['side'] == 'buy':
-                side = 'sell'
-            else:
-                side = 'buy'
-
-            kwargs = dict(
-                symbol=symbol,
-                type='market',
-                side=side,
-                amount=abs(size)
-            )
-
-            response = client.create_order(**kwargs)
-            log.info('Order status {0}'.format(response['status']))
-
-            account.create_balances()
-
-
-# Update all open orders of an account
+# Update open orders of an account
 @app.task(name='Trading_____Update_account_orders')
 def update_account_orders(account_id):
     #
@@ -301,7 +224,7 @@ def update_account_orders(account_id):
         log.info('No order to update')
 
 
-# Filter open orders from an account and cancel
+# Cancel open orders of an account
 @app.task(name='Trading_____Cancel_account_orders')
 def cancel_account_orders(account_id):
     #
@@ -320,9 +243,10 @@ def cancel_account_orders(account_id):
 ######
 
 
-# Place a new order (+ rebalance)
+# Send create order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
-def send_create_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet):
+def send_create_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet,
+                      then_rebalance=True):
     #
     log.info(' ')
     log.info('Place order')
@@ -377,10 +301,11 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         qty_filled = account.update_order_object.delay(wallet, response)
         account.update_balances(action, wallet, code, qty_filled)
 
-        return account_id, qty_filled
+        if then_rebalance:
+            return account_id, qty_filled
 
 
-# Send fetch orderid (+ rebalance)
+# Send fetch orderid
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_orderid')
 def send_fetch_orderid(account_id, order_id):
     #
@@ -405,7 +330,7 @@ def send_fetch_orderid(account_id, order_id):
     return account_id, qty_filled
 
 
-# Send fetch all open orders (+ rebalance)
+# Send fetch all open orders
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_all_open_orders')
 def send_fetch_all_open_orders(account_id):
     #
@@ -430,7 +355,7 @@ def send_fetch_all_open_orders(account_id):
         return account_id, qty
 
 
-# Move resource between accounts (+ rebalance)
+# Send transfer order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_transfer_funds')
 def send_transfer(account_id, source, dest, quantity):
     #

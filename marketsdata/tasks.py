@@ -165,8 +165,6 @@ def update_dataframe(self, exid, wait):
             exchange.data = df
             exchange.save()
 
-            log.info('Dataframe saved')
-
             if exchange.is_data_updated():
                 log.info('Dataframe update complete')
 

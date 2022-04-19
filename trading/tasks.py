@@ -35,7 +35,6 @@ import random
 log = structlog.get_logger(__name__)
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-
 log.info('THREAD {0}'.format(threading.active_count()))
 
 
@@ -108,14 +107,39 @@ def check_account_cred(account_id):
         account.save()
         log.unbind('user')
 
+
 ###############################################
 
+# Bulk actions
+##############
 
+
+# Bulk rebalance holding of all accounts
 @app.task(name='Trading_Rebalance_accounts')
 def rebalance_all(strategy_id):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)
     for account in accounts:
         rebalance.delay(account.id)
+
+
+# Bulk update open orders of all accounts
+@app.task(name='Trading_____Update_accounts_orders')
+def update_accounts_orders():
+    #
+    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
+        update_account_orders.delay(account.id)
+
+
+# Bulk cancel orders of all accounts
+@app.task(name='Trading_____Cancel_accounts_orders')
+def cancel_accounts_orders():
+    #
+    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
+        cancel_account_orders.delay(account.id)
+
+
+# Account specific actions
+##########################
 
 
 @app.task(name='Trading_Rebalance_account')
@@ -131,7 +155,6 @@ def rebalance(account_id, sell_close=True):
     account.get_delta()
 
     if sell_close:
-
         # Liberate resources
         account.sell_spot_all()
         account.close_short_all()
@@ -152,18 +175,16 @@ def rebalance(account_id, sell_close=True):
 
     # Transfer
     if need_spot:
-
         free_futu = max(0, bal_futu - des_futu)
         log.info('Resources are needed in spot')
         log.info('Move {0} {1} from future'.format(round(free_futu, 1), account.quote))
-        transfer.delay(account_id, 'future', 'spot', free_futu)
+        send_transfer.delay(account_id, 'future', 'spot', free_futu)
 
     if need_futu:
-
         free_spot = max(0, bal_spot - des_spot)
         log.info('Resources are needed in future')
         log.info('Move {0} {1} from spot'.format(round(free_futu, 1), account.quote))
-        transfer.delay(account_id, 'spot', 'future', free_spot)
+        send_transfer.delay(account_id, 'spot', 'future', free_spot)
 
     # Determine account to allocate resource first
     spot = min(bal_spot, des_spot)
@@ -179,61 +200,6 @@ def rebalance(account_id, sell_close=True):
     else:
         account.open_short_all()
         account.buy_spot_all()
-
-# Transfer
-##########
-
-
-# Move resource between accounts
-@app.task(base=BaseTaskWithRetry, name='Trading_transfer')
-def transfer(account_id, source, dest, quantity):
-    #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-
-    log.info('')
-    log.info('Transfer')
-    log.info('********')
-    log.info('From {0} to {1}'.format(source, dest))
-    log.info('-> {0} {1}'.format(round(quantity, 1), account.quote))
-
-    return client.transfer(account.quote, quantity, source, dest)
-
-# Place
-#######
-
-
-# Place a new order and return exchange response as signal
-@app.task(base=BaseTaskWithRetry, name='Trading_place_order')
-def place_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet):
-    #
-    log.info(' ')
-    log.info('Place order')
-    log.info('***********')
-    log.info('symbol {0}'.format(symbol))
-    log.info('side {0}'.format(side))
-    log.info('size {0}'.format(size))
-    log.info('market {0}'.format(wallet))
-    log.info('clientid {0}'.format(clientid))
-
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-    client.options['defaultType'] = wallet
-
-    kwargs = dict(
-        symbol=symbol,
-        type=order_type,
-        side=side,
-        amount=size,
-        price=price,
-        params=dict(newClientOrderId=clientid)
-    )
-
-    # Set parameters
-    if reduce_only:
-        kwargs['params']['reduceOnly'] = True
-
-    return client.create_order(**kwargs)
 
 
 # Market sell spot account
@@ -251,9 +217,12 @@ def market_sell(account_id):
 
                 price = account.balances.price.spot.bid
                 value = amount * price
-                valid, dic = account.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
+                valid, order = account.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
 
                 if valid:
+                    order['order_type'] = 'market'
+                    args = order.values()
+                    send_create_order.delay(*args)
 
                     # Construct symbol
                     symbol = code + '/USDT'
@@ -261,7 +230,7 @@ def market_sell(account_id):
                         symbol=symbol,
                         type='market',
                         side='sell',
-                        amount=dic['size']
+                        amount=order['size']
                     )
 
                     try:
@@ -296,7 +265,7 @@ def market_close(account_id):
             if value['side'] == 'buy':
                 side = 'sell'
             else:
-                side= 'buy'
+                side = 'buy'
 
             kwargs = dict(
                 symbol=symbol,
@@ -309,17 +278,6 @@ def market_close(account_id):
             log.info('Order status {0}'.format(response['status']))
 
             account.create_balances()
-
-# Update
-#########
-
-
-# Update open orders of all accounts (run periodically)
-@app.task(name='Trading_____Update_accounts_orders')
-def update_accounts_orders():
-    #
-    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
-        update_account_orders.delay(account.id)
 
 
 # Update all open orders of an account
@@ -338,88 +296,9 @@ def update_account_orders(account_id):
         log.info('********************')
 
         for order in orders:
-            fetch_order.delay(account_id, order.orderid)
+            send_fetch_orderid.delay(account_id, order.orderid)
     else:
         log.info('No order to update')
-
-
-# Fetch an open order by its orderid (then update corresponding object)
-@app.task(name='Trading_____Fetch_order', base=BaseTaskWithRetry)
-def fetch_order(account_id, order_id):
-    #
-    order = Order.objects.get(orderid=order_id)
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-
-    log.info('Update order {0}'.format(order.clientid))
-
-    # Set options
-    client.options['defaultType'] = order.market.wallet
-    responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
-    update_order.delay(account_id, responses)
-
-
-# Update an order object (then update the account balance)
-@app.task(name='Trading_____Update_order')
-def update_order(account_id, response):
-    #
-    account = Account.objects.get(id=account_id)
-    filled_new = 0
-
-    log.info(' ')
-    log.info('Update order object')
-
-    try:
-
-        orderid = response['id']
-        clientid = response['info']['clientOrderId']
-        status = response['info']['status']
-        filled_total = response['filled']
-
-        # Select order and update its status
-        order = Order.objects.get(account=account, clientid=clientid)
-        order.status = status.lower()
-        order.orderid = orderid
-
-        # Select attributes
-        code = order.market.base.code
-        wallet = order.market.wallet
-        action = order.action
-
-        log.info('code {0} ({1})'.format(code, wallet))
-        log.info('status {0}'.format(status))
-        log.info('action {0}'.format(action))
-        log.info('filled total {0}'.format(filled_total))
-
-        if filled_total:
-
-            # Determine trade quantity since last update an update object
-            filled_new = filled_total - order.filled
-            order.filled = filled_total
-
-            log.info('trade {0}'.format(filled_new))
-
-    except Exception as e:
-        log.error('Exception {0}'.format(e.__class__.__name__))
-        log.error('Exception {0}'.format(e))
-
-    else:
-        order.response = response
-        order.save()
-
-        return account_id, wallet, action, filled_new
-
-
-# Cancellation
-##############
-
-
-# Cancel orders of all accounts
-@app.task(name='Trading_____Cancel_accounts_orders')
-def cancel_accounts_orders():
-    #
-    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
-        cancel_account_orders.delay(account.id)
 
 
 # Filter open orders from an account and cancel
@@ -432,76 +311,106 @@ def cancel_account_orders(account_id):
     if orders.exists():
         log.info('Cancel {0} orders(s)'.format(orders.count()))
         for order in orders:
-            cancel_order.delay(account_id, order.orderid)
+            send_cancel_order.delay(account_id, order.orderid)
     else:
         log.info('Open order not found')
 
 
-# Cancel an order by its orderid
-@app.task(name='Trading_____Cancel_order', base=BaseTaskWithRetry)
-def cancel_order(account_id, order_id):
+# Send
+######
+
+
+# Place a new order (+ rebalance)
+@app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
+def send_create_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet):
+    #
+    log.info(' ')
+    log.info('Place order')
+    log.info('***********')
+    log.info('symbol {0}'.format(symbol))
+    log.info('side {0}'.format(side))
+    log.info('size {0}'.format(size))
+    log.info('market {0}'.format(wallet))
+    log.info('clientid {0}'.format(clientid))
+
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = wallet
+
+    kwargs = dict(
+        symbol=symbol,
+        type=order_type,
+        side=side,
+        amount=size,
+        price=price,
+        params=dict(newClientOrderId=clientid)
+    )
+
+    # Set parameters
+    if reduce_only:
+        kwargs['params']['reduceOnly'] = True
+
+    try:
+        response = client.create_order(**kwargs)
+
+    except Exception as e:
+
+        log.info('')
+        log.error('Order placement failed')
+        log.info('code {0}'.format(code))
+        log.info('action {0}'.format(action))
+        log.info('clientid {0}'.format(clientid))
+        log.info('size {0}'.format(size))
+        log.info('wallet {0}'.format(wallet))
+
+    else:
+
+        log.info('')
+        log.info('Order placement success')
+        log.info('code {0}'.format(code))
+        log.info('action {0}'.format(action))
+        log.info('clientid {0}'.format(clientid))
+        log.info('size {0}'.format(size))
+        log.info('wallet {0}'.format(wallet))
+
+        # Update object and dataframe
+        qty_filled = account.update_order_object.delay(wallet, response)
+        account.update_balances(action, wallet, code, qty_filled)
+
+        return account_id, qty_filled
+
+
+# Send fetch orderid (+ rebalance)
+@app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_orderid')
+def send_fetch_orderid(account_id, order_id):
     #
     order = Order.objects.get(orderid=order_id)
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
+    log.info('Update order {0}'.format(order.clientid))
+
     # Set options
     client.options['defaultType'] = order.market.wallet
+    response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
 
-    try:
-        response = client.cancel_order(id=order_id, symbol=order.market.symbol)
+    # Update object and dataframe
+    qty_filled = account.update_order_object.delay(order.wallet, response)
+    account.update_balances(order.action,
+                            order.wallet,
+                            order.market.base.code,
+                            qty_filled
+                            )
 
-    except ccxt.OrderNotFound:
-        log.error('Unable to cancel order {0}'.format(order.clientid))
-        order.status = 'not_found'
-
-    else:
-        # Update object with new status
-        status = response['info']['status']
-        filled_total = response['filled']
-        order.filled = filled_total
-        order.status = status.lower()
-
-        if status == 'CANCELED':
-            log.info('Cancel order {0}'.format(order.clientid))
-        else:
-            log.warning('Unable to cancel order {0}, order status is now {1}'.format(order.clientid, status))
-
-    finally:
-        order.response = response
-        order.save()
+    return account_id, qty_filled
 
 
-##################################################################
-
-# Update orders
-@app.task(name='Trading_____Update orders', base=BaseTaskWithRetry)
-def update_orders():
-    # Iterate through accounts and update open orders
-    for account in Account.objects.filter(active=True, exchange__exid='binance'):
-
-        if not account.trading:
-
-            # Continue trading if new trade is detected
-            new_trade = account.fetch_open_orders()
-            if new_trade:
-                if not account.trading:
-                    log.info('Trade detected, continue account rebalancing', account=account.name)
-                    account.trade(cancel=False)
-
-        else:
-            log.warning('Account is already trading', account=account.name)
-
-
-# Sync orders
-def sync_orders(account_id):
+# Send fetch all open orders (+ rebalance)
+@app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_all_open_orders')
+def send_fetch_all_open_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
-
-    log.info(' ')
-    log.info('Sync orders')
-    log.info('***********')
 
     # Iterate through wallets
     for wallet in account.exchange.get_wallets():
@@ -509,28 +418,67 @@ def sync_orders(account_id):
         client.options['defaultType'] = wallet
         client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
-        responses = client.fetchOpenOrders()
+        response = client.fetchOpenOrders()
 
-        if responses:
-            for order in responses:
-                try:
-                    Order.objects.get(account=account,
-                                      orderid=order['id']
-                                      )
+        qty = []
+        for dic in response:
 
-                except ObjectDoesNotExist:
+            # Update corresponding order object
+            qty_filled = account.update_order_object.delay(wallet, dic)
+            qty.append(qty_filled)
 
-                    market = Market.objects.get(exchange=account.exchange,
-                                                wallet=wallet,
-                                                symbol=order['symbol'],
-                                                )
-                    # Create object
-                    Order.objects.create(
-                        account=account,
-                        market=market,
-                        clientid=order['id'],
-                        status='preparation'
-                    )
+        return account_id, qty
 
-        else:
-            log.info('No open order in {0}'.format(wallet))
+
+# Move resource between accounts (+ rebalance)
+@app.task(base=BaseTaskWithRetry, name='Trading_____Send_transfer_funds')
+def send_transfer(account_id, source, dest, quantity):
+    #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    log.info('')
+    log.info('Transfer')
+    log.info('********')
+    log.info('From {0} to {1}'.format(source, dest))
+    log.info('-> {0} {1}'.format(round(quantity, 1), account.quote))
+
+    try:
+        client.transfer(account.quote, quantity, source, dest)
+
+    except Exception as e:
+        pass
+
+    else:
+
+        # Update dataframe
+        account.update_balances_after_transfer(source, dest, quantity)
+
+        return account_id, quantity
+
+
+# Send cancellation order
+@app.task(base=BaseTaskWithRetry, name='Trading_____Send_cancel_order')
+def send_cancel_order(account_id, order_id):
+    #
+    order = Order.objects.get(orderid=order_id)
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = order.market.wallet
+
+    try:
+        response = client.cancel_order(id=order_id, symbol=order.market.symbol)
+
+    except Exception as e:
+        log.error('Order canceled failure')
+
+    else:
+        log.info('Order canceled successful')
+
+        # Update object and dataframe
+        qty_filled = account.update_order_object.delay(order.wallet, response)
+        account.update_balances(order.action,
+                                order.wallet,
+                                order.market.base.code,
+                                qty_filled
+                                )

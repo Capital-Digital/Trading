@@ -11,6 +11,7 @@ from strategy.models import Strategy
 from marketsdata.models import Exchange, Market, Currency
 from trading.error import *
 from trading.methods import *
+from trading.tasks import *
 import structlog
 from datetime import timedelta, datetime
 from pprint import pprint
@@ -49,7 +50,8 @@ class Account(models.Model):
     active = models.BooleanField(null=True, blank=False, default=False)
     trading = models.BooleanField(null=True, blank=False, default=False)
     updated = models.BooleanField(null=True, blank=False)
-    limit_order = models.BooleanField(null=True, blank=False, default=True)
+    order_type = models.CharField(max_length=10, null=True, choices=(('limit', 'limit'), ('market', 'market')),
+                                  default='limit')
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)
     email = models.EmailField(max_length=100, blank=True)
     api_key, api_secret = [models.CharField(max_length=100, blank=True) for i in range(2)]
@@ -503,7 +505,7 @@ class Account(models.Model):
                     )
 
     # Format decimal and check limits
-    def prep_order(self, wallet, code, order_size, order_value, price, action, side):
+    def prep_order(self, wallet, code, order_size, order_value, price, action, side, order_type=self.order_type):
 
         # Select market
         markets = Market.objects.filter(base__code=code,
@@ -554,7 +556,8 @@ class Account(models.Model):
                 side=side,
                 action=action,
                 amount=size,
-                status='preparation'
+                status='preparation',
+                sender='app'
             )
 
             # Determine resources used (code and quantity)
@@ -600,79 +603,166 @@ class Account(models.Model):
             log.info('Condition not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
             return False, dict()
 
+    # Update order object
+    def update_order_object(self, wallet, response):
+        #
+        if response:
+
+            orderid = response['id']
+            status = response['info']['status'].lower()
+            clientid = response['info']['clientOrderId']
+
+            try:
+                # Object with orderID exists ?
+                order = Order.objects.get(account=self, orderid=orderid)
+
+            except ObjectDoesNotExist:
+
+                try:
+                    # Object with clientID exists ?
+                    order = Order.objects.get(account=self, clientid=clientid)
+
+                except ObjectDoesNotExist:
+
+                    symbol = response['symbol']
+                    market = Market.objects.get(exchange=self.exchange, wallet=wallet, symbol=symbol)
+
+                    log.info('Create user order')
+
+                    # Create object
+                    Order.objects.create(
+                        account=self,
+                        sender='user',
+                        market=market,
+                        clientid=orderid,
+                        status=status
+                    )
+
+                    log.warning('Cancel user order')
+                    send_cancel_order.delay(self.id, orderid)
+                    return
+
+                else:
+                    # Update orderID
+                    order.orderid = orderid
+
+            finally:
+
+                # Select attributes
+                code = order.market.base.code
+                wallet = order.market.wallet
+                action = order.action
+
+                # Get traded amount
+                filled_prev = order.filled
+                filled_total = response['filled']
+
+                # Determine new trade
+                if filled_total > filled_prev:
+                    filled_new = filled_total - filled_prev
+
+                    if action in ['sell_spot', 'close_short']:
+                        log.info('New resources available')
+                    elif action == 'buy_spot':
+                        log.info('Coins bought')
+                    elif action == 'open_short':
+                        log.info('Contract sold')
+
+                else:
+                    filled_new = 0
+
+                log.info('code {0} ({1})'.format(code, wallet))
+                log.info('status {0}'.format(status))
+                log.info('action {0}'.format(action))
+                log.info('filled new {0}'.format(filled_new))
+                log.info('filled total {0}'.format(filled_total))
+
+                # Update attributes
+                order.status = status
+                order.filled = filled_total
+                order.response = response
+                order.save()
+
+                return filled_new
+
+        else:
+            log.info('Empty response from exchange {0}'.format(wallet))
+
     # Update balances after new trade
-    def update_balances(self, action, wallet, code, filled_new):
+    def update_balances(self, action, wallet, code, qty_filled):
 
-        log.info('')
-        log.info('Update balances')
-        log.info('***************')
-        log.info('action {0}'.format(action))
-        log.info('-> {0} {1}'.format(code, wallet))
-
-        # Determine key
-        if action in ['buy_spot', 'close_short']:
-            key = 'ask'
-        if action in ['open_short', 'sell_spot']:
-            key = 'bid'
-
-        # Determine price
-        if wallet == 'spot':
-            price = self.balances.price.spot[key]
-        else:
-            price = self.balances.price.future[key]
-
-        # Calculate trade value
-        filled_value = filled_new * price
-
-        # Determine amounts to offset
-        if action in ['sell_spot', 'open_short']:
-            filled_new = -filled_new
-            filled_value = -filled_value
-
-        old = self.balances.copy()
-
-        # Update position and free margin
-        if action in ['open_short', 'close_short']:
-
-            log.info('Filled new {0}'.format(filled_new))
-            log.info('Filled value {0}'.format(filled_value))
-            log.info('')
-            log.info('Position open before')
-            log.info(self.balances.position.open)
-
-            self.balances.loc[code, ('position', 'open', 'quantity')] += filled_new
-            self.balances.loc[code, ('position', 'open', 'value')] += filled_value
+        if qty_filled:
 
             log.info('')
-            log.info('Position open after')
-            log.info(self.balances.position.open)
+            log.info('Update balances')
+            log.info('***************')
+            log.info('action {0}'.format(action))
+            log.info('-> {0} {1}'.format(code, wallet))
 
-            log.info('')
-            log.info('Future total quantity before')
-            log.info(self.balances.future.total.quantity)
+            # Determine key
+            if action in ['buy_spot', 'close_short']:
+                key = 'ask'
+            if action in ['open_short', 'sell_spot']:
+                key = 'bid'
 
-            self.balances.loc[self.quote, ('future', 'total', 'quantity')] += filled_value
-            self.balances.loc[self.quote, ('future', 'free', 'quantity')] += filled_value
-            self.balances.loc[self.quote, ('future', 'used', 'quantity')] += filled_value
+            # Determine price
+            if wallet == 'spot':
+                price = self.balances.price.spot[key]
+            else:
+                price = self.balances.price.future[key]
 
-            log.info('')
-            log.info('Future total quantity after')
-            log.info(self.balances.future.total.quantity)
+            # Calculate trade value
+            val_filled = qty_filled * price
 
-        else:
+            # Determine amounts to offset
+            if action in ['sell_spot', 'open_short']:
+                qty_filled = -qty_filled
+                val_filled = -val_filled
 
-            log.info('')
-            log.info('Spot total quantity before')
-            log.info(self.balances.spot.total.quantity)
+            old = self.balances.copy()
 
-            # Or update spot
-            self.balances.loc[code, (wallet, 'total', 'quantity')] += filled_new
-            self.balances.loc[code, (wallet, 'free', 'quantity')] += filled_new
-            self.balances.loc[code, (wallet, 'used', 'quantity')] += filled_new
+            # Update position and free margin
+            if action in ['open_short', 'close_short']:
 
-            log.info('')
-            log.info('Spot total quantity after')
-            log.info(self.balances.spot.total.quantity)
+                log.info('Filled new {0}'.format(qty_filled))
+                log.info('Filled value {0}'.format(val_filled))
+                log.info('')
+                log.info('Position open before')
+                log.info(self.balances.position.open)
+
+                self.balances.loc[code, ('position', 'open', 'quantity')] += qty_filled
+                self.balances.loc[code, ('position', 'open', 'value')] += val_filled
+
+                log.info('')
+                log.info('Position open after')
+                log.info(self.balances.position.open)
+
+                log.info('')
+                log.info('Future total quantity before')
+                log.info(self.balances.future.total.quantity)
+
+                self.balances.loc[self.quote, ('future', 'total', 'quantity')] += val_filled
+                self.balances.loc[self.quote, ('future', 'free', 'quantity')] += val_filled
+                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += val_filled
+
+                log.info('')
+                log.info('Future total quantity after')
+                log.info(self.balances.future.total.quantity)
+
+            else:
+
+                log.info('')
+                log.info('Spot total quantity before')
+                log.info(self.balances.spot.total.quantity)
+
+                # Or update spot
+                self.balances.loc[code, (wallet, 'total', 'quantity')] += qty_filled
+                self.balances.loc[code, (wallet, 'free', 'quantity')] += qty_filled
+                self.balances.loc[code, (wallet, 'used', 'quantity')] += qty_filled
+
+                log.info('')
+                log.info('Spot total quantity after')
+                log.info(self.balances.spot.total.quantity)
 
     # Update balances after a transfer
     def update_balances_after_transfer(self, source, dest, quantity):
@@ -694,7 +784,7 @@ class Account(models.Model):
 
     # Sell spot
     def sell_spot_all(self):
-        from trading.tasks import place_order
+        from trading.tasks import send_create_order
         log.info('')
         log.info('Sell spot')
         log.info('*********')
@@ -703,687 +793,47 @@ class Account(models.Model):
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
-                place_order.delay(*args)
+                send_create_order.delay(*args)
 
     # Close short
     def close_short_all(self):
         log.info('')
         log.info('Close short')
         log.info('***********')
-        from trading.tasks import place_order
+        from trading.tasks import send_create_order
         opened_short = self.to_close_short()
         for code, quantity in opened_short.items():
             kwargs = self.size_order(code, quantity, 'close_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
-                place_order.delay(*args)
+                send_create_order.delay(*args)
 
     # Buy spot
     def buy_spot_all(self):
         log.info('')
         log.info('Buy spot')
         log.info('********')
-        from trading.tasks import place_order
+        from trading.tasks import send_create_order
         for code, quantity in self.to_buy_spot().items():
             kwargs = self.size_order(code, quantity, 'buy_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
-                place_order.delay(*args)
+                send_create_order.delay(*args)
 
     # Open short
     def open_short_all(self):
         log.info('')
         log.info('Open short')
         log.info('**********')
-        from trading.tasks import place_order
+        from trading.tasks import send_create_order
         for code, quantity in self.to_open_short().items():
             kwargs = self.size_order(code, quantity, 'open_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
-                place_order.delay(*args)
-
-    #################################
-    #################################
-
-    # Sell in spot market
-    def sell_spot(self):
-
-        log.info(' ')
-        log.info('Sell spot')
-        log.info('*********')
-
-        # Select codes to sell (exclude quote currency)
-        delta = self.balances.account.target.delta
-        codes_to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
-        codes_to_sell = [i for i in codes_to_sell if i
-                         in self.balances.spot.free.quantity.dropna().index.values.tolist()]
-
-        trades = []
-
-        # Codes should be sold ?
-        if codes_to_sell:
-
-            for code in codes_to_sell:
-
-                log.info(' ')
-                log.info('-> {0}'.format(code))
-
-                market = Market.objects.get(quote__code=self.quote,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='spot')
-
-                # Don't sell spot if an order is open
-                if not self.has_order(market):
-
-                    # Select quantities
-                    free = self.balances.spot.free.quantity[code]
-                    target = self.balances.account.target.quantity[code]
-                    qty_delta = delta[code]
-
-                    # Fund is not nan ?
-                    if not np.isnan(free):
-
-                        # Sell all resources available if coin must be shorted
-                        if target < 0:
-                            amount = free
-
-                        # Sell all resources available if coin is not allocated
-                        elif target == 0:
-                            amount = free
-
-                        else:
-                            amount = qty_delta
-
-                        # Place sell order
-                        price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'ask')
-                        price += (price * float(self.limit_price_tolerance))
-
-                        trade = self.place_order('sell_spot', market, 'sell', amount, price)
-                        trades.append(trade)
-
-                    else:
-                        log.info('{0} is nan in spot'.format(code))
-        else:
-            log.info('No code to sell in spot')
-
-        # Return True if trade occurred
-        if True in trades:
-            return True
-
-    # Sell in derivative market
-    def close_short(self):
-
-        log.info(' ')
-        log.info('Close short')
-        log.info('***********')
-
-        # Select codes to buy (exclude quote currency)
-        delta = self.balances.account.target.delta
-        codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
-
-        trades = []
-
-        if codes_to_buy:
-            for code in codes_to_buy:
-
-                # Code is shorted now ?
-                if 'position' in self.balances.columns.get_level_values(0):
-                    pos = self.balances.position.open.quantity.dropna()
-                    shorts = pos[pos < 0].index.tolist()
-
-                    if code in shorts:
-
-                        try:
-                            market = Market.objects.get(quote__code=self.quote,
-                                                        exchange=self.exchange,
-                                                        base__code=code,
-                                                        type='derivative',
-                                                        contract_type='perpetual'
-                                                        )
-                        except ObjectDoesNotExist:
-                            print('\nBalances\n', self.balances)
-                            raise Exception('Perp market {0} {1} does not exist in database'.format(code, self.quote))
-
-                        else:
-
-                            # Don't close short if an order is open
-                            if not self.has_order(market):
-                                log.info(' ')
-                                log.info('-> {0}'.format(code))
-
-                                # Get quantities
-                                shorted = abs(self.balances.position.open.quantity[code])
-                                amount = min(abs(delta[code]), shorted)
-
-                                # Place buy order
-                                price = Currency.objects.get(code=code).get_latest_price(self.exchange,
-                                                                                         self.quote,
-                                                                                         'bid'
-                                                                                         )
-                                price -= (price * float(self.limit_price_tolerance))
-
-                                trade = self.place_order('close_short', market, 'buy', amount, price, reduce_only=True)
-                                trades.append(trade)
-        else:
-            log.info('No code to close short')
-
-        # Return True if trade occurred
-        if True in trades:
-            return True
-
-    # Buy in spot market
-    def buy_spot(self):
-
-        log.info(' ')
-        log.info('Buy spot')
-        log.info('********')
-
-        # Select codes to buy (exclude quote currency)
-        delta = self.balances.account.target.delta
-        codes_to_buy = [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
-
-        if codes_to_buy:
-            for code in codes_to_buy:
-
-                log.info(' ')
-                log.info('-> {0}'.format(code))
-
-                market = Market.objects.get(quote__code=self.quote,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='spot'
-                                            )
-
-                # Don't buy spot if an order is open
-                if not self.has_order(market):
-
-                    # Determine missing quantity and it's dollar value
-                    delta = abs(self.balances.account.target.delta[code])
-                    price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'ask')
-                    delta_value = delta * price
-
-                    # Cash is available in spot wallet ?
-                    if self.quote in self.balances.index.values.tolist():
-                        if 'spot' in self.balances.columns.get_level_values(0):
-                            cash = self.balances.spot.free.quantity[self.quote]
-
-                            # Cash is not nan ?
-                            if not np.isnan(cash):
-
-                                # Not enough cash available?
-                                if cash < delta_value:
-                                    # log.info('Cash is needed to buy {0} spot'.format(code))
-                                    desired = delta_value - cash
-                                    moved = self.move_fund(self.quote, desired, 'spot')
-                                    order_value = cash + moved
-
-                                else:
-                                    order_value = delta_value
-
-                            else:
-                                # log.info('Cash is needed to buy {0} spot'.format(code))
-                                moved = self.move_fund(self.quote, delta_value, 'spot')
-                                if not moved:
-                                    continue
-                                else:
-                                    order_value = moved
-
-                        else:
-                            # log.info('Cash is needed to buy {0} spot'.format(code))
-                            moved = self.move_fund(self.quote, delta_value, 'spot')
-                            if not moved:
-                                continue
-                            else:
-                                order_value = moved
-
-                        # Place order
-                        amount = order_value / price
-                        price -= (price * float(self.limit_price_tolerance))
-
-                        trade = self.place_order('buy_spot', market, 'buy', amount, price)
-                        if trade:
-                            self.create_balances()
-                            log.info(' ')
-
-                    else:
-                        log.info('No cash found in account wallets')
-        else:
-            log.info('No code to buy in spot')
-
-    # Sell in derivative market
-    def open_short(self):
-
-        log.info(' ')
-        log.info('Open short')
-        log.info('**********')
-
-        # Select codes to sell (exclude quote currency)
-        delta = self.balances.account.target.delta
-        to_sell = [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
-
-        # Select codes to short
-        target = self.balances.account.target.quantity
-        to_short = [i for i in target.loc[target < 0].index.values.tolist()]
-
-        # Determine codes to open short
-        to_open = list(set(to_sell) & set(to_short))
-
-        if to_open:
-            for code in to_open:
-
-                log.info(' ')
-                log.info('-> {0}'.format(code))
-
-                market = Market.objects.get(quote__code=self.quote,
-                                            exchange=self.exchange,
-                                            base__code=code,
-                                            type='derivative',
-                                            contract_type='perpetual'
-                                            )
-
-                # Don't open short if an order is open
-                if not self.has_order(market):
-
-                    # Determine desired quantity and value
-                    amount = delta[code]
-                    price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'bid')
-                    pos_value = amount * price
-
-                    # Check margin
-                    if self.quote in self.balances.index.values.tolist():
-                        if 'future' in self.balances.columns.get_level_values(0):
-
-                            # Select free and total margin
-                            free_margin = self.balances.future.free.quantity[self.quote]
-                            total_margin = self.balances.future.total.quantity[self.quote]
-
-                            # Free margin is not nan ?
-                            if not np.isnan(free_margin):
-
-                                # If a position is already open in another market
-                                # then reserve notional value as margin to maintain 1:1 ratio
-                                if 'position' in self.balances.columns.get_level_values(0):
-                                    notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
-                                    free_margin = max(0, total_margin - notional_values)
-
-                                # Determine order value
-                                if free_margin < pos_value:
-                                    # log.info('Margin is needed to open {0} short'.format(code))
-                                    desired = pos_value - free_margin
-                                    moved = self.move_fund(self.quote, desired, 'future')
-                                    order_value = free_margin + moved
-
-                                else:
-                                    order_value = free_margin
-
-                            else:
-                                # log.info('Free margin is needed to open {0} short'.format(code))
-                                moved = self.move_fund(self.quote, pos_value, 'future')
-                                if not moved:
-                                    continue
-                                else:
-                                    order_value = moved
-
-                        else:
-                            # log.info('Free margin is needed to open {0} short'.format(code))
-                            moved = self.move_fund(self.quote, pos_value, 'future')
-                            if not moved:
-                                continue
-                            else:
-                                order_value = moved
-
-                        # Place order
-                        amount = order_value / price
-                        price -= (price * float(self.limit_price_tolerance))
-
-                        trade = self.place_order('open_short', market, 'sell', amount, price)
-                        if trade:
-                            self.create_balances()
-                            log.info(' ')
-
-                    else:
-                        log.info('No cash found in account wallets')
-        else:
-            log.info('No code to open short')
-
-    # Move funds between account wallets
-    def move_fund(self, code, desired, to_wallet):
-
-        log.info('{0} {1} is needed in {2}'.format(round(desired, 4), code, to_wallet))
-
-        client = self.exchange.get_ccxt_client(self)
-        moved = 0
-
-        # Determine candidates for source wallet
-        candidates = [i for i in self.exchange.get_wallets() if i != to_wallet]
-        candidates = list(set(candidates) & set(list(set(self.balances.columns.get_level_values(0)))))
-
-        if candidates:
-
-            # Iterate through wallets and move available funds
-            for wallet in candidates:
-
-                # Determine free resource
-                total = self.balances.loc[code, (wallet, 'total', 'quantity')]
-                free = self.balances.loc[code, (wallet, 'free', 'quantity')]
-
-                if not np.isnan(free):
-
-                    log.info('Wallet {0} has {1} {2}'.format(wallet, round(free, 2), code))
-
-                    # Wallet is derivative test a position is open ?
-                    if wallet != 'spot' and 'position' in self.balances.columns.get_level_values(0):
-                        # Reserve notional value as margin to maintain 1:1 ratio
-                        notional_values = abs(self.balances[('position', 'open', 'value')]).sum()
-                        free = max(0, total - notional_values)
-                        log.info('Wallet {0} has {1} {2} free margin'.format(wallet, round(free, 2), code))
-
-                    # Determine maximum amount that can be moved
-                    movable = min(free, desired)
-                    if movable > 0.5:
-
-                        try:
-                            client.transfer(code, movable, wallet, to_wallet)
-
-                        except ccxt.AuthenticationError:
-                            log.error('Authentication error, can not move fund')
-                            return
-
-                        except Exception as e:
-                            log.error('Unable to move {0} {1} from {2}'.format(round(movable, 2), code, wallet))
-                            log.error('Exception {0}'.format(e.__class__.__name__))
-                            continue
-
-                        else:
-                            # Update funds moved and desired
-                            moved += movable
-                            desired -= movable
-
-                            log.info('Transfer of {0} {1} done'.format(round(movable, 2), code))
-
-                            # All fund have been moved ?
-                            if not desired:
-                                log.info('Transfert complete')
-                                return moved
-                    else:
-                        log.info('Fund available is less than $0.5')
-
-                else:
-                    log.info('Wallet {0} has 0 {1}'.format(wallet, code))
-                    continue
-
-        else:
-            log.info('Source wallet not found')
-
-        if moved:
-            return moved
-
-        else:
-            log.error('No fund transferred')
-            return 0
-
-    # Send order to an exchange and create order object
-    def place_order(self, action, market, side, raw_amount, price, reduce_only=False):
-
-        # Format decimals
-        amount = format_decimal(counting_mode=self.exchange.precision_mode,
-                                precision=market.precision['amount'],
-                                n=raw_amount)
-
-        # Test amount limits MIN and MAX
-        if limit_amount(market, amount):
-
-            # Test cost limits MIN and MAX
-            cost = amount * price
-            min_notional = limit_cost(market, cost)
-
-            # If cost limit not satisfied and close short set reduce_only = True
-            if not min_notional:
-                if market.exchange.exid == 'binance':
-                    if market.type == 'derivative':
-                        if market.margined.code == 'USDT':
-                            if action == 'close_short':
-                                reduce_only = True
-
-                # Else return
-                if not reduce_only:
-                    log.info('Cost not satisfied to {0} {2} {1}'.format(action,
-                                                                        market.base.code,
-                                                                        amount,
-                                                                        ))
-                    return
-
-            # Prepare order
-            args = dict(
-                symbol=market.symbol,
-                type='limit' if self.limit_order else 'market',
-                side=side,
-                amount=amount,
-                price=price
-            )
-
-            # Set parameters
-            if reduce_only:
-                args['params'] = dict(reduceonly=True)
-
-            # Place order
-            client = self.exchange.get_ccxt_client(self)
-            client.options['defaultType'] = market.wallet
-
-            log.info('Place order to {0} {1} {2} in {3}'.format(side,
-                                                                amount,
-                                                                market.base.code,
-                                                                market.type
-                                                                )
-                     )
-
-            try:
-                response = client.create_order(**args)
-
-            except ccxt.InsufficientFunds as e:
-                log.error('Insufficient funds to place order')
-
-            else:
-
-                log.info('Place order success', id=response['id'])
-
-                # When resource are used update balances dataframe
-                if action in ['buy_spot', 'open_short']:
-                    self.update_free_balances(market, action, amount)
-
-                # Create order object and check if trade occurred
-                trade = self.create_update_order(response, action, market)
-                if trade:
-                    return True
-
-        else:
-            log.info('Limit not satisfied to {0} {2} {1}'.format(action, round(amount, 3), market.base.code))
-
-    # Update free quantity
-    def update_free_balances(self, market, action, amount):
-
-        log.info('Remove used resources from balances')
-
-        code = market.base.code
-        price = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, 'bid')
-        used = amount * price
-
-        try:
-            if action == 'buy_spot':
-                self.balances.loc[self.quote, ('spot', 'free', 'quantity')] -= used
-            elif action == 'open_short':
-                self.balances.loc[self.quote, ('future', 'free', 'quantity')] -= used
-
-        except KeyError:
-            log.warning('Remove used resources failure')
-            self.create_balances()
-
-        self.save()
-
-    # Fetch open orders
-    def fetch_open_orders(self):
-
-        # Iterate through wallets
-        trades = []
-        client = self.exchange.get_ccxt_client(account=self)
-        for wallet in self.exchange.get_wallets():
-
-            # Open orders ?
-            orders = Order.objects.filter(account=self,
-                                          market__wallet=wallet,
-                                          status='open'
-                                          )
-            if orders.exists():
-
-                # Set options
-                client.options['defaultType'] = wallet
-                client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
-
-                for order in orders:
-                    responses = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
-                    new_trade = self.create_update_order(responses, action=order.action, market=order.market)
-                    trades.append(new_trade)
-
-        # If resource is liberated after trades occurred then return True
-        if True in trades:
-            return True
-
-    # Update or create an order object
-    def create_update_order(self, response, action, market):
-
-        try:
-            # Select order object
-            args = dict(account=self,
-                        market=market,
-                        orderid=response['id']
-                        )
-            order = Order.objects.get(**args)
-
-        except ObjectDoesNotExist:
-            pass
-
-        finally:
-
-            # Data to be inserted
-            defaults = dict(
-                action=action,
-                amount=response['amount'],
-                average=response['average'],
-                cost=response['cost'],
-                datetime=datetime.now().replace(tzinfo=pytz.UTC),
-                fee=response['fee'],
-                filled=float(response['filled']),
-                last_trade_timestamp=response['lastTradeTimestamp'],
-                price=response['price'],
-                remaining=response['remaining'],
-                response=response,
-                side=response['side'],
-                status=response['status'],
-                timestamp=int(response['timestamp']) if response['timestamp'] else None,
-                trades=response['trades'],
-                type=response['type']
-            )
-
-            # Create of update object
-            obj, created = Order.objects.update_or_create(**args, defaults=defaults)
-
-            # New order ?
-            if created:
-
-                # Trade occurred ?
-                if float(response['filled']):
-                    log.info('Trade detected')
-                    return True
-                else:
-                    log.info('No trade detected')
-
-            else:
-
-                # Action is to liberate resources ?
-                if action in ['sell_spot', 'close_short']:
-
-                    # New trades occurred since last update ?
-                    new = float(response['filled']) - order.filled
-                    if new > 0:
-                        log.info('Update {0} order'.format(market.base.code), account=self.name, id=response['id'])
-                        log.info('Trade detected', account=self.name)
-                        log.info('Order filled at {0}%'.format(round(new / order.amount, 3) * 100),
-                                 account=self.name)
-
-                        return True
-
-    # Cancel an order by its ID
-    def cancel_order(self, wallet, symbol, orderid):
-        client = self.exchange.get_ccxt_client(account=self)
-        client.options['defaultType'] = wallet
-
-        try:
-            client.cancel_order(id=orderid, symbol=symbol)
-        except ccxt.OrderNotFound as e:
-            log.warning('Order not found', id=orderid)
-        else:
-            log.info('Order canceled', id=orderid)
-
-        try:
-            obj = Order.objects.get(orderid=orderid)
-        except ObjectDoesNotExist:
-            log.warning('Order object not found', id=orderid)
-            pass
-        else:
-            obj.status = 'canceled'
-            obj.save()
-
-    # Cancel all open orders
-    def cancel_orders(self, user_orders=False):
-
-        log.info(' ')
-        log.info('Cancel app orders')
-        log.info('*****************')
-
-        client = self.exchange.get_ccxt_client(account=self)
-
-        # Iterate through wallets
-        for wallet in self.exchange.get_wallets():
-
-            client.options['defaultType'] = wallet
-            client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
-
-            # Cancel all orders including user orders ?
-            if user_orders:
-                responses = client.fetchOpenOrders()
-
-                # Iterate through orders
-                if responses:
-
-                    log.info(' ')
-                    log.info('Cancel app and user orders')
-                    log.info('**************************')
-
-                    for order in responses:
-                        log.info('Cancel order', order['id'])
-                        self.cancel_order(wallet, order['symbol'], order['id'])
-
-                else:
-                    log.info('No open order in {0}'.format(wallet))
-
-            # Only cancel tracked orders ?
-            else:
-                orders = Order.objects.filter(account=self,
-                                              market__wallet=wallet,
-                                              status='open'
-                                              )
-                # Iterate through orders
-                if orders.exists():
-
-                    for order in orders:
-                        log.info('Cancel order', id=order.orderid)
-                        self.cancel_order(wallet, order.market.symbol, order.orderid)
-                else:
-                    log.info('No open order in {0}'.format(wallet))
+                send_create_order.delay(*args)
 
     # Return True if a market has open order else false
     def has_order(self, market):
@@ -1419,57 +869,6 @@ class Account(models.Model):
         target = self.balances.account.target.percent
         for coin, val in target[target != 0].sort_values(ascending=False).items():
             log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
-
-    # Mark the account as currently trading (busy) or not
-    def set_busy_flag(self, busy):
-        self.trading = busy
-        self.save()
-
-    # Rebalance portfolio
-    def trade(self, cancel=True):
-
-        log.info(' ')
-        log.info(' ')
-        log.info('Start trading with account : {0}'.format(self.name))
-        log.info('##########################')
-        log.info(' ')
-        log.info(' ')
-
-        log.bind(account=self.name)
-
-        if self.strategy.is_updated():
-
-            # Mark account are busy
-            self.set_busy_flag(True)
-
-            if cancel:
-                self.cancel_orders()
-
-            # Create fresh dataframe
-            self.create_balances()
-
-            log.info('Value {0}'.format(round(self.account_value(), 2)))
-
-            # Liberate resources and update dataframe if trade occurred
-            if self.sell_spot() or self.close_short():
-                self.create_balances()
-
-            # Allocate funds
-            self.buy_spot()
-            self.open_short()
-
-            # Mark the account as not busy
-            self.set_busy_flag(False)
-
-            log.unbind('account')
-
-            log.info(' ')
-            log.info('End trading with account : {0}'.format(self.name))
-            log.info('-------------------------------------------')
-            log.info(' ')
-
-        else:
-            log.error('Trading aborted, strategy {0} not updated'.format(self.strategy.name))
 
 
 class Fund(models.Model):

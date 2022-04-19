@@ -53,16 +53,16 @@ class BaseTaskWithRetry(Task):
 
 # Update all accounts
 @app.task(bind=True, name='Update_accounts')
-def update_accounts(self, strategy_name, signal):
+def update_accounts(self, strategy_name):
     from trading.models import Account
     accounts = Account.objects.filter(strategy__name=strategy_name, active=True)
     for account in accounts:
-        update_account.delay(account.id, signal)
+        update_account.delay(account.id)
 
 
 # Update an account
 @app.task(bind=True, base=BaseTaskWithRetry, name='Update_account')
-def update_account(self, account_id, signal):
+def update_account(self, account_id):
     from trading.models import Account
     account = Account.objects.get(id=account_id)
 

@@ -9,17 +9,20 @@ log = structlog.get_logger(__name__)
 
 
 @task_postrun.connect
-def task_postrun_handler(task_id=None, task=None, args=None, state=None, **kwargs):
+def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
     if task.name == 'Update_dataframe':
-        exid, signal = args
+
+        exid, wait = args
+
         if state == 'SUCCESS':
 
             log.info('')
             log.info('Dataframes update successful')
 
-            if signal:
+            if wait:
+                trade = True
                 from strategy.tasks import update_strategies
-                update_strategies.delay(exid, signal)
+                update_strategies.delay(exid, trade)
         else:
             log.error('Dataframe update failure')

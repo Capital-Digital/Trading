@@ -43,22 +43,227 @@ class BaseTaskWithRetry(Task):
     retry_jitter = False
 
 
-@shared_task(name='Markets_____Periodic_update')
-def periodic_update():
-    #
+# Bulk tasks
+############
+
+
+# Bulk update dataframes
+@app.task(bind=True, name='Markets_____Bulk_update_dataframes')
+def bulk_update_dataframes(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        exid = exchange.exid
-        log.info('Periodic update of {0}'.format(exid))
-
-        update_ex_status.delay(exid)
-        update_ex_properties.delay(exid)
-        update_ex_currencies.delay(exid)
-        update_ex_markets.delay(exid)
+        wait = True
+        update_dataframe.delay(exchange.exid, wait)
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_status')
-def update_ex_status(exid):
+# Bulk update prices
+@app.task(bind=True, name='Markets_____Bulk_update_prices')
+def bulk_update_prices(self):
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
+        update_prices.delay(exchange.exid)
+
+
+# Bulk update status
+@shared_task(name='Markets_____Bulk_update_status')
+def bulk_update_status():
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
+        update_status.delay(exchange.exid)
+
+
+# Bulk update properties
+@shared_task(name='Markets_____Bulk_update_properties')
+def bulk_update_properties():
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
+        update_properties.delay(exchange.exid)
+
+
+# Bulk update currencies
+@shared_task(name='Markets_____Bulk_update_currencies')
+def bulk_update_currencies():
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
+        update_currencies.delay(exchange.exid)
+
+
+# Bulk update markets
+@shared_task(name='Markets_____Bulk_update_markets')
+def bulk_update_markets():
+    exchanges = Exchange.objects.filter(enable=True)
+    for exchange in exchanges:
+        update_markets.delay(exchange.exid)
+
+
+# Tasks
+#######
+
+
+# Update dataframe (preloaded prices an data)
+@app.task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_dataframe')
+def update_dataframe(self, exid, wait):
+    #
+    log.bind(exid=exid)
+
+    # Preload dataframe with prices and volumes
+    exchange = Exchange.objects.get(exid=exid)
+    codes = exchange.get_strategies_codes()
+    exchange.load_data(10 * 24, codes)
+
+    if wait:
+        log.info('Dataframe preloading')
+        while datetime.now().minute > 0:
+            time.sleep(1)
+
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
+
+            # Download snapshot of spot markets
+            client = exchange.get_ccxt_client()
+            dic = client.fetch_tickers()
+            df = pd.DataFrame()
+            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+            dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            log.info('Dataframe update')
+
+            # Select codes of our strategies
+            codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+
+            for code in codes:
+
+                try:
+                    d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
+
+                except KeyError:
+                    log.warning('Market {0} not found in dictionary')
+                    continue
+
+                tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
+                tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
+                df = pd.concat([df, tmp], axis=1)
+
+            df = df.reindex(sorted(df.columns), axis=1)
+            df = pd.concat([exchange.data, df])
+            df = df[~df.index.duplicated(keep='first')]
+
+            exchange.data = df
+            exchange.save()
+
+            log.info('Dataframe saved')
+
+            if exchange.is_data_updated():
+                log.info('Dataframe update complete')
+
+            else:
+                raise Exception('Dataframe update failure')
+        else:
+            log.error("Exchange doesn't support fetchTickers")
+    else:
+        log.error('Exchange is not trading')
+
+    log.unbind('exid')
+
+
+# Update prices
+@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
+def update_prices(self, exid):
+    #
+    log.bind(exid=exid)
+    exchange = Exchange.objects.get(exid=exid)
+
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def insert(data, wallet=None):
+
+        log.info('Insert {0} data'.format(wallet))
+
+        semester = 1 if dt.month <= 6 else 2
+        symbols = [s for s in data.keys() if '/USDT' in s]
+        symbols.sort()
+        insert = 0
+
+        for symbol in symbols:
+
+            # Create dictionary
+            dic = {k: data[symbol][k] for k in ['bid',
+                                                'ask',
+                                                'last',
+                                                'bidVolume',
+                                                'askVolume',
+                                                'quoteVolume',
+                                                'baseVolume']}
+            dic['timestamp'] = int(dt.timestamp())
+
+            args = dict(exchange=exchange,
+                        symbol=symbol,
+                        wallet=wallet
+                        )
+
+            # Replace symbol name in the query if delivery
+            if exid == 'binance' and wallet == 'delivery':
+                del args['symbol']
+                args['response__info__symbol'] = data[symbol]['symbol']
+            if not wallet:
+                del args['wallet']
+
+            try:
+                market = Market.objects.get(**args)
+
+            except ObjectDoesNotExist:
+                continue
+
+            else:
+                try:
+                    obj = Tickers.objects.get(year=dt.year, semester=semester, market=market)
+
+                except ObjectDoesNotExist:
+                    log.info('Create object for {0} {1} {2}'.format(market.symbol, dt.year, semester))
+
+                    # Create new object
+                    Tickers.objects.create(year=dt.year,
+                                           semester=semester,
+                                           market=market,
+                                           data={dt_string: dic}
+                                           )
+                else:
+                    if dt_string not in obj.data.keys():
+                        obj.data[dt_string] = dic
+                        obj.save()
+                        insert += 1
+
+                    else:
+                        pass
+
+        log.info('Insert {0} data complete ({1})'.format(wallet, insert))
+
+    if exchange.is_trading():
+        if exchange.has['fetchTickers']:
+
+            # Download tickers
+            client = exchange.get_ccxt_client()
+            if exchange.wallets:
+                for wallet in exchange.get_wallets():
+                    client.options['defaultType'] = wallet
+                    data = client.fetch_tickers()
+                    insert(data, wallet)
+
+            else:
+                data = client.fetch_tickers()
+                insert(data)
+
+        else:
+            log.error("Exchange doesn't support fetchTickers")
+    else:
+        log.error('Exchange is not trading')
+
+    log.unbind('exid')
+
+
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_status')
+def update_status(exid):
     #
     log.bind(exid=exid)
     log.info('Update status')
@@ -108,8 +313,8 @@ def update_ex_status(exid):
     log.unbind('exid')
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_properties')
-def update_ex_properties(exid):
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_properties')
+def update_properties(exid):
     #
     log.bind(exid=exid)
     log.info('Update properties')
@@ -139,8 +344,8 @@ def update_ex_properties(exid):
     log.unbind('exid')
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_currencies')
-def update_ex_currencies(exid):
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_currencies')
+def update_currencies(exid):
     #
     log.bind(exid=exid)
     log.info('Update currencies')
@@ -213,8 +418,8 @@ def update_ex_currencies(exid):
                     update(code, dic)
 
 
-@shared_task(base=BaseTaskWithRetry, name='Markets_____Periodic_update_markets')
-def update_ex_markets(exid):
+@shared_task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_markets')
+def update_markets(exid):
     def update():
 
         def is_known_currency(code):
@@ -494,47 +699,6 @@ def update_ex_markets(exid):
     log.info('Update market complete')
 
 
-@shared_task(base=BaseTaskWithRetry)
-def funding(exid):
-    from marketsdata.models import Exchange, Market
-    exchange = Exchange.objects.get(exid=exid)
-    log.bind(exchange=exid)
-
-    if exchange.is_trading():
-        if exid == 'binance':
-
-            log.info('Update funding')
-
-            def update(response, market):
-                premiumindex = [i for i in response if i['symbol'] == market.response['id']][0]
-                market.funding_rate = premiumindex
-                market.save()
-
-            client = exchange.get_ccxt_client()
-
-            # Fetch funding rates for USDT-margined contracts
-            response = client.fapiPublic_get_premiumindex()
-            markets_usdt_margined = Market.objects.filter(exchange=exchange,
-                                                          contract_type='perpetual',
-                                                          wallet='future',
-                                                          updated=True
-                                                          )
-            for market in markets_usdt_margined:
-                update(response, market)
-
-            # Fetch funding rates for COIN-margined contracts
-            response = client.dapiPublic_get_premiumindex()
-            markets_coin_margined = Market.objects.filter(exchange=exchange,
-                                                          contract_type='perpetual',
-                                                          wallet='delivery',
-                                                          updated=True
-                                                          )
-            for market in markets_coin_margined:
-                update(response, market)
-
-            # log.info('Update funding complete')
-
-
 # Insert candles history
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Fetch candle history')
 def fetch_candle_history(exid):
@@ -689,200 +853,48 @@ def fetch_candle_history(exid):
         log.warning('Exchange {0} is not trading'.format(exchange.exid))
 
 
-########################
-
-
-# Update dataframes of all exchanges
-@app.task(bind=True, name='Update_exchanges')
-def update_exchanges(self):
-    exchanges = Exchange.objects.filter(enable=True)
-    for exchange in exchanges:
-        update_dataframe.delay(exchange.exid, True)
-
-
-# Add a new row to dataframe (signal strategies update)
-@app.task(bind=True, base=BaseTaskWithRetry, name='Update_dataframe')
-def update_dataframe(self, exid, signal):
-    #
-    # log.info('Update dataframe ({0})'.format(current_process().index))
-    log.bind(exid=exid)
-
-    # Select instance and create self.data dataframe with available prices
+@shared_task(base=BaseTaskWithRetry)
+def funding(exid):
+    from marketsdata.models import Exchange, Market
     exchange = Exchange.objects.get(exid=exid)
-    codes = exchange.get_strategies_codes()
-    exchange.load_data(10 * 24, codes)
-
-    if signal:
-
-        # wait...
-        while datetime.now().minute > 0:
-            log.info('Wait {0} minutes and {1}s'.format(59 - datetime.now().minute, 60 - datetime.now().second))
-            time.sleep(1)
+    log.bind(exchange=exid)
 
     if exchange.is_trading():
-        if exchange.has['fetchTickers']:
+        if exid == 'binance':
 
-            # Download snapshot of spot markets
+            log.info('Update funding')
+
+            def update(response, market):
+                premiumindex = [i for i in response if i['symbol'] == market.response['id']][0]
+                market.funding_rate = premiumindex
+                market.save()
+
             client = exchange.get_ccxt_client()
-            dic = client.fetch_tickers()
-            df = pd.DataFrame()
-            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-            dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            log.info('Update dataframe')
+            # Fetch funding rates for USDT-margined contracts
+            response = client.fapiPublic_get_premiumindex()
+            markets_usdt_margined = Market.objects.filter(exchange=exchange,
+                                                          contract_type='perpetual',
+                                                          wallet='future',
+                                                          updated=True
+                                                          )
+            for market in markets_usdt_margined:
+                update(response, market)
 
-            # Select codes of our strategies
-            codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+            # Fetch funding rates for COIN-margined contracts
+            response = client.dapiPublic_get_premiumindex()
+            markets_coin_margined = Market.objects.filter(exchange=exchange,
+                                                          contract_type='perpetual',
+                                                          wallet='delivery',
+                                                          updated=True
+                                                          )
+            for market in markets_coin_margined:
+                update(response, market)
 
-            for code in codes:
-
-                try:
-                    d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
-
-                except KeyError:
-                    log.warning('Market {0} not found in dictionary')
-                    continue
-
-                tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
-                tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
-                df = pd.concat([df, tmp], axis=1)
-
-            df = df.reindex(sorted(df.columns), axis=1)
-            df = pd.concat([exchange.data, df])
-            df = df[~df.index.duplicated(keep='first')]
-
-            log.info('Save new dataframe')
-            log.info(df)
-
-            exchange.data = df
-            exchange.save()
-
-            if exchange.is_data_updated():
-                log.info('1 row added with timestamp {0}'.format(df.index[-1]))
-                log.info('Update dataframe complete')
-
-            else:
-                raise Exception('Dataframe update problem')
-        else:
-            log.error("Exchange doesn't support fetchTickers")
-    else:
-        log.error('Exchange is not trading')
-
-    log.info('Finally')
-    log.info(exchange.is_data_updated())
-    log.unbind('exid')
+            # log.info('Update funding complete')
 
 
-# Fetch markets snapshot of all exchanges at 00:00
-@app.task(bind=True, name='Update_prices')
-def update_prices(self):
-    exchanges = Exchange.objects.filter(enable=True)
-    for exchange in exchanges:
-        update_tickers.delay(exchange.exid)
-
-
-# Update tickers objects
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Update_tickers')
-def update_tickers(self, exid):
-    log.info('#')
-    log.info('#')
-    #log.info('Update tickers ({0})'.format(current_process().index))
-    log.info('#')
-    log.info('#')
-
-    log.bind(exid=exid)
-    exchange = Exchange.objects.get(exid=exid)
-
-    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-    def insert(data, wallet=None):
-
-        log.info('Insert {0} data'.format(wallet))
-
-        semester = 1 if dt.month <= 6 else 2
-        symbols = [s for s in data.keys() if '/USDT' in s]
-        symbols.sort()
-        insert = 0
-
-        for symbol in symbols:
-
-            # Create dictionary
-            dic = {k: data[symbol][k] for k in ['bid',
-                                                'ask',
-                                                'last',
-                                                'bidVolume',
-                                                'askVolume',
-                                                'quoteVolume',
-                                                'baseVolume']}
-            dic['timestamp'] = int(dt.timestamp())
-
-            args = dict(exchange=exchange,
-                        symbol=symbol,
-                        wallet=wallet
-                        )
-
-            # Replace symbol name in the query if delivery
-            if exid == 'binance' and wallet == 'delivery':
-                del args['symbol']
-                args['response__info__symbol'] = data[symbol]['symbol']
-            if not wallet:
-                del args['wallet']
-
-            try:
-                market = Market.objects.get(**args)
-
-            except ObjectDoesNotExist:
-                continue
-
-            else:
-                try:
-                    obj = Tickers.objects.get(year=dt.year, semester=semester, market=market)
-
-                except ObjectDoesNotExist:
-                    log.info('Create object for {0} {1} {2}'.format(market.symbol, dt.year, semester))
-
-                    # Create new object
-                    Tickers.objects.create(year=dt.year,
-                                           semester=semester,
-                                           market=market,
-                                           data={dt_string: dic}
-                                           )
-                else:
-                    if dt_string not in obj.data.keys():
-                        obj.data[dt_string] = dic
-                        obj.save()
-                        insert += 1
-
-                    else:
-                        pass
-
-        log.info('Insert {0} data complete ({1})'.format(wallet, insert))
-
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
-
-            # Download tickers
-            client = exchange.get_ccxt_client()
-            if exchange.wallets:
-                for wallet in exchange.get_wallets():
-                    client.options['defaultType'] = wallet
-                    data = client.fetch_tickers()
-                    insert(data, wallet)
-
-            else:
-                data = client.fetch_tickers()
-                insert(data)
-
-        else:
-            log.error("Exchange doesn't support fetchTickers")
-    else:
-        log.error('Exchange is not trading')
-
-    log.unbind('exid')
-
-
-#########################################
+#######################
 
 
 @app.task

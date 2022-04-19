@@ -503,7 +503,7 @@ class Account(models.Model):
                     wallet=wallet
                     )
 
-    # Format decimal and check limits
+    # Prepare dictionary key:value for an order
     def prep_order(self, wallet, code, order_size, order_value, price, action, side):
 
         # Select market
@@ -688,6 +688,29 @@ class Account(models.Model):
         else:
             log.info('Empty response from exchange {0}'.format(wallet))
 
+    # Construct a fresh self.balances dataframe
+    def create_balances(self):
+
+        log.info(' ')
+        log.info('Create balances dataframe')
+        log.info('*************************')
+
+        self.get_balances_qty()
+        self.get_balances_value()
+        self.get_positions_value()
+        self.get_target()
+        self.get_delta()
+
+        current = self.balances.account.current.percent
+        for coin, val in current[current != 0].sort_values(ascending=False).items():
+            log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+        log.info(' ')
+
+        target = self.balances.account.target.percent
+        for coin, val in target[target != 0].sort_values(ascending=False).items():
+            log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
     # Update balances after new trade
     def update_balances(self, action, wallet, code, qty_filled):
 
@@ -834,41 +857,6 @@ class Account(models.Model):
             if valid:
                 args = order.values()
                 send_create_order.delay(*args)
-
-    # Return True if a market has open order else false
-    def has_order(self, market):
-        client = self.exchange.get_ccxt_client(self)
-        client.options['defaultType'] = market.wallet
-        orders = client.fetchOpenOrders(market.symbol)
-
-        if orders:
-            log.info('Order is already open in {0} {1}'.format(market.symbol, market.type))
-            return True
-        else:
-            return False
-
-    # Construct a fresh self.balances dataframe
-    def create_balances(self):
-
-        log.info(' ')
-        log.info('Create balances dataframe')
-        log.info('*************************')
-
-        self.get_balances_qty()
-        self.get_balances_value()
-        self.get_positions_value()
-        self.get_target()
-        self.get_delta()
-
-        current = self.balances.account.current.percent
-        for coin, val in current[current != 0].sort_values(ascending=False).items():
-            log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
-
-        log.info(' ')
-
-        target = self.balances.account.target.percent
-        for coin, val in target[target != 0].sort_values(ascending=False).items():
-            log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
     # Market sell spot account
     def market_sell(self):

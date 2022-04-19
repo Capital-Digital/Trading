@@ -567,6 +567,12 @@ class Exchange(models.Model):
                 else:
                     log.error('Dataframe is not updated')
                     return False
+            else:
+                log.error('self.data is not a dataframe')
+                return False
+        else:
+            log.error('Instance has not data attribute')
+            return False
 
 
 class Currency(models.Model):

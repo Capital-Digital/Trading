@@ -86,6 +86,20 @@ def bulk_check_credentials():
 # Account specific actions
 ##########################
 
+# Create balances dataframe
+@app.task(name='Trading_____Create_balances')
+def create_balances(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+
+    log.info(' ')
+    log.info('Create balances dataframe')
+    log.info('*************************')
+
+    account.get_balances_qty()
+    account.get_balances_value()
+    account.get_positions_value()
+
 
 # Rebalance fund of an account
 @app.task(name='Trading_____Rebalance_account')
@@ -98,7 +112,20 @@ def rebalance(account_id, sell_close=True):
     log.info('*****************')
 
     # Calculate new delta
+    account.get_target()
     account.get_delta()
+
+    # Display account percent
+    current = account.balances.account.current.percent
+    for coin, val in current[current != 0].sort_values(ascending=False).items():
+        log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+    log.info(' ')
+
+    # Display target percent
+    target = account.balances.account.target.percent
+    for coin, val in target[target != 0].sort_values(ascending=False).items():
+        log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
     if sell_close:
         # Liberate resources

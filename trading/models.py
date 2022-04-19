@@ -688,29 +688,6 @@ class Account(models.Model):
         else:
             log.info('Empty response from exchange {0}'.format(wallet))
 
-    # Construct a fresh self.balances dataframe
-    def create_balances(self):
-
-        log.info(' ')
-        log.info('Create balances dataframe')
-        log.info('*************************')
-
-        self.get_balances_qty()
-        self.get_balances_value()
-        self.get_positions_value()
-        self.get_target()
-        self.get_delta()
-
-        current = self.balances.account.current.percent
-        for coin, val in current[current != 0].sort_values(ascending=False).items():
-            log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
-
-        log.info(' ')
-
-        target = self.balances.account.target.percent
-        for coin, val in target[target != 0].sort_values(ascending=False).items():
-            log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
-
     # Update balances after new trade
     def update_balances(self, action, wallet, code, qty_filled):
 

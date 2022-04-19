@@ -492,3 +492,45 @@ def update_orders():
         else:
             log.warning('Account is already trading', account=account.name)
 
+
+# Sync orders
+def sync_orders(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    log.info(' ')
+    log.info('Sync orders')
+    log.info('***********')
+
+    # Iterate through wallets
+    for wallet in account.exchange.get_wallets():
+
+        client.options['defaultType'] = wallet
+        client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
+
+        responses = client.fetchOpenOrders()
+
+        if responses:
+            for order in responses:
+                try:
+                    Order.objects.get(account=account,
+                                      orderid=order['id']
+                                      )
+
+                except ObjectDoesNotExist:
+
+                    market = Market.objects.get(exchange=account.exchange,
+                                                wallet=wallet,
+                                                symbol=order['symbol'],
+                                                )
+                    # Create object
+                    Order.objects.create(
+                        account=account,
+                        market=market,
+                        clientid=order['id'],
+                        status='preparation'
+                    )
+
+        else:
+            log.info('No open order in {0}'.format(wallet))

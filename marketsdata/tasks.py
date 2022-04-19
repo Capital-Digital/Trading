@@ -128,17 +128,18 @@ def update_dataframe(self, exid, wait):
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
 
-            # Download snapshot of spot markets
             log.info('Download spot tickers')
+
+            # Download snapshot of spot markets
             client = exchange.get_ccxt_client()
             dic = client.fetch_tickers()
+
             log.info('Download spot tickers complete')
+            log.info('Dataframe update')
 
             df = pd.DataFrame()
             dt = timezone.now().replace(minute=0, second=0, microsecond=0)
             dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-            log.info('Dataframe update')
 
             # Select codes of our strategies
             codes = list(set(exchange.data.columns.get_level_values(1).tolist()))

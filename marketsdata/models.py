@@ -561,13 +561,12 @@ class Exchange(models.Model):
     # Return True if the dataframe is updated
     def is_data_updated(self):
         if hasattr(self, 'data'):
-            if self.data:
-                if isinstance(self.data, pd.DataFrame):
-                    if self.data.index[-1] == dt_aware_now(0):
-                        return True
-                    else:
-                        log.error('Dataframe is not updated')
-                        return False
+            if isinstance(self.data, pd.DataFrame):
+                if self.data.index[-1] == dt_aware_now(0):
+                    return True
+                else:
+                    log.error('Dataframe is not updated')
+                    return False
             else:
                 log.error('exchange.data is None')
                 return False

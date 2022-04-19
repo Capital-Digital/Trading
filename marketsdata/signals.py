@@ -22,3 +22,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
                 update_strategies.delay(exid, trade)
         else:
             log.error('Dataframe update failure')
+
+    if task.name == 'Markets_____Update_exchange_prices':
+
+        exid = args
+        if state == 'SUCCESS':
+            pass

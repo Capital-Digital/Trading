@@ -568,7 +568,7 @@ class Exchange(models.Model):
                     log.error('Dataframe is not updated')
                     return False
             else:
-                log.error('self.data is not a dataframe')
+                log.error('self.data is not a dataframe {0}'.format(type(self.data)))
                 return False
         else:
             log.error('Instance has not data attribute')

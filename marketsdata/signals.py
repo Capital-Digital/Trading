@@ -15,14 +15,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         exid, wait = args
         if state == 'SUCCESS':
-
-            log.info('')
-            log.info('Dataframes update successful')
-
             if wait:
 
                 from strategy.tasks import update_strategies
-
                 trade = True
                 update_strategies.delay(exid, trade)
         else:

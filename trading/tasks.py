@@ -19,10 +19,8 @@ from celery import chain, group, shared_task, Task
 from capital.celery import app
 from django.core.exceptions import ObjectDoesNotExist
 from timeit import default_timer as timer
-
 from billiard.process import current_process
 from capital.celery import app
-
 from capital.error import *
 from capital.methods import *
 from marketsdata.models import Market, Currency, Exchange
@@ -33,9 +31,8 @@ import threading
 import random
 
 log = structlog.get_logger(__name__)
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
-log.info('THREAD {0}'.format(threading.active_count()))
+# warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class BaseTaskWithRetry(Task):
@@ -49,66 +46,6 @@ class BaseTaskWithRetry(Task):
     retry_backoff = True
     retry_backoff_max = 30
     retry_jitter = False
-
-
-# Update all accounts
-@app.task(bind=True, name='Update_accounts')
-def update_accounts(self, strategy_name):
-    from trading.models import Account
-    accounts = Account.objects.filter(strategy__name=strategy_name, active=True)
-    for account in accounts:
-        update_account.delay(account.id)
-
-
-# Update an account
-@app.task(bind=True, base=BaseTaskWithRetry, name='Update_account')
-def update_account(self, account_id):
-    from trading.models import Account
-    account = Account.objects.get(id=account_id)
-
-    log.info('Account update', name=account.name, process=current_process().index)
-
-    account.trade()
-
-
-# Check all accounts credentials
-@app.task(name='Trading_____Check accounts credentials')
-def check_accounts_cred():
-    for exchange in Exchange.objects.all():
-        for account in Account.objects.filter(exchange=exchange):
-            check_account_cred.delay(account.id)
-
-
-# Check an account credential
-@app.task(base=BaseTaskWithRetry, name='Trading_____Check account credentials')
-def check_account_cred(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-    log.bind(user=account.name)
-
-    try:
-        # Check credentials
-        client.checkRequiredCredentials()
-
-    except ccxt.AuthenticationError as e:
-        account.valid_credentials = False
-        log.warning('Account credentials are invalid')
-
-    except Exception as e:
-        log.warning("Account credential can't be checked: {0}".format(e))
-        account.valid_credentials = False
-
-    else:
-        account.valid_credentials = True
-        log.info('Account credentials are valid')
-
-    finally:
-        account.save()
-        log.unbind('user')
-
-
-###############################################
 
 # Bulk actions
 ##############
@@ -136,6 +73,14 @@ def cancel_accounts_orders():
     #
     for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
         cancel_account_orders.delay(account.id)
+
+
+# Check credentials of all accounts
+@app.task(name='Trading_____Check accounts credentials')
+def check_accounts_cred():
+    for exchange in Exchange.objects.all():
+        for account in Account.objects.filter(exchange=exchange):
+            check_credentials.delay(account.id)
 
 
 # Account specific actions
@@ -239,8 +184,37 @@ def cancel_account_orders(account_id):
         log.info('Open order not found')
 
 
-# Send
-######
+# Check an account credential
+@app.task(base=BaseTaskWithRetry, name='Trading_____Check_credentials')
+def check_credentials(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+    log.bind(user=account.name)
+
+    try:
+        # Check credentials
+        client.checkRequiredCredentials()
+
+    except ccxt.AuthenticationError as e:
+        account.valid_credentials = False
+        log.warning('Account credentials are invalid')
+
+    except Exception as e:
+        log.warning("Account credential can't be checked: {0}".format(e))
+        account.valid_credentials = False
+
+    else:
+        account.valid_credentials = True
+        log.info('Account credentials are valid')
+
+    finally:
+        account.save()
+        log.unbind('user')
+
+
+# REST API
+##########
 
 
 # Send create order

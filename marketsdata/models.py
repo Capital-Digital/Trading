@@ -565,13 +565,13 @@ class Exchange(models.Model):
                 if self.data.index[-1] == dt_aware_now(0):
                     return True
                 else:
-                    log.error('Dataframe is not updated')
+                    log.error('Dataframe is not updated', exid=self.exid)
                     return False
             else:
-                log.error('exchange.data is None')
+                log.error('exchange.data is None', exid=self.exid)
                 return False
         else:
-            log.error('Instance has not data attribute')
+            log.error('Instance has not data attribute', exid=self.exid)
             return False
 
 

@@ -103,13 +103,17 @@ def create_balances(account_id):
 
 # Rebalance fund of an account
 @app.task(name='Trading_____Rebalance_account')
-def rebalance(account_id, sell_close=True):
+def rebalance(account_id, get_balances=False, release=True):
     #
     account = Account.objects.get(id=account_id)
 
-    # Wait balances df is updated
-    while not account.is_balances_updated():
-        pass
+    if get_balances:
+        create_balances(account_id)
+
+    else:
+        # Wait balances is updated
+        while not account.is_fresh_balances():
+            pass
 
     log.info('')
     log.info('Rebalance account', account=account.name)
@@ -131,8 +135,9 @@ def rebalance(account_id, sell_close=True):
     for coin, val in target[target != 0].sort_values(ascending=False).items():
         log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
-    if sell_close:
-        # Liberate resources
+    if release:
+
+        # Release resources
         account.sell_spot_all()
         account.close_short_all()
 

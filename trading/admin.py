@@ -17,8 +17,8 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'trading', 'valid_credentials',
-                    'get_limit_price_tolerance', 'updated_at',)
+    list_display = ('name', 'user', 'exchange', 'quote', 'active', 'valid_credentials', 'get_limit_price_tolerance',
+                    'updated_at',)
     readonly_fields = ('valid_credentials', 'user')
     actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions']
     save_as = True
@@ -40,27 +40,25 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def market_sell_spot(self, request, queryset):
         for account in queryset:
-            log.info('Market sell', account=account.name)
-            market_sell.delay(account.id)
+            account.market_sell()
 
     market_sell_spot.short_description = "Market sell"
 
     def market_close_positions(self, request, queryset):
         for account in queryset:
-            log.info('Market close', account=account.name)
-            market_close.delay(account.id)
+            account.market_close()
 
     market_close_positions.short_description = "Market close"
 
     def rebalance_account(self, request, queryset):
         for account in queryset:
-            update_account.delay(account.id, signal=False)
+            rebalance.delay(account.id, get_balances=True, release=True)
 
     rebalance_account.short_description = "Rebalance"
 
     def check_credentials(self, request, queryset):
         for account in queryset:
-            check_account_cred.delay(account.id)
+            check_credentials.delay(account.id)
 
     check_credentials.short_description = "Check credentials"
 

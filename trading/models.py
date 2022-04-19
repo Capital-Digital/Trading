@@ -243,6 +243,8 @@ class Account(models.Model):
             for coin, pct in target_pct.items():
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
+                log.info('Target percent {0}: {1}'.format(coin, round(pct * 100, 2)))
+
             # Determine values
             value = self.account_value() * target_pct
             for coin, val in value.items():
@@ -304,6 +306,8 @@ class Account(models.Model):
                 pos_value = 0
             percent = (exp * bid) / (acc_value - pos_value)
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
+
+            log.info('Target percent {0}: {1}'.format(coin, round(exp * 100, 2)))
 
         # Calculate value allocated to each coin
         for coin, exp in self.balances.account.current.exposure.items():
@@ -878,7 +882,13 @@ class Account(models.Model):
 
     # Return True if balances df is updated
     def is_fresh_balances(self):
-        pass
+        dt = self.balances_dt
+        if dt == dt_aware_now(0):
+            return True
+        else:
+            print(dt)
+            print(dt_aware_now(0))
+            return False
 
 
 class Fund(models.Model):

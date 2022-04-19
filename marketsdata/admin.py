@@ -21,8 +21,9 @@ class CustomerAdmin(admin.ModelAdmin):
     readonly_fields = ('options', 'status', 'url', 'status_at', 'eta', 'version', 'api', 'countries',
                        'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',
                        'credentials')
-    actions = ['update_status', 'update_properties', 'update_currencies', 'update_markets', 'fetch_prices',
-               'refresh_dataframe', 'run_strategies', 'rebalance_accounts']
+    actions = ['action_update_status', 'action_update_properties', 'action_update_currencies', 'action_update_markets',
+               'action_update_dataframe', 'action_update_prices', 'action_update_strategies',
+               'action_rebalance_accounts']
     save_as = True
     save_on_top = True
 
@@ -60,61 +61,61 @@ class CustomerAdmin(admin.ModelAdmin):
     ##########
 
     # Update status
-    def update_status(self, request, queryset):
+    def action_update_status(self, request, queryset):
         for exchange in queryset:
-            update_ex_status.delay(exchange.exid)
+            update_status.delay(exchange.exid)
 
-    update_status.short_description = "Update status"
+    action_update_status.short_description = "Update status"
 
     # Update properties
-    def update_properties(self, request, queryset):
+    def action_update_properties(self, request, queryset):
         for exchange in queryset:
-            update_ex_properties.delay(exchange.exid)
+            update_properties.delay(exchange.exid)
 
-    update_properties.short_description = "Update properties"
+    action_update_properties.short_description = "Update properties"
 
     # Update currencies
-    def update_currencies(self, request, queryset):
+    def action_update_currencies(self, request, queryset):
         for exchange in queryset:
-            update_ex_currencies.delay(exchange.exid)
+            update_currencies.delay(exchange.exid)
 
-    update_currencies.short_description = "Update currencies"
+    action_update_currencies.short_description = "Update currencies"
 
     # Update markets
-    def update_markets(self, request, queryset):
+    def action_update_markets(self, request, queryset):
         for exchange in queryset:
-            update_ex_markets.delay(exchange.exid)
+            update_markets.delay(exchange.exid)
 
-    update_markets.short_description = "Update markets"
+    action_update_markets.short_description = "Update markets"
 
     # Update prices
-    def fetch_prices(self, request, queryset):
+    def action_update_prices(self, request, queryset):
         for exchange in queryset:
-            update_tickers.delay(exchange.exid)
+            update_prices.delay(exchange.exid)
 
-    fetch_prices.short_description = "Update prices"
+    action_update_prices.short_description = "Update prices"
 
     # Update dataframes
-    def refresh_dataframe(self, request, queryset):
+    def action_update_dataframe(self, request, queryset):
         for exchange in queryset:
             update_dataframe.delay(exchange.exid, False)
 
-    refresh_dataframe.short_description = "Update dataframes"
+    action_update_dataframe.short_description = "Update dataframes"
 
     # Update strategies
-    def run_strategies(self, request, queryset):
+    def action_update_strategies(self, request, queryset):
         for exchange in queryset:
             update_strategies.delay(exchange.exid, False)
 
-    run_strategies.short_description = "Update strategies"
+    action_update_strategies.short_description = "Update strategies"
 
     # Rebalance accounts
-    def rebalance_accounts(self, request, queryset):
+    def action_rebalance_accounts(self, request, queryset):
         for exchange in queryset:
             for account in Account.objects.filter(exchange=exchange, active=True):
-                update_account.delay(account.id, False)
+                rebalance.delay(account.id, False)
 
-    rebalance_accounts.short_description = "Rebalance accounts"
+    action_rebalance_accounts.short_description = "Rebalance accounts"
 
     # Fetch markets history
     def fetch_candle_history(self, request, queryset):

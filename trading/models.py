@@ -11,7 +11,7 @@ from strategy.models import Strategy
 from marketsdata.models import Exchange, Market, Currency
 from trading.error import *
 from trading.methods import *
-from trading.tasks import *
+from trading.tasks import send_cancel_order
 import structlog
 from datetime import timedelta, datetime
 from pprint import pprint

@@ -64,6 +64,15 @@ def bulk_update_prices(self):
         update_prices.delay(exchange.exid)
 
 
+# Bulk update dataframes
+@app.task(name='Markets_____Bulk_update_information')
+def bulk_update_information():
+    bulk_update_status.delay()
+    bulk_update_properties.delay()
+    bulk_update_currencies.delay()
+    bulk_update_markets.delay()
+
+
 # Bulk update status
 @shared_task(name='Markets_____Bulk_update_status')
 def bulk_update_status():

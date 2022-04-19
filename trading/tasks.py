@@ -52,32 +52,32 @@ class BaseTaskWithRetry(Task):
 
 
 # Bulk rebalance holding of all accounts
-@app.task(name='Trading_Rebalance_accounts')
-def rebalance_all(strategy_id):
+@app.task(name='Trading_Bulk_rebalance_accounts')
+def bulk_rebalance(strategy_id):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)
     for account in accounts:
         rebalance.delay(account.id)
 
 
 # Bulk update open orders of all accounts
-@app.task(name='Trading_____Update_accounts_orders')
-def update_accounts_orders():
+@app.task(name='Trading_____Bulk_update_orders')
+def bulk_update_orders():
     #
     for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
         update_account_orders.delay(account.id)
 
 
 # Bulk cancel orders of all accounts
-@app.task(name='Trading_____Cancel_accounts_orders')
-def cancel_accounts_orders():
+@app.task(name='Trading_____Bulk_cancel_orders')
+def bulk_cancel_orders():
     #
     for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
         cancel_account_orders.delay(account.id)
 
 
 # Check credentials of all accounts
-@app.task(name='Trading_____Check accounts credentials')
-def check_accounts_cred():
+@app.task(name='Trading_____Bulk_check_credentials')
+def bulk_check_credentials():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange):
             check_credentials.delay(account.id)
@@ -149,8 +149,8 @@ def rebalance(account_id, sell_close=True):
 
 
 # Update open orders of an account
-@app.task(name='Trading_____Update_account_orders')
-def update_account_orders(account_id):
+@app.task(name='Trading_____Update_orders')
+def update_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account,
@@ -170,8 +170,8 @@ def update_account_orders(account_id):
 
 
 # Cancel open orders of an account
-@app.task(name='Trading_____Cancel_account_orders')
-def cancel_account_orders(account_id):
+@app.task(name='Trading_____Cancel_orders')
+def cancel_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']

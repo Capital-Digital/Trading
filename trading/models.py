@@ -44,11 +44,10 @@ class Account(models.Model):
     quote = models.CharField(max_length=10, null=True, choices=(('USDT', 'USDT'), ('BUSD', 'BUSD')), default='USDT')
 
     balances = PickledObjectField(null=True)
+    balances_dt = models.DateTimeField()
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     active = models.BooleanField(null=True, blank=False, default=False)
-    trading = models.BooleanField(null=True, blank=False, default=False)
-    updated = models.BooleanField(null=True, blank=False)
     order_type = models.CharField(max_length=10, null=True, choices=(('limit', 'limit'), ('market', 'market')),
                                   default='limit')
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)
@@ -83,9 +82,8 @@ class Account(models.Model):
         client = self.exchange.get_ccxt_client(self)
         log.info('Get balances qty start')
 
-        # Del attribute
-        if hasattr(self, 'balances'):
-            self.balances = pd.DataFrame()
+        # Reset attribute
+        self.balances = pd.DataFrame()
 
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
@@ -98,9 +96,10 @@ class Account(models.Model):
                 dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
 
                 if dic:
+                    columns = pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
                     tmp = pd.DataFrame(index=dic.keys(),
                                        data=dic.values(),
-                                       columns=pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
+                                       columns=columns
                                        )
                     self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                     self.balances = self.balances.groupby(level=0).last()
@@ -876,6 +875,10 @@ class Account(models.Model):
 
                     from trading.tasks import send_create_order
                     send_create_order.delay(*args, then_rebalance=False)
+
+    # Return True if balances df is updated
+    def is_fresh_balances(self):
+        pass
 
 
 class Fund(models.Model):

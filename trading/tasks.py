@@ -107,6 +107,10 @@ def rebalance(account_id, sell_close=True):
     #
     account = Account.objects.get(id=account_id)
 
+    # Wait balances df is updated
+    while not account.is_balances_updated():
+        pass
+
     log.info('')
     log.info('Rebalance account', account=account.name)
     log.info('*****************')

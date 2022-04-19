@@ -64,7 +64,7 @@ def bulk_rebalance(strategy_id):
 def bulk_update_orders():
     #
     for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
-        update_account_orders.delay(account.id)
+        update_orders.delay(account.id)
 
 
 # Bulk cancel orders of all accounts
@@ -72,7 +72,7 @@ def bulk_update_orders():
 def bulk_cancel_orders():
     #
     for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
-        cancel_account_orders.delay(account.id)
+        cancel_orders.delay(account.id)
 
 
 # Check credentials of all accounts

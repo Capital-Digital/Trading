@@ -51,7 +51,7 @@ class BaseTaskWithRetry(Task):
 ##############
 
 
-# Bulk rebalance holding of all accounts
+# Bulk rebalance assets of all accounts
 @app.task(name='Trading_Bulk_rebalance_accounts')
 def bulk_rebalance(strategy_id):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)

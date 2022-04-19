@@ -121,7 +121,7 @@ def update_dataframe(self, exid, wait):
     exchange.load_data(10 * 24, codes)
 
     if wait:
-        log.info('Dataframe preloading')
+        log.info('Dataframe preloading...')
         while datetime.now().minute > 0:
             time.sleep(1)
 
@@ -129,8 +129,11 @@ def update_dataframe(self, exid, wait):
         if exchange.has['fetchTickers']:
 
             # Download snapshot of spot markets
+            log.info('Download spot tickers')
             client = exchange.get_ccxt_client()
             dic = client.fetch_tickers()
+            log.info('Download spot tickers complete')
+
             df = pd.DataFrame()
             dt = timezone.now().replace(minute=0, second=0, microsecond=0)
             dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')

@@ -189,7 +189,7 @@ class Account(models.Model):
                     if not np.isnan(price):
 
                         # Calculate value
-                        value = price * self.balances[wallet][tp]['quantity']
+                        value = price * self.balances[wallet][tp]['quantity'][coin]
                         self.balances.loc[coin, (wallet, tp, 'value')] = value
 
                     else:

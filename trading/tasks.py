@@ -288,6 +288,11 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
 
     except ccxt.InsufficientFunds as e:
 
+        order = Order.objects.get(clientid=clientid)
+        order.status = 'canceled'
+        order.response = dict(exception=e)
+        order.save()
+
         log.info('')
         log.info(e)
         log.error('Order placement failed')

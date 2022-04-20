@@ -197,10 +197,13 @@ class Account(models.Model):
                         log.warning('Price not found, drop {0}'.format(coin))
                         self.balances = self.balances.drop(coin)
 
-        # Drop dust < $10
-        # mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
-        # self.balances = self.balances.loc[(mask == True).any(axis=1)]
+        # Drop dust coins
+        mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
+        self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
+
+        print(self.balances.spot)
+        print(self.balances.future)
 
         log.info('Calculate balances value complete')
 
@@ -228,9 +231,12 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
-            # Insert price
+            # Insert prices
             codes = self.balances.position.open.quantity.dropna().index.tolist()
             self.insert_futu_prices(codes)
+            self.insert_spot_prices(codes)
+
+        print(self.balances.position)
 
         self.save()
         log.info('Get positions done')

@@ -222,7 +222,7 @@ class Exchange(models.Model):
         # Flatten lists and drop duplicate
         codes = list(itertools.chain.from_iterable(codes))
         print('flat', codes)
-        codes = list(set(codes))
+        codes = list(dict.fromkeys(codes))
         print('dropped', codes)
         return codes
 

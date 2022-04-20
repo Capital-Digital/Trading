@@ -277,13 +277,16 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         price=price,
         params=dict(newClientOrderId=clientid)
     )
+    
+    if order_type == 'market':
+        del kwargs['price']
 
     # Set parameters
     if reduce_only:
         kwargs['params']['reduceOnly'] = True
 
     pprint(kwargs)
-    
+
     try:
         response = client.create_order(**kwargs)
 
@@ -291,7 +294,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
 
         order = Order.objects.get(clientid=clientid)
         order.status = 'canceled'
-        order.response = dict(exception=e)
+        order.response = dict(exception=str(e))
         order.save()
 
         log.info('')

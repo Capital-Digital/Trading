@@ -904,24 +904,28 @@ class Account(models.Model):
     # Market close position
     def market_close(self):
         #
-        for code in self.balances.position.open.quantity.dropna().index.tolist():
+        if 'position' in self.balances.columns.get_level_values(0).tolist():
 
-            log.info('Close position {0}'.format(code))
+            for code in self.balances.position.open.quantity.dropna().index.tolist():
 
-            amount = self.balances.position.open.quantity[code]
-            side = 'buy' if amount < 0 else 'sell'
-            amount = abs(amount)
-            price = self.balances.price.spot.bid[code]
-            value = amount * price
-            valid, order = self.prep_order('future', code, amount, value, price, 'close_short', side)
+                log.info('Close position {0}'.format(code))
 
-            if valid:
-                order['order_type'] = 'market'
-                args = order.values()
+                amount = self.balances.position.open.quantity[code]
+                side = 'buy' if amount < 0 else 'sell'
+                amount = abs(amount)
+                price = self.balances.price.spot.bid[code]
+                value = amount * price
+                valid, order = self.prep_order('future', code, amount, value, price, 'close_short', side)
 
-                from trading.tasks import send_create_order
-                send_create_order.delay(*args, then_rebalance=False)
+                if valid:
+                    order['order_type'] = 'market'
+                    args = order.values()
+                    from trading.tasks import send_create_order
+                    send_create_order.delay(*args, then_rebalance=False)
 
+        else:
+            log.info('No position found')
+        
     # Return True if balances df is updated
     def is_fresh_balances(self):
         dt = self.balances_dt

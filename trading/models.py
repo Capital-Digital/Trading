@@ -116,6 +116,7 @@ class Account(models.Model):
         if 'price' in self.balances.columns.get_level_values(0).tolist():
             if code in self.balances.price.spot.bid.dropna().index.tolist():
                 if code in self.balances.price.future.bid.dropna().index.tolist():
+                    print('Price exists')
                     return
 
         if code == self.quote:
@@ -159,7 +160,7 @@ class Account(models.Model):
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
 
-        log.info('Get balances value start')
+        log.info('Insert balances value')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
@@ -167,6 +168,7 @@ class Account(models.Model):
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
 
+                    print('\ninsert value for ', coin)
                     # Insert prices
                     self.insert_prices(coin)
 
@@ -186,7 +188,7 @@ class Account(models.Model):
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
-        log.info('Get balances value done')
+        log.info('Insert balances value complete')
 
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):

@@ -1,9 +1,8 @@
 from __future__ import absolute_import, unicode_literals
-
+import traceback
 import sys
 import asyncio
 import time
-import traceback
 from itertools import accumulate
 from pprint import pprint
 from django.db.models.query import QuerySet
@@ -288,9 +287,12 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
 
     except ccxt.InsufficientFunds as e:
 
+        exc_info = sys.exc_info()
+        ex = ''.join(traceback.format_exception(*exc_info))
+
         order = Order.objects.get(clientid=clientid)
         order.status = 'canceled'
-        order.response = dict(exception=e)
+        order.response = dict(exception=ex)
         order.save()
 
         log.info('')

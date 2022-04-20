@@ -200,13 +200,27 @@ class Exchange(models.Model):
     def get_stablecoins(self):
         return [c.code for c in Currency.objects.filter(exchange=self, stable_coin=True)]
 
-    # Return a list of codes used by strategies
+    # Return a list of codes used by all our strategies
     def get_strategies_codes(self):
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=self.exid)
-        codes = list(set(itertools.chain.from_iterable([s.get_codes_long() for s in strategies])))
-        codes.sort()
-        return codes
+
+        # Determine number of codes so that codes from strategies
+        # with the lowest codes length are inserted first
+        for s in strategies:
+            s.set_codes_length()
+
+        # Sort strategies
+        strategies = Strategy.objects.filter(exchange__exid=self.exid).sort_values('codes_length')
+        print(strategies)
+
+        codes = []
+        for s in strategies:
+            codes.append(s.get_codes())
+
+        # Flatten lists and drop duplicate
+        codes = list(itertools.chain.from_iterable(codes))
+        return list(set(codes))
 
     # Return True if there is available credit
     def has_credit(self, wallet=None):

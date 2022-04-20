@@ -175,7 +175,7 @@ def update_prices(exid, wallet=None):
     exchange = Exchange.objects.get(exid=exid)
 
     log.bind(exid=exid)
-    log.info('Update prices', wallet=wallet)
+    log.info('Update prices', wallet=wallet, worker=current_process().index)
 
     # Check exchange
     if not exchange.is_trading():
@@ -203,6 +203,7 @@ def update_prices(exid, wallet=None):
 
     # Call task
     if wallet == 'spot':
+        log.info('Execute marketsdata.tasks.update_dataframe')
         update_dataframe.delay(exid, t)
 
     # Select symbols of desired markets

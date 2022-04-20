@@ -110,52 +110,50 @@ class Account(models.Model):
 
         log.info('Get balances qty done')
 
-    # Insert spot and future bid/ask
-    def insert_prices(self, code):
+    # Insert bid/ask of spot markets
+    def insert_spot_prices(self):
 
-        if 'price' in self.balances.columns.get_level_values(0).tolist():
-            if code in self.balances.price.spot.bid.dropna().index.tolist():
-                if code in self.balances.price.future.bid.dropna().index.tolist():
-                    print('Price exists')
-                    return
-
-        if code == self.quote:
-            for key in ['bid', 'ask']:
-                self.balances.loc[code, ('price', 'spot', key)] = 1
-                self.balances.loc[code, ('price', 'future', key)] = 1
-            return
-
-        try:
-            # Spot price
-            for key in ['bid', 'ask']:
-                price_spot = Currency.objects.get(code=code).get_latest_price(self.exchange, self.quote, key)
-                self.balances.loc[code, ('price', 'spot', key)] = price_spot
-
-        except ObjectDoesNotExist as e:
-            log.error('Spot market {0}/{1} not found'.format(code, self.quote))
-            self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
-            self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
-
-        finally:
+        for code in self.balances.spot.total.quantity.index.tolist():
 
             try:
-                # Contract price
+                currency = Currency.objects.get(code=code)
+
+            except ObjectDoesNotExist:
+
+                log.error('Spot market {0}/{1} not found'.format(code, self.quote))
+
+                self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
+                self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
+
+            else:
                 for key in ['bid', 'ask']:
-                    price_futu = Market.objects.get(base__code=code,
-                                                    quote__code=self.quote,
-                                                    type='derivative',
-                                                    contract_type='perpetual',
-                                                    exchange=self.exchange).get_latest_price(key)
+                    p = currency.get_latest_price(self.exchange, self.quote, key)
+                    self.balances.loc[code, ('price', 'spot', key)] = p
+        self.save()
 
-                    self.balances.loc[code, ('price', 'future', key)] = price_futu
+    # Insert bid/ask of future markets
+    def insert_futu_prices(self):
 
-            except ObjectDoesNotExist as e:
-                log.error('Future market {0}{1} not found'.format(code, self.quote))
+        for code in self.balances.spot.total.quantity.index.tolist():
+            try:
+                market = Market.objects.get(base__code=code,
+                                            quote__code=self.quote,
+                                            type='derivative',
+                                            contract_type='perpetual',
+                                            exchange=self.exchange)
+
+            except ObjectDoesNotExist:
+
+                log.error('Future market {0}/{1} not found'.format(code, self.quote))
+
                 self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
                 self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 
-            finally:
-                self.save()
+            else:
+                for key in ['bid', 'ask']:
+                    self.balances.loc[code, ('price', 'future', key)] = market.get_latest_price(key)
+
+            self.save()
 
     # Convert quantity in dollar in balances dataframe
     def get_balances_value(self):
@@ -167,10 +165,6 @@ class Account(models.Model):
             for tp in ['free', 'total', 'used']:
                 funds = self.balances[wallet][tp]['quantity']
                 for coin in funds.index:
-
-                    print('\ninsert value for ', coin)
-                    # Insert prices
-                    self.insert_prices(coin)
 
                     if not np.isnan(self.balances.price.spot.bid[coin]):
 
@@ -854,7 +848,6 @@ class Account(models.Model):
                     valid, order = self.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
 
                     if valid:
-
                         order['order_type'] = 'market'
                         args = order.values()
 
@@ -875,7 +868,6 @@ class Account(models.Model):
                 valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
 
                 if valid:
-
                     order['order_type'] = 'market'
                     args = order.values()
 
@@ -894,6 +886,7 @@ class Account(models.Model):
                 return False
         else:
             return False
+
 
 class Fund(models.Model):
     objects = models.Manager()

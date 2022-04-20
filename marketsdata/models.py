@@ -640,10 +640,7 @@ class Currency(models.Model):
                                               year=get_year(),
                                               semester=get_semester())
             except ObjectDoesNotExist:
-                log.error('Ticker object not found for {0}/{1}'.format(self.code, quote))
-
-            except MultipleObjectsReturned:
-                log.error('Multiple objects found for ticker {0}/{1}'.format(self.code, quote))
+                log.error('Unable to get price for {0}'.format(self.code))
 
             else:
                 dt = datetime.now().replace(minute=0, second=0, microsecond=0)
@@ -719,23 +716,28 @@ class Market(models.Model):
 
     # Return latest price
     def get_latest_price(self, key):
-        tickers = Tickers.objects.get(market=self,
-                                      year=get_year(),
-                                      semester=get_semester())
-
-        dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-        now = dt.strftime(datetime_directive_ISO_8601)
 
         try:
-            price = tickers.data[now]['last']
-        except KeyError:
-            log.error('Key {0} not found'.format(now),
-                      quote=self.quote.code,
-                      code=self.base.code,
-                      wallet=self.wallet
-                      )
+            tickers = Tickers.objects.get(market=self,
+                                          year=get_year(),
+                                          semester=get_semester())
+        except ObjectDoesNotExist:
+            log.error('Unable to get price for {0}'.format(self.symbol))
+
         else:
-            return price
+
+            dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+            now = dt.strftime(datetime_directive_ISO_8601)
+
+            try:
+                price = tickers.data[now]['last']
+            except KeyError:
+                log.error('Key {0} not found'.format(now),
+                          symbol=self.symbol,
+                          wallet=self.wallet
+                          )
+            else:
+                return price
 
     # Return True if prices and volume are updated
     def is_updated(self):

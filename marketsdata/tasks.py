@@ -225,7 +225,6 @@ def update_prices(exid, wallet=None):
     symbols = list(dict.fromkeys(symbols))
 
     insert = 0
-    log.info('Insert tickers', wallet=wallet)
 
     for symbol in symbols:
 

@@ -134,6 +134,9 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
             else:
+
+                log.info('Insert spot price for {0}'.format(code))
+
                 for key in ['bid', 'ask']:
                     p = currency.get_latest_price(self.exchange, self.quote, key)
                     self.balances.loc[code, ('price', 'spot', key)] = p
@@ -167,6 +170,9 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 
             else:
+
+                log.info('Insert spot price for {0}'.format(code))
+
                 for key in ['bid', 'ask']:
                     self.balances.loc[code, ('price', 'future', key)] = market.get_latest_price(key)
 

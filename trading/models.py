@@ -215,8 +215,6 @@ class Account(models.Model):
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
 
-        pprint(opened)
-
         if opened:
 
             for position in opened:

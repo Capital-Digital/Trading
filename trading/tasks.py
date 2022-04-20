@@ -291,7 +291,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
 
         order = Order.objects.get(clientid=clientid)
         order.status = 'canceled'
-        order.response = dict(exception=e)
+        order.response = dict(exception=str(e))
         order.save()
 
         log.info('')

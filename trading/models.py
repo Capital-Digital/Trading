@@ -627,7 +627,7 @@ class Account(models.Model):
                               side=side,
                               size=size,
                               symbol=market.symbol,
-                              wallet=market.wallet
+                              wallet=wallet
                               )
 
         else:
@@ -921,6 +921,8 @@ class Account(models.Model):
                 order['order_type'] = 'market'
                 del order['price']
                 args = order.values()
+
+                print(args)
 
                 from trading.tasks import send_create_order
                 send_create_order.delay(*args, then_rebalance=False)

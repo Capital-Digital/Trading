@@ -278,9 +278,6 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         params=dict(newClientOrderId=clientid)
     )
 
-    if order_type == 'market':
-        del kwargs['price']
-
     # Set parameters
     if reduce_only:
         kwargs['params']['reduceOnly'] = True

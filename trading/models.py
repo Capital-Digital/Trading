@@ -915,10 +915,11 @@ class Account(models.Model):
             price = self.balances.price.spot.bid[code]
             value = amount * price
 
-            valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
+            valid, order = self.prep_order('future', code, amount, value, price, 'close_short', 'sell')
 
             if valid:
                 order['order_type'] = 'market'
+                del order['price']
                 args = order.values()
 
                 from trading.tasks import send_create_order

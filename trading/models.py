@@ -201,11 +201,13 @@ class Account(models.Model):
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
+        print('calc value\n', self.balances)
         log.info('Calculate balances value complete')
 
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
 
+        print('pos\n', self.balances)
         log.info('Get positions start')
 
         # Get client
@@ -234,8 +236,6 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
-            
-            print(self.balances)
 
             # Insert prices
             codes = self.balances.position.open.quantity.dropna().index.tolist()

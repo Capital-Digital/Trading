@@ -696,7 +696,7 @@ class Market(models.Model):
             return False
 
     #######################
-    
+
     # Return True if a market has candles
     def is_populated(self):
         if Candle.objects.filter(market=self).exists():

@@ -651,8 +651,13 @@ class Currency(models.Model):
 
                 try:
                     price = tickers.data[now][key]
+                    
                 except KeyError:
-                    log.error('Key {0} not found'.format(now), key=key, code=self.code, wallet='spot')
+                    log.error('Key {0} not found'.format(now),
+                              key=key,
+                              code=self.code,
+                              wallet='spot',
+                              quote=quote)
                 else:
                     return price
 

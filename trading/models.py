@@ -906,14 +906,14 @@ class Account(models.Model):
         #
         for code in self.balances.position.open.quantity.dropna().index.tolist():
 
-            amount = abs(self.balances.position.open.quantity[code])
-
             log.info('Close position {0}'.format(code))
 
+            amount = self.balances.position.open.quantity[code]
+            side = 'buy' if amount < 0 else 'sell'
+            amount = abs(amount)
             price = self.balances.price.spot.bid[code]
             value = amount * price
-
-            valid, order = self.prep_order('future', code, amount, value, price, 'close_short', 'buy')
+            valid, order = self.prep_order('future', code, amount, value, price, 'close_short', side)
 
             if valid:
                 order['order_type'] = 'market'

@@ -769,6 +769,9 @@ class Account(models.Model):
                 # Set zero if nan
                 self.balances.loc[code, 'position'] = self.balances.loc[code, 'position'].fillna(0)
 
+                print(type(self.balances.loc[code, 'position'].fillna(0)))
+                print(type(self.balances))
+
                 self.balances.loc[code, ('position', 'open', 'quantity')] += qty_filled
                 self.balances.loc[code, ('position', 'open', 'value')] += val_filled
 

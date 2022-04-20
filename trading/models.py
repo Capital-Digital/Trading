@@ -187,16 +187,14 @@ class Account(models.Model):
             for tp in ['free', 'total', 'used']:
                 for coin in self.balances[wallet][tp]['quantity'].dropna().index.tolist():
 
-                    price = self.balances.price[wallet]['bid'][coin]
-                    if not np.isnan(price):
-
-                        # Calculate value
-                        value = price * self.balances[wallet][tp]['quantity'][coin]
-                        self.balances.loc[coin, (wallet, tp, 'value')] = value
-
+                    if coin == self.quote:
+                        price = 1
                     else:
-                        log.warning('Price not found, drop {0}'.format(coin))
-                        self.balances = self.balances.drop(coin)
+                        price = self.balances.price.spot['bid'][coin]
+
+                    # Calculate value
+                    value = price * self.balances[wallet][tp]['quantity'][coin]
+                    self.balances.loc[coin, (wallet, tp, 'value')] = value
 
         print('calc value end\n', self.balances)
         # Drop dust coins

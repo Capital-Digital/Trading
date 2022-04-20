@@ -307,7 +307,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         log.info('wallet {0}'.format(wallet))
 
         # Update object and dataframe
-        qty_filled = account.update_order_object.delay(wallet, response)
+        qty_filled = account.update_order_object(wallet, response)
         account.update_balances(action, wallet, code, qty_filled)
 
         if then_rebalance:
@@ -329,7 +329,7 @@ def send_fetch_orderid(account_id, order_id):
     response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
 
     # Update object and dataframe
-    qty_filled = account.update_order_object.delay(order.wallet, response)
+    qty_filled = account.update_order_object(order.wallet, response)
     account.update_balances(order.action,
                             order.wallet,
                             order.market.base.code,
@@ -358,7 +358,7 @@ def send_fetch_all_open_orders(account_id):
         for dic in response:
 
             # Update corresponding order object
-            qty_filled = account.update_order_object.delay(wallet, dic)
+            qty_filled = account.update_order_object(wallet, dic)
             qty.append(qty_filled)
 
         return account_id, qty
@@ -410,7 +410,7 @@ def send_cancel_order(account_id, order_id):
         log.info('Order canceled successful')
 
         # Update object and dataframe
-        qty_filled = account.update_order_object.delay(order.wallet, response)
+        qty_filled = account.update_order_object(order.wallet, response)
         account.update_balances(order.action,
                                 order.wallet,
                                 order.market.base.code,

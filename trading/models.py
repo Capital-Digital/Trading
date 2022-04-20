@@ -96,6 +96,13 @@ class Account(models.Model):
                 dic = {k: v for k, v in response[key].items() if v > 0 and k != 'LDBTC'}
 
                 if dic:
+
+                    print('\n')
+                    print(wallet)
+                    print(tp)
+                    print(key)
+                    print(dic.values())
+
                     columns = pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
                     tmp = pd.DataFrame(index=dic.keys(),
                                        data=dic.values(),

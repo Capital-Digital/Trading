@@ -215,6 +215,8 @@ def update_prices(exid, wallet=None):
 
     for symbol in symbols:
 
+        print(symbol)
+        
         dic = {k: tickers[symbol][k] for k in ['bid',
                                                'ask',
                                                'last',

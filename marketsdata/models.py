@@ -680,8 +680,8 @@ class Market(models.Model):
         now = dt.strftime(datetime_directive_ISO_8601)
         return tickers.data[now]['last']
 
-    # Return True is prices and volume are updated
-    def is_tickers_updated(self):
+    # Return True if prices and volume are updated
+    def is_updated(self):
 
         # Determine datetime and semester
         dt = timezone.now().replace(minute=0, second=0, microsecond=0)
@@ -695,6 +695,8 @@ class Market(models.Model):
         else:
             return False
 
+    #######################
+    
     # Return True if a market has candles
     def is_populated(self):
         if Candle.objects.filter(market=self).exists():
@@ -706,39 +708,6 @@ class Market(models.Model):
             #          exchange=self.exchange.exid
             #          )
             return False
-
-    # Return True if a market is updated
-    def is_updated(self):
-
-        if self.updated:
-            return True
-
-        else:
-            log.error('Market is not updated',
-                      exchange=self.exchange.exid,
-                      symbol=self.symbol,
-                      wallet=self.wallet
-                      )
-
-            if self.exchange.is_trading():
-
-                # Try to update prices
-                if self.exchange.is_update_time():
-
-                    from marketsdata.tasks import update_prices
-                    update_prices(self.exchange.exid)
-                    return True
-
-                else:
-
-                    from marketsdata.tasks import insert_candle_history
-                    insert_candle_history(self.exchange.exid,
-                                          self.wallet,
-                                          self.symbol,
-                                          recent=True)
-                    return True
-            else:
-                return False
 
     # Return True if recent candles are missing
     def has_gap(self):

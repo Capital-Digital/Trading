@@ -204,12 +204,10 @@ def update_prices(exid, wallet=None):
     if wallet == 'spot':
         update_dataframe.delay(exid, t)
 
-    # Rearrange symbols order with priority symbols first
+    # Rearrange symbols order with symbols of strategies first
     symbols = [i for i in tickers.keys() if '/USDT' in i and i not in symbols_strategies]
     symbols = symbols_strategies + symbols
     symbols = list(dict.fromkeys(symbols))
-
-    print(symbols)
 
     insert = 0
 
@@ -239,6 +237,7 @@ def update_prices(exid, wallet=None):
             del args['wallet']
 
         try:
+            pprint(args)
             market = Market.objects.get(**args)
 
         except ObjectDoesNotExist:

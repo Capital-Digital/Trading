@@ -725,7 +725,17 @@ class Market(models.Model):
 
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
         now = dt.strftime(datetime_directive_ISO_8601)
-        return tickers.data[now]['last']
+
+        try:
+            price = tickers.data[now]['last']
+        except KeyError:
+            log.error('Key {0} not found'.format(now),
+                      quote=self.quote.code,
+                      code=self.base.code,
+                      wallet=self.wallet
+                      )
+        else:
+            return price
 
     # Return True if prices and volume are updated
     def is_updated(self):

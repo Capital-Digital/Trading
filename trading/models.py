@@ -97,11 +97,6 @@ class Account(models.Model):
 
                 if dic:
 
-                    print('\n')
-                    print(wallet)
-                    print(key)
-                    print(dic.values())
-
                     columns = pd.MultiIndex.from_product([[wallet], [key], ['quantity']])
                     tmp = pd.DataFrame(index=dic.keys(),
                                        data=dic.values(),
@@ -110,7 +105,7 @@ class Account(models.Model):
                     self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                     self.balances = self.balances.groupby(level=0).last()
                 else:
-                    self.balances[(wallet, key, 'quantity')] = 0
+                    self.balances[(wallet, key, 'quantity')] = np.nan
 
         self.save()
 
@@ -594,6 +589,9 @@ class Account(models.Model):
                 code_res = code
                 used_qty = size
 
+            # Set zero if nan
+            self.balances.loc[code_res, wallet].fillna(0, inplace=True)
+
             # Update free and used resources in balances df
             self.balances.loc[code_res, (wallet, 'used', 'quantity')] += used_qty
             self.balances.loc[code_res, (wallet, 'used', 'value')] += order_value
@@ -754,8 +752,15 @@ class Account(models.Model):
                 log.info('Filled new {0}'.format(qty_filled))
                 log.info('Filled value {0}'.format(val_filled))
                 log.info('')
+
+                # Position
+                ##########
+
                 log.info('Position open before')
                 log.info(self.balances.position.open)
+
+                # Set zero if nan
+                self.balances.loc[code, 'position'].fillna(0, inplace=True)
 
                 self.balances.loc[code, ('position', 'open', 'quantity')] += qty_filled
                 self.balances.loc[code, ('position', 'open', 'value')] += val_filled
@@ -764,9 +769,15 @@ class Account(models.Model):
                 log.info('Position open after')
                 log.info(self.balances.position.open)
 
+                # Future
+                ########
+
                 log.info('')
                 log.info('Future total quantity before')
                 log.info(self.balances.future.total.quantity)
+
+                # Set zero if nan
+                self.balances.loc[self.quote, 'future'].fillna(0, inplace=True)
 
                 self.balances.loc[self.quote, ('future', 'total', 'quantity')] += val_filled
                 self.balances.loc[self.quote, ('future', 'free', 'quantity')] += val_filled
@@ -782,10 +793,13 @@ class Account(models.Model):
                 log.info('Spot total quantity before')
                 log.info(self.balances.spot.total.quantity)
 
+                # Set zero if nan
+                self.balances.loc[code, 'spot'].fillna(0, inplace=True)
+
                 # Or update spot
-                self.balances.loc[code, (wallet, 'total', 'quantity')] += qty_filled
-                self.balances.loc[code, (wallet, 'free', 'quantity')] += qty_filled
-                self.balances.loc[code, (wallet, 'used', 'quantity')] += qty_filled
+                self.balances.loc[code, ('spot', 'total', 'quantity')] += qty_filled
+                self.balances.loc[code, ('spot', 'free', 'quantity')] += qty_filled
+                self.balances.loc[code, ('spot', 'used', 'quantity')] += qty_filled
 
                 log.info('')
                 log.info('Spot total quantity after')

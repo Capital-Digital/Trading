@@ -99,7 +99,6 @@ class Account(models.Model):
 
                     print('\n')
                     print(wallet)
-                    print(tp)
                     print(key)
                     print(dic.values())
 

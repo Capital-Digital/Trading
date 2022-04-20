@@ -211,6 +211,8 @@ class Account(models.Model):
 
         log.info('Get positions start')
 
+        print('posi start\n', self.balances)
+
         # Get client
         client = self.exchange.get_ccxt_client(self)
         client.options['defaultType'] = 'future'
@@ -239,10 +241,14 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
             # Insert prices
+
+            print('posi mid\n', self.balances)
+
             codes = self.balances.position.open.quantity.dropna().index.tolist()
             self.insert_futu_prices(codes)
             self.insert_spot_prices(codes)
 
+        print('posi end\n', self.balances)
         self.save()
         log.info('Get positions done')
 

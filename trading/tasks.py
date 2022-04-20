@@ -89,10 +89,7 @@ def bulk_check_credentials():
 def create_balances(account_id):
     #
     account = Account.objects.get(id=account_id)
-
-    log.info(' ')
-    log.info('Create balances', worker=current_process().index)
-    log.info('***************')
+    log.info('Create balances ({0})'.format(account.name), worker=current_process().index)
 
     account.get_balances_qty()
     account.calculate_balances_value()
@@ -104,6 +101,7 @@ def create_balances(account_id):
 def rebalance(account_id, get_balances=False, release=True):
     #
     account = Account.objects.get(id=account_id)
+    log.info('Rebalance ({0})'.format(account.name), worker=current_process().index)
 
     if get_balances:
         create_balances(account_id)
@@ -207,11 +205,9 @@ def update_orders(account_id):
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id):
     #
-    log.info(' ')
-    log.info('Cancel orders', worker=current_process().index)
-    log.info('*************')
-
     account = Account.objects.get(id=account_id)
+    log.info('Cancel orders ({0})'.format(account.name), worker=current_process().index)
+
     orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
                                   ).exclude(orderid__isnull=True)
     if orders.exists():

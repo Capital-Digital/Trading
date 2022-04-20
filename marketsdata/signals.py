@@ -17,8 +17,6 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         exid, tickers = args
 
         if state == 'SUCCESS':
-
-            log.info('Bulk update strategies', worker=current_process().index)
             bulk_update_strategies.delay(exid, trade=True)
 
         else:

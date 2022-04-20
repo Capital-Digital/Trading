@@ -657,7 +657,6 @@ class Currency(models.Model):
                               quote=quote)
                 else:
                     return price
-
         else:
             return 1
 

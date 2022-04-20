@@ -198,8 +198,8 @@ class Account(models.Model):
                         self.balances = self.balances.drop(coin)
 
         # Drop dust < $10
-        mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
-        self.balances = self.balances.loc[(mask == True).any(axis=1)]
+        # mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
+        # self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
         log.info('Calculate balances value complete')

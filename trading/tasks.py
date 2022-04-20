@@ -96,7 +96,7 @@ def create_balances(account_id):
     log.info('*************************')
 
     account.get_balances_qty()
-    account.get_balances_value()
+    account.calculate_balances_value()
     account.get_positions_value()
 
 

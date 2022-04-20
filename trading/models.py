@@ -885,8 +885,10 @@ class Account(models.Model):
 
             log.info('Close position {0}'.format(code))
 
-            price = self.balances.price.spot.bid
+            price = self.balances.price.spot.bid[code]
             value = amount * price
+            print(amount, price, value)
+            
             valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
 
             if valid:

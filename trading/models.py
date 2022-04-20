@@ -120,7 +120,7 @@ class Account(models.Model):
                     if code in self.balances.price.spot.bid.dropna().index.tolist():
                         continue
 
-            log.info('Insert spot prices for {0}'.format(code))
+            # log.info('Insert spot prices for {0}'.format(code))
 
             try:
                 currency = Currency.objects.get(code=code)
@@ -149,7 +149,7 @@ class Account(models.Model):
                     if code in self.balances.price.future.bid.dropna().index.tolist():
                         continue
 
-            log.info('Insert future prices for {0}'.format(code))
+            # log.info('Insert future prices for {0}'.format(code))
 
             try:
                 market = Market.objects.get(base__code=code,
@@ -208,17 +208,25 @@ class Account(models.Model):
 
         log.info('Get positions start')
 
-        # Client client and query all futures positions
+        # Get client
         client = self.exchange.get_ccxt_client(self)
+        client.options['defaultType'] = 'future'
+
+        #  and query all futures positions
         response = client.fapiPrivateGetPositionRisk()
         opened = [i for i in response if float(i['positionAmt']) != 0]
         closed = [i for i in response if float(i['positionAmt']) == 0]
+
+        pprint(opened)
 
         if opened:
 
             for position in opened:
                 market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
                 code = market.base.code
+                
+                print(code)
+
                 quantity = float(position['positionAmt'])
                 self.balances.loc[code, ('position', 'open', 'quantity')] = quantity
                 self.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'

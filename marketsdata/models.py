@@ -237,14 +237,12 @@ class Exchange(models.Model):
 
         symbols = []
         for s in strategies:
-            symbols.append(s.get_codes())
+            symbols.append(s.get_symbols())
 
         # Flatten lists and drop duplicate whilst preserving order
         symbols = list(itertools.chain.from_iterable(symbols))
         symbols = list(dict.fromkeys(symbols))
         return symbols
-
-
 
     # Return True if there is available credit
     def has_credit(self, wallet=None):

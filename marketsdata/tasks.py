@@ -9,7 +9,7 @@ import urllib3
 from billiard.process import current_process
 from celery import group, shared_task, Task
 from celery.result import AsyncResult
-
+import itertools
 from capital.celery import app
 
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
@@ -208,12 +208,18 @@ def update_prices(exid, wallet=None):
     # Select symbols of desired markets
     symbols = []
     for quote in exchange.get_supported_quotes():
-        symbols.append([i for i in tickers.keys() if '/' + quote in i])
+        markets = [i for i in tickers.keys() if '/' + quote in i]
+        markets = [m for m in markets if m not in symbols_strategies]
+        symbols.append(markets)
 
-    # Rearrange symbols order with symbols of strategies first
-    symbols = [i for i in symbols if i not in symbols_strategies]
+    # Flatten and sort list
+    symbols = list(set(itertools.chain.from_iterable(symbols)))
     symbols.sort()
+
+    # Insert symbols or strategies first
     symbols = symbols_strategies + symbols
+    
+    # Drop duplicate whilst preserving order
     symbols = list(dict.fromkeys(symbols))
 
     print(symbols)

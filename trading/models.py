@@ -174,12 +174,10 @@ class Account(models.Model):
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
 
-        print('calc value start\n', self.balances)
         codes = self.balances.spot.total.quantity.index.tolist()
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)
 
-        print('calc value mid\n', self.balances)
         log.info('Calculate balances value')
 
         # Iterate through wallets, free, used and total quantities
@@ -196,7 +194,6 @@ class Account(models.Model):
                     value = price * self.balances[wallet][tp]['quantity'][coin]
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
-        print('calc value end\n', self.balances)
         # Drop dust coins
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
@@ -208,8 +205,6 @@ class Account(models.Model):
     def get_positions_value(self):
 
         log.info('Get positions start')
-
-        print('posi start\n', self.balances)
 
         # Get client
         client = self.exchange.get_ccxt_client(self)
@@ -228,8 +223,6 @@ class Account(models.Model):
                 market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
                 code = market.base.code
 
-                print(code)
-
                 quantity = float(position['positionAmt'])
                 self.balances.loc[code, ('position', 'open', 'quantity')] = quantity
                 self.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
@@ -239,14 +232,10 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
             # Insert prices
-
-            print('posi mid\n', self.balances)
-
             codes = self.balances.position.open.quantity.dropna().index.tolist()
             self.insert_futu_prices(codes)
             self.insert_spot_prices(codes)
 
-        print('posi end\n', self.balances)
         self.save()
         log.info('Get positions done')
 

@@ -108,8 +108,6 @@ class Account(models.Model):
 
         self.save()
 
-        print(self.balances)
-
         log.info('Get balances qty done')
 
     # Insert bid/ask of spot markets
@@ -180,8 +178,6 @@ class Account(models.Model):
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)
 
-        print(self.balances)
-
         log.info('Calculate balances value')
 
         # Iterate through wallets, free, used and total quantities
@@ -205,6 +201,8 @@ class Account(models.Model):
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
+
+        print(self.balances)
 
         log.info('Calculate balances value complete')
 

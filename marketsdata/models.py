@@ -217,9 +217,11 @@ class Exchange(models.Model):
         for s in strategies:
             print(s.name)
             codes.append(s.get_codes())
+            print(codes)
 
         # Flatten lists and drop duplicate
         codes = list(itertools.chain.from_iterable(codes))
+        print('flat', codes)
         return list(set(codes))
 
     # Return True if there is available credit

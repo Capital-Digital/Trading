@@ -111,9 +111,16 @@ class Account(models.Model):
         log.info('Get balances qty done')
 
     # Insert bid/ask of spot markets
-    def insert_spot_prices(self):
+    def insert_spot_prices(self, codes):
 
-        for code in self.balances.spot.total.quantity.index.tolist():
+        for code in codes:
+
+            if 'price' in self.balances.columns.get_level_values(0).tolist():
+                if 'spot' in self.balances.price.columns.get_level_values(0).tolist():
+                    if code in self.balances.price.spot.bid.dropna().index.tolist():
+                        continue
+
+            log.info('Insert spot prices for {0}'.format(code))
 
             try:
                 currency = Currency.objects.get(code=code)
@@ -129,12 +136,21 @@ class Account(models.Model):
                 for key in ['bid', 'ask']:
                     p = currency.get_latest_price(self.exchange, self.quote, key)
                     self.balances.loc[code, ('price', 'spot', key)] = p
+
         self.save()
 
     # Insert bid/ask of future markets
-    def insert_futu_prices(self):
+    def insert_futu_prices(self, codes):
 
-        for code in self.balances.spot.total.quantity.index.tolist():
+        for code in codes:
+
+            if 'price' in self.balances.columns.get_level_values(0).tolist():
+                if 'future' in self.balances.price.columns.get_level_values(0).tolist():
+                    if code in self.balances.price.future.bid.dropna().index.tolist():
+                        continue
+
+            log.info('Insert future prices for {0}'.format(code))
+
             try:
                 market = Market.objects.get(base__code=code,
                                             quote__code=self.quote,
@@ -153,12 +169,16 @@ class Account(models.Model):
                 for key in ['bid', 'ask']:
                     self.balances.loc[code, ('price', 'future', key)] = market.get_latest_price(key)
 
-            self.save()
+        self.save()
 
     # Convert quantity in dollar in balances dataframe
-    def get_balances_value(self):
+    def calculate_balances_value(self):
 
-        log.info('Insert balances value')
+        codes = self.balances.spot.total.quantity.index.tolist()
+        self.insert_spot_prices(codes)
+        self.insert_futu_prices(codes)
+
+        log.info('Calculate balances value')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
@@ -182,7 +202,7 @@ class Account(models.Model):
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
-        log.info('Insert balances value complete')
+        log.info('Calculate balances value complete')
 
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
@@ -208,8 +228,9 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
-                # Insert price
-                self.insert_prices(code)
+            # Insert price
+            codes = self.position.open.quantity.dropna().index.tolist()
+            self.insert_prices(codes)
 
         self.save()
 

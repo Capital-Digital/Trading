@@ -879,22 +879,22 @@ class Account(models.Model):
     # Market close position
     def market_close(self):
         #
-        for code, value in self.balances.position.open.T.items():
-            amount = abs(value['quantity'])
-            if not np.isnan(amount):
+        for code in self.balances.position.open.quantity.dropna().index.tolist():
 
-                log.info('Close position {0}'.format(code))
+            amount = abs(self.balances.position.open.quantity[code])
 
-                price = self.balances.price.spot.bid
-                value = amount * price
-                valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
+            log.info('Close position {0}'.format(code))
 
-                if valid:
-                    order['order_type'] = 'market'
-                    args = order.values()
+            price = self.balances.price.spot.bid
+            value = amount * price
+            valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
 
-                    from trading.tasks import send_create_order
-                    send_create_order.delay(*args, then_rebalance=False)
+            if valid:
+                order['order_type'] = 'market'
+                args = order.values()
+
+                from trading.tasks import send_create_order
+                send_create_order.delay(*args, then_rebalance=False)
 
     # Return True if balances df is updated
     def is_fresh_balances(self):

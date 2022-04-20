@@ -196,16 +196,20 @@ def update_prices(exid, wallet=None):
     # Download snapshot
     tickers = client.fetch_tickers()
 
-    # Create a list of symbols for our strategies
+    # Create a list of symbols for our strategies. Drop symbols not in tickers (some derivatives)
     symbols_strategies = [code + '/USDT' for code in exchange.get_strategies_codes()]
-    t = {symbol: tickers[symbol] for symbol in symbols_strategies if symbol in tickers.keys()}
+    symbols_strategies = [i for i in symbols_strategies if i in tickers.keys()]
+    t = {symbol: tickers[symbol] for symbol in symbols_strategies}
 
     # Call task
     if wallet == 'spot':
         update_dataframe.delay(exid, t)
 
+    # Select symbols of desired markets
+    symbols = [i for i in tickers.keys() if '/USDT' in i]
+
     # Rearrange symbols order with symbols of strategies first
-    symbols = [i for i in tickers.keys() if '/USDT' in i and i not in symbols_strategies]
+    symbols = [i for i in symbols if i not in symbols_strategies]
     symbols.sort()
     symbols = symbols_strategies + symbols
     symbols = list(dict.fromkeys(symbols))

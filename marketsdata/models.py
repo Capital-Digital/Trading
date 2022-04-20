@@ -205,17 +205,17 @@ class Exchange(models.Model):
         from strategy.models import Strategy
         strategies = Strategy.objects.filter(exchange__exid=self.exid)
 
-        # Determine number of codes so that codes from strategies
-        # with the lowest codes length are inserted first
+        # Count number of codes so that codes from strategies
+        # with the lowest codes length are updated first
         for s in strategies:
             s.set_codes_length()
 
         # Sort strategies
-        strategies = Strategy.objects.filter(exchange__exid=self.exid).sort_values('codes_length')
-        print(strategies)
+        strategies = Strategy.objects.filter(exchange__exid=self.exid).order_by('codes_length')
 
         codes = []
         for s in strategies:
+            print(s.name)
             codes.append(s.get_codes())
 
         # Flatten lists and drop duplicate

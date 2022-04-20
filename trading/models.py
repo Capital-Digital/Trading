@@ -880,7 +880,7 @@ class Account(models.Model):
     def market_close(self):
         #
         for code, value in self.balances.position.open.T.items():
-            amount = value['quantity']
+            amount = abs(value['quantity'])
             if not np.isnan(amount):
 
                 log.info('Close position {0}'.format(code))

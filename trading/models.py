@@ -295,7 +295,7 @@ class Account(models.Model):
 
             self.save()
 
-    ##################################
+    ########################
 
     # Calculate net exposure and delta
     def get_delta(self):

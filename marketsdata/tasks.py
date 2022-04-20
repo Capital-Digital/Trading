@@ -108,169 +108,186 @@ def bulk_update_markets():
 # Tasks
 #######
 
-
-# Update dataframe (preloaded prices an data)
-@app.task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_dataframe')
-def update_dataframe(self, exid, wait):
+@app.task(base=BaseTaskWithRetry, name='Markets_____Update')
+def update(exid, wait=True):
     #
-    log.bind(exid=exid)
-
-    # Preload dataframe with prices and volumes
     exchange = Exchange.objects.get(exid=exid)
-
-    log.info('Dataframe preloading...')
-    codes = exchange.get_strategies_codes()
-    exchange.load_data(10 * 24, codes)
-
-    if wait:
-        while datetime.now().minute > 0:
-            time.sleep(1)
-
     if exchange.is_trading():
         if exchange.has['fetchTickers']:
 
-            log.info('Download spot tickers')
+            log.info('Dataframe preloading...')
+            codes = exchange.get_strategies_codes()
+            exchange.load_data(10 * 24, codes)
 
-            # Download snapshot of spot markets
-            client = exchange.get_ccxt_client()
-            dic = client.fetch_tickers()
+            if wait:
+                while datetime.now().minute > 0:
+                    time.sleep(1)
 
-            log.info('Download spot tickers complete')
-            log.info('Dataframe update')
+            for wallet in exchange.get_wallets():
+                update_tickers.delay(exchange.exid, wallet)
 
-            df = pd.DataFrame()
-            dt = timezone.now().replace(minute=0, second=0, microsecond=0)
-            dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-            # Select codes of our strategies
-            codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
-
-            for code in codes:
-
-                try:
-                    d = {k: dic[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
-
-                except KeyError:
-                    log.warning('Market {0} not found in dictionary')
-                    continue
-
-                tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
-                tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
-                df = pd.concat([df, tmp], axis=1)
-
-            df = df.reindex(sorted(df.columns), axis=1)
-            df = pd.concat([exchange.data, df])
-            df = df[~df.index.duplicated(keep='first')]
-
-            exchange.data = df
-            exchange.save()
-
-            if exchange.is_data_updated():
-                log.info('Dataframe update complete')
-
-            else:
-                raise Exception('Dataframe update failure')
         else:
             log.error("Exchange doesn't support fetchTickers")
     else:
         log.error('Exchange is not trading')
+
+
+# Preload dataframe with prices and volumes
+@app.task(name='Markets_____Update_exchange_dataframe')
+def preload_dataframe(exid):
+    #
+    # Create dataframe with prices and volumes
+    exchange = Exchange.objects.get(exid=exid)
+    codes = exchange.get_strategies_codes()
+
+    log.info('Preload dataframe for {0} codes'.format(len(codes)))
+
+    exchange.load_data(10 * 24, codes)
+
+    log.info('Preload dataframe complete')
+
+
+# Update dataframe
+@app.task(name='Markets_____Update_exchange_dataframe')
+def update_dataframe(exid, tickers):
+    #
+    log.info('Dataframe update')
+    exchange = Exchange.objects.get(exid=exid)
+    df = pd.DataFrame()
+    dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+    dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # Select codes of our strategies
+    codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+
+    for code in codes:
+
+        try:
+            d = {k: tickers[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
+
+        except KeyError:
+            log.warning('Market {0} not found in dictionary')
+            continue
+
+        tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
+        tmp.columns = pd.MultiIndex.from_product([tmp.columns, [code]])
+        df = pd.concat([df, tmp], axis=1)
+
+    df = df.reindex(sorted(df.columns), axis=1)
+    df = pd.concat([exchange.data, df])
+    df = df[~df.index.duplicated(keep='first')]
+
+    exchange.data = df
+    exchange.save()
+
+    if exchange.is_data_updated():
+        log.info('Dataframe update complete')
+
+    else:
+        raise Exception('Dataframe update failure')
 
     log.unbind('exid')
 
 
-# Update prices
-@shared_task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
-def update_prices(self, exid):
+@app.task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
+def update_prices(exid, wallet=None):
     #
     log.bind(exid=exid)
     exchange = Exchange.objects.get(exid=exid)
 
+    # Check exchange
+    if not exchange.is_trading():
+        raise Exception('Exchange is not trading')
+    if not exchange.has['fetchTickers']:
+        raise Exception("Exchange doesn't support fetchTickers")
+
+    client = exchange.get_ccxt_client()
+
+    # Determine datetime and semester
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    semester = 1 if dt.month <= 6 else 2
 
-    def insert(data, wallet=None):
+    if wallet:
+        client.options['defaultType'] = wallet
 
-        log.info('Insert {0} data'.format(wallet))
+    # Download snapshot
+    tickers = client.fetch_tickers()
 
-        semester = 1 if dt.month <= 6 else 2
-        symbols = [s for s in data.keys() if '/USDT' in s]
-        symbols.sort()
-        insert = 0
+    # Construct symbols list of our strategies
+    symbols_strategies = [code + '/USDT' for code in exchange.get_strategies_codes()]
+    t = {symbol: tickers[symbol] for symbol in symbols_strategies}
 
-        for symbol in symbols:
+    # Call task
+    if wallet == 'spot':
+        update_dataframe.delay(exid, t)
 
-            # Create dictionary
-            dic = {k: data[symbol][k] for k in ['bid',
-                                                'ask',
-                                                'last',
-                                                'bidVolume',
-                                                'askVolume',
-                                                'quoteVolume',
-                                                'baseVolume']}
-            dic['timestamp'] = int(dt.timestamp())
+    # Filter dictionaries and insert priority symbols first
+    symbols = [i for i in tickers.keys() if '/USDT' in i and i not in symbols_strategies]
+    symbols.sort()
+    for s in symbols_strategies:
+        symbols.insert(0, s)
 
-            args = dict(exchange=exchange,
-                        symbol=symbol,
-                        wallet=wallet
-                        )
+    insert = 0
 
-            # Replace symbol name in the query if delivery
-            if exid == 'binance' and wallet == 'delivery':
-                del args['symbol']
-                args['response__info__symbol'] = data[symbol]['symbol']
-            if not wallet:
-                del args['wallet']
+    log.info('Insert tickers', wallet=wallet)
 
-            try:
-                market = Market.objects.get(**args)
+    for i, symbol in enumerate(symbols):
 
-            except ObjectDoesNotExist:
-                continue
+        dic = {k: tickers[symbol][k] for k in ['bid',
+                                               'ask',
+                                               'last',
+                                               'bidVolume',
+                                               'askVolume',
+                                               'quoteVolume',
+                                               'baseVolume']}
+        dic['timestamp'] = int(dt.timestamp())
 
-            else:
-                try:
-                    obj = Tickers.objects.get(year=dt.year, semester=semester, market=market)
+        args = dict(exchange=exchange,
+                    symbol=symbol,
+                    wallet=wallet
+                    )
 
-                except ObjectDoesNotExist:
-                    log.info('Create object for {0} {1} {2}'.format(market.symbol, dt.year, semester))
+        # Replace symbol name in the query if delivery
+        if exid == 'binance' and wallet == 'delivery':
+            del args['symbol']
+            args['response__info__symbol'] = tickers[symbol]['symbol']
+        if not wallet:
+            del args['wallet']
 
-                    # Create new object
-                    Tickers.objects.create(year=dt.year,
-                                           semester=semester,
-                                           market=market,
-                                           data={dt_string: dic}
-                                           )
-                else:
-                    if dt_string not in obj.data.keys():
-                        obj.data[dt_string] = dic
-                        obj.save()
-                        insert += 1
+        try:
+            market = Market.objects.get(**args)
 
-                    else:
-                        pass
-
-        log.info('Insert {0} data complete ({1})'.format(wallet, insert))
-
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
-
-            # Download tickers
-            client = exchange.get_ccxt_client()
-            if exchange.wallets:
-                for wallet in exchange.get_wallets():
-                    client.options['defaultType'] = wallet
-                    data = client.fetch_tickers()
-                    insert(data, wallet)
-
-            else:
-                data = client.fetch_tickers()
-                insert(data)
+        except ObjectDoesNotExist:
+            continue
 
         else:
-            log.error("Exchange doesn't support fetchTickers")
-    else:
-        log.error('Exchange is not trading')
+            try:
+                obj = Tickers.objects.get(year=dt.year, semester=semester, market=market)
 
+            except ObjectDoesNotExist:
+                log.info('Create object for {0} {1} {2}'.format(market.symbol, dt.year, semester))
+
+                # Create new object
+                Tickers.objects.create(year=dt.year,
+                                       semester=semester,
+                                       market=market,
+                                       data={dt_string: dic}
+                                       )
+            else:
+                if dt_string not in obj.data.keys():
+                    obj.data[dt_string] = dic
+                    obj.save()
+                    insert += 1
+
+            finally:
+
+                # All priority symbols inserted ?
+                if i > len(symbols_strategies):
+                    pass
+
+
+    log.info('Insert {0} data complete ({1})'.format(wallet, insert))
     log.unbind('exid')
 
 

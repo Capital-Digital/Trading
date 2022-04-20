@@ -15,6 +15,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         exid, wait = args
         if state == 'SUCCESS':
+
             if wait:
 
                 from strategy.tasks import update_strategies
@@ -25,6 +26,5 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Markets_____Update_exchange_prices':
 
-        exid = args
         if state == 'SUCCESS':
             pass

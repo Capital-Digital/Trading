@@ -178,23 +178,18 @@ class Account(models.Model):
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)
 
-
-        print(self.balances)
-        print(self.balances.price)
-
         log.info('Calculate balances value')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
             for tp in ['free', 'total', 'used']:
-                funds = self.balances[wallet][tp]['quantity']
-                for coin in funds.index:
+                for coin in self.balances[wallet][tp]['quantity'].dropna().index.tolist():
 
-                    if not np.isnan(self.balances.price.spot.bid[coin]):
+                    price = self.balances.price[wallet]['bid'][coin]
+                    if not np.isnan(price):
 
-                        # Determine value
-                        price = self.balances.price[wallet]['bid'][coin]
-                        value = price * funds[coin]
+                        # Calculate value
+                        value = price * self.balances[wallet][tp]['quantity']
                         self.balances.loc[coin, (wallet, tp, 'value')] = value
 
                     else:

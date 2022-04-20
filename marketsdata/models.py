@@ -651,7 +651,7 @@ class Currency(models.Model):
 
                 try:
                     price = tickers.data[now][key]
-                    
+
                 except KeyError:
                     log.error('Key {0} not found'.format(now),
                               key=key,

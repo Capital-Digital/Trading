@@ -18,9 +18,10 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
     if task.name == 'cancel_accounts_orders':
 
         if state == 'SUCCESS':
-            marketsdata.tasks.update_dataframe.delay()
+            pass
 
     if task.name == 'Update_account':
+
         acid, signal = args
         if state == 'SUCCESS':
 

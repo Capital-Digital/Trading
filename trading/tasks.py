@@ -289,6 +289,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
     except Exception as e:
 
         log.info('')
+        log.info(e)
         log.error('Order placement failed')
         log.info('code {0}'.format(code))
         log.info('action {0}'.format(action))
@@ -356,7 +357,7 @@ def send_fetch_all_open_orders(account_id):
 
         qty = []
         for dic in response:
-            
+
             pprint(dic)
             # Update corresponding order object
             qty_filled = account.update_order_object(wallet, dic)

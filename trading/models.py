@@ -202,9 +202,6 @@ class Account(models.Model):
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
-        print(self.balances.spot)
-        print(self.balances.future)
-
         log.info('Calculate balances value complete')
 
     # Fetch and update open positions in balances dataframe
@@ -235,8 +232,6 @@ class Account(models.Model):
             codes = self.balances.position.open.quantity.dropna().index.tolist()
             self.insert_futu_prices(codes)
             self.insert_spot_prices(codes)
-
-        print(self.balances.position)
 
         self.save()
         log.info('Get positions done')

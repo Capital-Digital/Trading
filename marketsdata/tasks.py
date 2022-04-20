@@ -198,7 +198,7 @@ def update_prices(exid, wallet=None):
 
     # Create a list of symbols for our strategies
     symbols_strategies = [code + '/USDT' for code in exchange.get_strategies_codes()]
-    t = {symbol: tickers[symbol] for symbol in symbols_strategies}
+    t = {symbol: tickers[symbol] for symbol in symbols_strategies if symbol in tickers.keys()}
 
     # Call task
     if wallet == 'spot':
@@ -206,17 +206,17 @@ def update_prices(exid, wallet=None):
 
     # Rearrange symbols order with symbols of strategies first
     symbols = [i for i in tickers.keys() if '/USDT' in i and i not in symbols_strategies]
+    symbols.sort()
     symbols = symbols_strategies + symbols
     symbols = list(dict.fromkeys(symbols))
 
+    print(symbols)
     insert = 0
 
     log.info('Insert tickers', wallet=wallet)
 
     for symbol in symbols:
 
-        print(symbol)
-        
         dic = {k: tickers[symbol][k] for k in ['bid',
                                                'ask',
                                                'last',

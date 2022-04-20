@@ -670,6 +670,7 @@ class Market(models.Model):
         type = self.type[:4] if self.type == 'derivative' else 'spot'
         return ex + space + type + '__' + self.symbol
 
+    # Return latest price
     def get_latest_price(self, key):
         tickers = Tickers.objects.get(market=self,
                                       year=get_year(),
@@ -678,6 +679,21 @@ class Market(models.Model):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
         now = dt.strftime(datetime_directive_ISO_8601)
         return tickers.data[now]['last']
+
+    # Return True is prices and volume are updated
+    def is_tickers_updated(self):
+
+        # Determine datetime and semester
+        dt = timezone.now().replace(minute=0, second=0, microsecond=0)
+        now = dt.strftime(datetime_directive_ISO_8601)
+        semester = 1 if dt.month <= 6 else 2
+
+        ticker = Tickers.objects.get(year=dt.year, semester=semester, market=self)
+
+        if now in ticker.data.keys():
+            return True
+        else:
+            return False
 
     # Return True if a market has candles
     def is_populated(self):

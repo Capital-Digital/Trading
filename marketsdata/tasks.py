@@ -167,15 +167,15 @@ def update_dataframe(exid, tickers=None):
     else:
         raise Exception('Dataframe update failure')
 
-    log.unbind('exid')
-
 
 # Insert prices and volumes for all tickers
 @app.task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
 def update_prices(exid, wallet=None):
     #
-    log.bind(exid=exid)
     exchange = Exchange.objects.get(exid=exid)
+
+    log.bind(exid=exid)
+    log.info('Update prices', wallet=wallet)
 
     # Check exchange
     if not exchange.is_trading():
@@ -248,7 +248,6 @@ def update_prices(exid, wallet=None):
             del args['wallet']
 
         try:
-            pprint(args)
             market = Market.objects.get(**args)
 
         except ObjectDoesNotExist:

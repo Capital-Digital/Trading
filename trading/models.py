@@ -200,9 +200,9 @@ class Account(models.Model):
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
         # Create used value column
-        if ('used', 'value') not in self.balances.spot.columns:
+        if ('spot', 'used', 'value') not in self.balances.columns:
             self.balances[('spot', 'used', 'value')] = np.nan
-        if ('used', 'value') not in self.balances.future.columns:
+        if ('future', 'used', 'value') not in self.balances.columns:
             self.balances[('future', 'used', 'value')] = np.nan
 
         self.save()

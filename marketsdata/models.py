@@ -222,7 +222,9 @@ class Exchange(models.Model):
         # Flatten lists and drop duplicate
         codes = list(itertools.chain.from_iterable(codes))
         print('flat', codes)
-        return list(set(codes))
+        codes = list(set(codes))
+        print('dropped', codes)
+        return codes
 
     # Return True if there is available credit
     def has_credit(self, wallet=None):

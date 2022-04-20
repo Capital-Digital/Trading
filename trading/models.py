@@ -228,11 +228,11 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
 
+            self.save()
+
             # Insert price
             codes = self.position.open.quantity.dropna().index.tolist()
             self.insert_prices(codes)
-
-        self.save()
 
         log.info('Get positions done')
 

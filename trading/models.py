@@ -108,6 +108,8 @@ class Account(models.Model):
 
         self.save()
 
+        print(self.balances)
+
         log.info('Get balances qty done')
 
     # Insert bid/ask of spot markets
@@ -177,6 +179,8 @@ class Account(models.Model):
         codes = self.balances.spot.total.quantity.index.tolist()
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)
+
+        print(self.balances)
 
         log.info('Calculate balances value')
 

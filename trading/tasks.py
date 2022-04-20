@@ -91,8 +91,8 @@ def create_balances(account_id):
     account = Account.objects.get(id=account_id)
 
     log.info(' ')
-    log.info('Create balances dataframe')
-    log.info('*************************')
+    log.info('Create balances', worker=current_process().index)
+    log.info('***************')
 
     account.get_balances_qty()
     account.calculate_balances_value()
@@ -207,6 +207,10 @@ def update_orders(account_id):
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id):
     #
+    log.info(' ')
+    log.info('Cancel orders', worker=current_process().index)
+    log.info('*************')
+
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
                                   ).exclude(orderid__isnull=True)
@@ -257,8 +261,9 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
                       then_rebalance=True):
     #
     log.info(' ')
-    log.info('Place order')
+    log.info('Place order', worker=current_process().index)
     log.info('***********')
+
     log.info('symbol {0}'.format(symbol))
     log.info('side {0}'.format(side))
     log.info('size {0}'.format(size))

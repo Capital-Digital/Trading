@@ -648,7 +648,13 @@ class Currency(models.Model):
             else:
                 dt = datetime.now().replace(minute=0, second=0, microsecond=0)
                 now = dt.strftime(datetime_directive_ISO_8601)
-                return tickers.data[now][key]
+
+                try:
+                    price = tickers.data[now][key]
+                except KeyError:
+                    log.error('Key {0} not found'.format(now), key=key, code=self.code, wallet='spot')
+                else:
+                    return price
 
         else:
             return 1

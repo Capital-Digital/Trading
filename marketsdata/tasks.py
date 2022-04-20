@@ -117,7 +117,7 @@ def preload_dataframe(exid):
     exchange = Exchange.objects.get(exid=exid)
     codes = exchange.get_strategies_codes()
 
-    log.info('Preload dataframe for {0} codes'.format(len(codes)))
+    log.info('Preload dataframe ({0} codes)'.format(len(codes)), worker=current_process().index)
 
     exchange.load_data(10 * 24, codes)
 
@@ -128,7 +128,8 @@ def preload_dataframe(exid):
 @app.task(name='Markets_____Update_dataframe')
 def update_dataframe(exid, tickers=None):
     #
-    log.info('Dataframe update')
+    log.info('Dataframe update', worker=current_process().index)
+
     exchange = Exchange.objects.get(exid=exid)
     df = pd.DataFrame()
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
@@ -138,6 +139,7 @@ def update_dataframe(exid, tickers=None):
     codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
 
     if not tickers:
+        log.info('Download tickers...')
         client = exchange.get_ccxt_client()
         tickers = client.fetch_tickers()
 

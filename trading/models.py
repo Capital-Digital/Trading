@@ -104,7 +104,7 @@ class Account(models.Model):
                     self.balances = tmp if not hasattr(self, 'balances') else pd.concat([self.balances, tmp])
                     self.balances = self.balances.groupby(level=0).last()
                 else:
-                    self.balances[(wallet, key, 'quantity')] = np.nan
+                    self.balances[(wallet, key, 'quantity')] = 0
 
         self.save()
 
@@ -887,8 +887,7 @@ class Account(models.Model):
 
             price = self.balances.price.spot.bid[code]
             value = amount * price
-            print(amount, price, value)
-            
+
             valid, order = self.prep_order('spot', code, amount, value, price, 'close_short', 'sell')
 
             if valid:

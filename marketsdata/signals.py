@@ -16,6 +16,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         exid, tickers = args
         if state == 'SUCCESS':
 
+            # Execute strategies async
             bulk_update_strategies.delay(exid, trade=True)
 
         else:

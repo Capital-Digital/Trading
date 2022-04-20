@@ -174,10 +174,12 @@ class Account(models.Model):
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
 
+        print('calc value start\n', self.balances)
         codes = self.balances.spot.total.quantity.index.tolist()
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)
 
+        print('calc value mid\n', self.balances)
         log.info('Calculate balances value')
 
         # Iterate through wallets, free, used and total quantities
@@ -196,18 +198,17 @@ class Account(models.Model):
                         log.warning('Price not found, drop {0}'.format(coin))
                         self.balances = self.balances.drop(coin)
 
+        print('calc value end\n', self.balances)
         # Drop dust coins
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
         self.save()
 
-        print('calc value\n', self.balances)
         log.info('Calculate balances value complete')
 
     # Fetch and update open positions in balances dataframe
     def get_positions_value(self):
 
-        print('pos\n', self.balances)
         log.info('Get positions start')
 
         # Get client

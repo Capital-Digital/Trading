@@ -120,16 +120,11 @@ class Account(models.Model):
                 if 'spot' in self.balances.price.columns.get_level_values(0).tolist():
                     if code in self.balances.price.spot.bid.dropna().index.tolist():
                         continue
-
-            # log.info('Insert spot prices for {0}'.format(code))
-
             try:
                 currency = Currency.objects.get(code=code)
 
             except ObjectDoesNotExist:
-
                 log.error('Spot market {0}/{1} not found'.format(code, self.quote))
-
                 self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
@@ -149,9 +144,6 @@ class Account(models.Model):
                 if 'future' in self.balances.price.columns.get_level_values(0).tolist():
                     if code in self.balances.price.future.bid.dropna().index.tolist():
                         continue
-
-            # log.info('Insert future prices for {0}'.format(code))
-
             try:
                 market = Market.objects.get(base__code=code,
                                             quote__code=self.quote,
@@ -160,9 +152,7 @@ class Account(models.Model):
                                             exchange=self.exchange)
 
             except ObjectDoesNotExist:
-
                 log.error('Future market {0}/{1} not found'.format(code, self.quote))
-
                 self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
                 self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 

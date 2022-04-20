@@ -196,7 +196,7 @@ def update_prices(exid, wallet=None):
     # Download snapshot
     tickers = client.fetch_tickers()
 
-    # Construct symbols list of our strategies
+    # Create a list of symbols for our strategies
     symbols_strategies = [code + '/USDT' for code in exchange.get_strategies_codes()]
     t = {symbol: tickers[symbol] for symbol in symbols_strategies}
 
@@ -204,17 +204,18 @@ def update_prices(exid, wallet=None):
     if wallet == 'spot':
         update_dataframe.delay(exid, t)
 
-    # Filter dictionaries and insert priority symbols first
+    # Rearrange symbols order with priority symbols first
     symbols = [i for i in tickers.keys() if '/USDT' in i and i not in symbols_strategies]
-    symbols.sort()
-    for s in symbols_strategies:
-        symbols.insert(0, s)
+    symbols = symbols_strategies + symbols
+    symbols = list(dict.fromkeys(symbols))
+
+    print(symbols)
 
     insert = 0
 
     log.info('Insert tickers', wallet=wallet)
 
-    for i, symbol in enumerate(symbols):
+    for symbol in symbols:
 
         dic = {k: tickers[symbol][k] for k in ['bid',
                                                'ask',
@@ -261,16 +262,6 @@ def update_prices(exid, wallet=None):
                     obj.data[dt_string] = dic
                     obj.save()
                     insert += 1
-
-            finally:
-
-                # Priority symbols are inserted ?
-                if i + 1 == len(symbols_strategies):
-
-                    if wallet == 'spot' or not wallet:
-                        exchange.is_spot_inserted = True
-                    elif wallet == 'future' or not wallet:
-                        exchange.is_futu_inserted = True
 
     log.info('Insert {0} data complete ({1})'.format(wallet, insert))
     log.unbind('exid')

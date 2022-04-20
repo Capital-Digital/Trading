@@ -224,7 +224,7 @@ class Account(models.Model):
             for position in opened:
                 market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
                 code = market.base.code
-                
+
                 print(code)
 
                 quantity = float(position['positionAmt'])
@@ -234,6 +234,8 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
                 self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+            
+            print(self.balances)
 
             # Insert prices
             codes = self.balances.position.open.quantity.dropna().index.tolist()

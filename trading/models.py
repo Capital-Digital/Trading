@@ -175,6 +175,8 @@ class Account(models.Model):
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
 
+        print(self.balances)
+        
         codes = self.balances.spot.total.quantity.index.tolist()
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)

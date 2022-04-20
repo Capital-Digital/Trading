@@ -356,7 +356,8 @@ def send_fetch_all_open_orders(account_id):
 
         qty = []
         for dic in response:
-
+            
+            pprint(dic)
             # Update corresponding order object
             qty_filled = account.update_order_object(wallet, dic)
             qty.append(qty_filled)

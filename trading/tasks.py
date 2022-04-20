@@ -286,7 +286,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
     try:
         response = client.create_order(**kwargs)
 
-    except Exception as e:
+    except ccxt.InsufficientFunds as e:
 
         log.info('')
         log.info(e)

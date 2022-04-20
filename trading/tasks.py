@@ -24,7 +24,6 @@ from capital.celery import app
 from capital.error import *
 from capital.methods import *
 from marketsdata.models import Market, Currency, Exchange
-from strategy.models import Strategy
 from trading.methods import *
 from trading.models import Account, Order
 import threading

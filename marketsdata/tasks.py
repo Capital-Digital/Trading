@@ -217,14 +217,11 @@ def update_prices(exid, wallet=None):
     symbols.sort()
 
     # Insert symbols or strategies first
+    # and drop duplicate whilst preserving order
     symbols = symbols_strategies + symbols
-    
-    # Drop duplicate whilst preserving order
     symbols = list(dict.fromkeys(symbols))
 
-    print(symbols)
     insert = 0
-
     log.info('Insert tickers', wallet=wallet)
 
     for symbol in symbols:

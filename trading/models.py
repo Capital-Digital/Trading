@@ -230,7 +230,7 @@ class Account(models.Model):
 
             # Insert price
             codes = self.balances.position.open.quantity.dropna().index.tolist()
-            self.insert_prices(codes)
+            self.insert_futu_prices(codes)
 
         self.save()
         log.info('Get positions done')

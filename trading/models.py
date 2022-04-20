@@ -174,7 +174,7 @@ class Account(models.Model):
 
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
-        
+
         codes = self.balances.spot.total.quantity.index.tolist()
         self.insert_spot_prices(codes)
         self.insert_futu_prices(codes)
@@ -198,6 +198,13 @@ class Account(models.Model):
         # Drop dust coins
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
+
+        # Create used value column
+        if ('used', 'value') not in self.balances.spot.columns:
+            self.balances[('spot', 'used', 'value')] = np.nan
+        if ('used', 'value') not in self.balances.future.columns:
+            self.balances[('future', 'used', 'value')] = np.nan
+
         self.save()
 
         log.info('Calculate balances value complete')

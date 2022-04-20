@@ -282,17 +282,16 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
     if reduce_only:
         kwargs['params']['reduceOnly'] = True
 
+    pprint(kwargs)
+    
     try:
         response = client.create_order(**kwargs)
 
     except ccxt.InsufficientFunds as e:
 
-        exc_info = sys.exc_info()
-        ex = ''.join(traceback.format_exception(*exc_info))
-
         order = Order.objects.get(clientid=clientid)
         order.status = 'canceled'
-        order.response = dict(exception=ex)
+        order.response = dict(exception=e)
         order.save()
 
         log.info('')

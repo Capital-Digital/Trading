@@ -767,7 +767,7 @@ class Account(models.Model):
                 log.info(self.balances.position.open)
 
                 # Set zero if nan
-                self.balances.loc[code, 'position'].fillna(0, inplace=True)
+                self.balances.loc[code, 'position'] = self.balances.loc[code, 'position'].fillna(0)
 
                 self.balances.loc[code, ('position', 'open', 'quantity')] += qty_filled
                 self.balances.loc[code, ('position', 'open', 'value')] += val_filled
@@ -915,13 +915,11 @@ class Account(models.Model):
             price = self.balances.price.spot.bid[code]
             value = amount * price
 
-            valid, order = self.prep_order('future', code, amount, value, price, 'close_short', 'sell')
+            valid, order = self.prep_order('future', code, amount, value, price, 'close_short', 'buy')
 
             if valid:
                 order['order_type'] = 'market'
                 args = order.values()
-
-                print(args)
 
                 from trading.tasks import send_create_order
                 send_create_order.delay(*args, then_rebalance=False)

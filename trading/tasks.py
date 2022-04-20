@@ -321,7 +321,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
 
         print(qty_filled)
         log.info('filled {0}'.format(qty_filled))
-        
+
         account.update_balances(action, wallet, code, qty_filled)
 
         if then_rebalance:

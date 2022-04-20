@@ -739,9 +739,9 @@ class Account(models.Model):
 
             # Determine price
             if wallet == 'spot':
-                price = self.balances.price.spot[key]
+                price = self.balances.price.spot[key][code]
             else:
-                price = self.balances.price.future[key]
+                price = self.balances.price.future[key][code]
 
             # Calculate trade value
             val_filled = qty_filled * price
@@ -750,8 +750,6 @@ class Account(models.Model):
             if action in ['sell_spot', 'open_short']:
                 qty_filled = -qty_filled
                 val_filled = -val_filled
-
-            old = self.balances.copy()
 
             # Update position and free margin
             if action in ['open_short', 'close_short']:
@@ -767,11 +765,7 @@ class Account(models.Model):
                 log.info(self.balances.position.open)
 
                 # Set zero if nan
-                self.balances.loc[code, 'position'] = self.balances.loc[code, 'position'].fillna(0)
-
-                print(type(qty_filled))
-                print(type(val_filled))
-                print(type(self.balances))
+                self.balances.loc[code, 'position'].fillna(0, inplace=True)
 
                 self.balances.loc[code, ('position', 'open', 'quantity')] += qty_filled
                 self.balances.loc[code, ('position', 'open', 'value')] += val_filled

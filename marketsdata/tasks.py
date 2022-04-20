@@ -47,21 +47,21 @@ class BaseTaskWithRetry(Task):
 ############
 
 
-# Bulk update dataframes
-@app.task(bind=True, name='Markets_____Bulk_update_dataframes')
-def bulk_update_dataframes(self):
+# Bulk preload dataframes
+@app.task(bind=True, name='Markets_____Bulk_preload_dataframes')
+def bulk_preload_dataframes(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        wait = True
-        update_dataframe.delay(exchange.exid, wait)
+        preload_dataframe.delay(exchange.exid)
 
 
-# Bulk update prices
+# Bulk update tickers prices and volumes
 @app.task(bind=True, name='Markets_____Bulk_update_prices')
 def bulk_update_prices(self):
     exchanges = Exchange.objects.filter(enable=True)
     for exchange in exchanges:
-        update_prices.delay(exchange.exid)
+        for wallet in exchange.get_wallets():
+            update_prices.delay(exchange.exid, wallet)
 
 
 # Bulk update dataframes
@@ -105,35 +105,12 @@ def bulk_update_markets():
         update_markets.delay(exchange.exid)
 
 
-# Tasks
-#######
-
-@app.task(base=BaseTaskWithRetry, name='Markets_____Update')
-def update(exid, wait=True):
-    #
-    exchange = Exchange.objects.get(exid=exid)
-    if exchange.is_trading():
-        if exchange.has['fetchTickers']:
-
-            log.info('Dataframe preloading...')
-            codes = exchange.get_strategies_codes()
-            exchange.load_data(10 * 24, codes)
-
-            if wait:
-                while datetime.now().minute > 0:
-                    time.sleep(1)
-
-            for wallet in exchange.get_wallets():
-                update_tickers.delay(exchange.exid, wallet)
-
-        else:
-            log.error("Exchange doesn't support fetchTickers")
-    else:
-        log.error('Exchange is not trading')
+# Exchange's tasks
+##################
 
 
-# Preload dataframe with prices and volumes
-@app.task(name='Markets_____Update_exchange_dataframe')
+# Preload exchange.data Pandas dataframe
+@app.task(name='Markets_____Preload_dataframe')
 def preload_dataframe(exid):
     #
     # Create dataframe with prices and volumes
@@ -147,9 +124,9 @@ def preload_dataframe(exid):
     log.info('Preload dataframe complete')
 
 
-# Update dataframe
-@app.task(name='Markets_____Update_exchange_dataframe')
-def update_dataframe(exid, tickers):
+# Update exchange.data with fresh prices and volumes
+@app.task(name='Markets_____Update_dataframe')
+def update_dataframe(exid, tickers=None):
     #
     log.info('Dataframe update')
     exchange = Exchange.objects.get(exid=exid)
@@ -159,6 +136,10 @@ def update_dataframe(exid, tickers):
 
     # Select codes of our strategies
     codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+
+    if not tickers:
+        client = exchange.get_ccxt_client()
+        tickers = client.fetch_tickers()
 
     for code in codes:
 
@@ -189,6 +170,7 @@ def update_dataframe(exid, tickers):
     log.unbind('exid')
 
 
+# Insert prices and volumes for all tickers
 @app.task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
 def update_prices(exid, wallet=None):
     #
@@ -282,10 +264,13 @@ def update_prices(exid, wallet=None):
 
             finally:
 
-                # All priority symbols inserted ?
-                if i > len(symbols_strategies):
-                    pass
+                # Priority symbols are inserted ?
+                if i + 1 == len(symbols_strategies):
 
+                    if wallet == 'spot' or not wallet:
+                        exchange.is_spot_inserted = True
+                    elif wallet == 'future' or not wallet:
+                        exchange.is_futu_inserted = True
 
     log.info('Insert {0} data complete ({1})'.format(wallet, insert))
     log.unbind('exid')

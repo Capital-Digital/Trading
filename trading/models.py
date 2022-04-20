@@ -919,7 +919,6 @@ class Account(models.Model):
 
             if valid:
                 order['order_type'] = 'market'
-                del order['price']
                 args = order.values()
 
                 print(args)

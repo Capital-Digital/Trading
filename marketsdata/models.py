@@ -663,7 +663,7 @@ class Currency(models.Model):
                 else:
                     if isinstance(key, list):
                         log.info('Return keys')
-                        log.info(key)
+                        log.info([dic[k] for k in key])
                         return [dic[k] for k in key]
                     else:
                         return dic[key]

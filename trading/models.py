@@ -617,7 +617,7 @@ class Account(models.Model):
                               )
 
         else:
-            log.info('Condition not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
+            log.info('Condition not satisfied')
             return False, dict()
 
     # Update order object

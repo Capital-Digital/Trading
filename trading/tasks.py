@@ -382,9 +382,9 @@ def send_fetch_orderid(account_id, order_id):
     response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
 
     # Update object and dataframe
-    qty_filled = account.update_order_object(order.maket.wallet, response)
+    qty_filled = account.update_order_object(order.market.wallet, response)
     account.update_balances(order.action,
-                            order.maket.wallet,
+                            order.market.wallet,
                             order.market.base.code,
                             qty_filled
                             )
@@ -462,9 +462,9 @@ def send_cancel_order(account_id, order_id):
 
     else:
         # Update object and dataframe
-        qty_filled = account.update_order_object(order.maket.wallet, response)
+        qty_filled = account.update_order_object(order.market.wallet, response)
         account.update_balances(order.action,
-                                order.maket.wallet,
+                                order.market.wallet,
                                 order.market.base.code,
                                 qty_filled
                                 )

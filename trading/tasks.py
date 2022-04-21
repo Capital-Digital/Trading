@@ -81,7 +81,7 @@ def bulk_prepare_accounts():
 
             log.bind(worker=current_process().index)
             log.info('Prepare accounts')
-            
+
             chord(cancel_orders.s(account.id))(create_balances.s())
 
             log.unbind('worker')
@@ -222,6 +222,7 @@ def cancel_orders(account_id):
             send_cancel_order.delay(account_id, order.orderid)
 
     log.info('Cancel orders complete', worker=current_process().index)
+    return account_id
 
 
 # Check an account credential

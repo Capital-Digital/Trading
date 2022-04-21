@@ -111,7 +111,7 @@ class Account(models.Model):
                     self.balances[(wallet, key, 'quantity')] = np.nan
 
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-        now = dt.strftime(datetime_directive_h)
+        now = dt.strftime(datetime_directive_m)
 
         self.balances.index.set_names(now, inplace=True)
         self.save()

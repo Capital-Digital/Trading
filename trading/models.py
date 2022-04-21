@@ -253,6 +253,8 @@ class Account(models.Model):
 
     # Create columns with targets
     def get_target(self):
+        #
+        log.info('Get target weights')
 
         try:
 
@@ -261,8 +263,6 @@ class Account(models.Model):
 
             for coin, pct in target_pct.items():
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
-
-                log.info('Target percent {0}: {1}'.format(coin, round(pct * 100, 2)))
 
             # Determine values
             value = self.account_value() * target_pct
@@ -296,14 +296,14 @@ class Account(models.Model):
 
         finally:
 
+            log.info('Get target weights complete')
             self.save()
 
-    ########################
-
     # Calculate net exposure and delta
-    def get_delta(self):
-
+    def calculate_delta(self):
+        #
         log.info('Calculate delta')
+
         target = self.balances.account.target.quantity.dropna()
         acc_value = self.account_value()
 
@@ -325,8 +325,6 @@ class Account(models.Model):
                 pos_value = 0
             percent = (exp * bid) / (acc_value - pos_value)
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
-
-            log.info('Target percent {0}: {1}'.format(coin, round(exp * 100, 2)))
 
         # Calculate value allocated to each coin
         for coin, exp in self.balances.account.current.exposure.items():
@@ -356,8 +354,8 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'percent')] = 0
                 self.balances.loc[coin, ('account', 'target', 'value')] = 0
 
+        log.info('Calculate delta complete')
         self.save()
-        log.info('Get delta done')
 
     # Return a list of codes to sell
     def codes_to_sell(self):
@@ -436,7 +434,7 @@ class Account(models.Model):
     def size_order(self, code, quantity, action):
 
         log.info(' ')
-        log.info('Size order {0}'.format(code))
+        log.info('Size order')
 
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
@@ -527,6 +525,9 @@ class Account(models.Model):
 
     # Prepare dictionary key:value for an order
     def prep_order(self, wallet, code, order_size, order_value, price, action, side):
+
+        log.info(' ')
+        log.info('Prepare order')
 
         # Select market
         markets = Market.objects.filter(base__code=code,
@@ -719,8 +720,7 @@ class Account(models.Model):
         if qty_filled:
 
             log.info('')
-            log.info('Update balances')
-            log.info('***************')
+            log.info('Update balances...')
             log.info('action {0}'.format(action))
             log.info('-> {0} {1}'.format(code, wallet))
 
@@ -825,8 +825,7 @@ class Account(models.Model):
     def sell_spot_all(self):
         from trading.tasks import send_create_order
         log.info('')
-        log.info('Sell spot')
-        log.info('*********')
+        log.info('Sell spot...')
         for code, quantity in self.to_sell_spot().items():
             kwargs = self.size_order(code, quantity, 'sell_spot')
             valid, order = self.prep_order(**kwargs)
@@ -837,8 +836,7 @@ class Account(models.Model):
     # Close short
     def close_short_all(self):
         log.info('')
-        log.info('Close short')
-        log.info('***********')
+        log.info('Close short...')
         from trading.tasks import send_create_order
         opened_short = self.to_close_short()
         for code, quantity in opened_short.items():
@@ -851,8 +849,7 @@ class Account(models.Model):
     # Buy spot
     def buy_spot_all(self):
         log.info('')
-        log.info('Buy spot')
-        log.info('********')
+        log.info('Buy spot...')
         from trading.tasks import send_create_order
         for code, quantity in self.to_buy_spot().items():
             kwargs = self.size_order(code, quantity, 'buy_spot')
@@ -864,8 +861,7 @@ class Account(models.Model):
     # Open short
     def open_short_all(self):
         log.info('')
-        log.info('Open short')
-        log.info('**********')
+        log.info('Open short...')
         from trading.tasks import send_create_order
         for code, quantity in self.to_open_short().items():
             kwargs = self.size_order(code, quantity, 'open_short')

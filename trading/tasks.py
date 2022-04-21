@@ -173,9 +173,10 @@ def rebalance(account_id, get_balances=False, release=True):
     account.get_target()
     account.get_delta()
 
+    log.info(' ')
+
     # Display account percent
     current = account.balances.account.current.percent
-    log.info('')
     for coin, val in current[current != 0].sort_values(ascending=False).items():
         log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
 

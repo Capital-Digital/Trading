@@ -719,8 +719,8 @@ class Account(models.Model):
             log.info(' ')
             log.info('Update balances (trade)')
             log.info(' ')
-            log.info('Update clientID {0}'.format(clientid))
-            log.info('Update action {0} {1} ({2})'.format(action.replace('_', ' '), code, wallet))
+            log.info('Update order {0}'.format(clientid))
+            log.info('Update {0} {1} ({2})'.format(action.replace('_', ' '), code, wallet))
 
             # Determine key
             if action in ['buy_spot']:

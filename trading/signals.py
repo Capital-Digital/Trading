@@ -39,12 +39,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         account_id, quantity = retval
 
-        log.info('Signal received', account_id=account_id, quantity=quantity, state=state)
-
         if state == 'SUCCESS':
             if quantity:
-                log.info('Signal received, trade success. Rebalance...')
-                rebalance.delay(account_id, sell_close=False)
+                rebalance.delay(account_id, release=False)
 
         else:
             log.info('')

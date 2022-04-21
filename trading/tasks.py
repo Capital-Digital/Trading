@@ -452,7 +452,6 @@ def send_transfer(account_id, source, dest, quantity):
             # Update dataframe
             account.update_balances_after_transfer(source, dest, quantity)
 
-            log.info('Transfer complete, return {0} {1}'.format(account, quantity))
             return account_id, quantity
 
 

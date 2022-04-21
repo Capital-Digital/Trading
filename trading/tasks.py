@@ -216,13 +216,15 @@ def rebalance(account_id, get_balances=False, release=True):
         free_futu = max(0, bal_futu - des_futu)
         log.info('Resources are needed in spot')
         log.info('{0} {1} are missing'.format(round(need_spot, 1), account.quote))
-        send_transfer.delay(account_id, 'future', 'spot', free_futu)
+        amount = min(need_spot, free_futu)
+        send_transfer.delay(account_id, 'future', 'spot', amount)
 
     elif need_futu:
         free_spot = max(0, bal_spot - des_spot)
         log.info('Resources are needed in future')
         log.info('{0} {1} are missing'.format(round(need_futu, 1), account.quote))
-        send_transfer.delay(account_id, 'spot', 'future', free_spot)
+        amount = min(need_futu, free_spot)
+        send_transfer.delay(account_id, 'spot', 'future', amount)
 
     else:
         log.info('Sufficient resources')
@@ -423,24 +425,26 @@ def send_fetch_all_open_orders(account_id):
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_transfer_funds')
 def send_transfer(account_id, source, dest, quantity):
     #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
+    if quantity:
 
-    log.info('Transfer from {0} to {1}'.format(source, dest))
-    log.info('Transfer {0} {1}'.format(round(quantity, 1), account.quote))
+        account = Account.objects.get(id=account_id)
+        client = account.exchange.get_ccxt_client(account)
 
-    try:
-        client.transfer(account.quote, quantity, source, dest)
+        log.info('Transfer from {0} to {1}'.format(source, dest))
+        log.info('Transfer {0} {1}'.format(round(quantity, 1), account.quote))
 
-    except Exception as e:
-        pass
+        try:
+            client.transfer(account.quote, quantity, source, dest)
 
-    else:
+        except Exception as e:
+            pass
 
-        # Update dataframe
-        account.update_balances_after_transfer(source, dest, quantity)
+        else:
 
-        return account_id, quantity
+            # Update dataframe
+            account.update_balances_after_transfer(source, dest, quantity)
+
+            return account_id, quantity
 
 
 # Send cancellation order

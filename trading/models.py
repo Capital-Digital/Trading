@@ -597,11 +597,11 @@ class Account(models.Model):
             self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
             self.save()
 
-            log.info('prep order {0} {1}'.format(code, wallet))
-            log.info('prep order size {0}'.format(size))
-            log.info('prep order value {0}'.format(round(order_value, 1)))
-            log.info('prep clientid {0}'.format(clientid))
-            log.info('resource used {0} {1}'.format(round(used_qty, 3), code_res))
+            log.info('Prep order {0} {1}'.format(code, wallet))
+            log.info('Prep order size {0}'.format(size))
+            log.info('Prep order value {0}'.format(round(order_value, 1)))
+            log.info('Prep clientid {0}'.format(clientid))
+            log.info('Resource used {0} {1}'.format(round(used_qty, 3), code_res))
 
             return True, dict(account_id=self.id,
                               action=action,
@@ -628,6 +628,11 @@ class Account(models.Model):
             orderid = response['id']
             status = response['info']['status'].lower()
             clientid = response['info']['clientOrderId']
+
+            log.info(' ')
+            log.info('Update object')
+            log.info('Update clientID {0}'.format(orderid))
+            log.info('Update with status {0}'.format(status))
 
             try:
                 # Object with orderID exists ?
@@ -679,21 +684,14 @@ class Account(models.Model):
                 if filled_total > filled_prev:
                     filled_new = filled_total - filled_prev
 
-                    if action in ['sell_spot', 'close_short']:
-                        log.info('New resources available')
-                    elif action == 'buy_spot':
-                        log.info('Coins bought')
-                    elif action == 'open_short':
-                        log.info('Contract sold')
-
                 else:
                     filled_new = 0
 
-                log.info('code {0} ({1})'.format(code, wallet))
-                log.info('status {0}'.format(status))
-                log.info('action {0}'.format(action))
-                log.info('filled new {0}'.format(filled_new))
-                log.info('filled total {0}'.format(filled_total))
+                log.info('Update code {0} ({1})'.format(code, wallet))
+
+                if filled_new:
+                    log.info('Update filled new {0}'.format(filled_new))
+                    log.info('Update filled total {0}'.format(filled_total))
 
                 # Update attributes
                 order.status = status
@@ -827,8 +825,6 @@ class Account(models.Model):
                 args = order.values()
                 send_create_order.delay(*args)
 
-        log.info('Sell spot complete')
-
     # Close short
     def close_short_all(self):
         from trading.tasks import send_create_order
@@ -843,8 +839,6 @@ class Account(models.Model):
             if valid:
                 args = order.values()
                 send_create_order.delay(*args)
-
-        log.info('Close short complete')
 
     # Buy spot
     def buy_spot_all(self):
@@ -861,8 +855,6 @@ class Account(models.Model):
                 args = order.values()
                 send_create_order.delay(*args)
 
-        log.info('Buy spot complete')
-
     # Open short
     def open_short_all(self):
         from trading.tasks import send_create_order
@@ -877,8 +869,6 @@ class Account(models.Model):
             if valid:
                 args = order.values()
                 send_create_order.delay(*args)
-
-        log.info('Open short complete')
 
     # Market sell spot account
     def market_sell(self):

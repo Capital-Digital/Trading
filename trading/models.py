@@ -818,7 +818,6 @@ class Account(models.Model):
         from trading.tasks import send_create_order
 
         log.info('')
-        log.info('Sell spot')
         sell_spot = self.to_sell_spot()
         log.info('Sell spot {0} coin(s)'.format(sell_spot.count()))
 
@@ -836,7 +835,6 @@ class Account(models.Model):
         from trading.tasks import send_create_order
 
         log.info('')
-        log.info('Close short...')
         opened_short = self.to_close_short()
         log.info('Close short {0} position(s)'.format(opened_short.count()))
 
@@ -854,7 +852,6 @@ class Account(models.Model):
         from trading.tasks import send_create_order
 
         log.info('')
-        log.info('Buy spot...')
         buy_spot = self.to_buy_spot()
         log.info('Buy spot {0} coin(s)'.format(buy_spot.count()))
 
@@ -872,7 +869,6 @@ class Account(models.Model):
         from trading.tasks import send_create_order
 
         log.info('')
-        log.info('Open short...')
         open_short = self.to_open_short()
         log.info('Open short {0} position(s)'.format(open_short.count()))
 

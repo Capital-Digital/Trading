@@ -214,14 +214,18 @@ def rebalance(account_id, get_balances=False, release=True):
     if need_spot:
         free_futu = max(0, bal_futu - des_futu)
         log.info('Resources are needed in spot')
-        log.info('Move {0} {1} from future'.format(round(free_futu, 1), account.quote))
+        log.info('{0} {1} are missing'.format(round(need_spot, 1), account.quote))
         send_transfer.delay(account_id, 'future', 'spot', free_futu)
 
-    if need_futu:
+    elif need_futu:
         free_spot = max(0, bal_spot - des_spot)
         log.info('Resources are needed in future')
-        log.info('Move {0} {1} from spot'.format(round(free_futu, 1), account.quote))
+        log.info('{0} {1} are missing'.format(round(need_futu, 1), account.quote))
         send_transfer.delay(account_id, 'spot', 'future', free_spot)
+
+    else:
+        log.info('Sufficient resources')
+        log.info('No transfer required')
 
     # Determine account to allocate resource first
     spot = min(bal_spot, des_spot)
@@ -430,11 +434,8 @@ def send_transfer(account_id, source, dest, quantity):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    log.info('')
-    log.info('Transfer')
-    log.info('********')
-    log.info('From {0} to {1}'.format(source, dest))
-    log.info('-> {0} {1}'.format(round(quantity, 1), account.quote))
+    log.info('Transfer from {0} to {1}'.format(source, dest))
+    log.info('Transfer {0} {1}'.format(round(quantity, 1), account.quote))
 
     try:
         client.transfer(account.quote, quantity, source, dest)

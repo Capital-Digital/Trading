@@ -123,8 +123,10 @@ def cancel_orders(account_id):
 def create_balances(account_id):
     #
     log.bind(worker=current_process().index)
+
     log.info('')
     log.info('Create balances...')
+    log.info('')
 
     if isinstance(account_id, list):
         account_id = account_id[0]
@@ -152,8 +154,10 @@ def rebalance(account_id, get_balances=False, release=True):
     account = Account.objects.get(id=account_id)
 
     log.bind(worker=current_process().index, account=account.name)
+
     log.info('')
     log.info('Rebalance...')
+    log.info('')
 
     if get_balances:
         create_balances(account_id)

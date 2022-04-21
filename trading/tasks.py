@@ -123,7 +123,8 @@ def cancel_orders(account_id):
 def create_balances(account_id):
     #
     log.bind(worker=current_process().index)
-    log.info('Create balances')
+    log.info('')
+    log.info('Create balances...')
 
     if isinstance(account_id, list):
         account_id = account_id[0]
@@ -141,7 +142,6 @@ def create_balances(account_id):
     # Calculate assets value
     account.calculate_balances_value()
 
-    log.info('Create balances complete')
     log.unbind('worker')
 
 
@@ -152,14 +152,11 @@ def rebalance(account_id, get_balances=False, release=True):
     account = Account.objects.get(id=account_id)
 
     log.bind(worker=current_process().index, account=account.name)
-    log.info('Rebalance ({0})'.format(account.name))
+    log.info('')
+    log.info('Rebalance...')
 
     if get_balances:
         create_balances(account_id)
-
-    log.info('')
-    log.info('Rebalance account')
-    log.info('*****************')
 
     # Update prices
     account.get_spot_prices(update=True)
@@ -174,6 +171,7 @@ def rebalance(account_id, get_balances=False, release=True):
 
     # Display account percent
     current = account.balances.account.current.percent
+    log.info('')
     for coin, val in current[current != 0].sort_values(ascending=False).items():
         log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
@@ -183,6 +181,8 @@ def rebalance(account_id, get_balances=False, release=True):
     target = account.balances.account.target.percent
     for coin, val in target[target != 0].sort_values(ascending=False).items():
         log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+    log.info('')
 
     if release:
 

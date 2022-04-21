@@ -824,21 +824,30 @@ class Account(models.Model):
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import send_create_order
+
         log.info('')
-        log.info('Sell spot...')
-        for code, quantity in self.to_sell_spot().items():
+        log.info('Sell spot')
+        sell_spot = self.to_sell_spot()
+        log.info('Sell spot {0}'.format(sell_spot.count()))
+
+        for code, quantity in sell_spot.items():
             kwargs = self.size_order(code, quantity, 'sell_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
                 send_create_order.delay(*args)
 
+        log.info('Sell spot complete')
+
     # Close short
     def close_short_all(self):
+        from trading.tasks import send_create_order
+
         log.info('')
         log.info('Close short...')
-        from trading.tasks import send_create_order
         opened_short = self.to_close_short()
+        log.info('Close short {0}'.format(opened_short.count()))
+
         for code, quantity in opened_short.items():
             kwargs = self.size_order(code, quantity, 'close_short')
             valid, order = self.prep_order(**kwargs)
@@ -846,29 +855,43 @@ class Account(models.Model):
                 args = order.values()
                 send_create_order.delay(*args)
 
+        log.info('Close short complete')
+
     # Buy spot
     def buy_spot_all(self):
+        from trading.tasks import send_create_order
+
         log.info('')
         log.info('Buy spot...')
-        from trading.tasks import send_create_order
-        for code, quantity in self.to_buy_spot().items():
+        buy_spot = self.to_buy_spot()
+        log.info('Buy spot {0}'.format(buy_spot.count()))
+
+        for code, quantity in buy_spot.items():
             kwargs = self.size_order(code, quantity, 'buy_spot')
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
                 send_create_order.delay(*args)
 
+        log.info('Buy spot complete')
+
     # Open short
     def open_short_all(self):
+        from trading.tasks import send_create_order
+
         log.info('')
         log.info('Open short...')
-        from trading.tasks import send_create_order
-        for code, quantity in self.to_open_short().items():
+        open_short = self.to_open_short()
+        log.info('Buy spot {0}'.format(open_short.count()))
+
+        for code, quantity in open_short.items():
             kwargs = self.size_order(code, quantity, 'open_short')
             valid, order = self.prep_order(**kwargs)
             if valid:
                 args = order.values()
                 send_create_order.delay(*args)
+
+        log.info('Open short complete')
 
     # Market sell spot account
     def market_sell(self):

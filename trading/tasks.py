@@ -101,16 +101,20 @@ def prepare_accounts(account_id):
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id):
     #
-    account = Account.objects.get(id=account_id)
-    log.info('Cancel orders', worker=current_process().index)
+    log.bin(worker=current_process().index)
+    log.info('Cancel orders')
 
-    orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
+    account = Account.objects.get(id=account_id)
+    orders = Order.objects.filter(account=account,
+                                  status__in=['new', 'partially_filled']
                                   ).exclude(orderid__isnull=True)
     if orders.exists():
         for order in orders:
             send_cancel_order.delay(account_id, order.orderid)
 
-    log.info('Cancel orders complete', worker=current_process().index)
+    log.info('Cancel orders complete')
+    log.unbind('worker')
+
     return account_id
 
 
@@ -118,6 +122,9 @@ def cancel_orders(account_id):
 @app.task(name='Trading_____Create_balances')
 def create_balances(account_id):
     #
+    log.bin(worker=current_process().index)
+    log.info('Create balances')
+
     if isinstance(account_id, list):
         account_id = account_id[0]
 
@@ -133,6 +140,9 @@ def create_balances(account_id):
 
     # Calculate assets value
     account.calculate_balances_value()
+
+    log.info('Create balances complete')
+    log.unbind('worker')
 
 
 # Rebalance fund of an account

@@ -790,6 +790,8 @@ class Account(models.Model):
                 self.balances.loc[self.quote, ('future', 'free', 'quantity')] = margin_free_now
                 self.balances.loc[self.quote, ('future', 'used', 'quantity')] = margin_used_now
 
+                self.save()
+
                 log.info('Free margin before {0}'.format(round(margin_free_before, 1)))
                 log.info('Free margin now {0}'.format(round(margin_free_now, 1)))
                 log.info('Used margin before {0}'.format(round(margin_used_before, 1)))
@@ -822,6 +824,8 @@ class Account(models.Model):
                             log.info('{0} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), c))
                             log.info('{0} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), c))
 
+                self.save()
+
     # Update balances after a transfer
     def update_balances_after_transfer(self, source, dest, quantity):
 
@@ -847,6 +851,8 @@ class Account(models.Model):
                     log.info('{0} {1} in {2} before {3} {4}'.format(i.title(), j, w, round(before, 1), self.quote))
                     log.info('{0} {1} in {2} now {3} {4}'.format(i.title(), j, w, round(now, 1), self.quote))
 
+        self.save()
+        
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import send_create_order

@@ -518,7 +518,9 @@ class Account(models.Model):
 
             if action in ['buy_spot', 'open_short']:
                 log.info('Available resources {0} {1}'.format(round(available, 1), self.quote))
-                log.info('Offset {0}'.format(round(offset, 4)))
+
+                if offset:
+                    log.info('Offset {0}'.format(round(offset, 4)))
 
         return dict(order_size=order_size,
                     order_value=order_value,
@@ -852,7 +854,7 @@ class Account(models.Model):
                     log.info('{0} {1} in {2} now {3} {4}'.format(i.title(), j, w, round(now, 1), self.quote))
 
         self.save()
-        
+
     # Sell spot
     def sell_spot_all(self):
         from trading.tasks import send_create_order

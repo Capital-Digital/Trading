@@ -94,12 +94,20 @@ def bulk_prepare_accounts():
 @app.task(name='Trading_____Create_balances')
 def create_balances(account_id):
     #
-    print('\n', account_id[0])
-    account = Account.objects.get(id=account_id[0])
-    log.info('Create balances ({0})'.format(account.name), worker=current_process().index)
+    if isinstance(account_id, list):
+        account_id = account_id[0]
 
-    account.get_balances_qty()
+    account = Account.objects.get(id=account_id)
+
+    # Fetch account
+    account.get_assets_balances()
     account.get_positions_value()
+
+    # Fetch prices
+    account.get_spot_prices()
+    account.get_futu_prices()
+
+    # Calculate assets value
     account.calculate_balances_value()
 
 

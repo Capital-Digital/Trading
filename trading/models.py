@@ -26,6 +26,7 @@ from picklefield.fields import PickledObjectField
 import warnings
 import random
 import string
+from billiard.process import current_process
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
@@ -77,13 +78,15 @@ class Account(models.Model):
         return self.name
 
     # Fetch coins and create balances dataframe
-    def get_balances_qty(self):
-
-        client = self.exchange.get_ccxt_client(self)
-        log.info('Get balances qty start')
+    def get_assets_balances(self):
+        #
+        log.bin(worker=current_process().index)
+        log.info('Get assets balance')
 
         # Reset attribute
         self.balances = pd.DataFrame()
+
+        client = self.exchange.get_ccxt_client(self)
 
         # Iterate through exchange's wallets
         for wallet in self.exchange.get_wallets():
@@ -109,17 +112,51 @@ class Account(models.Model):
 
         self.save()
 
-        log.info('Get balances qty done')
+        log.info('Get assets balance complete')
+        log.unbind('worker')
+
+    # Fetch and update open positions in balances dataframe
+    def get_open_positions(self):
+
+        log.bin(worker=current_process().index)
+        log.info('Get open positions')
+
+        # Get client
+        client = self.exchange.get_ccxt_client(self)
+        client.options['defaultType'] = 'future'
+
+        #  and query all futures positions
+        response = client.fapiPrivateGetPositionRisk()
+        opened = [i for i in response if float(i['positionAmt']) != 0]
+        closed = [i for i in response if float(i['positionAmt']) == 0]
+
+        if opened:
+
+            for position in opened:
+                market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
+                code = market.base.code
+
+                quantity = float(position['positionAmt'])
+                self.balances.loc[code, ('position', 'open', 'quantity')] = quantity
+                self.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
+                self.balances.loc[code, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
+                self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
+                self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
+                self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
+
+        self.save()
+        log.info('Get open positions complete')
+        log.unbind('worker')
 
     # Insert bid/ask of spot markets
-    def insert_spot_prices(self, codes):
+    def get_spot_prices(self):
+        #
+        log.bin(worker=current_process().index)
+        log.info('Get spot prices')
 
+        codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
 
-            if 'price' in self.balances.columns.get_level_values(0).tolist():
-                if 'spot' in self.balances.price.columns.get_level_values(0).tolist():
-                    if code in self.balances.price.spot.bid.dropna().index.tolist():
-                        continue
             try:
                 currency = Currency.objects.get(code=code)
 
@@ -134,16 +171,18 @@ class Account(models.Model):
                     self.balances.loc[code, ('price', 'spot', key)] = p
 
         self.save()
+        log.info('Get spot prices complete')
+        log.unbind('worker')
 
     # Insert bid/ask of future markets
-    def insert_futu_prices(self, codes):
+    def get_futu_prices(self):
+        #
+        log.bin(worker=current_process().index)
+        log.info('Get future prices')
 
+        codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
 
-            if 'price' in self.balances.columns.get_level_values(0).tolist():
-                if 'future' in self.balances.price.columns.get_level_values(0).tolist():
-                    if code in self.balances.price.future.bid.dropna().index.tolist():
-                        continue
             try:
                 market = Market.objects.get(base__code=code,
                                             quote__code=self.quote,
@@ -161,15 +200,14 @@ class Account(models.Model):
                     self.balances.loc[code, ('price', 'future', key)] = market.get_latest_price(key)
 
         self.save()
+        log.info('Get future prices complete')
+        log.unbind('worker')
 
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
-
-        codes = self.balances.spot.total.quantity.index.tolist()
-        self.insert_spot_prices(codes)
-        self.insert_futu_prices(codes)
-
-        log.info('Calculate balances value')
+        #
+        log.bin(worker=current_process().index)
+        log.info('Calculate assets value')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
@@ -197,43 +235,8 @@ class Account(models.Model):
 
         self.save()
 
-        log.info('Calculate balances value complete')
-
-    # Fetch and update open positions in balances dataframe
-    def get_positions_value(self):
-
-        log.info('Get positions start')
-
-        # Get client
-        client = self.exchange.get_ccxt_client(self)
-        client.options['defaultType'] = 'future'
-
-        #  and query all futures positions
-        response = client.fapiPrivateGetPositionRisk()
-        opened = [i for i in response if float(i['positionAmt']) != 0]
-        closed = [i for i in response if float(i['positionAmt']) == 0]
-
-        if opened:
-
-            for position in opened:
-                market = Market.objects.get(exchange=self.exchange, response__id=position['symbol'], type='derivative')
-                code = market.base.code
-
-                quantity = float(position['positionAmt'])
-                self.balances.loc[code, ('position', 'open', 'quantity')] = quantity
-                self.balances.loc[code, ('position', 'open', 'side')] = 'buy' if quantity > 0 else 'sell'
-                self.balances.loc[code, ('position', 'open', 'value')] = quantity * float(position['markPrice'])
-                self.balances.loc[code, ('position', 'open', 'leverage')] = float(position['leverage'])
-                self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = float(position['unRealizedProfit'])
-                self.balances.loc[code, ('position', 'open', 'liquidation')] = float(position['liquidationPrice'])
-
-            # Insert prices
-            codes = self.balances.position.open.quantity.dropna().index.tolist()
-            self.insert_futu_prices(codes)
-            self.insert_spot_prices(codes)
-
-        self.save()
-        log.info('Get positions done')
+        log.info('Calculate assets value complete')
+        log.unbind('worker')
 
     # Return account total value
     def account_value(self):

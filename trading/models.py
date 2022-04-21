@@ -597,16 +597,11 @@ class Account(models.Model):
             self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
             self.save()
 
-            log.info(' ')
-            log.info('Prepare order {0}'.format(code))
-            log.info('wallet {0}'.format(wallet))
-            log.info('order size {0}'.format(size))
-            log.info('order value {0}'.format(order_value))
-            log.info('clientid {0}'.format(clientid))
-            log.info('action {0}'.format(action))
-            log.info('resource used {0}'.format(used_qty))
-            log.info('resource code {0}'.format(code_res))
-            log.info(' ')
+            log.info('prep order {0} {1}'.format(code, wallet))
+            log.info('prep order size {0}'.format(size))
+            log.info('prep order value {0}'.format(round(order_value, 1)))
+            log.info('prep clientid {0}'.format(clientid))
+            log.info('resource used {0} {1}'.format(round(used_qty, 3), code_res))
 
             return True, dict(account_id=self.id,
                               action=action,

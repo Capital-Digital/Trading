@@ -121,7 +121,7 @@ def preload_dataframe(exid):
 
 # Update exchange.data with fresh prices and volumes
 @app.task(name='Markets_____Update_dataframe')
-def update_dataframe(exid, tickers=None):
+def update_dataframe(exid, tickers=None, admin=False):
     #
     log.bind(worker=current_process().index, exid=exid)
     log.info('Dataframe update')
@@ -198,7 +198,7 @@ def update_prices(exid, wallet=None):
 
     # Call task
     if wallet == 'spot':
-        update_dataframe.delay(exid, t)
+        update_dataframe.delay(exid, tickers=t, admin=False)
 
     # Select symbols of desired markets
     symbols = []

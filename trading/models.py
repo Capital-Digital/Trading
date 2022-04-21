@@ -115,9 +115,6 @@ class Account(models.Model):
         now = dt.strftime(datetime_directive_m)
         self.balances.index.set_names(now, inplace=True)
 
-        # reorder columns
-        self.balances.sort_index(1, inplace=True)
-
         self.save()
 
         log.info('Get assets balance complete')
@@ -244,6 +241,9 @@ class Account(models.Model):
             self.balances[('spot', 'used', 'value')] = np.nan
         if ('future', 'used', 'value') not in self.balances.columns:
             self.balances[('future', 'used', 'value')] = np.nan
+
+        # reorder columns
+        self.balances.sort_index(1, inplace=True)
 
         self.save()
 

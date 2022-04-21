@@ -173,7 +173,6 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
             else:
-                log.info(currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask']))
                 bid, ask = currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask'])
                 self.balances.loc[code, ('price', 'spot', 'bid')] = bid
                 self.balances.loc[code, ('price', 'spot', 'ask')] = ask

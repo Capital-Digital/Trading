@@ -442,9 +442,15 @@ class Account(models.Model):
         # Determine side
         if action in ['buy_spot', 'close_short']:
             side = 'buy'
-            key = 'ask'
-        if action in ['open_short', 'sell_spot']:
+        elif action in ['sell_spot', 'open_short']:
             side = 'sell'
+
+        # Determine price
+        if action in ['close_short', 'open_short']:
+            key = 'last'
+        elif action == 'buy_spot':
+            key = 'ask'
+        elif action == 'sell_spot':
             key = 'bid'
 
         offset = 0
@@ -469,7 +475,7 @@ class Account(models.Model):
                 log.info('amount -> {0}'.format(other.amount))
                 log.info(' ')
 
-        # Select price
+        # Select priceœ
         price = self.balances.price[wallet][key][code]
 
         # Determine order value and amount when USDT resources are released

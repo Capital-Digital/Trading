@@ -803,25 +803,35 @@ class Account(models.Model):
             else:
 
                 # Set zero if nan
-                self.balances.loc[code, 'spot'].fillna(0, inplace=True)
+                # self.balances.loc[code, 'spot'].fillna(0, inplace=True)
 
                 for c in [code, self.quote]:
                     for i in ['total', 'free', 'used']:
                         for j in ['quantity', 'value']:
 
+                            # If quote, use trade value to update quantity and value
                             if c == self.quote:
-                                qty_filled = -qty_filled
-                                val_filled = -val_filled
+                                delta = -val_filled
 
-                            if j == 'value':
-                                delta = val_filled
-                                coin = self.quote
-                            elif j == 'quantity':
-                                delta = qty_filled
-                                coin = code
+                            else:
+                                # Else, use trade value to update value
+                                if j == 'value':
+                                    delta = val_filled
+                                    coin = self.quote
+
+                                # An trade quantity to update quantity
+                                elif j == 'quantity':
+                                    delta = qty_filled
+                                    coin = code
 
                             # Update dataframe
                             before = self.balances.spot[i][j][c]
+
+                            # Don't increase the "used" quantity after a trade
+                            if delta > 0:
+                                if i == 'used':
+                                    delta = 0
+
                             now = before + delta
                             self.balances.loc[c, ('spot', i, j)] = now
 
@@ -849,6 +859,11 @@ class Account(models.Model):
 
                     # Update dataframe
                     before = self.balances[w][i][j][self.quote]
+
+                    if w == dest:
+                        if np.isnan(before):
+                            before = 0
+
                     now = before + delta
                     self.balances.loc[self.quote, (w, i, j)] = now
 

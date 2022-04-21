@@ -22,8 +22,8 @@ class CustomerAdmin(admin.ModelAdmin):
                        'urls', 'rate_limits', 'credit', 'credit_max', 'has', 'timeframes', 'precision_mode',
                        'credentials')
     actions = ['action_update_status', 'action_update_properties', 'action_update_currencies', 'action_update_markets',
-               'action_update_dataframe', 'action_update_prices', 'action_update_strategies',
-               'action_rebalance_accounts']
+               'action_preload_dataframe', 'action_update_dataframe', 'action_update_prices',
+               'action_update_strategies', 'action_rebalance_accounts']
     save_as = True
     save_on_top = True
 
@@ -95,6 +95,13 @@ class CustomerAdmin(admin.ModelAdmin):
 
     action_update_prices.short_description = "Update prices"
 
+    # Preload dataframes
+    def action_preload_dataframe(self, request, queryset):
+        for exchange in queryset:
+            preload_dataframe.delay(exchange.exid)
+
+    action_preload_dataframe.short_description = "Preload dataframes"
+
     # Update dataframes
     def action_update_dataframe(self, request, queryset):
         for exchange in queryset:
@@ -105,15 +112,15 @@ class CustomerAdmin(admin.ModelAdmin):
     # Update strategies
     def action_update_strategies(self, request, queryset):
         for exchange in queryset:
-            update_strategies.delay(exchange.exid, False)
+            bulk_update_strategies.delay(exchange.exid, False)
 
     action_update_strategies.short_description = "Update strategies"
 
     # Rebalance accounts
     def action_rebalance_accounts(self, request, queryset):
         for exchange in queryset:
-            for account in Account.objects.filter(exchange=exchange, active=True):
-                rebalance.delay(account.id, False)
+            for strategy in Strategy.objects.filter(exchange=exchange, production=True):
+                bulk_rebalance.delay(strategy.id)
 
     action_rebalance_accounts.short_description = "Rebalance accounts"
 

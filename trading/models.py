@@ -722,10 +722,12 @@ class Account(models.Model):
             log.info('Update action {0} {1} ({2})'.format(action.replace('_', ' '), code, wallet))
 
             # Determine key
-            if action in ['buy_spot', 'close_short']:
+            if action in ['buy_spot']:
                 key = 'ask'
-            if action in ['open_short', 'sell_spot']:
+            elif action in ['sell_spot']:
                 key = 'bid'
+            else:
+                key = 'last'
 
             # Determine price
             if wallet == 'spot':

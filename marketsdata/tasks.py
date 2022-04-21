@@ -67,6 +67,7 @@ def bulk_update_prices(self):
 # Bulk update dataframes
 @app.task(name='Markets_____Bulk_update_information')
 def bulk_update_information():
+
     bulk_update_status.delay()
     bulk_update_properties.delay()
     bulk_update_currencies.delay()
@@ -275,6 +276,7 @@ def update_prices(exid, wallet=None):
 def update_status(exid):
     #
     log.bind(exid=exid)
+    log.info(' ')
     log.info('Update status')
     exchange = Exchange.objects.get(exid=exid)
 
@@ -706,6 +708,7 @@ def update_markets(exid):
         log.unbind('exchange')
 
     log.info('Update market complete')
+    log.info(' ')
 
 
 # Insert candles history

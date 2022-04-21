@@ -123,7 +123,8 @@ def preload_dataframe(exid):
 @app.task(name='Markets_____Update_dataframe')
 def update_dataframe(exid, tickers=None):
     #
-    log.info('Dataframe update', worker=current_process().index)
+    log.bind(worker=current_process().index, exid=exid)
+    log.info('Dataframe update')
 
     exchange = Exchange.objects.get(exid=exid)
     df = pd.DataFrame()
@@ -158,11 +159,8 @@ def update_dataframe(exid, tickers=None):
     exchange.data = df
     exchange.save()
 
-    if exchange.is_data_updated():
-        log.info('Dataframe update complete')
-
-    else:
-        raise Exception('Dataframe update failure')
+    log.info('Dataframe update complete')
+    log.unbind('worker', 'exid')
 
 
 # Insert prices and volumes for all tickers
@@ -171,8 +169,8 @@ def update_prices(exid, wallet=None):
     #
     exchange = Exchange.objects.get(exid=exid)
 
-    log.info(' ')
-    log.info('Update prices ({0})'.format(wallet), worker=current_process().index)
+    log.bind(worker=current_process().index, wallet=wallet)
+    log.info('Update prices')
 
     # Check exchange
     if not exchange.is_trading():
@@ -205,6 +203,7 @@ def update_prices(exid, wallet=None):
     # Select symbols of desired markets
     symbols = []
     for quote in exchange.get_supported_quotes():
+
         markets = [i for i in tickers.keys() if '/' + quote in i]
         markets = [m for m in markets if m not in symbols_strategies]
         symbols.append(markets)
@@ -268,7 +267,8 @@ def update_prices(exid, wallet=None):
                     obj.save()
                     insert += 1
 
-    log.info('Update prices complete ({0})'.format(wallet), worker=current_process().index)
+    log.info('Update prices complete')
+    log.unbind('wallet', 'worker')
 
 
 @shared_task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_status')

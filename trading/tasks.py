@@ -263,7 +263,8 @@ def update_orders(account_id):
         for order in orders:
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
-        log.info('No order to update')
+        pass
+        # log.info('No order to update')
 
 
 # Check an account credential
@@ -288,7 +289,7 @@ def check_credentials(account_id):
 
     else:
         account.valid_credentials = True
-        log.info('Account credentials are valid')
+        # log.info('Account credentials are valid')
 
     finally:
         account.save()

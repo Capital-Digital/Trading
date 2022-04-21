@@ -101,7 +101,7 @@ def prepare_accounts(account_id):
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id):
     #
-    log.bin(worker=current_process().index)
+    log.bind(worker=current_process().index)
     log.info('Cancel orders')
 
     account = Account.objects.get(id=account_id)
@@ -122,7 +122,7 @@ def cancel_orders(account_id):
 @app.task(name='Trading_____Create_balances')
 def create_balances(account_id):
     #
-    log.bin(worker=current_process().index)
+    log.bind(worker=current_process().index)
     log.info('Create balances')
 
     if isinstance(account_id, list):

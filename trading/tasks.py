@@ -219,6 +219,8 @@ def cancel_orders(account_id):
     else:
         log.info('Open order not found')
 
+    return account_id
+
 
 # Check an account credential
 @app.task(base=BaseTaskWithRetry, name='Trading_____Check_credentials')

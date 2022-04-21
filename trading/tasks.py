@@ -135,10 +135,10 @@ def create_balances(account_id):
 
     # Fetch account
     account.get_assets_balances()
-    account.get_open_positions()
 
     # Eventually add missing codes
     account.check_codes()
+    account.get_open_positions()
 
     # Fetch prices
     account.get_spot_prices()

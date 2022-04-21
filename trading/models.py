@@ -118,6 +118,16 @@ class Account(models.Model):
 
         log.info('Get assets balance complete')
 
+    # Add missing codes of the strategies
+    def check_codes(self):
+        codes_strategy = self.strategy.get_codes()
+        for code in codes_strategy:
+            if code not in self.balances.index:
+                self.balances.loc[code, ('spot', 'total', 'quantity')] = np.nan
+                self.balances.loc[code, ('spot', 'free', 'quantity')] = np.nan
+                self.balances.loc[code, ('spot', 'used', 'quantity')] = np.nan
+        self.save()
+
     # Fetch and update open positions in balances dataframe
     def get_open_positions(self):
 
@@ -266,25 +276,13 @@ class Account(models.Model):
 
             # Determine values
             value = self.account_value() * target_pct
+
             for coin, val in value.items():
                 self.balances.loc[coin, ('account', 'target', 'value')] = val
 
-            # Determine quantities
-            for coin, val in value.items():
-
-                # Insert prices of new coins
-                if coin not in self.balances.price.spot.bid.dropna().index.tolist():
-                    self.insert_prices(coin)
-
-                # Price found ?
-                if not np.isnan(self.balances.price.spot.bid[coin]):
-
-                    # Calculate quantity
-                    qty = val / self.balances.price.spot.bid[coin]
-                    self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
-
-                else:
-                    log.error('Can not calculate target value of {0}, price not found'.format(coin))
+                # Determine quantity
+                qty = val / self.balances.price.spot.bid[coin]
+                self.balances.loc[coin, ('account', 'target', 'quantity')] = qty
 
         except AttributeError as e:
             self.trading = False

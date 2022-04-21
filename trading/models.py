@@ -744,17 +744,16 @@ class Account(models.Model):
                 # Position
                 ##########
 
-                # Position quantity
+                # Before
                 open_qty_before = self.balances.position.open.quantity[code]
+                open_value_before = self.balances.position.open.value[code]
+
+                # Now
                 open_qty_now = open_qty_before + qty_filled
+                open_value_now = open_value_before + val_filled
 
                 log.info('Open quantity before {0}'.format(open_qty_before))
                 log.info('Open quantity now {0}'.format(open_qty_now))
-
-                # Position value
-                open_value_before = self.balances.position.open.value[code]
-                open_value_now = open_value_before + val_filled
-
                 log.info('Open value before {0}'.format(round(open_value_before, 1)))
                 log.info('Open value now {0}'.format(round(open_value_now, 1)))
 
@@ -769,11 +768,15 @@ class Account(models.Model):
                 # Margin
                 ########
 
+                # Before
                 margin_free_before = self.balances.future.free.quantity[self.quote]
-                margin_free_now = margin_free_before + val_filled
-
                 margin_used_before = self.balances.future.used.quantity[self.quote]
-                margin_used_now = margin_used_before + val_filled
+
+                leverage = self.balances.position.open.leverage[code]
+
+                # Now
+                margin_free_now = margin_free_before + val_filled
+                margin_used_now = margin_used_before - (val_filled / leverage)
 
                 # Set zero if nan and update
                 self.balances.loc[self.quote, 'future'].fillna(0, inplace=True)
@@ -782,62 +785,59 @@ class Account(models.Model):
 
                 log.info('Free margin before {0}'.format(round(margin_free_before, 1)))
                 log.info('Free margin now {0}'.format(round(margin_free_now, 1)))
-
                 log.info('Used margin before {0}'.format(round(margin_used_before, 1)))
                 log.info('Used margin now {0}'.format(round(margin_used_now, 1)))
+                log.info('Leverage {0}'.format(leverage))
 
             else:
 
                 # Set zero if nan
                 self.balances.loc[code, 'spot'].fillna(0, inplace=True)
 
-                asset_total_qty_before = self.balances.spot.total.quantity[code]
-                asset_free_qty_before = self.balances.spot.free.quantity[code]
-                asset_used_qty_before = self.balances.spot.used.quantity[code]
+                for c in [code, self.quote]:
+                    for i in ['total', 'free', 'used']:
+                        for j in ['quantity', 'value']:
 
-                asset_total_qty_now = asset_total_qty_before + qty_filled
-                asset_free_qty_now = asset_free_qty_before + qty_filled
-                asset_used_qty_now = asset_used_qty_before + qty_filled
+                            if c == self.quote:
+                                qty_filled = -qty_filled
+                                val_filled = -val_filled
 
-                asset_total_value_before = self.balances.spot.total.value[code]
-                asset_free_value_before = self.balances.spot.free.value[code]
-                asset_used_value_before = self.balances.spot.used.value[code]
+                            if j == 'value':
+                                delta = val_filled
+                            else:
+                                delta = qty_filled
 
-                asset_total_value_now = asset_total_value_before + val_filled
-                asset_free_value_now = asset_free_value_before + val_filled
-                asset_used_value_now = asset_used_value_before + val_filled
+                            # Update dataframe
+                            before = self.balances.spot[i][j][c]
+                            now = before + delta
+                            self.balances.loc[c, ('spot', i, j)] = now
 
-                self.balances.loc[code, ('spot', 'total', 'quantity')] = asset_total_qty_now
-                self.balances.loc[code, ('spot', 'free', 'quantity')] = asset_free_qty_now
-                self.balances.loc[code, ('spot', 'used', 'quantity')] = asset_used_qty_now
-                self.balances.loc[code, ('spot', 'total', 'value')] = asset_total_value_now
-                self.balances.loc[code, ('spot', 'free', 'value')] = asset_free_value_now
-                self.balances.loc[code, ('spot', 'used', 'value')] = asset_used_value_now
-
-                log.info('Asset total quantity before {0}'.format(round(asset_total_qty_before, 3)))
-                log.info('Asset total quantity now {0}'.format(round(asset_total_qty_now, 3)))
-                log.info('Asset free quantity before {0}'.format(round(asset_free_qty_before, 3)))
-                log.info('Asset free quantity now {0}'.format(round(asset_free_qty_now, 3)))
-                log.info('Asset used quantity before {0}'.format(round(asset_used_qty_before, 3)))
-                log.info('Asset used quantity now {0}'.format(round(asset_used_qty_now, 3)))
+                            log.info('{0} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), c))
+                            log.info('{0} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), c))
 
     # Update balances after a transfer
     def update_balances_after_transfer(self, source, dest, quantity):
 
-        log.info('')
-        log.info('Update balances dataframe')
+        log.info(' ')
+        log.info('Update balances...')
+        log.info(' ')
 
-        # Update source wallet
-        self.balances.loc[self.quote, (source, 'total', 'quantity')] -= quantity
-        self.balances.loc[self.quote, (source, 'total', 'value')] -= quantity
-        self.balances.loc[self.quote, (source, 'free', 'quantity')] -= quantity
-        self.balances.loc[self.quote, (source, 'free', 'value')] -= quantity
+        for w in [source, dest]:
+            for i in ['total', 'free']:
+                for j in ['quantity', 'value']:
 
-        # Update destination
-        self.balances.loc[self.quote, (dest, 'total', 'quantity')] += quantity
-        self.balances.loc[self.quote, (dest, 'total', 'value')] += quantity
-        self.balances.loc[self.quote, (dest, 'free', 'quantity')] += quantity
-        self.balances.loc[self.quote, (dest, 'free', 'value')] += quantity
+                    if w == source:
+                        delta = -quantity
+                    else:
+                        delta = quantity
+
+                    # Update dataframe
+                    before = self.balances[w][i][j][self.quote]
+                    now = before + delta
+                    self.balances.loc[self.quote, (w, i, j)] = now
+
+                    log.info('{0} {1} in {2} before {3} {4}'.format(i, j, w, before, self.quote))
+                    log.info('{0} {1} in {2} now {3} {4}'.format(i, j, w, now, self.quote))
 
     # Sell spot
     def sell_spot_all(self):

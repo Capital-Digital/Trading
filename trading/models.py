@@ -205,7 +205,7 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 
             else:
-                self.balances.loc[code, ('price', 'future', 'last')] = market.get_latest_price('last')
+                self.balances.loc[code, ('price', 'future', 'last')] = market.get_latest_price()
 
         self.save()
         log.info('Get future prices complete')

@@ -754,8 +754,11 @@ class Account(models.Model):
                 ##########
 
                 # Before
-                open_qty_before = self.balances.position.open.quantity[code]
-                open_value_before = self.balances.position.open.value[code]
+                if 'position' in self.balances.columns.get_level_values(0):
+                    open_qty_before = self.balances.position.open.quantity[code]
+                    open_value_before = self.balances.position.open.value[code]
+                else:
+                    open_qty_before, open_value_before = [0, 0]
 
                 # Now
                 open_qty_now = open_qty_before + qty_filled
@@ -781,7 +784,10 @@ class Account(models.Model):
                 margin_free_before = self.balances.future.free.quantity[self.quote]
                 margin_used_before = self.balances.future.used.quantity[self.quote]
 
-                leverage = self.balances.position.open.leverage[code]
+                if 'position' in self.balances.columns.get_level_values(0):
+                    leverage = self.balances.position.open.leverage[code]
+                else:
+                    leverage = 20
 
                 # Now
                 margin_free_now = margin_free_before + val_filled
@@ -809,17 +815,17 @@ class Account(models.Model):
                     for i in ['total', 'free', 'used']:
                         for j in ['quantity', 'value']:
 
-                            # If quote, use trade value to update quantity and value
+                            # If quote, use trade value to update asset quantity and value
                             if c == self.quote:
                                 delta = -val_filled
 
                             else:
-                                # Else, use trade value to update value
+                                # Else, use trade value to update asset value
                                 if j == 'value':
                                     delta = val_filled
                                     coin = self.quote
 
-                                # An trade quantity to update quantity
+                                # An trade quantity to update asset quantity
                                 elif j == 'quantity':
                                     delta = qty_filled
                                     coin = code
@@ -827,7 +833,7 @@ class Account(models.Model):
                             # Update dataframe
                             before = self.balances.spot[i][j][c]
 
-                            # Don't increase the "used" quantity after a trade
+                            # Don't increase the asset used after a trade
                             if delta > 0:
                                 if i == 'used':
                                     delta = 0

@@ -110,6 +110,10 @@ class Account(models.Model):
                 else:
                     self.balances[(wallet, key, 'quantity')] = np.nan
 
+        dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+        now = dt.strftime(datetime_directive_ISO_8601)
+
+        self.balances.index.set_names(now, inplace=True)
         self.save()
 
         log.info('Get assets balance complete')
@@ -163,7 +167,7 @@ class Account(models.Model):
             except ObjectDoesNotExist:
 
                 # log.error('Spot market {0}/{1} not found'.format(code, self.quote))
-                
+
                 self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 

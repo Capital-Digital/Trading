@@ -171,7 +171,7 @@ def rebalance(account_id, get_balances=False, release=True):
 
     # Calculate new delta
     account.get_target()
-    account.get_delta()
+    account.calculate_delta()
 
     log.info(' ')
 

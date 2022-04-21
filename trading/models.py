@@ -603,11 +603,10 @@ class Account(models.Model):
             self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
             self.save()
 
-            log.info('Prep order {0} {1}'.format(code, wallet))
-            log.info('Prep order size {0}'.format(size))
-            log.info('Prep order value {0}'.format(round(order_value, 1)))
-            log.info('Prep clientid {0}'.format(clientid))
+            log.info('Prep order {0} {1} {2}'.format(size, code, wallet))
+            log.info('Prep order value {0} {1}'.format(round(order_value, 1), self.quote))
             log.info('Resource used {0} {1}'.format(round(used_qty, 3), code_res))
+            log.info('ClientID {0}'.format(clientid))
 
             return True, dict(account_id=self.id,
                               action=action,
@@ -716,7 +715,7 @@ class Account(models.Model):
         if qty_filled:
 
             log.info(' ')
-            log.info('Update balances...')
+            log.info('Update balances (trade)')
             log.info(' ')
             log.info('Update clientID {0}'.format(clientid))
             log.info('Update action {0} {1} ({2})'.format(action.replace('_', ' '), code, wallet))
@@ -827,8 +826,9 @@ class Account(models.Model):
     def update_balances_after_transfer(self, source, dest, quantity):
 
         log.info(' ')
-        log.info('Update balances...')
+        log.info('Update balances (transfer)')
         log.info(' ')
+        log.info('Transfer from {0} to {1}'.format(source, dest))
 
         for w in [source, dest]:
             for i in ['total', 'free']:
@@ -844,8 +844,8 @@ class Account(models.Model):
                     now = before + delta
                     self.balances.loc[self.quote, (w, i, j)] = now
 
-                    log.info('{0} {1} in {2} before {3} {4}'.format(i, j, w, before, self.quote))
-                    log.info('{0} {1} in {2} now {3} {4}'.format(i, j, w, now, self.quote))
+                    log.info('{0} {1} in {2} before {3} {4}'.format(i.title(), j, w, round(before, 1), self.quote))
+                    log.info('{0} {1} in {2} now {3} {4}'.format(i.title(), j, w, round(now, 1), self.quote))
 
     # Sell spot
     def sell_spot_all(self):

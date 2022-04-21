@@ -88,11 +88,10 @@ def bulk_check_credentials():
 @app.task(name='Trading_____Prepare_accounts')
 def prepare_accounts(account_id):
     #
-    account = Account.objects.get(id=account_id)
-
     log.bind(worker=current_process().index)
     log.info('Prepare accounts')
 
+    account = Account.objects.get(id=account_id)
     chord(cancel_orders.s(account.id))(create_balances.s())
 
     log.unbind('worker')

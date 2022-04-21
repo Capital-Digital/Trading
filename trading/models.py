@@ -80,7 +80,6 @@ class Account(models.Model):
     # Fetch coins and create balances dataframe
     def get_assets_balances(self):
         #
-        log.bind(worker=current_process().index)
         log.info('Get assets balance')
 
         # Reset attribute
@@ -118,12 +117,10 @@ class Account(models.Model):
         self.save()
 
         log.info('Get assets balance complete')
-        log.unbind('worker')
 
     # Fetch and update open positions in balances dataframe
     def get_open_positions(self):
 
-        log.bind(worker=current_process().index)
         log.info('Get open positions')
 
         # Get client
@@ -151,15 +148,10 @@ class Account(models.Model):
 
         self.save()
         log.info('Get open positions complete')
-        log.unbind('worker')
 
     # Insert bid/ask of spot markets
     def get_spot_prices(self):
         #
-        if hasattr(current_process, 'index'):
-            log.bind(worker=current_process().index)
-        else:
-            log.bind(worker='off')
         log.info('Get spot prices')
 
         codes = self.balances.spot.total.quantity.index.tolist()
@@ -182,15 +174,10 @@ class Account(models.Model):
 
         self.save()
         log.info('Get spot prices complete')
-        log.unbind('worker')
 
     # Insert bid/ask of future markets
     def get_futu_prices(self):
         #
-        if hasattr(current_process, 'index'):
-            log.bind(worker=current_process().index)
-        else:
-            log.bind(worker='off')
         log.info('Get future prices')
 
         codes = self.balances.spot.total.quantity.index.tolist()
@@ -206,21 +193,17 @@ class Account(models.Model):
             except ObjectDoesNotExist:
 
                 # log.error('Future market {0}/{1} not found'.format(code, self.quote))
-
-                self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
-                self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
+                self.balances.loc[code, ('price', 'future', 'last')] = np.nan
 
             else:
                 self.balances.loc[code, ('price', 'future', 'last')] = market.get_latest_price()
 
         self.save()
         log.info('Get future prices complete')
-        log.unbind('worker')
 
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
         #
-        log.bind(worker=current_process().index)
         log.info('Calculate assets value')
 
         # Iterate through wallets, free, used and total quantities
@@ -249,11 +232,9 @@ class Account(models.Model):
 
         # reorder columns
         self.balances.sort_index(1, inplace=True)
-
         self.save()
 
         log.info('Calculate assets value complete')
-        log.unbind('worker')
 
     # Return account total value
     def account_value(self):

@@ -614,7 +614,7 @@ class Account(models.Model):
                               action=action,
                               code=code,
                               clientid=clientid,
-                              order_type='limit',
+                              order_type=self.order_type,
                               price=price,
                               reduce_only=reduce_only,
                               side=side,
@@ -689,9 +689,7 @@ class Account(models.Model):
                     filled_new = 0
 
                 log.info(' ')
-                log.info('Update object...')
-                log.info(' ')
-
+                log.info('Update object')
                 log.info('Update clientID {0}'.format(order.clientid))
                 log.info('Update with status {0}'.format(status))
                 log.info('Update code {0} ({1})'.format(code, wallet))

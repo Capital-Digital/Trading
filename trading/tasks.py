@@ -261,9 +261,9 @@ def update_orders(account_id):
 
     if orders.exists():
 
-        log.info(' ')
-        log.info('Update {0} order(s)'.format(orders.count()))
-        log.info('********************')
+        # log.info(' ')
+        # log.info('Update {0} order(s)'.format(orders.count()))
+        # log.info('********************')
 
         for order in orders:
             send_fetch_orderid.delay(account_id, order.orderid)
@@ -354,6 +354,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         log.error('Order placement failed', cause=str(e))
         log.error('{0} {1} {2}'.format(side.title(), size, code))
         log.error('Order symbol {0} ({1})'.format(symbol, wallet))
+        log.error('Order price {0}'.format(price))
         log.error('Order clientid {0}'.format(clientid))
         log.unbind('worker')
 
@@ -363,7 +364,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
 
         # Update object and dataframe
         qty_filled = account.update_order_object(wallet, response)
-        log.info('Filled {0} {1}'.format(qty_filled, code))
+        log.info('Filled {0} {1} at price {2}'.format(qty_filled, code, price))
 
         account.update_balances(clientid, action, wallet, code, qty_filled)
 

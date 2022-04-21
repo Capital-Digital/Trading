@@ -629,11 +629,6 @@ class Account(models.Model):
             status = response['info']['status'].lower()
             clientid = response['info']['clientOrderId']
 
-            log.info(' ')
-            log.info('Update object')
-            log.info('Update clientID {0}'.format(orderid))
-            log.info('Update with status {0}'.format(status))
-
             try:
                 # Object with orderID exists ?
                 order = Order.objects.get(account=self, orderid=orderid)
@@ -656,7 +651,7 @@ class Account(models.Model):
                         account=self,
                         sender='user',
                         market=market,
-                        clientid=orderid,
+                        orderid=orderid,
                         status=status
                     )
 
@@ -674,7 +669,6 @@ class Account(models.Model):
                 # Select attributes
                 code = order.market.base.code
                 wallet = order.market.wallet
-                action = order.action
 
                 # Get traded amount
                 filled_prev = order.filled
@@ -687,6 +681,12 @@ class Account(models.Model):
                 else:
                     filled_new = 0
 
+                log.info(' ')
+                log.info('Update object...')
+                log.info(' ')
+
+                log.info('Update clientID {0}'.format(order.clientid))
+                log.info('Update with status {0}'.format(status))
                 log.info('Update code {0} ({1})'.format(code, wallet))
 
                 if filled_new:
@@ -705,13 +705,15 @@ class Account(models.Model):
             log.info('Empty response from exchange {0}'.format(wallet))
 
     # Update balances after new trade
-    def update_balances(self, action, wallet, code, qty_filled):
+    def update_balances(self, clientid, action, wallet, code, qty_filled):
 
         if qty_filled:
 
-            log.info('')
+            log.info(' ')
             log.info('Update balances...')
-            log.info('Action {0} {1} {2}'.format(action.replace('_', ' '), code, wallet))
+            log.info(' ')
+            log.info('Update clientID {0}'.format(clientid))
+            log.info('Update action {0} {1} ({2})'.format(action.replace('_', ' '), code, wallet))
 
             # Determine key
             if action in ['buy_spot', 'close_short']:
@@ -738,59 +740,86 @@ class Account(models.Model):
 
                 log.info('Filled new {0}'.format(qty_filled))
                 log.info('Filled value {0}'.format(val_filled))
-                log.info('')
 
                 # Position
                 ##########
 
-                log.info('Position open before')
-                log.info(self.balances.position.open)
+                # Position quantity
+                open_qty_before = self.balances.position.open.quantity[code]
+                open_qty_now = open_qty_before + qty_filled
+
+                log.info('Open quantity before {0}'.format(open_qty_before))
+                log.info('Open quantity now {0}'.format(open_qty_now))
+
+                # Position value
+                open_value_before = self.balances.position.open.value[code]
+                open_value_now = open_value_before + val_filled
+
+                log.info('Open value before {0}'.format(round(open_value_before, 1)))
+                log.info('Open value now {0}'.format(round(open_value_now, 1)))
 
                 # Set zero if nan
-                self.balances.loc[code, 'position'].fillna(0, inplace=True)
+                if 'position' in self.balances.columns.get_level_values(0):
+                    self.balances.loc[code, 'position'].fillna(0, inplace=True)
 
-                self.balances.loc[code, ('position', 'open', 'quantity')] += qty_filled
-                self.balances.loc[code, ('position', 'open', 'value')] += val_filled
+                # Update
+                self.balances.loc[code, ('position', 'open', 'quantity')] = open_qty_now
+                self.balances.loc[code, ('position', 'open', 'value')] = open_value_now
 
-                log.info('')
-                log.info('Position open after')
-                log.info(self.balances.position.open)
-
-                # Future
+                # Margin
                 ########
 
-                log.info('')
-                log.info('Future total quantity before')
-                log.info(self.balances.future.total.quantity)
+                margin_free_before = self.balances.future.free.quantity[self.quote]
+                margin_free_now = margin_free_before + val_filled
 
-                # Set zero if nan
+                margin_used_before = self.balances.future.used.quantity[self.quote]
+                margin_used_now = margin_used_before + val_filled
+
+                # Set zero if nan and update
                 self.balances.loc[self.quote, 'future'].fillna(0, inplace=True)
+                self.balances.loc[self.quote, ('future', 'free', 'quantity')] = margin_free_now
+                self.balances.loc[self.quote, ('future', 'used', 'quantity')] = margin_used_now
 
-                self.balances.loc[self.quote, ('future', 'total', 'quantity')] += val_filled
-                self.balances.loc[self.quote, ('future', 'free', 'quantity')] += val_filled
-                self.balances.loc[self.quote, ('future', 'used', 'quantity')] += val_filled
+                log.info('Free margin before {0}'.format(round(margin_free_before, 1)))
+                log.info('Free margin now {0}'.format(round(margin_free_now, 1)))
 
-                log.info('')
-                log.info('Future total quantity after')
-                log.info(self.balances.future.total.quantity)
+                log.info('Used margin before {0}'.format(round(margin_used_before, 1)))
+                log.info('Used margin now {0}'.format(round(margin_used_now, 1)))
 
             else:
-
-                log.info('')
-                log.info('Spot total quantity before')
-                log.info(self.balances.spot.total.quantity)
 
                 # Set zero if nan
                 self.balances.loc[code, 'spot'].fillna(0, inplace=True)
 
-                # Or update spot
-                self.balances.loc[code, ('spot', 'total', 'quantity')] += qty_filled
-                self.balances.loc[code, ('spot', 'free', 'quantity')] += qty_filled
-                self.balances.loc[code, ('spot', 'used', 'quantity')] += qty_filled
+                asset_total_qty_before = self.balances.spot.total.quantity[code]
+                asset_free_qty_before = self.balances.spot.free.quantity[code]
+                asset_used_qty_before = self.balances.spot.used.quantity[code]
 
-                log.info('')
-                log.info('Spot total quantity after')
-                log.info(self.balances.spot.total.quantity)
+                asset_total_qty_now = asset_total_qty_before + qty_filled
+                asset_free_qty_now = asset_free_qty_before + qty_filled
+                asset_used_qty_now = asset_used_qty_before + qty_filled
+
+                asset_total_value_before = self.balances.spot.total.value[code]
+                asset_free_value_before = self.balances.spot.free.value[code]
+                asset_used_value_before = self.balances.spot.used.value[code]
+
+                asset_total_value_now = asset_total_value_before + val_filled
+                asset_free_value_now = asset_free_value_before + val_filled
+                asset_used_value_now = asset_used_value_before + val_filled
+
+                self.balances.loc[code, ('spot', 'total', 'quantity')] = asset_total_qty_now
+                self.balances.loc[code, ('spot', 'free', 'quantity')] = asset_free_qty_now
+                self.balances.loc[code, ('spot', 'used', 'quantity')] = asset_used_qty_now
+                self.balances.loc[code, ('spot', 'total', 'value')] = asset_total_value_now
+                self.balances.loc[code, ('spot', 'free', 'value')] = asset_free_value_now
+                self.balances.loc[code, ('spot', 'used', 'value')] = asset_used_value_now
+
+                log.info('Asset total quantity before {0}'.format(round(asset_total_qty_before, 3)))
+                log.info('Asset total quantity now {0}'.format(round(asset_total_qty_now, 3)))
+                log.info('Asset free quantity before {0}'.format(round(asset_free_qty_before, 3)))
+                log.info('Asset free quantity now {0}'.format(round(asset_free_qty_now, 3)))
+                log.info('Asset used quantity before {0}'.format(round(asset_used_qty_before, 3)))
+                log.info('Asset used quantity now {0}'.format(round(asset_used_qty_now, 3)))
 
     # Update balances after a transfer
     def update_balances_after_transfer(self, source, dest, quantity):

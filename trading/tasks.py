@@ -362,7 +362,7 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         qty_filled = account.update_order_object(wallet, response)
         log.info('Filled {0} {1}'.format(qty_filled, code))
 
-        account.update_balances(action, wallet, code, qty_filled)
+        account.update_balances(clientid, action, wallet, code, qty_filled)
 
         log.unbind('worker')
 
@@ -386,7 +386,8 @@ def send_fetch_orderid(account_id, order_id):
 
     # Update object and dataframe
     qty_filled = account.update_order_object(order.market.wallet, response)
-    account.update_balances(order.action,
+    account.update_balances(order.clientid,
+                            order.action,
                             order.market.wallet,
                             order.market.base.code,
                             qty_filled
@@ -465,7 +466,8 @@ def send_cancel_order(account_id, order_id):
     else:
         # Update object and dataframe
         qty_filled = account.update_order_object(order.market.wallet, response)
-        account.update_balances(order.action,
+        account.update_balances(order.clientid,
+                                order.action,
                                 order.market.wallet,
                                 order.market.base.code,
                                 qty_filled

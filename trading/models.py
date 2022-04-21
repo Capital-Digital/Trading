@@ -156,7 +156,10 @@ class Account(models.Model):
     # Insert bid/ask of spot markets
     def get_spot_prices(self):
         #
-        log.bind(worker=current_process().index)
+        if hasattr(current_process, 'index'):
+            log.bind(worker=current_process().index)
+        else:
+            log.bind(worker='off')
         log.info('Get spot prices')
 
         codes = self.balances.spot.total.quantity.index.tolist()
@@ -184,7 +187,10 @@ class Account(models.Model):
     # Insert bid/ask of future markets
     def get_futu_prices(self):
         #
-        log.bind(worker=current_process().index)
+        if hasattr(current_process, 'index'):
+            log.bind(worker=current_process().index)
+        else:
+            log.bind(worker='off')
         log.info('Get future prices')
 
         codes = self.balances.spot.total.quantity.index.tolist()

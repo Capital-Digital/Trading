@@ -187,9 +187,10 @@ def rebalance(account_id, get_balances=False, release=True):
     for coin, val in target[target != 0].sort_values(ascending=False).items():
         log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
-    log.info('')
-
     if release:
+
+        log.info(' ')
+        log.info('Release resources...')
 
         # Release resources
         account.sell_spot_all()
@@ -206,8 +207,7 @@ def rebalance(account_id, get_balances=False, release=True):
     need_futu = max(0, des_futu - bal_futu)
 
     log.info(' ')
-    log.info('Transfer resources between accounts')
-    log.info('***********************************')
+    log.info('Transfer resources...')
 
     # Transfer
     if need_spot:
@@ -227,8 +227,7 @@ def rebalance(account_id, get_balances=False, release=True):
     futu = min(bal_futu, des_futu)
 
     log.info('')
-    log.info('Allocate resources')
-    log.info('******************')
+    log.info('Allocate resources...')
 
     if spot > futu:
         account.buy_spot_all()
@@ -237,7 +236,7 @@ def rebalance(account_id, get_balances=False, release=True):
         account.open_short_all()
         account.buy_spot_all()
 
-    log.bind('worker', 'account')
+    log.unbind('worker', 'account')
 
 
 # Update open orders of an account

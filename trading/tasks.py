@@ -135,9 +135,6 @@ def create_balances(account_id):
 
     # Fetch account
     account.get_assets_balances()
-
-    # Eventually add missing codes
-    account.check_codes()
     account.get_open_positions()
 
     # Fetch prices
@@ -146,6 +143,9 @@ def create_balances(account_id):
 
     # Calculate assets value
     account.calculate_assets_value()
+
+    # Eventually add missing codes
+    account.check_codes()
 
     log.unbind('worker')
 

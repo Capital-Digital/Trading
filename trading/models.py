@@ -780,14 +780,15 @@ class Account(models.Model):
                 # Margin
                 ########
 
-                # Before
-                margin_free_before = self.balances.future.free.quantity[self.quote]
-                margin_used_before = self.balances.future.used.quantity[self.quote]
-
-                if 'position' in self.balances.columns.get_level_values(0):
+                # Determine leverage
+                if ('position', 'open', 'leverage') in self.balances.columns:
                     leverage = self.balances.position.open.leverage[code]
                 else:
                     leverage = 20
+
+                # Before
+                margin_free_before = self.balances.future.free.quantity[self.quote]
+                margin_used_before = self.balances.future.used.quantity[self.quote]
 
                 # Now
                 margin_free_now = margin_free_before + val_filled

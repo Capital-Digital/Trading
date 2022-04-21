@@ -191,7 +191,9 @@ def rebalance(account_id, get_balances=False, release=True):
     if release:
 
         log.info(' ')
-        log.info('Release resources...')
+        log.info('Release resources')
+        log.info('*****************')
+        log.info(' ')
 
         # Release resources
         account.sell_spot_all()
@@ -208,7 +210,8 @@ def rebalance(account_id, get_balances=False, release=True):
     need_futu = max(0, des_futu - bal_futu)
 
     log.info(' ')
-    log.info('Transfer resources...')
+    log.info('Transfer resources')
+    log.info('******************')
     log.info(' ')
 
     # Transfer
@@ -235,7 +238,9 @@ def rebalance(account_id, get_balances=False, release=True):
     futu = min(bal_futu, des_futu)
 
     log.info('')
-    log.info('Allocate resources...')
+    log.info('Allocate resources')
+    log.info('******************')
+    log.info(' ')
 
     if spot > futu:
         account.buy_spot_all()

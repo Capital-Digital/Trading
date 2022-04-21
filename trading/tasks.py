@@ -142,7 +142,7 @@ def create_balances(account_id):
     account.get_futu_prices()
 
     # Calculate assets value
-    account.calculate_balances_value()
+    account.calculate_assets_value()
 
     log.unbind('worker')
 
@@ -167,7 +167,7 @@ def rebalance(account_id, get_balances=False, release=True):
     account.get_futu_prices(update=True)
 
     # Re-calculate assets value
-    account.calculate_balances_value()
+    account.calculate_assets_value()
 
     # Calculate new delta
     account.get_target()

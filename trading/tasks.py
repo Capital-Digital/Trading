@@ -79,7 +79,7 @@ def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
             log.info('Prepare accounts ({0})'.format(account.name))
-            chain(cancel_orders.s(account.id), create_balances.s(account.id))()
+            chain(cancel_orders.s(account.id), create_balances.s())()
 
 
 # Account specific actions

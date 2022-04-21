@@ -433,8 +433,6 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
-        log.info('Size order')
-
         # Determine wallet
         if action in ['buy_spot', 'sell_spot']:
             wallet = 'spot'
@@ -527,8 +525,6 @@ class Account(models.Model):
 
     # Prepare dictionary key:value for an order
     def prep_order(self, wallet, code, order_size, order_value, price, action, side):
-
-        log.info('Prepare order')
 
         # Select market
         markets = Market.objects.filter(base__code=code,

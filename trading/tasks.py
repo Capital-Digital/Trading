@@ -209,6 +209,7 @@ def rebalance(account_id, get_balances=False, release=True):
 
     log.info(' ')
     log.info('Transfer resources...')
+    log.info(' ')
 
     # Transfer
     if need_spot:

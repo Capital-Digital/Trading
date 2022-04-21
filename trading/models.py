@@ -501,18 +501,18 @@ class Account(models.Model):
                 order_size -= offset
                 order_value = order_size * price
 
-                log.info('resources available in {1} : {0}'.format(round(available, 2), wallet))
-                log.info('buy amount {0}'.format(round(order_size, 4)))
-                log.info('buy value {0}'.format(round(order_value, 2)))
-                log.info('offset {0}'.format(round(offset, 4)))
-
             else:
                 log.info('No resource available')
                 order_size = 0
                 order_value = 0
 
-        log.info('Desired order size {0} {1}'.format(round(order_size, 4), code))
-        log.info('Desired order value {0} {1}'.format(round(order_value, 4), self.quote))
+        if order_size:
+            log.info('Desired order size {0} {1}'.format(round(order_size, 4), code))
+            log.info('Desired order value {0} {1}'.format(round(order_value, 1), self.quote))
+
+            if action in ['buy_spot', 'open_short']:
+                log.info('Available resources {0} {1}'.format(round(available, 1), self.quote))
+                log.info('Offset {0}'.format(round(offset, 4)))
 
         return dict(order_size=order_size,
                     order_value=order_value,

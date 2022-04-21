@@ -223,14 +223,14 @@ def rebalance(account_id, get_balances=False, release=True):
     if need_spot:
         free_futu = max(0, bal_futu - des_futu)
         log.info('Resources are needed in spot')
-        log.info('{0} {1} are missing'.format(round(need_spot, 1), account.quote))
+        log.info('{0} {1} are missing'.format(round(need_spot, 3), account.quote))
         amount = min(need_spot, free_futu)
         send_transfer.delay(account_id, 'future', 'spot', amount)
 
     elif need_futu:
         free_spot = max(0, bal_spot - des_spot)
         log.info('Resources are needed in future')
-        log.info('{0} {1} are missing'.format(round(need_futu, 1), account.quote))
+        log.info('{0} {1} are missing'.format(round(need_futu, 3), account.quote))
         amount = min(need_futu, free_spot)
         send_transfer.delay(account_id, 'spot', 'future', amount)
 
@@ -430,7 +430,7 @@ def send_fetch_all_open_orders(account_id):
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_transfer_funds')
 def send_transfer(account_id, source, dest, quantity):
     #
-    if quantity:
+    if quantity > 1:
 
         account = Account.objects.get(id=account_id)
         client = account.exchange.get_ccxt_client(account)
@@ -440,6 +440,9 @@ def send_transfer(account_id, source, dest, quantity):
 
         try:
             client.transfer(account.quote, quantity, source, dest)
+
+        except ccxt.BadRequest as e:
+            log.error('Transfer failed, bad request', src=source, dst=dest, qty=quantity)
 
         except Exception as e:
             raise Exception('Transfer failed {0}'.format(str(e)))

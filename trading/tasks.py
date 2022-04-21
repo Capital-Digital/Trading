@@ -442,13 +442,14 @@ def send_transfer(account_id, source, dest, quantity):
             client.transfer(account.quote, quantity, source, dest)
 
         except Exception as e:
-            pass
+            raise Exception('Transfer failed {0}'.format(str(e)))
 
         else:
 
             # Update dataframe
             account.update_balances_after_transfer(source, dest, quantity)
 
+            log.info('Transfer complete, return {0} {1}'.format(account, quantity))
             return account_id, quantity
 
 

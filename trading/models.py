@@ -80,7 +80,7 @@ class Account(models.Model):
     # Fetch coins and create balances dataframe
     def get_assets_balances(self):
         #
-        log.bin(worker=current_process().index)
+        log.bind(worker=current_process().index)
         log.info('Get assets balance')
 
         # Reset attribute
@@ -118,7 +118,7 @@ class Account(models.Model):
     # Fetch and update open positions in balances dataframe
     def get_open_positions(self):
 
-        log.bin(worker=current_process().index)
+        log.bind(worker=current_process().index)
         log.info('Get open positions')
 
         # Get client
@@ -151,7 +151,7 @@ class Account(models.Model):
     # Insert bid/ask of spot markets
     def get_spot_prices(self):
         #
-        log.bin(worker=current_process().index)
+        log.bind(worker=current_process().index)
         log.info('Get spot prices')
 
         codes = self.balances.spot.total.quantity.index.tolist()
@@ -177,7 +177,7 @@ class Account(models.Model):
     # Insert bid/ask of future markets
     def get_futu_prices(self):
         #
-        log.bin(worker=current_process().index)
+        log.bind(worker=current_process().index)
         log.info('Get future prices')
 
         codes = self.balances.spot.total.quantity.index.tolist()
@@ -206,7 +206,7 @@ class Account(models.Model):
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):
         #
-        log.bin(worker=current_process().index)
+        log.bind(worker=current_process().index)
         log.info('Calculate assets value')
 
         # Iterate through wallets, free, used and total quantities

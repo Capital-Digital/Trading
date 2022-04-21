@@ -15,12 +15,11 @@ log = structlog.get_logger(__name__)
 def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=None, **kwargs):
 
     if task.name == 'Markets_____Update_dataframe':
-        exid, tickers, admin = args
-        print(exid, tickers, admin)
+
+        exid, tickers = args
 
         if state == 'SUCCESS':
-            if not admin:
-                bulk_update_strategies.delay(exid, trade=True)
+            bulk_update_strategies.delay(exid, trade=True)
 
         else:
             log.error('Dataframe update failure')

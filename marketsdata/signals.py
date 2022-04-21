@@ -16,8 +16,8 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Markets_____Update_dataframe':
 
-        print(state)
-        print(args)
+        log.info(state)
+        log.info(args)
 
         exid, tickers = args
 

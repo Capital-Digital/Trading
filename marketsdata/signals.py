@@ -16,10 +16,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Markets_____Update_dataframe':
 
-        log.info(state)
-        log.info(args)
-
-        exid, tickers = args
+        exid = args[0]
 
         if state == 'SUCCESS':
             bulk_update_strategies.delay(exid, trade=True)

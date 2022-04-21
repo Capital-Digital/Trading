@@ -161,7 +161,9 @@ class Account(models.Model):
                 currency = Currency.objects.get(code=code)
 
             except ObjectDoesNotExist:
-                log.error('Spot market {0}/{1} not found'.format(code, self.quote))
+
+                # log.error('Spot market {0}/{1} not found'.format(code, self.quote))
+                
                 self.balances.loc[code, ('price', 'spot', 'bid')] = np.nan
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
@@ -191,7 +193,9 @@ class Account(models.Model):
                                             exchange=self.exchange)
 
             except ObjectDoesNotExist:
-                log.error('Future market {0}/{1} not found'.format(code, self.quote))
+
+                # log.error('Future market {0}/{1} not found'.format(code, self.quote))
+
                 self.balances.loc[code, ('price', 'future', 'bid')] = np.nan
                 self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 

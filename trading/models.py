@@ -238,9 +238,10 @@ class Account(models.Model):
                     value = price * value
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
-        # Drop dust coins
-        mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
-        self.balances = self.balances.loc[(mask == True).any(axis=1)]
+        # Drop dust coins an keep nan
+        mask = self.balances.spot.total.value > 1
+        nan = self.balances.spot.total.value.isna()
+        self.balances = self.balances.loc[mask | nan]
 
         # Create missing value columns
         for i in ['total', 'free', 'used']:

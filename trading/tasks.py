@@ -137,15 +137,15 @@ def create_balances(account_id):
     account.get_assets_balances()
     account.get_open_positions()
 
+    # Eventually add missing codes
+    account.check_codes()
+
     # Fetch prices
     account.get_spot_prices()
     account.get_futu_prices()
 
     # Calculate assets value
     account.calculate_assets_value()
-
-    # Eventually add missing codes
-    account.check_codes()
 
     log.unbind('worker')
 

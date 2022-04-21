@@ -666,7 +666,10 @@ class Currency(models.Model):
                     else:
                         return dic[key]
         else:
-            return 1
+            if isinstance(key, list):
+                return 1, 1
+            else:
+                return 1
 
 
 class Market(models.Model):

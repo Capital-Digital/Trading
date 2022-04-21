@@ -116,7 +116,7 @@ def preload_dataframe(exid):
     # Create dataframe with prices and volumes
     exchange = Exchange.objects.get(exid=exid)
     codes = exchange.get_strategies_codes()
-    exchange.load_data(10 * 24, codes)
+    exchange.load_data(5 * 24, codes)
 
 
 # Update exchange.data with fresh prices and volumes

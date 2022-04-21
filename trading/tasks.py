@@ -78,17 +78,25 @@ def bulk_check_credentials():
 def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
-
-            log.bind(worker=current_process().index)
-            log.info('Prepare accounts')
-
-            chord(cancel_orders.s(account.id))(create_balances.s())
-
-            log.unbind('worker')
+            prepare_accounts.delay(account.id)
 
 
 # Account specific actions
 ##########################
+
+# Cancel orders and query assets quantity/positions
+@app.task(name='Trading_____Prepare_accounts')
+def prepare_accounts(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+
+    log.bind(worker=current_process().index)
+    log.info('Prepare accounts')
+
+    chord(cancel_orders.s(account.id))(create_balances.s())
+
+    log.unbind('worker')
+
 
 # Create balances dataframe
 @app.task(name='Trading_____Create_balances')

@@ -201,6 +201,12 @@ def rebalance(account_id, get_balances=False, release=True):
     # Determine available and desired resources
     bal_spot = account.balances.spot.free.value[account.quote]
     bal_futu = account.balances.future.free.value[account.quote]
+
+    if np.isnan(bal_spot):
+        bal_spot = 0
+    if np.isnan(bal_futu):
+        bal_futu = 0
+
     des_spot = account.to_buy_spot_value().sum()
     des_futu = account.to_open_short_value().sum()
 

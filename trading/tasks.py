@@ -65,20 +65,21 @@ def bulk_update_orders():
         update_orders.delay(account.id)
 
 
-# Bulk cancel orders of all accounts
-@app.task(name='Trading_____Bulk_cancel_orders')
-def bulk_cancel_orders():
-    #
-    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
-        cancel_orders.delay(account.id)
-
-
 # Check credentials of all accounts
 @app.task(name='Trading_____Bulk_check_credentials')
 def bulk_check_credentials():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange):
             check_credentials.delay(account.id)
+
+
+# Cancel orders and query assets quantity and open positions
+@app.task(name='Trading_____Bulk_prepare_accounts')
+def bulk_prepare_accounts():
+    for exchange in Exchange.objects.all():
+        for account in Account.objects.filter(exchange=exchange, active=True):
+            log.info('Prepare accounts ({0})'.format(account.name))
+            chain(cancel_orders.s(account.id), create_balances.s(account.id))()
 
 
 # Account specific actions
@@ -92,8 +93,8 @@ def create_balances(account_id):
     log.info('Create balances ({0})'.format(account.name), worker=current_process().index)
 
     account.get_balances_qty()
-    account.calculate_balances_value()
     account.get_positions_value()
+    account.calculate_balances_value()
 
 
 # Rebalance fund of an account

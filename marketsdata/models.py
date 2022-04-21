@@ -14,6 +14,7 @@ import json
 import cloudscraper
 import itertools
 from picklefield.fields import PickledObjectField
+from billiard.process import current_process
 
 log = structlog.get_logger(__name__)
 
@@ -560,6 +561,8 @@ class Exchange(models.Model):
 
         if codes:
 
+            log.info('Preload dataframe ({0} codes)'.format(len(codes)), worker=current_process().index)
+
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
             start = now - timedelta(hours=length)
 
@@ -591,6 +594,8 @@ class Exchange(models.Model):
             # Check and fix rows
             self.data = fix(self.data)
             self.save()
+
+            log.info('Preload dataframe complete')
 
             return self.data
 

@@ -3,6 +3,7 @@ import structlog
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from marketsdata.models import Exchange
+from trading.models import Account
 from strategy.tasks import bulk_update_strategies
 from celery.signals import task_success, task_postrun, task_failure
 from billiard.process import current_process

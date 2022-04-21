@@ -16,6 +16,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Markets_____Update_dataframe':
         exid, tickers, admin = args
+        print(exid, tickers, admin)
 
         if state == 'SUCCESS':
             if not admin:

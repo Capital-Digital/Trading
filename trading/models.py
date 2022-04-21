@@ -919,19 +919,6 @@ class Account(models.Model):
         else:
             log.info('No position found')
 
-    # Return True if balances df is updated
-    def is_fresh_balances(self):
-        dt = self.balances_dt
-        if dt:
-            if dt == dt_aware_now(0):
-                return True
-            else:
-                print(dt)
-                print(dt_aware_now(0))
-                return False
-        else:
-            return False
-
 
 class Fund(models.Model):
     objects = models.Manager()

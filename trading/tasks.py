@@ -157,11 +157,6 @@ def rebalance(account_id, get_balances=False, release=True):
     if get_balances:
         create_balances(account_id)
 
-    else:
-        # Wait balances is updated
-        while not account.is_fresh_balances():
-            pass
-
     log.info('')
     log.info('Rebalance account')
     log.info('*****************')

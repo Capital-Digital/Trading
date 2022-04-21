@@ -14,7 +14,7 @@ import pandas as pd
 import logging
 import structlog
 from structlog.processors import format_exc_info
-from celery import chain, group, shared_task, Task
+from celery import chain, group, chord, shared_task, Task
 from capital.celery import app
 from django.core.exceptions import ObjectDoesNotExist
 from timeit import default_timer as timer
@@ -78,8 +78,13 @@ def bulk_check_credentials():
 def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
-            log.info('Prepare accounts ({0})'.format(account.name))
-            chain(cancel_orders.s(account.id), create_balances.s())()
+
+            log.bind(worker=current_process().index)
+            log.info('Prepare accounts')
+            
+            chord(cancel_orders.s(account.id))(create_balances.s())
+
+            log.unbind('worker')
 
 
 # Account specific actions
@@ -208,18 +213,15 @@ def update_orders(account_id):
 def cancel_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
-    log.info('Cancel orders ({0})'.format(account.name), worker=current_process().index)
+    log.info('Cancel orders', worker=current_process().index)
 
     orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
                                   ).exclude(orderid__isnull=True)
     if orders.exists():
-        log.info('Cancel {0} orders(s)'.format(orders.count()))
         for order in orders:
             send_cancel_order.delay(account_id, order.orderid)
-    else:
-        log.info('Open order not found')
 
-    return account_id
+    log.info('Cancel orders complete', worker=current_process().index)
 
 
 # Check an account credential

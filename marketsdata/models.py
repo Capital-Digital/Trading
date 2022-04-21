@@ -662,8 +662,6 @@ class Currency(models.Model):
                               quote=quote)
                 else:
                     if isinstance(key, list):
-                        log.info('Return keys')
-                        log.info([dic[k] for k in key])
                         return [dic[k] for k in key]
                     else:
                         return dic[key]

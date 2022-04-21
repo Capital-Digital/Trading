@@ -204,7 +204,7 @@ class Account(models.Model):
         log.info('{0} future prices complete'.format(action))
 
     # Convert quantity in dollar in balances dataframe
-    def calculate_balances_value(self):
+    def calculate_assets_value(self):
         #
         log.info('Calculate assets value')
 
@@ -226,11 +226,11 @@ class Account(models.Model):
         mask = self.balances.loc[:, self.balances.columns.get_level_values(2) == 'value'] > 1
         self.balances = self.balances.loc[(mask == True).any(axis=1)]
 
-        # Create used value column
-        if ('spot', 'used', 'value') not in self.balances.columns:
-            self.balances[('spot', 'used', 'value')] = np.nan
-        if ('future', 'used', 'value') not in self.balances.columns:
-            self.balances[('future', 'used', 'value')] = np.nan
+        # Create missing value columns
+        for i in ['total', 'free', 'used']:
+            for wallet in ['spot', 'future']:
+                if (wallet, i, 'value') not in self.balances.columns:
+                    self.balances[(wallet, i, 'value')] = np.nan
 
         # reorder columns
         self.balances.sort_index(1, inplace=True)

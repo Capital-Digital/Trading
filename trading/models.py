@@ -433,7 +433,6 @@ class Account(models.Model):
     # Determine order size based on available resources
     def size_order(self, code, quantity, action):
 
-        log.info(' ')
         log.info('Size order')
 
         # Determine wallet
@@ -458,7 +457,6 @@ class Account(models.Model):
                                       action=action,
                                       status__in=['preparation', 'new', 'open']
                                       )
-
         if others.exists():
             amount = others.aggregate(Sum('amount'))['amount__sum']
             filled = others.aggregate(Sum('filled'))['filled__sum']
@@ -511,6 +509,7 @@ class Account(models.Model):
                 log.info('offset {0}'.format(round(offset, 4)))
 
             else:
+                log.info('No resource available')
                 order_size = 0
                 order_value = 0
 
@@ -526,7 +525,6 @@ class Account(models.Model):
     # Prepare dictionary key:value for an order
     def prep_order(self, wallet, code, order_size, order_value, price, action, side):
 
-        log.info(' ')
         log.info('Prepare order')
 
         # Select market
@@ -828,7 +826,7 @@ class Account(models.Model):
         log.info('')
         log.info('Sell spot')
         sell_spot = self.to_sell_spot()
-        log.info('Sell spot {0}'.format(sell_spot.count()))
+        log.info('Sell spot {0} coin(s)'.format(sell_spot.count()))
 
         for code, quantity in sell_spot.items():
             kwargs = self.size_order(code, quantity, 'sell_spot')
@@ -846,7 +844,7 @@ class Account(models.Model):
         log.info('')
         log.info('Close short...')
         opened_short = self.to_close_short()
-        log.info('Close short {0}'.format(opened_short.count()))
+        log.info('Close short {0} position(s)'.format(opened_short.count()))
 
         for code, quantity in opened_short.items():
             kwargs = self.size_order(code, quantity, 'close_short')
@@ -864,7 +862,7 @@ class Account(models.Model):
         log.info('')
         log.info('Buy spot...')
         buy_spot = self.to_buy_spot()
-        log.info('Buy spot {0}'.format(buy_spot.count()))
+        log.info('Buy spot {0} coin(s)'.format(buy_spot.count()))
 
         for code, quantity in buy_spot.items():
             kwargs = self.size_order(code, quantity, 'buy_spot')
@@ -882,7 +880,7 @@ class Account(models.Model):
         log.info('')
         log.info('Open short...')
         open_short = self.to_open_short()
-        log.info('Buy spot {0}'.format(open_short.count()))
+        log.info('Open short {0} position(s)'.format(open_short.count()))
 
         for code, quantity in open_short.items():
             kwargs = self.size_order(code, quantity, 'open_short')

@@ -475,7 +475,7 @@ class Account(models.Model):
                 log.info('amount -> {0}'.format(other.amount))
                 log.info(' ')
 
-        # Select priceœ
+        # Select price
         price = self.balances.price[wallet][key][code]
 
         # Determine order value and amount when USDT resources are released
@@ -494,10 +494,13 @@ class Account(models.Model):
                 available = self.balances.spot.free.quantity[self.quote]
             elif action == 'open_short':
                 total = self.balances.future.total.quantity[self.quote]
-                open_value = abs(self.balances.position.open.value.dropna()).sum()
+                if ('position', 'open', 'value') in self.balances.columns:
+                    open_value = abs(self.balances.position.open.value.dropna()).sum()
+                else:
+                    open_value = 0
                 available = max(0, total - open_value)
 
-            if not pd.isna(available):
+            if not pd.isna(available) and available:
 
                 value = math.trunc(quantity * price)
                 order_value = min(available, value)

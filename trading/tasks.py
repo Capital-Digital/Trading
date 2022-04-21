@@ -260,16 +260,10 @@ def update_orders(account_id):
                                   ).exclude(orderid__isnull=True)
 
     if orders.exists():
-
-        # log.info(' ')
-        # log.info('Update {0} order(s)'.format(orders.count()))
-        # log.info('********************')
-
         for order in orders:
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
         pass
-        # log.info('No order to update')
 
 
 # Check an account credential

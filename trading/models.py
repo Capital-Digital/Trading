@@ -607,7 +607,7 @@ class Account(models.Model):
 
             log.info('Prep order {0} {1} {2}'.format(size, code, wallet))
             log.info('Prep order value {0} {1}'.format(round(order_value, 1), self.quote))
-            log.info('Resource used {0} {1}'.format(round(used_qty, 3), code_res))
+            log.info('Resource used {0} {1}'.format(round(used_qty, 4), code_res))
             log.info('ClientID {0}'.format(clientid))
 
             return True, dict(account_id=self.id,
@@ -815,16 +815,18 @@ class Account(models.Model):
 
                             if j == 'value':
                                 delta = val_filled
-                            else:
+                                coin = self.quote
+                            elif j == 'quantity':
                                 delta = qty_filled
+                                coin = code
 
                             # Update dataframe
                             before = self.balances.spot[i][j][c]
                             now = before + delta
                             self.balances.loc[c, ('spot', i, j)] = now
 
-                            log.info('{0} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), c))
-                            log.info('{0} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), c))
+                            log.info('{0} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), coin))
+                            log.info('{0} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), coin))
 
                 self.save()
 

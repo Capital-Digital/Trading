@@ -173,9 +173,9 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
             else:
-                for key in ['bid', 'ask']:
-                    p = currency.get_latest_price(self.exchange, self.quote, key)
-                    self.balances.loc[code, ('price', 'spot', key)] = p
+                bid, ask = currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask'])
+                self.balances.loc[code, ('price', 'spot', 'bid')] = bid
+                self.balances.loc[code, ('price', 'spot', 'ask')] = ask
 
         self.save()
         log.info('Get spot prices complete')
@@ -205,8 +205,7 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'future', 'ask')] = np.nan
 
             else:
-                for key in ['bid', 'ask']:
-                    self.balances.loc[code, ('price', 'future', key)] = market.get_latest_price(key)
+                self.balances.loc[code, ('price', 'future', 'last')] = market.get_latest_price('last')
 
         self.save()
         log.info('Get future prices complete')

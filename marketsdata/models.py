@@ -652,7 +652,7 @@ class Currency(models.Model):
                 now = dt.strftime(datetime_directive_ISO_8601)
 
                 try:
-                    price = tickers.data[now][key]
+                    dic = tickers.data[now]
 
                 except KeyError:
                     log.error('Key {0} not found'.format(now),
@@ -661,7 +661,10 @@ class Currency(models.Model):
                               wallet='spot',
                               quote=quote)
                 else:
-                    return price
+                    if isinstance(key, list):
+                        return [dic[k] for k in key]
+                    else:
+                        return dic[key]
         else:
             return 1
 
@@ -719,7 +722,7 @@ class Market(models.Model):
         return ex + space + type + '__' + self.symbol
 
     # Return latest price
-    def get_latest_price(self, key):
+    def get_latest_price(self):
 
         try:
             tickers = Tickers.objects.get(market=self,

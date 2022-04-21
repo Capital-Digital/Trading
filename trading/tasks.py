@@ -49,6 +49,14 @@ class BaseTaskWithRetry(Task):
 ##############
 
 
+# Cancel orders and query assets quantity and open positions
+@app.task(name='Trading_____Bulk_prepare_accounts')
+def bulk_prepare_accounts():
+    for exchange in Exchange.objects.all():
+        for account in Account.objects.filter(exchange=exchange, active=True):
+            prepare_accounts.delay(account.id)
+
+
 # Bulk rebalance assets of all accounts
 @app.task(name='Trading_Bulk_rebalance_accounts')
 def bulk_rebalance(strategy_id):
@@ -73,14 +81,6 @@ def bulk_check_credentials():
             check_credentials.delay(account.id)
 
 
-# Cancel orders and query assets quantity and open positions
-@app.task(name='Trading_____Bulk_prepare_accounts')
-def bulk_prepare_accounts():
-    for exchange in Exchange.objects.all():
-        for account in Account.objects.filter(exchange=exchange, active=True):
-            prepare_accounts.delay(account.id)
-
-
 # Account specific actions
 ##########################
 
@@ -96,6 +96,23 @@ def prepare_accounts(account_id):
     chord(cancel_orders.s(account.id))(create_balances.s())
 
     log.unbind('worker')
+
+
+# Cancel open orders of an account
+@app.task(name='Trading_____Cancel_orders')
+def cancel_orders(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    log.info('Cancel orders', worker=current_process().index)
+
+    orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
+                                  ).exclude(orderid__isnull=True)
+    if orders.exists():
+        for order in orders:
+            send_cancel_order.delay(account_id, order.orderid)
+
+    log.info('Cancel orders complete', worker=current_process().index)
+    return account_id
 
 
 # Create balances dataframe
@@ -137,6 +154,13 @@ def rebalance(account_id, get_balances=False, release=True):
     log.info('')
     log.info('Rebalance account', account=account.name)
     log.info('*****************')
+
+    # Update prices
+    account.get_spot_prices()
+    account.get_futu_prices()
+
+    # Re-calculate assets value
+    account.calculate_balances_value()
 
     # Calculate new delta
     account.get_target()
@@ -222,23 +246,6 @@ def update_orders(account_id):
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
         log.info('No order to update')
-
-
-# Cancel open orders of an account
-@app.task(name='Trading_____Cancel_orders')
-def cancel_orders(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    log.info('Cancel orders', worker=current_process().index)
-
-    orders = Order.objects.filter(account=account, status__in=['new', 'partially_filled']
-                                  ).exclude(orderid__isnull=True)
-    if orders.exists():
-        for order in orders:
-            send_cancel_order.delay(account_id, order.orderid)
-
-    log.info('Cancel orders complete', worker=current_process().index)
-    return account_id
 
 
 # Check an account credential

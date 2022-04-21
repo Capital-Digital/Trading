@@ -123,9 +123,13 @@ class Account(models.Model):
         codes_strategy = self.strategy.get_codes()
         for code in codes_strategy:
             if code not in self.balances.index:
+
+                log.info('Add missing code {0}'.format(code))
+
                 self.balances.loc[code, ('spot', 'total', 'quantity')] = np.nan
                 self.balances.loc[code, ('spot', 'free', 'quantity')] = np.nan
                 self.balances.loc[code, ('spot', 'used', 'quantity')] = np.nan
+
         self.save()
 
     # Fetch and update open positions in balances dataframe

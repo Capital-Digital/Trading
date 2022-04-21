@@ -193,7 +193,6 @@ def rebalance(account_id, get_balances=False, release=True):
         log.info(' ')
         log.info('Release resources')
         log.info('*****************')
-        log.info(' ')
 
         # Release resources
         account.sell_spot_all()
@@ -240,7 +239,6 @@ def rebalance(account_id, get_balances=False, release=True):
     log.info('')
     log.info('Allocate resources')
     log.info('******************')
-    log.info(' ')
 
     if spot > futu:
         account.buy_spot_all()

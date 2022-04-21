@@ -460,9 +460,9 @@ class Account(models.Model):
                                       )
 
         if others.exists():
-            size = others.aggregate(Sum('size'))['size__sum']
+            amount = others.aggregate(Sum('amount'))['amount__sum']
             filled = others.aggregate(Sum('filled'))['filled__sum']
-            offset = size - filled
+            offset = amount - filled
 
             log.info('{0} order(s) object found (offset {1})'.format(len(others), offset))
 
@@ -470,13 +470,13 @@ class Account(models.Model):
                 log.info('client_id -> {0}'.format(other.clientid))
                 log.info('order_id -> {0}'.format(other.orderid))
                 log.info('status -> {0}'.format(other.status))
-                log.info('size -> {0}'.format(other.size))
+                log.info('amount -> {0}'.format(other.amount))
                 log.info(' ')
 
         # Select price
         price = self.balances.price[wallet][key][code]
 
-        # Determine order value and size when USDT resources are released
+        # Determine order value and amount when USDT resources are released
         if action == 'sell_spot':
             order_size = quantity - offset  # offset qty of open/filled order
             order_value = order_size * price
@@ -487,7 +487,7 @@ class Account(models.Model):
 
         else:
 
-            # Determine order value and size when USDT resources are allocated
+            # Determine order value and amount when USDT resources are allocated
             if action == 'buy_spot':
                 available = self.balances.spot.free.quantity[self.quote]
             elif action == 'open_short':
@@ -501,12 +501,12 @@ class Account(models.Model):
                 order_value = min(available, value)
                 order_size = order_value / price
 
-                # Offset order size with size from another order
+                # Offset order amount with amount from another order
                 order_size -= offset
                 order_value = order_size * price
 
                 log.info('resources available in {1} : {0}'.format(round(available, 2), wallet))
-                log.info('buy size {0}'.format(round(order_size, 4)))
+                log.info('buy amount {0}'.format(round(order_size, 4)))
                 log.info('buy value {0}'.format(round(order_value, 2)))
                 log.info('offset {0}'.format(round(offset, 4)))
 

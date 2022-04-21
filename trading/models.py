@@ -110,10 +110,14 @@ class Account(models.Model):
                 else:
                     self.balances[(wallet, key, 'quantity')] = np.nan
 
+        # Timestamp index name
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
         now = dt.strftime(datetime_directive_m)
-
         self.balances.index.set_names(now, inplace=True)
+
+        # reorder columns
+        self.balances.sort_index(1, inplace=True)
+
         self.save()
 
         log.info('Get assets balance complete')

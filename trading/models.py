@@ -225,7 +225,7 @@ class Account(models.Model):
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
             for tp in ['free', 'total', 'used']:
-                for coin in self.balances[wallet][tp]['quantity'].dropna().index.tolist():
+                for coin, value in self.balances[wallet][tp]['quantity'].items():
 
                     if coin == self.quote:
                         price = 1
@@ -233,7 +233,7 @@ class Account(models.Model):
                         price = self.balances.price.spot['bid'][coin]
 
                     # Calculate value
-                    value = price * self.balances[wallet][tp]['quantity'][coin]
+                    value = price * value
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
         # Drop dust coins

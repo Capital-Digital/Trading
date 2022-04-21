@@ -150,7 +150,9 @@ def create_balances(account_id):
 def rebalance(account_id, get_balances=False, release=True):
     #
     account = Account.objects.get(id=account_id)
-    log.info('Rebalance ({0})'.format(account.name), worker=current_process().index)
+
+    log.bind(worker=current_process().index, account=account.name)
+    log.info('Rebalance ({0})'.format(account.name))
 
     if get_balances:
         create_balances(account_id)
@@ -161,12 +163,12 @@ def rebalance(account_id, get_balances=False, release=True):
             pass
 
     log.info('')
-    log.info('Rebalance account', account=account.name)
+    log.info('Rebalance account')
     log.info('*****************')
 
     # Update prices
-    account.get_spot_prices()
-    account.get_futu_prices()
+    account.get_spot_prices(update=True)
+    account.get_futu_prices(update=True)
 
     # Re-calculate assets value
     account.calculate_balances_value()
@@ -234,6 +236,8 @@ def rebalance(account_id, get_balances=False, release=True):
     else:
         account.open_short_all()
         account.buy_spot_all()
+
+    log.bind('worker', 'account')
 
 
 # Update open orders of an account

@@ -150,9 +150,10 @@ class Account(models.Model):
         log.info('Get open positions complete')
 
     # Insert bid/ask of spot markets
-    def get_spot_prices(self):
+    def get_spot_prices(self, update):
         #
-        log.info('Get spot prices')
+        action = 'Update' if update else 'Get'
+        log.info('{0} spot prices'.format(action))
 
         codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
@@ -173,12 +174,13 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'spot', 'ask')] = ask
 
         self.save()
-        log.info('Get spot prices complete')
+        log.info('{0} spot prices complete'.format(action))
 
     # Insert bid/ask of future markets
-    def get_futu_prices(self):
+    def get_futu_prices(self, update):
         #
-        log.info('Get future prices')
+        action = 'Update' if update else 'Get'
+        log.info('{0} future prices'.format(action))
 
         codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
@@ -199,7 +201,7 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'future', 'last')] = market.get_latest_price()
 
         self.save()
-        log.info('Get future prices complete')
+        log.info('{0} future prices complete'.format(action))
 
     # Convert quantity in dollar in balances dataframe
     def calculate_balances_value(self):

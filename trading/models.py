@@ -513,6 +513,9 @@ class Account(models.Model):
                 order_size = 0
                 order_value = 0
 
+        log.info('Desired order size {0} {1}'.format(round(order_size, 4), code))
+        log.info('Desired order value {0} {1}'.format(round(order_value, 4), self.quote))
+
         return dict(order_size=order_size,
                     order_value=order_value,
                     price=price,

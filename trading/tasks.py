@@ -305,14 +305,13 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
                       then_rebalance=True):
     #
     log.info(' ')
-    log.info('Place order', worker=current_process().index)
-    log.info('***********')
+    log.bind(worker=current_process().index)
+    log.info('Place order...')
+    log.info(' ')
 
-    log.info('symbol {0}'.format(symbol))
-    log.info('side {0}'.format(side))
-    log.info('size {0}'.format(size))
-    log.info('market {0}'.format(wallet))
-    log.info('clientid {0}'.format(clientid))
+    log.info('{0} {1} {2}'.format(side.title(), size, code))
+    log.info('Order symbol {0} ({1})'.format(symbol, wallet))
+    log.info('Order clientid {0}'.format(clientid))
 
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
@@ -346,32 +345,23 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         order.response = dict(exception=str(e))
         order.save()
 
-        log.info('')
-        log.info(e)
-        log.error('Order placement failed')
-        log.info('code {0}'.format(code))
-        log.info('action {0}'.format(action))
-        log.info('clientid {0}'.format(clientid))
-        log.info('size {0}'.format(size))
-        log.info('wallet {0}'.format(wallet))
+        log.error('Order placement failed', cause=str(e))
+        log.error('{0} {1} {2}'.format(side.title(), size, code))
+        log.error('Order symbol {0} ({1})'.format(symbol, wallet))
+        log.error('Order clientid {0}'.format(clientid))
+        log.unbind('worker')
 
     else:
 
-        log.info('')
         log.info('Order placement success')
-        log.info('code {0}'.format(code))
-        log.info('action {0}'.format(action))
-        log.info('clientid {0}'.format(clientid))
-        log.info('size {0}'.format(size))
-        log.info('wallet {0}'.format(wallet))
 
         # Update object and dataframe
         qty_filled = account.update_order_object(wallet, response)
-
-        print(qty_filled)
-        log.info('filled {0}'.format(qty_filled))
+        log.info('Filled {0} {1}'.format(qty_filled, code))
 
         account.update_balances(action, wallet, code, qty_filled)
+
+        log.unbind('worker')
 
         if then_rebalance:
             return account_id, qty_filled

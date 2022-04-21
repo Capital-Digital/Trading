@@ -713,8 +713,7 @@ class Account(models.Model):
 
             log.info('')
             log.info('Update balances...')
-            log.info('action {0}'.format(action))
-            log.info('-> {0} {1}'.format(code, wallet))
+            log.info('Action {0} {1} {2}'.format(action.replace('_', ' '), code, wallet))
 
             # Determine key
             if action in ['buy_spot', 'close_short']:

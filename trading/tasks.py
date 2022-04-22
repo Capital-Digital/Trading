@@ -56,6 +56,7 @@ def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
             prepare_accounts.delay(account.id)
+            update_funds_object.delay(account.id)
 
 
 # Bulk rebalance assets of all accounts

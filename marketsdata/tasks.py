@@ -143,7 +143,7 @@ def update_dataframe(exid, tickers=None):
     for code in codes:
 
         try:
-            # Select dictionary
+            # Select dictionary (drop alternative quote .i.e BUSD)
             d = {k: tickers[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
 
         except KeyError:
@@ -193,28 +193,29 @@ def update_prices(exid, wallet=None):
     # Download snapshot
     tickers = client.fetch_tickers()
 
-    # Create a list of symbols for our strategies. Drop symbols not in tickers (derivatives)
+    # Create a list of high priority symbols for our strategies.
+    # Drop symbols not in tickers (derivatives) and select dictionaries.
     symbols_strategies = exchange.get_strategies_symbols()
     symbols_strategies = [i for i in symbols_strategies if i in tickers.keys()]
     t = {symbol: tickers[symbol] for symbol in symbols_strategies}
 
-    # Call task
+    # Update exchange.data async
     if wallet == 'spot':
         update_dataframe.delay(exid, t)
 
-    # Select symbols of desired markets
+    # Select symbols of markets supported by the exchange
     symbols = []
     for quote in exchange.get_supported_quotes():
 
         markets = [i for i in tickers.keys() if '/' + quote in i]
-        markets = [m for m in markets if m not in symbols_strategies]
+        markets = [m for m in markets if m not in symbols_strategies]  # Drop high priority symbols
         symbols.append(markets)
 
     # Flatten and sort list
     symbols = list(set(itertools.chain.from_iterable(symbols)))
     symbols.sort()
 
-    # Insert symbols or strategies first
+    # Insert high priority symbols first
     # and drop duplicate whilst preserving order
     symbols = symbols_strategies + symbols
     symbols = list(dict.fromkeys(symbols))

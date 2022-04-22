@@ -783,14 +783,20 @@ class Account(models.Model):
                 margin_free_before = self.balances.future.free.quantity[self.quote]
                 margin_used_before = self.balances.future.used.quantity[self.quote]
 
+                if np.isnan(margin_free_before):
+                    margin_free_before = 0
+                if np.isnan(margin_used_before):
+                    margin_used_before = 0
+
                 # Now
-                margin_free_now = margin_free_before + val_filled
+                margin_free_now = margin_free_before + (val_filled / leverage)
                 margin_used_now = margin_used_before - (val_filled / leverage)
 
-                # Set zero if nan and update
-                self.balances.loc[self.quote, 'future'].fillna(0, inplace=True)
+                # Update
                 self.balances.loc[self.quote, ('future', 'free', 'quantity')] = margin_free_now
                 self.balances.loc[self.quote, ('future', 'used', 'quantity')] = margin_used_now
+                self.balances.loc[self.quote, ('future', 'free', 'value')] = margin_free_now
+                self.balances.loc[self.quote, ('future', 'used', 'value')] = margin_used_now
 
                 self.save()
 

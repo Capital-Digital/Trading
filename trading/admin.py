@@ -65,10 +65,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('dt', 'account',)
+    list_display = ('dt', 'account', 'exchange')
     readonly_fields = ('account', 'dt_create', 'dt',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
+        ('exchange', admin.RelatedOnlyFieldListFilter)
     )
 
 

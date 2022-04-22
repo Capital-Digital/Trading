@@ -170,23 +170,29 @@ def update_funds_object(account_id):
         if now not in d.keys():
             d[now] = dict()
 
-        for w in ['spot', 'future']:
-            for tp in ['total', 'free', 'used']:
+        for w in ['spot', 'future', 'position']:
+            for tp in ['total', 'free', 'used', 'open']:
                 for i in ['quantity', 'value']:
-                    for c in account.balances.spot.total.quantity.dropna().index:
-                        v = account.balances[w][tp][i][c]
 
-                        if np.isnan(v):
-                            v = 'NaN'
+                    # Code exists ?
+                    for c in account.balances[w][tp][i].dropna().index:
 
-                        if tp not in d[now].keys():
-                            d[now][tp] = dict()
-                        if i not in d[now][tp].keys():
-                            d[now][tp][i] = dict()
-                        if c not in d[now][tp][i].keys():
-                            d[now][tp][i][c] = dict()
+                        # Column exists ?
+                        if (w, tp, i) in account.balances.columns:
 
-                        d[now][tp][i][c] = v
+                            v = account.balances[w][tp][i][c]
+
+                            if np.isnan(v):
+                                v = 'NaN'
+
+                            if tp not in d[now].keys():
+                                d[now][tp] = dict()
+                            if i not in d[now][tp].keys():
+                                d[now][tp][i] = dict()
+                            if c not in d[now][tp][i].keys():
+                                d[now][tp][i][c] = dict()
+
+                            d[now][tp][i][c] = v
 
             setattr(fund, w, d)
 

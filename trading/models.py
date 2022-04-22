@@ -1003,7 +1003,7 @@ class Fund(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='funds', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
-    value = models.JSONField(null=True)
+    historical_balance = models.JSONField(null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
     user = models.ForeignKey(

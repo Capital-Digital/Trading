@@ -150,8 +150,8 @@ def create_balances(account_id):
 
 
 # Update funds object
-@app.task(name='Trading_____Update_funds_object')
-def update_funds_object(account_id):
+@app.task(name='Trading_____Update_historical_balance')
+def update_historical_balance(account_id):
 
     account = Account.objects.get(id=account_id)
 
@@ -165,12 +165,19 @@ def update_funds_object(account_id):
 
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
-        balance = fund.value
-        value = account.account_value()
-        balance[now] = value
-        fund.value = balance
 
-        log.info('Save account total balance', balance=value)
+        # Calculate current account balance
+        current = account.account_value()
+        
+        hist = fund.historical_balance
+        hist[now] = dict(balance=current,
+                         strategy_id=account.strategy.id,
+                         strategy=account.strategy.name
+                         )
+
+        fund.historical_balance = hist
+
+        log.info('Save account current balance', current=current)
 
         fund.save()
 

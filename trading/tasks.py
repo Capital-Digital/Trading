@@ -172,7 +172,7 @@ def update_funds_object(account_id):
 
         for tp in ['total', 'free', 'used']:
             for i in ['quantity', 'value']:
-                for c in account.balance.spot.total.quantity.dropna().index:
+                for c in account.balances.spot.total.quantity.dropna().index:
                     v = account.balances.spot[tp][i][c]
 
                     if tp not in spot[now].keys():

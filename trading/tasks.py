@@ -24,7 +24,7 @@ from capital.error import *
 from capital.methods import *
 from marketsdata.models import Market, Currency, Exchange
 from trading.methods import *
-from trading.models import Account, Order
+from trading.models import Account, Order, Fund, Position
 import threading
 import random
 
@@ -145,6 +145,25 @@ def create_balances(account_id):
     account.calculate_assets_value()
 
     log.unbind('worker')
+
+
+# Update funds object
+@app.task(name='Trading_____Update_funds_object')
+def update_funds_object(account_id):
+
+    account = Account.objects.get(id=account_id)
+
+    try:
+        fund = Fund.objects.get(account=account)
+
+    except ObjectDoesNotExist:
+        fund = Fund.objects.create(account=account)
+
+    finally:
+
+        for level in ['spot', 'future', 'position']:
+            if level in account.balances.columns.get_level_index(0):
+                dic = account.balances[level].to_dict(orient='index')
 
 
 # Rebalance fund of an account

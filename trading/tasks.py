@@ -175,6 +175,9 @@ def update_funds_object(account_id):
                 for c in account.balances.spot.total.quantity.dropna().index:
                     v = account.balances.spot[tp][i][c]
 
+                    if np.isnan(v):
+                        v = 'NaN'
+
                     if tp not in spot[now].keys():
                         spot[now][tp] = dict()
                     if i not in spot[now][tp].keys():

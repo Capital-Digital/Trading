@@ -195,9 +195,12 @@ def update_funds_object(account_id):
         # Save dictionaries
         s = json.loads(fund.spot)
         s[now] = spot[now]
-        fund.spot = s
+        fund.spot = json.dumps(s)
         
-        fund.future = json.dumps(future)
+        f = json.loads(fund.future)
+        f[now] = future[now]
+        fund.future = json.dumps(f)
+
         fund.save()
 
 

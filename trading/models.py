@@ -1003,9 +1003,7 @@ class Fund(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='funds', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
-    spot = models.JSONField(null=True)
-    future = models.JSONField(null=True)
-    position = models.JSONField(null=True)
+    value = models.JSONField(null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
     user = models.ForeignKey(

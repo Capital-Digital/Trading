@@ -702,6 +702,7 @@ class Account(models.Model):
 
                 if status == 'closed':
                     order.cost = response['cost']
+                    order.average = response['average']
 
                 # Update attributes
                 order.status = status

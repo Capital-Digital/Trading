@@ -167,10 +167,12 @@ def update_funds_object(account_id):
 
         for level in ['spot', 'future', 'position']:
             if level in account.balances.columns.get_level_values(0):
-                dic = dict()
-                dic[now] = account.balances[level].to_json(orient='index')
-                dic = json.loads(dic)
-                setattr(fund, level, dic)
+                dic = account.balances[level].to_json(orient='index')
+
+                new_dic = dict()
+                new_dic[now] = dic
+                
+                setattr(fund, level, new_dic)
 
         fund.save()
 

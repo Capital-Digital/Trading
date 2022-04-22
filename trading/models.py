@@ -1021,7 +1021,7 @@ class Fund(models.Model):
         get_latest_by = 'dt_create'
 
     def __str__(self):
-        return str(self.id)
+        return str(self.account.name)
 
 
 class Order(models.Model):

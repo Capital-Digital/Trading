@@ -158,7 +158,7 @@ def update_funds_object(account_id):
         fund = Fund.objects.get(account=account)
 
     except ObjectDoesNotExist:
-        fund = Fund.objects.create(account=account)
+        fund = Fund.objects.create(account=account, exchange=account.exchange)
 
     finally:
 
@@ -171,7 +171,7 @@ def update_funds_object(account_id):
 
                 new_dic = dict()
                 new_dic[now] = dic
-                
+
                 setattr(fund, level, new_dic)
 
         fund.save()

@@ -164,36 +164,9 @@ def update_funds_object(account_id):
 
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
-
-        for w in ['spot', 'future', 'position']:
-
-            d = dict()
-            d[now] = dict()
-
-            for tp in ['total', 'free', 'used', 'open']:
-                # Column exists ?
-                if (w, tp) in account.balances.columns.droplevel(2):
-                    for i in ['quantity', 'value']:
-                        # Code exists ?
-                        for c in account.balances[w][tp][i].dropna().index:
-                            # Column exists ?
-                            if (w, tp, i) in account.balances.columns:
-
-                                v = account.balances[w][tp][i][c]
-
-                                if np.isnan(v):
-                                    v = 'NaN'
-
-                                if tp not in d[now].keys():
-                                    d[now][tp] = dict()
-                                if i not in d[now][tp].keys():
-                                    d[now][tp][i] = dict()
-                                if c not in d[now][tp][i].keys():
-                                    d[now][tp][i][c] = dict()
-
-                                d[now][tp][i][c] = v
-
-            setattr(fund, w, d)
+        balance = fund.spot
+        balance[now] = account.account_value()
+        fund.spot = balance
 
         fund.save()
 

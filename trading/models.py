@@ -1050,7 +1050,10 @@ class Order(models.Model):
         verbose_name_plural = "Orders"
 
     def __str__(self):
-        return str(self.clientid)
+        if self.clientid:
+            return self.clientid
+        else:
+            return str(self.pk)
 
 
 class Position(models.Model):

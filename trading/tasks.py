@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 import traceback
 import sys
 import asyncio
+import json
 import time
 from itertools import accumulate
 from pprint import pprint
@@ -163,8 +164,10 @@ def update_funds_object(account_id):
 
         for level in ['spot', 'future', 'position']:
             if level in account.balances.columns.get_level_values(0):
-                dic = account.balances[level].to_dict(orient='index')
+                dic = account.balances[level].to_json(orient='index')
+                dic = json.loads(dic)
                 setattr(fund, level, dic)
+                
         fund.save()
 
 

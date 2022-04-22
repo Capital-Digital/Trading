@@ -162,19 +162,37 @@ def update_funds_object(account_id):
 
     finally:
 
-        print(fund)
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
 
-        r = dict()
+        spot = dict()
         for tp in ['total', 'free', 'used']:
             d = account.balances.spot[tp].to_dict()
+            if now not in spot.keys():
+                spot[now] = dict()
+            spot[now][tp] = d
 
-            if now not in r.keys():
-                r[now] = dict()
-            r[now][tp] = d
+        future = dict()
+        for tp in ['total', 'free', 'used']:
+            d = account.balances.future[tp].to_dict()
+            if now not in future.keys():
+                future[now] = dict()
+            future[now][tp] = d
 
-        fund.spot = json.dumps(r)
+        if 'position' in account.balances.columns:
+            position = dict()
+            for tp in ['open']:
+                d = account.balances.position[tp].to_dict()
+                if now not in position.keys():
+                    position[now] = dict()
+                position[now][tp] = d
+            
+            # Save dictionary
+            fund.position = json.dumps(position)
+
+        # Save dictionaries
+        fund.spot = json.dumps(spot)
+        fund.future = json.dumps(future)
         fund.save()
 
 

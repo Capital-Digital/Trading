@@ -155,7 +155,7 @@ def update_funds_object(account_id):
     account = Account.objects.get(id=account_id)
 
     try:
-        fund = Fund.objects.get(account=account)
+        fund = Fund.objects.get(account=account, exchange=account.exchange)
 
     except ObjectDoesNotExist:
         fund = Fund.objects.create(account=account, exchange=account.exchange)
@@ -186,7 +186,7 @@ def update_funds_object(account_id):
                 if now not in position.keys():
                     position[now] = dict()
                 position[now][tp] = d
-            
+
             # Save dictionary
             fund.position = json.dumps(position)
 

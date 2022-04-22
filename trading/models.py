@@ -264,6 +264,13 @@ class Account(models.Model):
             # Insert percentage
             target_pct = self.strategy.load_targets()
 
+            if self.quote == 'BUSD':
+
+                # Set BUSD as strategy stablecoin
+                i = target_pct.index.tolist()
+                i = [self.quote if x == 'USDT' else x for x in i]
+                target_pct.set_axis(i, inplace=True)
+
             for coin, pct in target_pct.items():
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
@@ -469,7 +476,7 @@ class Account(models.Model):
         # Select price
         price = self.balances.price[wallet][key][code]
 
-        # Determine order value and amount when USDT resources are released
+        # Determine order value and amount when USDT/BUSD resources are released
         if action == 'sell_spot':
             order_size = quantity - offset  # offset qty of open/filled order
             order_value = order_size * price
@@ -480,7 +487,7 @@ class Account(models.Model):
 
         else:
 
-            # Determine order value and amount when USDT resources are allocated
+            # Determine order value and amount when USDT/BUSD resources are allocated
             if action == 'buy_spot':
                 available = self.balances.spot.free.quantity[self.quote]
             elif action == 'open_short':
@@ -555,7 +562,7 @@ class Account(models.Model):
             if not min_notional:
                 if market.exchange.exid == 'binance':
                     if market.type == 'derivative':
-                        if market.margined.code == 'USDT':
+                        if market.margined.code == self.quote:
                             if action == 'close_short':
                                 reduce_only = True
 

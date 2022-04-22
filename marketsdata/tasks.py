@@ -143,6 +143,7 @@ def update_dataframe(exid, tickers=None):
     for code in codes:
 
         try:
+            # Select dictionary
             d = {k: tickers[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
 
         except KeyError:

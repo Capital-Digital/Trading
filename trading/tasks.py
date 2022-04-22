@@ -173,7 +173,7 @@ def update_historical_balance(account_id):
         if not hist:
             hist = dict()
 
-        hist[now] = dict(balance=current,
+        hist[now] = dict(balance=round(current, 1),
                          strategy_id=account.strategy.id,
                          strategy=account.strategy.name
                          )

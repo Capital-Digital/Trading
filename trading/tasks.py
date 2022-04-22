@@ -162,21 +162,19 @@ def update_funds_object(account_id):
 
     finally:
 
+        print(fund)
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
 
-        for level in ['spot', 'future', 'position']:
-            if level in account.balances.columns.get_level_values(0):
-                r = dict()
-                for tp in ['total', 'free', 'used']:
-                    d = account.balances[level][tp].to_dict()
+        r = dict()
+        for tp in ['total', 'free', 'used']:
+            d = account.balances.spot[tp].to_dict()
 
-                    if now not in r.keys():
-                        r[now] = dict()
-                    r[now][tp] = d
+            if now not in r.keys():
+                r[now] = dict()
+            r[now][tp] = d
 
-                setattr(fund, level, json.dumps(r))
-
+        fund.spot = json.dumps(r)
         fund.save()
 
 

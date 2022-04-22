@@ -242,16 +242,23 @@ class Account(models.Model):
 
     # Return account total value
     def account_value(self):
-        wallets = []
-        for level in list(set(self.balances.columns.get_level_values(0))):
 
-            # Exclude positions
-            if level in ['spot', 'future']:
-                # Sum value of all coins
-                wallets.append(self.balances[level].total.value.sum())
+        if ('spot', 'total', 'value') in self.balances.columns:
+            spot_val = self.balances.spot.total.value[self.quote]
+            if np.isnan(spot_val):
+                spot_val = 0
+        else:
+            spot_val = 0
 
-        # Sum value of all wallet
-        return sum(wallets)
+        if ('future', 'total', 'value') in self.balances.columns:
+            futu_val = self.balances.future.total.value[self.quote]
+            if np.isnan(futu_val):
+                futu_val = 0
+        else:
+            futu_val = 0
+
+        # Sum wallets
+        return spot_val + futu_val
 
     # Create columns with targets
     def get_target(self):
@@ -304,14 +311,15 @@ class Account(models.Model):
         target = self.balances.account.target.quantity.dropna()
         acc_value = self.account_value()
 
-        #  Select total quantities of wallets and open positions
-        df = self.balances.loc[:, (self.balances.columns.get_level_values(2) == 'quantity')]
-        mask = df.columns.get_level_values(1).isin(['total', 'open'])
-        df = df.loc[:, mask]
-        df = df.dropna(axis=1, how='all')  # drop wallet with nan
+        log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
 
-        # Sum sum to determine exposure per coin
-        self.balances.loc[:, ('account', 'current', 'exposure')] = df.sum(axis=1)
+        #  Select columns with assets quantities
+        mask = self.balances.columns.isin([('spot', 'total', 'quantity'),
+                                           ('future', 'total', 'quantity'),
+                                           ('position', 'open', 'quantity')])
+        # Determine total exposure
+        exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
+        self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
 
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
@@ -320,7 +328,11 @@ class Account(models.Model):
                 pos_value = self.balances.position.open.value.dropna().sum()
             else:
                 pos_value = 0
-            percent = (exp * bid) / (acc_value - pos_value)
+
+            exposure_value = exp * bid
+            log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
+
+            percent = exposure_value / (acc_value - pos_value)
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Calculate value allocated to each coin
@@ -862,12 +874,13 @@ class Account(models.Model):
                 self.save()
 
     # Update balances after a transfer
-    def update_balances_after_transfer(self, source, dest, quantity):
+    def update_balances_after_transfer(self, transfer_id, source, dest, quantity):
 
         log.info(' ')
         log.info('Update balances (transfer)')
         log.info(' ')
-        log.info('Transfer from {0} to {1}'.format(source, dest))
+        log.info('Transfer ID {0}'.format(transfer_id))
+        log.info('Transfer of {2} {3} from {0} to {1}'.format(source, dest, round(quantity, 1), self.quote))
 
         for w in [source, dest]:
             for i in ['total', 'free']:

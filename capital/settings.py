@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "social_django",
     "bootstrap4",
     'guardian',
+    "graphene_django",
 ]
 
 MIDDLEWARE = [
@@ -264,3 +265,7 @@ SHELL_PLUS_IMPORTS = [
 NOTEBOOK_ARGUMENTS = [
     '--NotebookApp.max_buffer_size', '536870912'
 ]
+
+GRAPHENE = {
+    "SCHEMA": "django_root.schema.schema"
+}

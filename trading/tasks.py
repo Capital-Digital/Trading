@@ -485,6 +485,13 @@ def send_transfer(account_id, source, dest, quantity):
         account = Account.objects.get(id=account_id)
         client = account.exchange.get_ccxt_client(account)
 
+        # Generate transfer_id
+        alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
+        transfer_id = ''.join((random.choice(alphanumeric)) for x in range(3))
+
+        log.bind(worker=current_process().index, account=account.name, id=transfer_id)
+
+        log.info('Transfer ID {0}'.format(transfer_id))
         log.info('Transfer from {0} to {1}'.format(source, dest))
         log.info('Transfer {0} {1}'.format(round(quantity, 1), account.quote))
 
@@ -499,10 +506,15 @@ def send_transfer(account_id, source, dest, quantity):
 
         else:
 
+            log.info('Transfer success')
+
             # Update dataframe
-            account.update_balances_after_transfer(source, dest, quantity)
+            account.update_balances_after_transfer(transfer_id, source, dest, quantity)
 
             return account_id, quantity
+
+        finally:
+            log.unbind('worker', 'account', 'id')
 
 
 # Send cancellation order

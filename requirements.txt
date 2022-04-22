@@ -87,3 +87,4 @@ pandas~=1.3.3
 bt~=0.2.9
 ffn~=0.3.6
 tqdm~=4.62.3
+graphene~=2.1.9

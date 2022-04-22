@@ -175,7 +175,7 @@ def update_funds_object(account_id):
                         r[now] = dict()
                     r[now][tp] = d
 
-                setattr(fund, level, r)
+                setattr(fund, level, json.dumps(r))
 
         fund.save()
 

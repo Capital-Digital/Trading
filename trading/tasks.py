@@ -215,9 +215,17 @@ def rebalance(account_id, get_balances=False, release=True):
     des_spot = account.to_buy_spot_value().sum()
     des_futu = account.to_open_short_value().sum()
 
+    log.info('Balance resource spot {0}'.format(round(bal_spot, 1)))
+    log.info('Balance resource futu {0}'.format(round(bal_futu, 1)))
+    log.info('Desired resource spot {0}'.format(round(des_spot, 1)))
+    log.info('Desired resource futu {0}'.format(round(des_futu, 1)))
+
     # Determine resource to transfer between account
     need_spot = max(0, des_spot - bal_spot)
     need_futu = max(0, des_futu - bal_futu)
+
+    log.info('Need resource spot {0}'.format(round(need_spot, 1)))
+    log.info('Need resource futu {0}'.format(round(need_futu, 1)))
 
     log.info(' ')
     log.info('Transfer resources')
@@ -227,6 +235,7 @@ def rebalance(account_id, get_balances=False, release=True):
     # Transfer
     if need_spot:
         free_futu = max(0, bal_futu - des_futu)
+        log.info('Free resource futu {0}'.format(round(free_futu, 1)))
         log.info('Resources are needed in spot')
         log.info('{0} {1} are missing'.format(round(need_spot, 3), account.quote))
         amount = min(need_spot, free_futu)
@@ -234,6 +243,7 @@ def rebalance(account_id, get_balances=False, release=True):
 
     elif need_futu:
         free_spot = max(0, bal_spot - des_spot)
+        log.info('Free resource spot {0}'.format(round(free_spot, 1)))
         log.info('Resources are needed in future')
         log.info('{0} {1} are missing'.format(round(need_futu, 3), account.quote))
         amount = min(need_futu, free_spot)

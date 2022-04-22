@@ -165,12 +165,11 @@ def update_funds_object(account_id):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
 
-        d = dict()
+        for w in ['spot', 'future', 'position']:
 
-        if now not in d.keys():
+            d = dict()
             d[now] = dict()
 
-        for w in ['spot', 'future', 'position']:
             for tp in ['total', 'free', 'used', 'open']:
                 # Column exists ?
                 if (w, tp) in account.balances.columns.droplevel(2):

@@ -341,10 +341,10 @@ class Account(models.Model):
             self.balances.loc[coin, ('account', 'current', 'value')] = exp * bid
 
         # Iterate through target coins and calculate delta
-        for coin in target.index.values.tolist():
+        for coin in target.index.tolist():
 
             # Coins already in account ?
-            if coin in df.index.values.tolist():
+            if coin in self.balances.index.tolist():
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
                 self.balances.loc[coin, ('account', 'target', 'delta')] = qty - target[coin]
 
@@ -353,10 +353,10 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'delta')] = -target[coin]
 
         # Iterate through coins in account and calculate delta
-        for coin in df.index.values.tolist():
+        for coin in self.balances.index.tolist():
 
             # Coin not in target ?
-            if coin not in target.index.values.tolist():
+            if coin not in target.index.tolist():
                 qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
                 self.balances.loc[coin, ('account', 'target', 'delta')] = qty
                 self.balances.loc[coin, ('account', 'target', 'quantity')] = 0

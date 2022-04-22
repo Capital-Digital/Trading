@@ -198,15 +198,20 @@ def rebalance(account_id, get_balances=False, release=True):
         account.sell_spot_all()
         account.close_short_all()
 
-    # Determine available and desired resources
+    # Determine available resources
     bal_spot = account.balances.spot.free.value[account.quote]
-    bal_futu = account.balances.future.free.value[account.quote]
+    bal_futu = account.balances.future.total.value[account.quote]
+    
+    if ('position', 'open', 'value') in account.balances.columns:
+        pos_val = account.balances.position.open.value.dropna().sum()
+        bal_futu -= pos_val
 
     if np.isnan(bal_spot):
         bal_spot = 0
     if np.isnan(bal_futu):
         bal_futu = 0
 
+    # Determine desired resources
     des_spot = account.to_buy_spot_value().sum()
     des_futu = account.to_open_short_value().sum()
 
@@ -238,7 +243,7 @@ def rebalance(account_id, get_balances=False, release=True):
         log.info('Sufficient resources')
         log.info('No transfer required')
 
-    # Determine account to allocate resource first
+    # Determine resources that could be allocated
     spot = min(bal_spot, des_spot)
     futu = min(bal_futu, des_futu)
 
@@ -246,6 +251,7 @@ def rebalance(account_id, get_balances=False, release=True):
     log.info('Allocate resources')
     log.info('******************')
 
+    # Determine account to allocate resource first
     if spot > futu:
         account.buy_spot_all()
         account.open_short_all()

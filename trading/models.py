@@ -84,6 +84,7 @@ class Account(models.Model):
 
         # Reset attribute
         self.balances = pd.DataFrame()
+        self.save()
 
         client = self.exchange.get_ccxt_client(self)
 

@@ -1035,7 +1035,7 @@ class Order(models.Model):
     cost = models.FloatField(null=True)
     action = models.CharField(max_length=20, null=True)
     average, price = [models.FloatField(null=True, blank=True) for i in range(2)]
-    fee, trades, params, response = [models.JSONField(null=True) for i in range(4)]
+    fee, trades, response = [models.JSONField(null=True) for i in range(3)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
     dt_update = models.DateTimeField(auto_now=True)

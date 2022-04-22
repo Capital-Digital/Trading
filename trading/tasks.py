@@ -166,8 +166,11 @@ def update_funds_object(account_id):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
         balance = fund.value
-        balance[now] = account.account_value()
+        value = account.account_value()
+        balance[now] = value
         fund.value = balance
+
+        log.info('Save account total balance', balance=value)
 
         fund.save()
 

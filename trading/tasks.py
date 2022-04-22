@@ -171,13 +171,15 @@ def update_funds_object(account_id):
             if now not in spot.keys():
                 spot[now] = dict()
             spot[now][tp] = d
-
+            print(spot)
+            
         future = dict()
         for tp in ['total', 'free', 'used']:
             d = account.balances.future[tp].to_dict()
             if now not in future.keys():
                 future[now] = dict()
             future[now][tp] = d
+            print(future)
 
         if 'position' in account.balances.columns:
             position = dict()

@@ -166,41 +166,25 @@ def update_funds_object(account_id):
         now = dt.strftime(datetime_directive_ISO_8601)
 
         spot = dict()
+
+        if now not in spot.keys():
+            spot[now] = dict()
+
         for tp in ['total', 'free', 'used']:
-            d = account.balances.spot[tp].to_dict()
-            if now not in spot.keys():
-                spot[now] = dict()
-            spot[now][tp] = d
-            print(spot)
+            for i in ['quantity', 'value']:
+                for c in account.balance.spot.total.quantity.dropna().index:
+                    v = account.balances.spot[tp][i][c]
 
-        future = dict()
-        for tp in ['total', 'free', 'used']:
-            d = account.balances.future[tp].to_dict()
-            if now not in future.keys():
-                future[now] = dict()
-            future[now][tp] = d
-            print(future)
+                    if tp not in spot[now].keys():
+                        spot[now][tp] = dict()
+                    if i not in spot[now][tp].keys():
+                        spot[now][tp][i] = dict()
+                    if c not in spot[now][tp][i].keys():
+                        spot[now][tp][i][c] = dict()
 
-        if 'position' in account.balances.columns:
-            position = dict()
-            for tp in ['open']:
-                d = account.balances.position[tp].to_dict()
-                if now not in position.keys():
-                    position[now] = dict()
-                position[now][tp] = d
+                    spot[now][tp][i][c] = v
 
-            # Save dictionary
-            fund.position = json.dumps(position)
-
-        # Save dictionaries
-        s = json.loads(fund.spot)
-        s[now] = spot[now]
-        fund.spot = json.dumps(s)
-        
-        f = json.loads(fund.future)
-        f[now] = future[now]
-        fund.future = json.dumps(f)
-
+        fund.spot = spot
         fund.save()
 
 

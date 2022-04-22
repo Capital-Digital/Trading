@@ -382,8 +382,6 @@ def send_fetch_orderid(account_id, order_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    log.info('Update order {0}'.format(order.clientid))
-
     # Set options
     client.options['defaultType'] = order.market.wallet
     response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)

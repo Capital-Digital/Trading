@@ -685,6 +685,7 @@ class Account(models.Model):
                 log.info('Update clientID {0}'.format(order.clientid))
                 log.info('Update with status {0}'.format(status))
                 log.info('Update code {0} ({1})'.format(code, wallet))
+                log.info('Action {0}'.format(order.action))
 
                 if filled_new:
                     log.info('Update filled new {0}'.format(filled_new))

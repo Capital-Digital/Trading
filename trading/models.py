@@ -633,8 +633,9 @@ class Account(models.Model):
         if response:
 
             orderid = response['id']
-            status = response['info']['status'].lower()
+            status = response['status'].lower()
             clientid = response['info']['clientOrderId']
+            price = response['price']
 
             try:
                 # Object with orderID exists ?
@@ -699,8 +700,12 @@ class Account(models.Model):
                     log.info('Update filled new {0}'.format(filled_new))
                     log.info('Update filled total {0}'.format(filled_total))
 
+                if status == 'closed':
+                    order.cost = response['cost']
+
                 # Update attributes
                 order.status = status
+                order.price = price
                 order.filled = filled_total
                 order.response = response
                 order.save()

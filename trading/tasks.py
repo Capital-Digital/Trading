@@ -106,7 +106,7 @@ def cancel_orders(account_id):
 
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account,
-                                  status__in=['new', 'partially_filled']
+                                  status__in=['new', 'partially_filled', 'open']
                                   ).exclude(orderid__isnull=True)
     if orders.exists():
         for order in orders:
@@ -279,7 +279,7 @@ def update_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account,
-                                  status__in=['new', 'partially_filled']
+                                  status__in=['new', 'partially_filled', 'open']
                                   ).exclude(orderid__isnull=True)
 
     if orders.exists():

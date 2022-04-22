@@ -165,29 +165,31 @@ def update_funds_object(account_id):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
 
-        spot = dict()
+        d = dict()
 
-        if now not in spot.keys():
-            spot[now] = dict()
+        if now not in d.keys():
+            d[now] = dict()
 
-        for tp in ['total', 'free', 'used']:
-            for i in ['quantity', 'value']:
-                for c in account.balances.spot.total.quantity.dropna().index:
-                    v = account.balances.spot[tp][i][c]
+        for w in ['spot', 'future']:
+            for tp in ['total', 'free', 'used']:
+                for i in ['quantity', 'value']:
+                    for c in account.balances.spot.total.quantity.dropna().index:
+                        v = account.balances[w][tp][i][c]
 
-                    if np.isnan(v):
-                        v = 'NaN'
+                        if np.isnan(v):
+                            v = 'NaN'
 
-                    if tp not in spot[now].keys():
-                        spot[now][tp] = dict()
-                    if i not in spot[now][tp].keys():
-                        spot[now][tp][i] = dict()
-                    if c not in spot[now][tp][i].keys():
-                        spot[now][tp][i][c] = dict()
+                        if tp not in d[now].keys():
+                            d[now][tp] = dict()
+                        if i not in d[now][tp].keys():
+                            d[now][tp][i] = dict()
+                        if c not in d[now][tp][i].keys():
+                            d[now][tp][i][c] = dict()
 
-                    spot[now][tp][i][c] = v
+                        d[now][tp][i][c] = v
 
-        fund.spot = spot
+            setattr(fund, w, d)
+
         fund.save()
 
 

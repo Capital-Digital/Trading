@@ -700,9 +700,12 @@ class Account(models.Model):
                     log.info('Update filled new {0}'.format(filled_new))
                     log.info('Update filled total {0}'.format(filled_total))
 
-                if status == 'closed':
+                if response['cost']:
                     order.cost = response['cost']
+                if response['average']:
                     order.average = response['average']
+                if response['fee']:
+                    order.fee = response['fee']
 
                 # Update attributes
                 order.status = status

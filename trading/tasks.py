@@ -162,9 +162,13 @@ def update_funds_object(account_id):
 
     finally:
 
+        dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        now = dt.strftime(datetime_directive_ISO_8601)
+
         for level in ['spot', 'future', 'position']:
             if level in account.balances.columns.get_level_values(0):
-                dic = account.balances[level].to_json(orient='index')
+                dic = dict()
+                dic[now] = account.balances[level].to_json(orient='index')
                 dic = json.loads(dic)
                 setattr(fund, level, dic)
 

@@ -162,7 +162,7 @@ def update_funds_object(account_id):
     finally:
 
         for level in ['spot', 'future', 'position']:
-            if level in account.balances.columns.get_level_index(0):
+            if level in account.balances.columns.get_level_values(0):
                 dic = account.balances[level].to_dict(orient='index')
                 setattr(fund, level, dic)
         fund.save()

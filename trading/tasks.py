@@ -215,6 +215,7 @@ def rebalance(account_id, get_balances=False, release=True):
     des_spot = account.to_buy_spot_value().sum()
     des_futu = account.to_open_short_value().sum()
 
+    log.info(' ')
     log.info('Balance resource spot {0}'.format(round(bal_spot, 1)))
     log.info('Balance resource futu {0}'.format(round(bal_futu, 1)))
     log.info('Desired resource spot {0}'.format(round(des_spot, 1)))

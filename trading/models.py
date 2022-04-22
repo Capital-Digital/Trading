@@ -1011,7 +1011,8 @@ class Fund(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        null=True
+        null=True,
+        blank=True
     )
 
     class Meta:

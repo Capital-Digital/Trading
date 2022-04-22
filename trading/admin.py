@@ -76,7 +76,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('clientid', 'account', 'dt_create', 'market', 'action', 'status', 'side', 'amount',
-                    'get_cost', 'get_price', 'filled', 'dt_update', 'orderid')
+                    'get_cost', 'get_price', 'filled', 'dt_update',)
 
     readonly_fields = ('clientid', 'account', 'market', 'status',  'action', 'type', 'amount', 'side', 'params',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
@@ -115,7 +115,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def cancel_order(self, request, queryset):
         for order in queryset:
-            cancel_order(order.account.id, order.orderid)
+            send_cancel_order.delay(order.account.id, order.orderid)
 
     cancel_order.short_description = 'Cancel order'
 

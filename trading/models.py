@@ -841,8 +841,8 @@ class Account(models.Model):
                             now = before + delta
                             self.balances.loc[c, ('spot', i, j)] = now
 
-                            log.info('{0} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), coin))
-                            log.info('{0} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), coin))
+                            log.info('{0} {4} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), coin, c))
+                            log.info('{0} {4} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), coin, c))
 
                 self.save()
 

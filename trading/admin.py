@@ -7,6 +7,7 @@ from celery import chain, group
 from django.contrib.admin import SimpleListFilter
 from django.contrib.postgres.fields import JSONField
 from prettyjson import PrettyJSONWidget
+from django.db.models import Count, Sum, F, Q, JSONField
 import json
 from pygments import highlight, formatters, lexers
 from django.utils.safestring import mark_safe
@@ -66,11 +67,16 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('dt', 'account', 'exchange')
-    readonly_fields = ('account', 'dt_create', 'dt',)
+    readonly_fields = ('account', 'data', 'dt_create', 'dt',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
     )
+    save_on_top = True
+
+    formfield_overrides = {
+        JSONField: {'widget': PrettyJSONWidget(attrs={'initial': 'parsed'})}
+    }
 
 
 @admin.register(Order)

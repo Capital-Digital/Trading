@@ -167,7 +167,7 @@ def update_funds_object(account_id):
                 dic = account.balances[level].to_json(orient='index')
                 dic = json.loads(dic)
                 setattr(fund, level, dic)
-                
+
         fund.save()
 
 

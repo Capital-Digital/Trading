@@ -634,7 +634,7 @@ class Account(models.Model):
 
             orderid = response['id']
             status = response['status'].lower()
-            clientid = response['info']['clientOrderId']
+            clientid = response['clientOrderId']
             price = response['price']
 
             try:

@@ -201,9 +201,9 @@ def rebalance(account_id, get_balances=False, release=True):
     # Determine available resources
     bal_spot = account.balances.spot.free.value[account.quote]
     bal_futu = account.balances.future.total.value[account.quote]
-    
+
     if ('position', 'open', 'value') in account.balances.columns:
-        pos_val = account.balances.position.open.value.dropna().sum()
+        pos_val = abs(account.balances.position.open.value.dropna()).sum()
         bal_futu -= pos_val
 
     if np.isnan(bal_spot):

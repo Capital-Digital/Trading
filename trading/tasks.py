@@ -172,7 +172,7 @@ def update_funds_object(account_id):
                 spot[now] = dict()
             spot[now][tp] = d
             print(spot)
-            
+
         future = dict()
         for tp in ['total', 'free', 'used']:
             d = account.balances.future[tp].to_dict()
@@ -193,7 +193,10 @@ def update_funds_object(account_id):
             fund.position = json.dumps(position)
 
         # Save dictionaries
-        fund.spot = json.dumps(spot)
+        s = json.loads(fund.spot)
+        s[now] = spot[now]
+        fund.spot = s
+        
         fund.future = json.dumps(future)
         fund.save()
 

@@ -421,7 +421,7 @@ class Account(models.Model):
     # Return free margin
     def free_margin(self):
         total = self.balances.future.total.quantity[self.quote]
-        return total - self.position_abs_value
+        return total - self.position_abs_value()
 
     # Validate order size and cost
     def validate_order(self, wallet, code, qty, cost, action=None):

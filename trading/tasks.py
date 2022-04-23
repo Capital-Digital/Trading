@@ -374,8 +374,6 @@ def rebalance(account_id, get_balances=False, release=True):
             filled, average = send_create_order(account.id, clientid, 'buy', 'spot', code, qty, reduce_only)
             account.offset_order(code, 'buy_spot', qty, val, filled, average)
 
-    log.unbind('account')
-
 
 # Update open orders of an account
 @app.task(name='Trading_____Update_orders')
@@ -383,7 +381,7 @@ def update_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account,
-                                  status__in=['new', 'partially_filled', 'open']
+                                  status='open'
                                   ).exclude(orderid__isnull=True)
 
     if orders.exists():
@@ -523,11 +521,17 @@ def send_fetch_orderid(account_id, order_id):
 
     # Set options
     client.options['defaultType'] = order.market.wallet
-    response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
 
-    # Update object and dataframe
-    qty_filled = account.update_order_object(order.market.wallet, response)
-    return account_id, qty_filled
+    try:
+        response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
+
+    except ccxt.OrderNotFound:
+        log.error('Order with ID {} not found'.format(order_id))
+
+    else:
+        # Update object and dataframe
+        qty_filled = account.update_order_object(order.market.wallet, response)
+        return account_id, qty_filled
 
 
 # Send fetch all open orders

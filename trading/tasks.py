@@ -247,7 +247,6 @@ def rebalance(account_id, get_balances=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
                 if valid:
-
                     # Determine final order value
                     val = qty * price
 
@@ -270,7 +269,6 @@ def rebalance(account_id, get_balances=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, val)
                 if valid:
-
                     # Determine final order value
                     val = qty * price
 
@@ -427,7 +425,7 @@ def check_credentials(account_id):
 def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
-    #log.bind(worker=current_process().index)
+    # log.bind(worker=current_process().index)
     log.info('Place order...')
     log.info(' ')
 
@@ -437,10 +435,13 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
     client.options['defaultType'] = wallet
 
     # Determine market
-    market = Market.objects.get(exchange=account.exchange,
-                                quote__code=account.quote,
-                                base__code=code,
-                                wallet=wallet)
+    market = Market.objects.filter(exchange=account.exchange,
+                                   quote__code=account.quote,
+                                   base__code=code,
+                                   wallet=wallet)
+    if wallet == 'future':
+        market = market.filter(type='derivative',
+                               contract_type='perpetual')
 
     # Determine price
     if wallet == 'future':
@@ -497,7 +498,7 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
         filled = account.update_order_object(wallet, response)
 
         log.info('Filled {0} {1} at price {2}'.format(filled, code, price))
-        #log.unbind('worker')
+        # log.unbind('worker')
 
         return filled
 

@@ -293,6 +293,8 @@ def rebalance(account_id, get_balances=False, release=True):
             if account.has_spot_asset('used', code):
                 pending = account.balances.spot.used.quantity[code]
                 log.info('Pending order detected {0} {1}'.format(round(pending, 3), code))
+            else:
+                pending = 0
 
             # Determine delta quantity
             price = account.balances.price['spot']['bid'][code]

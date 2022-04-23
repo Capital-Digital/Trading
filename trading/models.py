@@ -222,11 +222,10 @@ class Account(models.Model):
                     value = price * value
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
-        # Drop dust coins and keep strategy coins
-        no_dust = self.balances.spot.total.value > 1
-        no_dust = no_dust[no_dust].index.tolist()
-        keep = list(set(no_dust + self.strategy.get_codes()))
-        self.balances = self.balances.loc[keep]
+        # Select coins with more than $1 and select strategy coins
+        nodust = (self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 1).index.tolist()
+        stratcoins = self.strategy.get_codes()
+        self.balances = self.balances.loc[list(set(nodust + stratcoins))]
 
         # Create missing value columns
         for i in ['total', 'free', 'used']:

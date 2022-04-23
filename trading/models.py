@@ -555,6 +555,7 @@ class Account(models.Model):
             order.average = response['average']
             order.fee = response['fee']
             order.price = response['price']
+            order.remaining = response['remaining']
             order.status = status
             order.filled = filled_total
             order.response = response

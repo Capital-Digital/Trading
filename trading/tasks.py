@@ -335,7 +335,9 @@ def rebalance(account_id, get_balances=False, release=True):
             remaining = Order.objects.get(account=account,
                                           market__base__code=code,
                                           market__quote__code=account.quote,
-                                          market__wallet='future'
+                                          market__wallet='future',
+                                          market__type='derivative',
+                                          market__contract_type='perpetual'
                                           ).remaining
 
         # Get available resource

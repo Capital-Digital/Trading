@@ -376,181 +376,58 @@ class Account(models.Model):
         delta = self.balances.account.target.delta
         return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
-    # Return a Series with codes/quantity to sell spot
-    def to_sell_spot(self):
-
-        # Select codes to sell in spot
-        codes = self.codes_to_sell()
-        spot = self.balances.spot.free.quantity[codes].dropna()
-
-        # Select corresponding target
-        target = self.balances.account.target.quantity[spot.index]
-
-        # Determine delta
-        delta = spot - target
-
-        # Select minimum between spot and delta
-        return spot.append(delta).groupby(level=0).min()
-
-    # Return a Series with codes/quantity to close short
-    def to_close_short(self):
-        codes = self.codes_to_buy()
-        if 'position' in self.balances.columns.get_level_values(0):
-            qty = self.balances.position.open.quantity.dropna()
-            opened_short = qty[qty < 0].index.tolist()
-            to_close = [c for c in codes if c in opened_short]
-            delta = self.balances.account.target.delta
-
-            # Determine the min values between the size of the opened short and delta quantity
-            s1 = abs(qty[to_close])
-            s2 = abs(delta[to_close])
-            s3 = s1.append(s2).groupby(level=0).min()
-
-            return s3
-
-        else:
-            return pd.Series()
-
-    # Return a Series with codes/quantity to buy spot
-    def to_buy_spot(self):
-        codes = self.codes_to_buy()
-        return abs(self.balances.account.target.delta[codes])
-
-    # Return a Series with codes/value to buy spot
-    def to_buy_spot_value(self):
-        qty = self.to_buy_spot()
-        price = self.balances.price.spot.bid[qty.index]
-        return qty * price
-
-    # Return a Series with codes/quantity to open short
-    def to_open_short(self):
-        codes = self.codes_to_sell()
-        if codes:
-            target = self.balances.account.target.quantity.dropna()
-            to_short = [i for i in target.loc[target < 0].index.values.tolist()]
-            open_short = list(set(codes) & set(to_short))
-            return abs(target[open_short])
-        else:
-            return pd.Series()
-
-    # Return a Series with codes/value to open short
-    def to_open_short_value(self):
-        qty = self.to_open_short()
-        price = self.balances.price.spot.bid[qty.index]
-        return qty * price
-
-    # Determine order size based on available resources
-    def size_order(self, code, quantity, action):
-
-        # Determine wallet
-        if action in ['buy_spot', 'sell_spot']:
-            wallet = 'spot'
-        if action in ['open_short', 'close_short']:
-            wallet = 'future'
-
-        # Determine side
-        if action in ['buy_spot', 'close_short']:
-            side = 'buy'
-        elif action in ['sell_spot', 'open_short']:
-            side = 'sell'
-
-        # Determine price
-        if action in ['close_short', 'open_short']:
-            key = 'last'
-        elif action == 'buy_spot':
-            key = 'ask'
-        elif action == 'sell_spot':
-            key = 'bid'
-
-        offset = 0
-
-        others = Order.objects.filter(account=self,
-                                      market__wallet=wallet,
-                                      market__base__code=code,
-                                      action=action,
-                                      status__in=['preparation', 'new', 'open']
-                                      )
-        if others.exists():
-            amount = others.aggregate(Sum('amount'))['amount__sum']
-            filled = others.aggregate(Sum('filled'))['filled__sum']
-            offset = amount - filled
-
-            log.info('{0} order(s) object found (offset {1})'.format(len(others), offset))
-
-            for other in others:
-                log.info('client_id -> {0}'.format(other.clientid))
-                log.info('order_id -> {0}'.format(other.orderid))
-                log.info('status -> {0}'.format(other.status))
-                log.info('amount -> {0}'.format(other.amount))
-                log.info(' ')
-
-        # Select price
-        price = self.balances.price[wallet][key][code]
-
-        # Determine order value and amount when USDT/BUSD resources are released
-        if action == 'sell_spot':
-            order_size = quantity - offset  # offset qty of open/filled order
-            order_value = order_size * price
-
-        elif action == 'close_short':
-            order_size = quantity - offset
-            order_value = order_size * price
-
-        else:
-
-            # Determine order value and amount when USDT/BUSD resources are allocated
-            if action == 'buy_spot':
-                available = self.balances.spot.free.quantity[self.quote]
-            elif action == 'open_short':
-                total = self.balances.future.total.quantity[self.quote]
-                if ('position', 'open', 'value') in self.balances.columns:
-                    open_value = abs(self.balances.position.open.value.dropna()).sum()
+    # Return True is account has asset in spot wallet
+    def has_spot_asset(self, key, code=None):
+        if ('spot', key, 'quantity') in self.balances.columns:
+            if code:
+                if code in self.balances.spot.total.quantity.dropna().index:
+                    return True
                 else:
-                    open_value = 0
-                available = max(0, total - open_value)
-
-            if not pd.isna(available) and available:
-
-                value = math.trunc(quantity * price)
-                order_value = min(available, value)
-                order_size = order_value / price
-
-                # Offset order amount with amount from another order
-                order_size -= offset
-                order_value = order_size * price
-
+                    return False
             else:
-                log.info('No resource available')
-                order_size = 0
-                order_value = 0
+                return False
 
-        if order_size:
-            log.info('Desired order size {0} {1}'.format(round(order_size, 4), code))
-            log.info('Desired order value {0} {1}'.format(round(order_value, 1), self.quote))
+    # Return True is account has asset in future wallet
+    def has_future_asset(self, code=None):
+        if ('future', 'total', 'quantity') in self.balances.columns:
+            if code:
+                if code in self.balances.future.total.quantity.dropna().index:
+                    return True
+                else:
+                    return False
+            else:
+                return False
 
-            if action in ['buy_spot', 'open_short']:
-                log.info('Available resources {0} {1}'.format(round(available, 1), self.quote))
+    # Return True is account has opened short
+    def has_opened_short(self, code=None):
+        if ('position', 'open', 'quantity') in self.balances.columns:
+            if code:
+                if code in self.balances.position.open.quantity.dropna().index:
+                    return True
+                else:
+                    return False
+            else:
+                return True
+        else:
+            return False
 
-                if offset:
-                    log.info('Offset {0}'.format(round(offset, 4)))
+    # Return absolute positions value
+    def position_abs_value(self):
+        if self.has_opened_short:
+            return abs(self.balances.position.open.value.dropna()).sum()
+        else:
+            return 0
 
-        return dict(order_size=order_size,
-                    order_value=order_value,
-                    price=price,
-                    action=action,
-                    code=code,
-                    side=side,
-                    wallet=wallet
-                    )
+    # Return free margin
+    def free_margin(self):
+        total = self.balances.future.total.quantity[self.quote]
+        return total - self.position_abs_value
 
-    # Prepare dictionary key:value for an order
-    def prep_order(self, wallet, code, order_size, order_value, price, action, side):
+    # Validate order size and cost
+    def validate_order(self, wallet, code, qty, cost, action=None):
 
         # Select market
-        markets = Market.objects.filter(base__code=code,
-                                        quote__code=self.quote,
-                                        exchange=self.exchange)
-
+        markets = Market.objects.filter(base__code=code, quote__code=self.quote, exchange=self.exchange)
         if wallet == 'spot':
             market = markets.get(type='spot')
         else:
@@ -559,17 +436,17 @@ class Account(models.Model):
         # Format decimal
         size = format_decimal(counting_mode=self.exchange.precision_mode,
                               precision=market.precision['amount'],
-                              n=order_size)
+                              n=qty)
 
         # Test amount limits MIN and MAX
         if limit_amount(market, size):
 
             # Test cost limits MIN and MAX
-            cost = order_value
             min_notional = limit_cost(market, cost)
             reduce_only = False
 
-            # If cost limit not satisfied and close short set reduce_only = True
+            # If cost not satisfied and close short
+            # set reduce_only = True
             if not min_notional:
                 if market.exchange.exid == 'binance':
                     if market.type == 'derivative':
@@ -580,391 +457,245 @@ class Account(models.Model):
                 # Else return
                 if not reduce_only:
                     log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
-                    return False, dict()
+                    return False, size, False
 
-            # Generate order_id
-            alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
-            clientid = ''.join((random.choice(alphanumeric)) for x in range(5))
-
-            Order.objects.create(
-                account=self,
-                market=market,
-                clientid=clientid,
-                type=self.order_type,
-                filled=0,
-                side=side,
-                action=action,
-                amount=size,
-                status='preparation',
-                sender='app'
-            )
-
-            # Determine resources used (code and quantity)
-            if action in ['buy_spot', 'open_short']:
-                code_res = self.quote
-                used_qty = order_value
-            else:
-                code_res = code
-                used_qty = size
-
-            # Set zero if nan
-            self.balances.loc[code_res, wallet].fillna(0, inplace=True)
-
-            # Update free and used resources in balances df
-            self.balances.loc[code_res, (wallet, 'used', 'quantity')] += used_qty
-            self.balances.loc[code_res, (wallet, 'used', 'value')] += order_value
-            self.balances.loc[code_res, (wallet, 'free', 'quantity')] -= used_qty
-            self.balances.loc[code_res, (wallet, 'free', 'value')] -= order_value
-            self.save()
-
-            log.info('Prep order {0} {1} {2}'.format(size, code, wallet))
-            log.info('Prep order value {0} {1}'.format(round(order_value, 1), self.quote))
-            log.info('Resource used {0} {1}'.format(round(used_qty, 4), code_res))
-            log.info('ClientID {0}'.format(clientid))
-
-            return True, dict(account_id=self.id,
-                              action=action,
-                              code=code,
-                              clientid=clientid,
-                              order_type=self.order_type,
-                              price=price,
-                              reduce_only=reduce_only,
-                              side=side,
-                              size=size,
-                              symbol=market.symbol,
-                              wallet=wallet
-                              )
+            return True, size, reduce_only
 
         else:
             log.info('Condition not satisfied')
-            return False, dict()
+            return False, size, False
+
+    # Create order object
+    def create_object(self, wallet, code, side, action, qty):
+
+        # Select market
+        markets = Market.objects.filter(base__code=code, quote__code=self.quote, exchange=self.exchange)
+        if wallet == 'spot':
+            market = markets.get(type='spot')
+        else:
+            market = markets.get(type='derivative', contract_type='perpetual')
+
+        # Generate order_id
+        alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
+        clientid = ''.join((random.choice(alphanumeric)) for x in range(5))
+
+        Order.objects.create(
+            account=self,
+            market=market,
+            clientid=clientid,
+            type=self.order_type,
+            filled=0,
+            side=side,
+            action=action,
+            amount=qty,
+            status='preparation',
+            sender='app'
+        )
+
+        return clientid
 
     # Update order object
     def update_order_object(self, wallet, response):
         #
-        if response:
+        orderid = response['id']
+        status = response['status'].lower()
+        clientid = response['clientOrderId']
 
-            orderid = response['id']
-            status = response['status'].lower()
-            clientid = response['clientOrderId']
-            price = response['price']
+        try:
+            # Object with orderID exists ?
+            order = Order.objects.get(account=self, orderid=orderid)
+
+        except ObjectDoesNotExist:
 
             try:
-                # Object with orderID exists ?
-                order = Order.objects.get(account=self, orderid=orderid)
+                # Object with clientID exists ?
+                order = Order.objects.get(account=self, clientid=clientid)
 
             except ObjectDoesNotExist:
 
-                try:
-                    # Object with clientID exists ?
-                    order = Order.objects.get(account=self, clientid=clientid)
+                symbol = response['symbol']
+                market = Market.objects.get(exchange=self.exchange, wallet=wallet, symbol=symbol)
 
-                except ObjectDoesNotExist:
+                log.info('Create user order')
 
-                    symbol = response['symbol']
-                    market = Market.objects.get(exchange=self.exchange, wallet=wallet, symbol=symbol)
+                # Create object
+                Order.objects.create(
+                    account=self,
+                    sender='user',
+                    market=market,
+                    orderid=orderid,
+                    status=status
+                )
 
-                    log.info('Create user order')
+                log.warning('Cancel user order')
+                from trading.tasks import send_cancel_order
+                send_cancel_order.delay(self.id, orderid)
+                # self.offset_order_cancelled()
 
-                    # Create object
-                    Order.objects.create(
-                        account=self,
-                        sender='user',
-                        market=market,
-                        orderid=orderid,
-                        status=status
-                    )
+                return
 
-                    log.warning('Cancel user order')
-                    from trading.tasks import send_cancel_order
-                    send_cancel_order.delay(self.id, orderid)
-                    return
+            else:
+                # Set orderID assigned by exchange
+                order.orderid = orderid
 
-                else:
-                    # Update orderID
-                    order.orderid = orderid
+        finally:
 
-            finally:
+            # Get traded amount
+            filled_prev = order.filled
+            filled_total = response['filled']
 
-                # Select attributes
-                code = order.market.base.code
-                wallet = order.market.wallet
+            # Determine new trade
+            if filled_total > filled_prev:
+                filled_new = filled_total - filled_prev
+            else:
+                filled_new = 0
 
-                # Get traded amount
-                filled_prev = order.filled
-                filled_total = response['filled']
+            # Update attributes
+            order.cost = response['cost']
+            order.average = response['average']
+            order.fee = response['fee']
+            order.price = response['price']
+            order.status = status
+            order.filled = filled_total
+            order.response = response
+            order.save()
 
-                # Determine new trade
-                if filled_total > filled_prev:
-                    filled_new = filled_total - filled_prev
+            log.info(' ')
+            log.info('Update object')
+            log.info('Order with clientID {0}'.format(order.clientid))
+            log.info('Order with status {0}'.format(status))
+            log.info('Order for code {0} ({1})'.format(order.market.base.code, order.market.wallet))
+            log.info('Order to {0}'.format(order.action.replace('_', '')))
+            log.info('Trade total {0}'.format(filled_total))
+            log.info('Trade new {0}'.format(filled_new))
 
-                else:
-                    filled_new = 0
+            return filled_new
 
-                log.info(' ')
-                log.info('Update object')
-                log.info('Update clientID {0}'.format(order.clientid))
-                log.info('Update with status {0}'.format(status))
-                log.info('Update code {0} ({1})'.format(code, wallet))
-                log.info('Action {0}'.format(order.action))
+    # Offset transfer
+    def offset_transfer(self, source, destination, amount):
 
-                if filled_new:
-                    log.info('Update filled new {0}'.format(filled_new))
-                    log.info('Update filled total {0}'.format(filled_total))
+        offset = self.balances.copy()
+        for col in offset.columns.get_level_values(0).unique().tolist():
+            offset.loc[:, col] = np.nan
 
-                if response['cost']:
-                    order.cost = response['cost']
-                if response['average']:
-                    order.average = response['average']
-                if response['fee']:
-                    order.fee = response['fee']
+        # Offset in source
+        offset.loc[self.quote, (source, 'free', 'quantity')] = -amount
+        offset.loc[self.quote, (source, 'free', 'value')] = -amount
+        offset.loc[self.quote, (source, 'total', 'quantity')] = -amount
+        offset.loc[self.quote, (source, 'total', 'value')] = -amount
 
-                # Update attributes
-                order.status = status
-                order.price = price
-                order.filled = filled_total
-                order.response = response
-                order.save()
+        # Offset in destination
+        offset.loc[self.quote, (destination, 'free', 'quantity')] = amount
+        offset.loc[self.quote, (destination, 'free', 'value')] = amount
+        offset.loc[self.quote, (destination, 'total', 'quantity')] = amount
+        offset.loc[self.quote, (destination, 'total', 'value')] = amount
 
-                return filled_new
+        offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
+        updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
+        self.balances.loc[offset.index, offset.columns] = updated
+
+    # Offset a new order
+    def offset_order(self, code, action, qty, val, filled=0):
+
+        offset = self.balances.copy()
+        for col in offset.columns.get_level_values(0).unique().tolist():
+            offset.loc[:, col] = np.nan
+
+        # No trade yet
+        if filled == 0:
+
+            if action == 'buy_spot':
+
+                # Offset order value from free and used quote
+                offset.loc[self.quote, ('spot', 'free', 'quantity')] = -val
+                offset.loc[self.quote, ('spot', 'free', 'value')] = -val
+                offset.loc[self.quote, ('spot', 'used', 'quantity')] = val
+                offset.loc[self.quote, ('spot', 'used', 'value')] = val
+
+            if action == 'sell_spot':
+
+                # Offset order quantity and value from free and used code
+                offset.loc[code, ('spot', 'free', 'quantity')] = -qty
+                offset.loc[code, ('spot', 'free', 'value')] = -val
+                offset.loc[code, ('spot', 'used', 'quantity')] = qty
+                offset.loc[code, ('spot', 'used', 'value')] = val
+
+            if action == 'close_short':
+                pass
+
+            if action == 'open_short':
+
+                margin_value = val / 20
+
+                # Offset margin value from used and free quote
+                offset.loc[self.quote, ('future', 'free', 'quantity')] = -margin_value
+                offset.loc[self.quote, ('future', 'free', 'value')] = -margin_value
+                offset.loc[self.quote, ('future', 'used', 'quantity')] = margin_value
+                offset.loc[self.quote, ('future', 'used', 'value')] = margin_value
 
         else:
-            log.info('Empty response from exchange {0}'.format(wallet))
+            price = 1
+            filled_value = filled * price
 
-    # Update balances after new trade
-    def update_balances(self, clientid, action, wallet, code, qty_filled):
+            if action == 'buy_spot':
 
-        if qty_filled:
+                offset.loc[code, ('spot', 'free', 'quantity')] = filled
+                offset.loc[code, ('spot', 'free', 'value')] = filled_value
+                offset.loc[code, ('spot', 'total', 'quantity')] = filled
+                offset.loc[code, ('spot', 'total', 'value')] = filled_value
 
-            log.info(' ')
-            log.info('Update balances (trade)')
-            log.info(' ')
-            log.info('Update order {0}'.format(clientid))
-            log.info('Update {0} {1} ({2})'.format(action.replace('_', ' '), code, wallet))
+                offset.loc[self.quote, ('spot', 'total', 'quantity')] = -filled_value
+                offset.loc[self.quote, ('spot', 'total', 'value')] = -filled_value
 
-            # Determine key
-            if action in ['buy_spot']:
-                key = 'ask'
-            elif action in ['sell_spot']:
-                key = 'bid'
-            else:
-                key = 'last'
+                offset.loc[code, ('account', 'current', 'exposure')] = filled
+                offset.loc[code, ('account', 'current', 'value')] = filled_value
+                offset.loc[self.quote, ('account', 'current', 'exposure')] = -filled_value
+                offset.loc[self.quote, ('account', 'current', 'value')] = -filled_value
+                offset.loc[code, ('account', 'target', 'delta')] = filled
 
-            # Determine price
-            if wallet == 'spot':
-                price = self.balances.price.spot[key][code]
-            else:
-                price = self.balances.price.future[key][code]
+            if action == 'sell_spot':
 
-            # Calculate trade value
-            val_filled = qty_filled * price
+                offset.loc[code, ('spot', 'free', 'quantity')] = -filled
+                offset.loc[code, ('spot', 'free', 'value')] = -filled_value
+                offset.loc[code, ('spot', 'total', 'quantity')] = -filled
+                offset.loc[code, ('spot', 'total', 'value')] = -filled_value
 
-            # Determine amounts to offset
-            if action in ['sell_spot', 'open_short']:
-                qty_filled = -qty_filled
-                val_filled = -val_filled
+                offset.loc[self.quote, ('spot', 'total', 'quantity')] = filled_value
+                offset.loc[self.quote, ('spot', 'total', 'value')] = filled_value
 
-            # Update position and free margin
-            if action in ['open_short', 'close_short']:
+                offset.loc[code, ('account', 'current', 'exposure')] = -filled
+                offset.loc[code, ('account', 'current', 'value')] = -filled_value
+                offset.loc[self.quote, ('account', 'current', 'exposure')] = filled_value
+                offset.loc[self.quote, ('account', 'current', 'value')] = filled_value
+                offset.loc[code, ('account', 'target', 'delta')] = -filled
 
-                log.info('Filled new {0}'.format(qty_filled))
-                log.info('Filled value {0}'.format(val_filled))
+            if action == 'close_short':
 
-                # Position
-                ##########
+                # Offset position size and value
+                offset.loc[code, ('position', 'open', 'quantity')] = filled
+                offset.loc[code, ('position', 'open', 'value')] = filled_value
 
-                # Before
-                if 'position' in self.balances.columns.get_level_values(0):
-                    open_qty_before = self.balances.position.open.quantity[code]
-                    open_value_before = self.balances.position.open.value[code]
-                else:
-                    open_qty_before, open_value_before = [0, 0]
+                offset.loc[code, ('account', 'current', 'exposure')] = filled
+                offset.loc[code, ('account', 'current', 'value')] = filled_value
+                offset.loc[code, ('account', 'target', 'delta')] = filled
 
-                # Now
-                open_qty_now = open_qty_before + qty_filled
-                open_value_now = open_value_before + val_filled
+            if action == 'open_short':
 
-                log.info('Open quantity before {0}'.format(open_qty_before))
-                log.info('Open quantity now {0}'.format(open_qty_now))
-                log.info('Open value before {0}'.format(round(open_value_before, 1)))
-                log.info('Open value now {0}'.format(round(open_value_now, 1)))
+                # Offset position size and value
+                offset.loc[code, ('position', 'open', 'quantity')] = -filled
+                offset.loc[code, ('position', 'open', 'value')] = -filled_value
 
-                # Set zero if nan
-                if 'position' in self.balances.columns.get_level_values(0):
-                    self.balances.loc[code, 'position'].fillna(0, inplace=True)
+                offset.loc[code, ('account', 'current', 'exposure')] = -filled
+                offset.loc[code, ('account', 'current', 'value')] = -filled_value
+                offset.loc[code, ('account', 'target', 'delta')] = -filled
 
-                # Update
-                self.balances.loc[code, ('position', 'open', 'quantity')] = open_qty_now
-                self.balances.loc[code, ('position', 'open', 'value')] = open_value_now
+        offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
+        updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
+        self.balances.loc[offset.index, offset.columns] = updated
 
-                # Margin
-                ########
-
-                # Determine leverage
-                if ('position', 'open', 'leverage') in self.balances.columns:
-                    leverage = self.balances.position.open.leverage[code]
-                else:
-                    leverage = 20
-
-                # Before
-                margin_free_before = self.balances.future.free.quantity[self.quote]
-                margin_used_before = self.balances.future.used.quantity[self.quote]
-
-                if np.isnan(margin_free_before):
-                    margin_free_before = 0
-                if np.isnan(margin_used_before):
-                    margin_used_before = 0
-
-                # Now
-                margin_free_now = margin_free_before + (val_filled / leverage)
-                margin_used_now = margin_used_before - (val_filled / leverage)
-
-                # Update
-                self.balances.loc[self.quote, ('future', 'free', 'quantity')] = margin_free_now
-                self.balances.loc[self.quote, ('future', 'used', 'quantity')] = margin_used_now
-                self.balances.loc[self.quote, ('future', 'free', 'value')] = margin_free_now
-                self.balances.loc[self.quote, ('future', 'used', 'value')] = margin_used_now
-
-                self.save()
-
-                log.info('Free margin before {0}'.format(round(margin_free_before, 1)))
-                log.info('Free margin now {0}'.format(round(margin_free_now, 1)))
-                log.info('Used margin before {0}'.format(round(margin_used_before, 1)))
-                log.info('Used margin now {0}'.format(round(margin_used_now, 1)))
-                log.info('Leverage {0}'.format(leverage))
-
-            else:
-
-                # Set zero if nan
-                # self.balances.loc[code, 'spot'].fillna(0, inplace=True)
-
-                for c in [code, self.quote]:
-                    for i in ['total', 'free', 'used']:
-                        for j in ['quantity', 'value']:
-
-                            # If quote, use trade value to update asset quantity and value
-                            if c == self.quote:
-                                delta = -val_filled
-
-                            else:
-                                # Else, use trade value to update asset value
-                                if j == 'value':
-                                    delta = val_filled
-                                    coin = self.quote
-
-                                # An trade quantity to update asset quantity
-                                elif j == 'quantity':
-                                    delta = qty_filled
-                                    coin = code
-
-                            # Update dataframe
-                            before = self.balances.spot[i][j][c]
-
-                            # Don't increase the asset used after a trade
-                            if delta > 0:
-                                if i == 'used':
-                                    delta = 0
-
-                            now = before + delta
-                            self.balances.loc[c, ('spot', i, j)] = now
-
-                            log.info('{0} {4} {1} in spot before {2} {3}'.format(i.title(), j, round(before, 3), coin, c))
-                            log.info('{0} {4} {1} in spot now {2} {3}'.format(i.title(), j, round(now, 3), coin, c))
-
-                self.save()
-
-    # Update balances after a transfer
-    def update_balances_after_transfer(self, transfer_id, source, dest, quantity):
-
-        log.info(' ')
-        log.info('Update balances (transfer)')
-        log.info(' ')
-        log.info('Transfer ID {0}'.format(transfer_id))
-        log.info('Transfer of {2} {3} from {0} to {1}'.format(source, dest, round(quantity, 1), self.quote))
-
-        for w in [source, dest]:
-            for i in ['total', 'free']:
-                for j in ['quantity', 'value']:
-
-                    if w == source:
-                        delta = -quantity
-                    else:
-                        delta = quantity
-
-                    # Update dataframe
-                    before = self.balances[w][i][j][self.quote]
-
-                    if w == dest:
-                        if np.isnan(before):
-                            before = 0
-
-                    now = before + delta
-                    self.balances.loc[self.quote, (w, i, j)] = now
-
-                    log.info('{0} {1} in {2} before {3} {4}'.format(i.title(), j, w, round(before, 1), self.quote))
-                    log.info('{0} {1} in {2} now {3} {4}'.format(i.title(), j, w, round(now, 1), self.quote))
-
-        self.save()
-
-    # Sell spot
-    def sell_spot_all(self):
-        from trading.tasks import send_create_order
-
-        log.info('')
-        sell_spot = self.to_sell_spot()
-        log.info('Sell spot {0} coin(s)'.format(sell_spot.count()))
-
-        for code, quantity in sell_spot.items():
-            kwargs = self.size_order(code, quantity, 'sell_spot')
-            valid, order = self.prep_order(**kwargs)
-            if valid:
-                args = order.values()
-                send_create_order.delay(*args)
-
-    # Close short
-    def close_short_all(self):
-        from trading.tasks import send_create_order
-
-        log.info('')
-        opened_short = self.to_close_short()
-        log.info('Close short {0} position(s)'.format(opened_short.count()))
-
-        for code, quantity in opened_short.items():
-            kwargs = self.size_order(code, quantity, 'close_short')
-            valid, order = self.prep_order(**kwargs)
-            if valid:
-                args = order.values()
-                send_create_order.delay(*args)
-
-    # Buy spot
-    def buy_spot_all(self):
-        from trading.tasks import send_create_order
-
-        log.info('')
-        buy_spot = self.to_buy_spot()
-        log.info('Buy spot {0} coin(s)'.format(buy_spot.count()))
-
-        for code, quantity in buy_spot.items():
-            kwargs = self.size_order(code, quantity, 'buy_spot')
-            valid, order = self.prep_order(**kwargs)
-            if valid:
-                args = order.values()
-                send_create_order.delay(*args)
-
-    # Open short
-    def open_short_all(self):
-        from trading.tasks import send_create_order
-
-        log.info('')
-        open_short = self.to_open_short()
-        log.info('Open short {0} position(s)'.format(open_short.count()))
-
-        for code, quantity in open_short.items():
-            kwargs = self.size_order(code, quantity, 'open_short')
-            valid, order = self.prep_order(**kwargs)
-            if valid:
-                args = order.values()
-                send_create_order.delay(*args)
+    # Offset a cancelled order
+    def offset_order_cancelled(self, code, side, qty, val, filled=0):
+        pass
 
     # Market sell spot account
     def market_sell(self):

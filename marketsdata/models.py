@@ -728,7 +728,7 @@ class Market(models.Model):
         return ex + space + type + '__' + self.symbol
 
     # Return latest price
-    def get_latest_price(self):
+    def get_latest_price(self, key):
 
         try:
             tickers = Tickers.objects.get(market=self,
@@ -743,7 +743,7 @@ class Market(models.Model):
             now = dt.strftime(datetime_directive_ISO_8601)
 
             try:
-                price = tickers.data[now]['last']
+                price = tickers.data[now][key]
             except KeyError:
                 log.error('Key {0} not found'.format(now),
                           symbol=self.symbol,

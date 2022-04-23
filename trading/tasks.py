@@ -31,6 +31,7 @@ import random
 
 log = structlog.get_logger(__name__)
 
+
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
@@ -45,6 +46,7 @@ class BaseTaskWithRetry(Task):
     retry_backoff = True
     retry_backoff_max = 30
     retry_jitter = False
+
 
 # Bulk actions
 ##############
@@ -152,7 +154,6 @@ def create_balances(account_id):
 # Update funds object
 @app.task(name='Trading_____Update_historical_balance')
 def update_historical_balance(account_id):
-
     account = Account.objects.get(id=account_id)
 
     try:
@@ -225,85 +226,147 @@ def rebalance(account_id, get_balances=False, release=True):
 
     if release:
 
+        # Release resources
+        ###################
+
         log.info(' ')
         log.info('Release resources')
         log.info('*****************')
 
-        # Release resources
-        account.sell_spot_all()
-        account.close_short_all()
+        # Sell spot
+        for code in account.codes_to_sell():
+            if account.has_spot_asset('free', code):
+                free = account.balances.spot.free.quantity[code]
+                delta = account.balances.account.target.delta[code]
 
-    # Determine available resources
-    bal_spot = account.balances.spot.free.value[account.quote]
-    bal_futu = account.balances.future.total.value[account.quote]
+                # Determine order size and value
+                price = account.balances.price['spot']['bid'][code]
+                qty = min(free, delta)
+                val = qty * price
 
-    if ('position', 'open', 'value') in account.balances.columns:
-        pos_val = abs(account.balances.position.open.value.dropna()).sum()
-        bal_futu -= pos_val
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+                if valid:
 
-    if np.isnan(bal_spot):
-        bal_spot = 0
-    if np.isnan(bal_futu):
-        bal_futu = 0
+                    # Determine final order value
+                    val = qty * price
 
-    # Determine desired resources
-    des_spot = account.to_buy_spot_value().sum()
-    des_futu = account.to_open_short_value().sum()
+                    # Create object, place order and apply offset
+                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
+                    filled = send_create_order(account.id, clientid, 'sell', 'spot', code, qty, reduce_only)
+                    account.offset_order(code, 'sell_spot', qty, val, filled)
+
+        # Close short
+        for code in account.codes_to_buy():
+            if account.has_opened_short(code):
+                opened = account.balances.position.open.quantity[code]
+                delta = account.balances.account.target.delta[code]
+
+                # Determine order size and value
+                price = account.balances.price['future']['last'][code]
+                qty = abs(max(opened, delta))
+                val = qty * price
+
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('future', code, qty, val)
+                if valid:
+
+                    # Determine final order value
+                    val = qty * price
+
+                    # Create object, place order and apply offset
+                    clientid = account.create_object('future', code, 'buy', 'close_short', qty)
+                    filled = send_create_order(account.id, clientid, 'buy', 'future', code, qty, reduce_only)
+                    account.offset_order(code, 'close_short', qty, val, filled)
+
+    # Allocate free resources
+    #########################
 
     log.info(' ')
-    log.info('Balance resource spot {0}'.format(round(bal_spot, 1)))
-    log.info('Balance resource futu {0}'.format(round(bal_futu, 1)))
-    log.info('Desired resource spot {0}'.format(round(des_spot, 1)))
-    log.info('Desired resource futu {0}'.format(round(des_futu, 1)))
-
-    # Determine resource to transfer between account
-    need_spot = max(0, des_spot - bal_spot)
-    need_futu = max(0, des_futu - bal_futu)
-
-    log.info('Need resource spot {0}'.format(round(need_spot, 1)))
-    log.info('Need resource futu {0}'.format(round(need_futu, 1)))
-
-    log.info(' ')
-    log.info('Transfer resources')
-    log.info('******************')
-    log.info(' ')
-
-    # Transfer
-    if need_spot:
-        free_futu = max(0, bal_futu - des_futu)
-        log.info('Free resource futu {0}'.format(round(free_futu, 1)))
-        log.info('Resources are needed in spot')
-        log.info('{0} {1} are missing'.format(round(need_spot, 3), account.quote))
-        amount = min(need_spot, free_futu)
-        send_transfer.delay(account_id, 'future', 'spot', amount)
-
-    elif need_futu:
-        free_spot = max(0, bal_spot - des_spot)
-        log.info('Free resource spot {0}'.format(round(free_spot, 1)))
-        log.info('Resources are needed in future')
-        log.info('{0} {1} are missing'.format(round(need_futu, 3), account.quote))
-        amount = min(need_futu, free_spot)
-        send_transfer.delay(account_id, 'spot', 'future', amount)
-
-    else:
-        log.info('Sufficient resources')
-        log.info('No transfer required')
-
-    # Determine resources that could be allocated
-    spot = min(bal_spot, des_spot)
-    futu = min(bal_futu, des_futu)
-
-    log.info('')
     log.info('Allocate resources')
     log.info('******************')
 
-    # Determine account to allocate resource first
-    if spot > futu:
-        account.buy_spot_all()
-        account.open_short_all()
-    else:
-        account.open_short_all()
-        account.buy_spot_all()
+    # Open short
+    for code in account.codes_to_sell():
+        if not account.has_spot_asset('free', code):
+
+            if account.has_spot_asset('used', code):
+                pending = account.balances.spot.used.quantity[code]
+                log.info('Pending order detected {0} {1}'.format(round(pending, 3), code))
+
+            # Determine delta quantity
+            price = account.balances.price['spot']['bid'][code]
+            delta = account.balances.account.target.delta[code] - pending  # Offset sell_spot
+            if delta > 0:
+
+                # Determine value
+                desired_val = delta * price
+                val = min(account.free_margin(), desired_val)
+
+                # Transfer is needed ?
+                if val < desired_val:
+                    amount = min(desired_val - val, account.has_spot_asset('free', account.quote))
+                    send_transfer(account.id, 'spot', 'future', amount)
+                    account.offset_transfer('spot', 'future', amount)
+                    val += amount
+
+                # Determine quantity from available resources
+                qty = val / price
+
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('future', code, qty, val)
+                if valid:
+                    # Determine final order value
+                    val = qty * price
+
+                    # Create object, place order and apply offset
+                    clientid = account.create_object('spot', code, 'buy', 'open_short', qty)
+                    filled = send_create_order(account.id, clientid, 'sell', 'future', code, qty)
+                    account.offset_order(code, 'open_short', qty, val, filled)
+
+    # Buy spot
+    for code in account.codes_to_buy():
+
+        # No opened short ?
+        if not account.has_opened_short(code):
+            remaining = 0
+        else:
+            # Else determine remaining quantity if an opened short is pending
+            remaining = Order.objects.get(account=account,
+                                          market__base__code=code,
+                                          market__quote__code=account.quote,
+                                          market__wallet='future'
+                                          ).remaining
+
+        # Get available resource
+        free = account.balances.spot.free.quantity[account.quote]
+
+        # Determine order size and value
+        price = account.balances.price['spot']['bid'][code]
+        delta = abs(account.balances.account.target.delta[code]) - remaining  # Offset pending close_short
+        desired_val = delta * price
+        val = min(free, desired_val)
+
+        # Transfer is needed ?
+        if val < desired_val:
+            amount = min(desired_val - val, account.free_margin())
+            send_transfer(account.id, 'future', 'spot', amount)
+            account.offset_transfer('future', 'spot', amount)
+            val += amount
+
+        # Determine quantity from available resources
+        qty = val / price
+
+        # Format decimal and validate order
+        valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+        if valid:
+            # Determine final order value
+            val = qty * price
+
+            # Create object, place order and apply offset
+            clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
+            filled = send_create_order(account.id, clientid, 'buy', 'spot', code, qty, reduce_only)
+            account.offset_order(code, 'buy_spot', qty, val, filled)
 
     log.unbind('worker', 'account')
 
@@ -359,39 +422,53 @@ def check_credentials(account_id):
 
 # Send create order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
-def send_create_order(account_id, action, code, clientid, order_type, price, reduce_only, side, size, symbol, wallet,
-                      then_rebalance=True):
+def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only, market_order=False):
     #
     log.info(' ')
     log.bind(worker=current_process().index)
     log.info('Place order...')
     log.info(' ')
 
-    log.info('{0} {1} {2}'.format(side.title(), size, code))
-    log.info('Order symbol {0} ({1})'.format(symbol, wallet))
-    log.info('Order clientid {0}'.format(clientid))
-
+    # Initialize client
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
     client.options['defaultType'] = wallet
 
+    # Determine market
+    market = Market.objects.get(exchange=account.exchange,
+                                quote__code=account.quote,
+                                base__code=code,
+                                wallet=wallet)
+
+    # Determine price
+    if wallet == 'future':
+        key = 'last'
+    elif side == 'buy':
+        key = 'ask'
+    elif side == 'sell':
+        key = 'bid'
+
+    price = market.get_latest_price(key)
+
+    log.info('{0} {1} {2}'.format(side.title(), desired_qty, code))
+    log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
+    log.info('Order clientid {0}'.format(clientid))
+
     kwargs = dict(
-        symbol=symbol,
-        type=order_type,
+        symbol=market.symbol,
+        type=account.order_type,
         side=side,
-        amount=size,
+        amount=desired_qty,
         price=price,
         params=dict(newClientOrderId=clientid)
     )
 
-    if order_type == 'market':
+    if market_order:
         del kwargs['price']
 
     # Set parameters
     if reduce_only:
         kwargs['params']['reduceOnly'] = True
-
-    pprint(kwargs)
 
     try:
         response = client.create_order(**kwargs)
@@ -404,8 +481,8 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         order.save()
 
         log.error('Order placement failed', cause=str(e))
-        log.error('{0} {1} {2}'.format(side.title(), size, code))
-        log.error('Order symbol {0} ({1})'.format(symbol, wallet))
+        log.error('{0} {1} {2}'.format(side.title(), desired_qty, code))
+        log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
         log.error('Order price {0}'.format(price))
         log.error('Order clientid {0}'.format(clientid))
         log.unbind('worker')
@@ -415,15 +492,12 @@ def send_create_order(account_id, action, code, clientid, order_type, price, red
         log.info('Order placement success')
 
         # Update object and dataframe
-        qty_filled = account.update_order_object(wallet, response)
-        log.info('Filled {0} {1} at price {2}'.format(qty_filled, code, price))
+        filled = account.update_order_object(wallet, response)
 
-        account.update_balances(clientid, action, wallet, code, qty_filled)
-
+        log.info('Filled {0} {1} at price {2}'.format(filled, code, price))
         log.unbind('worker')
 
-        if then_rebalance:
-            return account_id, qty_filled
+        return filled
 
 
 # Send fetch orderid
@@ -467,7 +541,6 @@ def send_fetch_all_open_orders(account_id):
 
         qty = []
         for dic in response:
-
             pprint(dic)
             # Update corresponding order object
             qty_filled = account.update_order_object(wallet, dic)

@@ -336,9 +336,7 @@ def rebalance(account_id, get_balances=False, release=True):
                                           status='open',
                                           market__base__code=code,
                                           market__quote__code=account.quote,
-                                          market__wallet='future',
-                                          market__type='derivative',
-                                          market__contract_type='perpetual'
+                                          action='open_short'
                                           ).remaining
 
         # Get available resource

@@ -319,20 +319,17 @@ class Account(models.Model):
                                            ('position', 'open', 'quantity')])
         # Determine total exposure
         exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
+
+        if 'position' in self.balances.columns.get_level_values(0):
+            pos_value = self.balances.position.open.value.dropna().sum()
+            exposure[self.quote] -= pos_value
+
         self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
 
         # Calculate percentage for each coin
         for coin, exp in self.balances.account.current.exposure.items():
             bid = self.balances.price.spot.bid[coin]
-            if 'position' in self.balances.columns.get_level_values(0):
-                pos_value = self.balances.position.open.value.dropna().sum()
-            else:
-                pos_value = 0
-
             exposure_value = exp * bid
-
-            if coin == self.quote:
-                exposure_value -= pos_value
 
             log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
 

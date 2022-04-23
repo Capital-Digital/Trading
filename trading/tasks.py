@@ -425,7 +425,7 @@ def check_credentials(account_id):
 def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only, market_order=False):
     #
     log.info(' ')
-    log.bind(worker=current_process().index)
+    #log.bind(worker=current_process().index)
     log.info('Place order...')
     log.info(' ')
 
@@ -485,7 +485,7 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
         log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
         log.error('Order price {0}'.format(price))
         log.error('Order clientid {0}'.format(clientid))
-        log.unbind('worker')
+        # log.unbind('worker')
 
     else:
 
@@ -495,7 +495,7 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
         filled = account.update_order_object(wallet, response)
 
         log.info('Filled {0} {1} at price {2}'.format(filled, code, price))
-        log.unbind('worker')
+        #log.unbind('worker')
 
         return filled
 

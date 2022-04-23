@@ -244,7 +244,7 @@ class Account(models.Model):
     def account_value(self):
 
         if ('spot', 'total', 'value') in self.balances.columns:
-            spot_val = self.balances.spot.total.value[self.quote]
+            spot_val = self.balances.spot.total.value.sum()
             if np.isnan(spot_val):
                 spot_val = 0
         else:

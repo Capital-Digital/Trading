@@ -526,7 +526,12 @@ def send_fetch_orderid(account_id, order_id):
         response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
 
     except ccxt.OrderNotFound:
-        log.error('Order with ID {} not found'.format(order_id))
+        log.error('Order {} not found'.format(order.clientid), id=order_id)
+        order.status = 'not_found'
+        order.save()
+    
+    except Exception as e:
+        log.error('Unknown exception when fetching order {}'.format(order.clientid), id=order_id, e=str(e))
 
     else:
         # Update object and dataframe

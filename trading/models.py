@@ -380,7 +380,7 @@ class Account(models.Model):
     def has_spot_asset(self, key, code=None):
         if ('spot', key, 'quantity') in self.balances.columns:
             if code:
-                if code in self.balances.spot.total.quantity.dropna().index:
+                if self.balances.spot.total.value[code] > 1:
                     return True
                 else:
                     return False

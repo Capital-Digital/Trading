@@ -368,7 +368,7 @@ def rebalance(account_id, get_balances=False, release=True):
             filled = send_create_order(account.id, clientid, 'buy', 'spot', code, qty, reduce_only)
             account.offset_order(code, 'buy_spot', qty, val, filled)
 
-    log.unbind('worker', 'account')
+    log.unbind('account')
 
 
 # Update open orders of an account

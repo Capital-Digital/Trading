@@ -565,7 +565,7 @@ class Account(models.Model):
             log.info('Order with clientID {0}'.format(order.clientid))
             log.info('Order with status {0}'.format(status))
             log.info('Order for code {0} ({1})'.format(order.market.base.code, order.market.wallet))
-            log.info('Order to {0}'.format(order.action.replace('_', '')))
+            log.info('Order to {0}'.format(order.action.replace('_', ' ')))
             log.info('Trade total {0}'.format(filled_total))
             log.info('Trade new {0}'.format(filled_new))
 

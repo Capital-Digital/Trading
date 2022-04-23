@@ -435,72 +435,78 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
     client.options['defaultType'] = wallet
 
     # Determine market
-    market = Market.objects.filter(exchange=account.exchange,
-                                   quote__code=account.quote,
-                                   base__code=code,
-                                   wallet=wallet)
-    if wallet == 'future':
-        market = market.get(type='derivative',
-                            contract_type='perpetual')
-
-    # Determine price
-    if wallet == 'future':
-        key = 'last'
-    elif side == 'buy':
-        key = 'ask'
-    elif side == 'sell':
-        key = 'bid'
-
-    price = market.get_latest_price(key)
-
-    log.info('{0} {1} {2}'.format(side.title(), desired_qty, code))
-    log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
-    log.info('Order clientid {0}'.format(clientid))
-
-    kwargs = dict(
-        symbol=market.symbol,
-        type=account.order_type,
-        side=side,
-        amount=desired_qty,
-        price=price,
-        params=dict(newClientOrderId=clientid)
-    )
-
-    if market_order:
-        del kwargs['price']
-
-    # Set parameters
-    if reduce_only:
-        kwargs['params']['reduceOnly'] = True
-
     try:
-        response = client.create_order(**kwargs)
+        market = Market.objects.get(exchange=account.exchange,
+                                    quote__code=account.quote,
+                                    base__code=code,
+                                    wallet=wallet)
+    except MultipleObjectsReturned:
+        market = Market.objects.get(exchange=account.exchange,
+                                    quote__code=account.quote,
+                                    base__code=code,
+                                    wallet=wallet,
+                                    type='derivative',
+                                    contract_type='perpetual')
+    finally:
 
-    except ccxt.InsufficientFunds as e:
+        # Determine price
+        if wallet == 'future':
+            key = 'last'
+        elif side == 'buy':
+            key = 'ask'
+        elif side == 'sell':
+            key = 'bid'
 
-        order = Order.objects.get(clientid=clientid)
-        order.status = 'canceled'
-        order.response = dict(exception=str(e))
-        order.save()
+        price = market.get_latest_price(key)
 
-        log.error('Order placement failed', cause=str(e))
-        log.error('{0} {1} {2}'.format(side.title(), desired_qty, code))
-        log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
-        log.error('Order price {0}'.format(price))
-        log.error('Order clientid {0}'.format(clientid))
-        # log.unbind('worker')
+        log.info('{0} {1} {2}'.format(side.title(), desired_qty, code))
+        log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
+        log.info('Order clientid {0}'.format(clientid))
 
-    else:
+        kwargs = dict(
+            symbol=market.symbol,
+            type=account.order_type,
+            side=side,
+            amount=desired_qty,
+            price=price,
+            params=dict(newClientOrderId=clientid)
+        )
 
-        log.info('Order placement success')
+        if market_order:
+            del kwargs['price']
 
-        # Update object and dataframe
-        filled = account.update_order_object(wallet, response)
+        # Set parameters
+        if reduce_only:
+            kwargs['params']['reduceOnly'] = True
 
-        log.info('Filled {0} {1} at price {2}'.format(filled, code, price))
-        # log.unbind('worker')
+        try:
+            response = client.create_order(**kwargs)
 
-        return filled
+        except ccxt.InsufficientFunds as e:
+
+            order = Order.objects.get(clientid=clientid)
+            order.status = 'canceled'
+            order.response = dict(exception=str(e))
+            order.save()
+
+            log.error('Order placement failed', cause=str(e))
+            log.error('{0} {1} {2}'.format(side.title(), desired_qty, code))
+            log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
+            log.error('Order price {0}'.format(price))
+            log.error('Order clientid {0}'.format(clientid))
+            # log.unbind('worker')
+
+        else:
+
+            log.info('Order placement success')
+
+            # Update object and dataframe
+            filled = account.update_order_object(wallet, response)
+
+            log.info('Filled {0} {1} at price {2}'.format(filled, code, price))
+            # log.unbind('worker')
+
+            return filled
 
 
 # Send fetch orderid

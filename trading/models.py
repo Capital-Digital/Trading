@@ -332,7 +332,7 @@ class Account(models.Model):
             exposure_value = exp * bid
             log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
 
-            percent = exposure_value / (acc_value - pos_value)
+            percent = exposure_value / (acc_value) # - pos_value)
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Calculate value allocated to each coin

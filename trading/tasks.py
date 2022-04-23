@@ -424,7 +424,7 @@ def check_credentials(account_id):
 
 # Send create order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
-def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only, market_order=False):
+def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
     #log.bind(worker=current_process().index)

@@ -425,6 +425,8 @@ class Account(models.Model):
     # Return free margin
     def free_margin(self):
         total = self.balances.future.total.quantity[self.quote]
+        if np.isnan(total):
+            total = 0
         return max(0, total - self.position_abs_value())
 
     # Validate order size and cost

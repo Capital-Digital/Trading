@@ -346,16 +346,14 @@ def rebalance(account_id, reload=False, release=True):
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]
+        if np.isnan(free):
+            free = 0
 
         # Determine order size and value
         price = account.balances.price['spot']['bid'][code]
         delta = abs(account.balances.account.target.delta[code]) - pending  # Offset pending close_short
         desired_val = delta * price
         val = min(free, desired_val)
-
-        log.info('Val {0}'.format(val))
-        log.info('free {0}'.format(free))
-        log.info('desired_val {0}'.format(desired_val))
 
         # Transfer is needed ?
         if val < desired_val:
@@ -366,9 +364,6 @@ def rebalance(account_id, reload=False, release=True):
 
         # Determine quantity from available resources
         qty = val / price
-
-        log.info('val {0}'.format(val))
-        log.info('price {0}'.format(price))
 
         # Format decimal and validate order
         valid, qty, reduce_only = account.validate_order('spot', code, qty, val)

@@ -353,6 +353,10 @@ def rebalance(account_id, reload=False, release=True):
         desired_val = delta * price
         val = min(free, desired_val)
 
+        log.info('Val {0}'.format(val))
+        log.info('free {0}'.format(free))
+        log.info('desired_val {0}'.format(desired_val))
+
         # Transfer is needed ?
         if val < desired_val:
             amount = min(desired_val - val, account.free_margin())
@@ -363,13 +367,12 @@ def rebalance(account_id, reload=False, release=True):
         # Determine quantity from available resources
         qty = val / price
 
-        log.info('Validate {0}'.format(qty))
-        
+        log.info('val {0}'.format(val))
+        log.info('price {0}'.format(price))
+
         # Format decimal and validate order
         valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
         if valid:
-
-            log.info('Valid {0}'.format(qty))
 
             # Determine final order value
             val = qty * price

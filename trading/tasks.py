@@ -333,7 +333,7 @@ def rebalance(account_id, get_balances=False, release=True):
         else:
             # Else determine remaining quantity if an opened short is pending
             remaining = Order.objects.get(account=account,
-                                          exchange=account.exchange,
+                                          status='open',
                                           market__base__code=code,
                                           market__quote__code=account.quote,
                                           market__wallet='future',

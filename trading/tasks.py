@@ -529,7 +529,7 @@ def send_fetch_orderid(account_id, order_id):
         log.error('Order {} not found'.format(order.clientid), id=order_id)
         order.status = 'not_found'
         order.save()
-    
+
     except Exception as e:
         log.error('Unknown exception when fetching order {}'.format(order.clientid), id=order_id, e=str(e))
 

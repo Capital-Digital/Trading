@@ -105,7 +105,7 @@ class CustomerAdmin(admin.ModelAdmin):
     # Update dataframes
     def action_update_dataframe(self, request, queryset):
         for exchange in queryset:
-            update_dataframe.delay(exchange.exid, tickers=False, admin=True)
+            update_dataframe.delay(exchange.exid, tickers=False)
 
     action_update_dataframe.short_description = "Update dataframes"
 

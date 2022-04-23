@@ -339,8 +339,8 @@ def rebalance(account_id, reload=False, release=True):
             except ObjectDoesNotExist:
                 pending = 0
             else:
-                log.info('Open order to close short detected {0} {1}'.format(round(pending, 3), code))
                 pending = open.remaining
+                log.info('Open order to close short detected {0} {1}'.format(round(pending, 3), code))
         else:
             pending = 0
 

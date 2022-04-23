@@ -337,6 +337,7 @@ class Account(models.Model):
             log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
 
             percent = exposure_value / acc_value
+
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
         # Calculate value allocated to each coin
@@ -610,6 +611,7 @@ class Account(models.Model):
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
+        self.save()
 
         log.info('Offset transfer complete')
         log.unbind('id')
@@ -723,6 +725,7 @@ class Account(models.Model):
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
+        self.save()
 
         log.info('Offset complete')
 

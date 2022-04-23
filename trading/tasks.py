@@ -525,13 +525,6 @@ def send_fetch_orderid(account_id, order_id):
 
     # Update object and dataframe
     qty_filled = account.update_order_object(order.market.wallet, response)
-    account.update_balances(order.clientid,
-                            order.action,
-                            order.market.wallet,
-                            order.market.base.code,
-                            qty_filled
-                            )
-
     return account_id, qty_filled
 
 
@@ -591,10 +584,6 @@ def send_transfer(account_id, source, dest, quantity):
         else:
 
             log.info('Transfer success')
-
-            # Update dataframe
-            account.update_balances_after_transfer(transfer_id, source, dest, quantity)
-
             return account_id, quantity
 
         finally:
@@ -619,9 +608,4 @@ def send_cancel_order(account_id, order_id):
     else:
         # Update object and dataframe
         qty_filled = account.update_order_object(order.market.wallet, response)
-        account.update_balances(order.clientid,
-                                order.action,
-                                order.market.wallet,
-                                order.market.base.code,
-                                qty_filled
-                                )
+

@@ -515,15 +515,15 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_orderid')
 def send_fetch_orderid(account_id, order_id):
     #
-    order = Order.objects.get(orderid=order_id)
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
+    order = Order.objects.get(orderid=order_id)
 
     # Set options
     client.options['defaultType'] = order.market.wallet
 
     try:
-        response = client.fetchOrder(id=order.orderid, symbol=order.market.symbol)
+        response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
 
     except ccxt.OrderNotFound:
         log.error('Order with ID {} not found'.format(order_id))

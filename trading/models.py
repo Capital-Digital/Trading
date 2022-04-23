@@ -457,13 +457,15 @@ class Account(models.Model):
 
                 # Else return
                 if not reduce_only:
+                    log.info(' ')
                     log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
                     return False, size, False
 
             return True, size, reduce_only
 
         else:
-            log.info('Condition not satisfied')
+            log.info(' ')
+            log.info('Condition not satisfied ({0} {1})'.format(round(qty, 3), code))
             return False, size, False
 
     # Create order object
@@ -579,7 +581,7 @@ class Account(models.Model):
         log.info(' ')
         log.info('Offset transfer')
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
-        log.info('Offset transfer amount is {0}'.format(round(amount, 1)))
+        log.info('Offset transfer amount is {0} {1}'.format(round(amount, 1), self.quote))
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():

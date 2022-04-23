@@ -91,7 +91,8 @@ class CustomerAdmin(admin.ModelAdmin):
     # Update prices
     def action_update_prices(self, request, queryset):
         for exchange in queryset:
-            update_prices.delay(exchange.exid)
+            for wallet in exchange.get_wallets():
+                update_prices.delay(exchange.exid, wallet)
 
     action_update_prices.short_description = "Update prices"
 

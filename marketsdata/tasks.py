@@ -248,9 +248,6 @@ def update_prices(exid, wallet=None):
             args['contract_type'] = 'perpetual'
 
         try:
-            pprint(args)
-            log.info(args)
-            print(args)
             market = Market.objects.get(**args)
 
         except ObjectDoesNotExist:

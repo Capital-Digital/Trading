@@ -33,10 +33,9 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         else:
             log.error('Accounts update failure')
 
-    if task.name in ['Trading_____Send_create_order',
-                     'Trading_____Send_fetch_orderid',
-                     'Trading_____Send_transfer_funds']:
+    if task.name in ['Trading_____Send_fetch_orderid']:
 
+        log.info('Signa received', task=task.name)
         account_id, quantity = retval
 
         if state == 'SUCCESS':

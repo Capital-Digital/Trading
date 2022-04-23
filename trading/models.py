@@ -578,8 +578,9 @@ class Account(models.Model):
             return filled_new, order.average
 
     # Offset transfer
-    def offset_transfer(self, source, destination, amount):
+    def offset_transfer(self, source, destination, amount, transfer_id):
 
+        log.bind(id=transfer_id)
         log.info(' ')
         log.info('Offset transfer')
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
@@ -606,6 +607,7 @@ class Account(models.Model):
         self.balances.loc[offset.index, offset.columns] = updated
 
         log.info('Offset transfer complete')
+        log.unbind('id')
 
     # Offset a new order
     def offset_order(self, code, action, qty, val, filled, average):

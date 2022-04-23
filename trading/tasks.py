@@ -356,8 +356,8 @@ def rebalance(account_id, get_balances=False, release=True):
         # Transfer is needed ?
         if val < desired_val:
             amount = min(desired_val - val, account.free_margin())
-            send_transfer(account.id, 'future', 'spot', amount)
-            account.offset_transfer('future', 'spot', amount)
+            transfer_id = send_transfer(account.id, 'future', 'spot', amount)
+            account.offset_transfer('future', 'spot', amount, transfer_id)
             val += amount
 
         # Determine quantity from available resources
@@ -386,6 +386,8 @@ def update_orders(account_id):
 
     if orders.exists():
         for order in orders:
+
+            log.info('Update order', id=order.orderid)
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
         pass
@@ -505,8 +507,8 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
             # Update object and dataframe
             filled, average = account.update_order_object(wallet, response)
 
-            log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
-            # log.unbind('worker')
+            if filled:
+                log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
 
             return filled, average
 
@@ -534,8 +536,10 @@ def send_fetch_orderid(account_id, order_id):
         log.error('Unknown exception when fetching order {}'.format(order.clientid), id=order_id, e=str(e))
 
     else:
+
         # Update object and dataframe
         qty_filled = account.update_order_object(order.market.wallet, response)
+
         return account_id, qty_filled
 
 
@@ -575,11 +579,11 @@ def send_transfer(account_id, source, dest, quantity):
 
         # Generate transfer_id
         alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
-        transfer_id = ''.join((random.choice(alphanumeric)) for x in range(3))
+        transfer_id = ''.join((random.choice(alphanumeric)) for x in range(5))
 
         log.bind(worker=current_process().index, account=account.name, id=transfer_id)
 
-        log.info('Transfer ID {0}'.format(transfer_id))
+        log.info('Transfer {0}'.format(transfer_id))
         log.info('Transfer from {0} to {1}'.format(source, dest))
         log.info('Transfer {0} {1}'.format(round(quantity, 1), account.quote))
 
@@ -595,7 +599,7 @@ def send_transfer(account_id, source, dest, quantity):
         else:
 
             log.info('Transfer success')
-            return account_id, quantity
+            return account_id, quantity, transfer_id
 
         finally:
             log.unbind('worker', 'account', 'id')

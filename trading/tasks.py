@@ -306,7 +306,7 @@ def rebalance(account_id, get_balances=False, release=True):
 
                 # Transfer is needed ?
                 if val < desired_val:
-                    amount = min(desired_val - val, account.has_spot_asset('free', account.quote))
+                    amount = min(desired_val - val, account.balances.spot.free.quantity[account.quote])
                     send_transfer(account.id, 'spot', 'future', amount)
                     account.offset_transfer('spot', 'future', amount)
                     val += amount

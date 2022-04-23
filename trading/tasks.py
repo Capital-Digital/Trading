@@ -288,9 +288,10 @@ def rebalance(account_id, get_balances=False, release=True):
     for code in account.codes_to_sell():
         if not account.has_spot_asset('free', code):
 
+            # Test if a sell spot order is open
             if account.has_spot_asset('used', code):
                 pending = account.balances.spot.used.quantity[code]
-                log.info('Pending order detected {0} {1}'.format(round(pending, 3), code))
+                log.info('Open order to sell spot detected {0} {1}'.format(round(pending, 3), code))
             else:
                 pending = 0
 
@@ -326,25 +327,29 @@ def rebalance(account_id, get_balances=False, release=True):
 
     # Buy spot
     for code in account.codes_to_buy():
-
-        # No opened short ?
-        if not account.has_opened_short(code):
-            remaining = 0
+        if account.has_opened_short(code):
+            try:
+                # Test if a close_short order is open
+                open = Order.objects.get(account=account,
+                                         status='open',
+                                         market__base__code=code,
+                                         market__quote__code=account.quote,
+                                         action='close_short'
+                                         )
+            except ObjectDoesNotExist:
+                pending = 0
+            else:
+                log.info('Open order to close short detected {0} {1}'.format(round(pending, 3), code))
+                pending = open.remaining
         else:
-            # Else determine remaining quantity if an opened short is pending
-            remaining = Order.objects.get(account=account,
-                                          status='open',
-                                          market__base__code=code,
-                                          market__quote__code=account.quote,
-                                          action='open_short'
-                                          ).remaining
+            pending = 0
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]
 
         # Determine order size and value
         price = account.balances.price['spot']['bid'][code]
-        delta = abs(account.balances.account.target.delta[code]) - remaining  # Offset pending close_short
+        delta = abs(account.balances.account.target.delta[code]) - pending  # Offset pending close_short
         desired_val = delta * price
         val = min(free, desired_val)
 
@@ -607,4 +612,3 @@ def send_cancel_order(account_id, order_id):
     else:
         # Update object and dataframe
         qty_filled = account.update_order_object(order.market.wallet, response)
-

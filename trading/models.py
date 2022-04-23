@@ -224,7 +224,7 @@ class Account(models.Model):
 
         # Select coins with more than $1
         nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 1
-        nodust[nodust].index.tolist()
+        nodust = nodust[nodust].index.tolist()
 
         # and select strategy coins
         stratcoins = self.strategy.get_codes()

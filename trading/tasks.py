@@ -486,6 +486,12 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
         try:
             response = client.create_order(**kwargs)
 
+        except ccxt.BadRequest as e:
+            pprint(kwargs)
+            print(kwargs)
+            log.info(kwargs)
+            raise Exception('{0}'.format(str(e)))
+
         except ccxt.InsufficientFunds as e:
 
             order = Order.objects.get(clientid=clientid)

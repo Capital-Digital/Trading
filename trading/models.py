@@ -427,6 +427,8 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, code, qty, cost, action=None):
 
+        log.info('Validate order size {0} {1}'.format(round(qty, 3), code), action=action)
+
         # Select market
         markets = Market.objects.filter(base__code=code, quote__code=self.quote, exchange=self.exchange)
         if wallet == 'spot':
@@ -465,7 +467,7 @@ class Account(models.Model):
 
         else:
             log.info(' ')
-            log.info('Condition not satisfied ({0} {1})'.format(round(qty, 3), code))
+            log.info('Condition not satisfied ({0} {1})'.format(round(size, 3), code))
             return False, size, False
 
     # Create order object

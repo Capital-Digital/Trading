@@ -121,7 +121,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def action_rebalance_accounts(self, request, queryset):
         for exchange in queryset:
             for strategy in Strategy.objects.filter(exchange=exchange, production=True):
-                bulk_rebalance.delay(strategy.id)
+                bulk_rebalance.delay(strategy.id, reload=True)
 
     action_rebalance_accounts.short_description = "Rebalance accounts"
 

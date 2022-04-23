@@ -63,10 +63,10 @@ def bulk_prepare_accounts():
 
 # Bulk rebalance assets of all accounts
 @app.task(name='Trading_Bulk_rebalance_accounts')
-def bulk_rebalance(strategy_id):
+def bulk_rebalance(strategy_id, reload=False):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)
     for account in accounts:
-        rebalance.delay(account.id)
+        rebalance.delay(account.id, reload)
 
 
 # Bulk update open orders of all accounts
@@ -185,7 +185,7 @@ def update_historical_balance(account_id):
 
 # Rebalance fund of an account
 @app.task(name='Trading_____Rebalance_account')
-def rebalance(account_id, get_balances=False, release=True):
+def rebalance(account_id, reload=False, release=True):
     #
     account = Account.objects.get(id=account_id)
 
@@ -195,7 +195,7 @@ def rebalance(account_id, get_balances=False, release=True):
     log.info('Rebalance...')
     log.info('')
 
-    if get_balances:
+    if reload:
         create_balances(account_id)
 
     # Update prices

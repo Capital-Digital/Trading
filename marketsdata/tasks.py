@@ -244,6 +244,8 @@ def update_prices(exid, wallet=None):
             args['response__info__symbol'] = tickers[symbol]['symbol']
         if not wallet:
             del args['wallet']
+        elif wallet == 'future':
+            args['contract_type'] = 'perpetual'
 
         try:
             market = Market.objects.get(**args)

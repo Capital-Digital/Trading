@@ -571,10 +571,15 @@ class Account(models.Model):
             log.info('Trade total {0}'.format(filled_total))
             log.info('Trade new {0}'.format(filled_new))
 
-            return filled_new
+            return filled_new, order.average
 
     # Offset transfer
     def offset_transfer(self, source, destination, amount):
+
+        log.info(' ')
+        log.info('Offset transfer')
+        log.info('Offset transfer from {0} to {1}'.format(source, destination))
+        log.info('Offset transfer amount is {0}'.format(round(amount, 1)))
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():
@@ -596,15 +601,24 @@ class Account(models.Model):
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
 
+        log.info('Offset transfer complete')
+
     # Offset a new order
-    def offset_order(self, code, action, qty, val, filled=0):
+    def offset_order(self, code, action, qty, val, filled, average):
+
+        log.info(' ')
+        log.info('Offset order')
+        log.info('Offset order to {0}'.format(action.replace('_', ' ')))
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
         # No trade yet
-        if filled == 0:
+        if not filled:
+
+            log.info('Offset used and free resources')
+            log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
 
             if action == 'buy_spot':
 
@@ -636,8 +650,12 @@ class Account(models.Model):
                 offset.loc[self.quote, ('future', 'used', 'value')] = margin_value
 
         else:
-            price = 1
-            filled_value = filled * price
+
+            # Determine trade value
+            filled_value = filled * average
+
+            log.info('Offset trade of {0} {1}'.format(round(filled, 3), code))
+            log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
             if action == 'buy_spot':
 
@@ -694,6 +712,8 @@ class Account(models.Model):
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
+
+        log.info('Offset complete')
 
     # Offset a cancelled order
     def offset_order_cancelled(self, code, side, qty, val, filled=0):

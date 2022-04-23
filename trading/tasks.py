@@ -252,8 +252,8 @@ def rebalance(account_id, get_balances=False, release=True):
 
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
-                    filled = send_create_order(account.id, clientid, 'sell', 'spot', code, qty, reduce_only)
-                    account.offset_order(code, 'sell_spot', qty, val, filled)
+                    filled, average = send_create_order(account.id, clientid, 'sell', 'spot', code, qty, reduce_only)
+                    account.offset_order(code, 'sell_spot', qty, val, filled, average)
 
         # Close short
         for code in account.codes_to_buy():
@@ -274,8 +274,8 @@ def rebalance(account_id, get_balances=False, release=True):
 
                     # Create object, place order and apply offset
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
-                    filled = send_create_order(account.id, clientid, 'buy', 'future', code, qty, reduce_only)
-                    account.offset_order(code, 'close_short', qty, val, filled)
+                    filled, average = send_create_order(account.id, clientid, 'buy', 'future', code, qty, reduce_only)
+                    account.offset_order(code, 'close_short', qty, val, filled, average)
 
     # Allocate free resources
     #########################
@@ -322,8 +322,8 @@ def rebalance(account_id, get_balances=False, release=True):
 
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'buy', 'open_short', qty)
-                    filled = send_create_order(account.id, clientid, 'sell', 'future', code, qty)
-                    account.offset_order(code, 'open_short', qty, val, filled)
+                    filled, average = send_create_order(account.id, clientid, 'sell', 'future', code, qty)
+                    account.offset_order(code, 'open_short', qty, val, filled, average)
 
     # Buy spot
     for code in account.codes_to_buy():
@@ -371,8 +371,8 @@ def rebalance(account_id, get_balances=False, release=True):
 
             # Create object, place order and apply offset
             clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
-            filled = send_create_order(account.id, clientid, 'buy', 'spot', code, qty, reduce_only)
-            account.offset_order(code, 'buy_spot', qty, val, filled)
+            filled, average = send_create_order(account.id, clientid, 'buy', 'spot', code, qty, reduce_only)
+            account.offset_order(code, 'buy_spot', qty, val, filled, average)
 
     log.unbind('account')
 
@@ -431,9 +431,7 @@ def check_credentials(account_id):
 def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
-    # log.bind(worker=current_process().index)
-    log.info('Place order...')
-    log.info(' ')
+    log.info('Place order')
 
     # Initialize client
     account = Account.objects.get(id=account_id)
@@ -507,12 +505,12 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
             log.info('Order placement success')
 
             # Update object and dataframe
-            filled = account.update_order_object(wallet, response)
+            filled, average = account.update_order_object(wallet, response)
 
-            log.info('Filled {0} {1} at price {2}'.format(filled, code, price))
+            log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
             # log.unbind('worker')
 
-            return filled
+            return filled, average
 
 
 # Send fetch orderid

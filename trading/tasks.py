@@ -431,7 +431,7 @@ def check_credentials(account_id):
 def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
-    log.info('Place order')
+    log.info('Place {0} order in {1}'.format(side, wallet))
 
     # Initialize client
     account = Account.objects.get(id=account_id)

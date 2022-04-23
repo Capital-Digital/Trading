@@ -440,8 +440,8 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
                                    base__code=code,
                                    wallet=wallet)
     if wallet == 'future':
-        market = market.filter(type='derivative',
-                               contract_type='perpetual')
+        market = market.get(type='derivative',
+                            contract_type='perpetual')
 
     # Determine price
     if wallet == 'future':

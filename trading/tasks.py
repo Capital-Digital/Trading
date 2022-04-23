@@ -363,9 +363,14 @@ def rebalance(account_id, reload=False, release=True):
         # Determine quantity from available resources
         qty = val / price
 
+        log.info('Validate {0}'.format(qty))
+        
         # Format decimal and validate order
         valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
         if valid:
+
+            log.info('Valid {0}'.format(qty))
+
             # Determine final order value
             val = qty * price
 
@@ -488,8 +493,6 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
 
         except ccxt.BadRequest as e:
             pprint(kwargs)
-            print(kwargs)
-            log.info(kwargs)
             raise Exception('{0}'.format(str(e)))
 
         except ccxt.InsufficientFunds as e:

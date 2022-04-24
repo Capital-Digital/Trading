@@ -220,13 +220,14 @@ class Account(models.Model):
         # Select coins with more than $1
         nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 1
         nodust = nodust[nodust].index.tolist()
+        self.balances = self.balances.loc[nodust, :]
 
-        # and select strategy coins and quote
-        stratcoins = self.strategy.get_codes()
-        quote = [self.quote]
-        codes = list(set(nodust + stratcoins + quote))
-
-        self.balances = self.balances.loc[codes, :]
+        # add strategy coins and quote if missing
+        codes = self.strategy.get_codes()
+        codes.append(self.quote)
+        for code in list(set(codes)):
+            if code not in self.balances.index.tolist():
+                self.balances.loc[code] = np.nan
 
         # Create missing value columns
         for i in ['total', 'free', 'used']:

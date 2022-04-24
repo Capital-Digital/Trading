@@ -465,7 +465,7 @@ class Account(models.Model):
             return 0
 
     # Validate order size and cost
-    def validate_order(self, wallet, code, qty, cost, action=None):
+    def validate_order(self, wallet, code, qty, price, action=None):
 
         log.info('Validate order {0} {1}'.format(code, wallet))
 
@@ -484,10 +484,9 @@ class Account(models.Model):
             if limit_amount(market, size):
 
                 # Test cost limits MIN and MAX
+                cost = size * price
                 min_notional = limit_cost(market, cost)
                 reduce_only = False
-
-                log.info('Min notional {0} for {1}'.format(min_notional, cost))
 
                 # If cost not satisfied and close short
                 # set reduce_only = True

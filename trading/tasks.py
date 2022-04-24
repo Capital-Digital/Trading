@@ -251,7 +251,7 @@ def rebalance(account_id, reload=False, release=True):
                 val = qty * price
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+                valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
                     # Determine final order value
                     val = qty * price
@@ -273,7 +273,7 @@ def rebalance(account_id, reload=False, release=True):
                 val = qty * price
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', code, qty, val)
+                valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
                     # Determine final order value
                     val = qty * price
@@ -326,7 +326,7 @@ def rebalance(account_id, reload=False, release=True):
                 qty = val / price
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', code, qty, val)
+                valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
                     # Determine final order value
                     val = qty * price
@@ -378,7 +378,7 @@ def rebalance(account_id, reload=False, release=True):
         qty = val / price
 
         # Format decimal and validate order
-        valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+        valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
         if valid:
 
             # Determine final order value
@@ -456,7 +456,7 @@ def market_close(account_id):
                 val = qty * price
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+                valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
 
                     # Determine final order value
@@ -491,7 +491,7 @@ def market_sell(account_id):
                 val = qty * price
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+                valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
                     # Determine final order value
                     val = qty * price

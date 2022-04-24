@@ -170,9 +170,18 @@ class Account(models.Model):
                 self.balances.loc[code, ('price', 'spot', 'ask')] = np.nan
 
             else:
-                bid, ask = currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask'])
-                self.balances.loc[code, ('price', 'spot', 'bid')] = bid
-                self.balances.loc[code, ('price', 'spot', 'ask')] = ask
+                try:
+
+                    bid, ask = currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask'])
+
+                except TypeError as e:
+
+                    log.error('{0}'.format(str(e)))
+                    raise Exception('Unable to select spot price of {0}/{1}'.format(currency.code, self.quote))
+
+                else:
+                    self.balances.loc[code, ('price', 'spot', 'bid')] = bid
+                    self.balances.loc[code, ('price', 'spot', 'ask')] = ask
 
         self.save()
         log.info('{0} spot prices complete'.format(action))
@@ -255,8 +264,11 @@ class Account(models.Model):
             spot_val = 0
 
         if ('future', 'total', 'value') in self.balances.columns:
-            futu_val = self.balances.future.total.value[self.quote]
-            if np.isnan(futu_val):
+            if self.has_future_asset(self.quote):
+                futu_val = self.balances.future.total.value[self.quote]
+                if np.isnan(futu_val):
+                    futu_val = 0
+            else:
                 futu_val = 0
         else:
             futu_val = 0

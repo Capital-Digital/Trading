@@ -249,18 +249,14 @@ def rebalance(account_id, reload=False, release=True):
                 # Determine order size and value
                 price = account.balances.price['spot']['bid'][code]
                 qty = min(free, delta)
-                val = qty * price
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
-                    # Determine final order value
-                    val = qty * price
 
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
-                    filled, average = send_create_order(account.id, clientid, 'sell', 'spot', code, qty, reduce_only)
-                    account.offset_order(code, 'sell_spot', qty, val, filled, average)
+                    send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
         # Close short
         for code in account.codes_to_buy():
@@ -271,18 +267,14 @@ def rebalance(account_id, reload=False, release=True):
                 # Determine order size and value
                 price = account.balances.price['future']['last'][code]
                 qty = abs(max(opened, delta))
-                val = qty * price
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
-                    # Determine final order value
-                    val = qty * price
 
-                    # Create object, place order and apply offset
+                    # Create object and place order
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
-                    filled, average = send_create_order(account.id, clientid, 'buy', 'future', code, qty, reduce_only)
-                    account.offset_order(code, 'close_short', qty, val, filled, average)
+                    send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
     # Allocate free resources
     #########################
@@ -325,17 +317,15 @@ def rebalance(account_id, reload=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
-                    # Determine final order value
-                    val = qty * price
 
-                    # Create object, place order and apply offset
+                    # Create object and place order
                     clientid = account.create_object('future', code, 'sell', 'open_short', qty)
-                    filled, average = send_create_order(account.id, clientid, 'sell', 'future', code, qty)
-                    account.offset_order(code, 'open_short', qty, val, filled, average)
+                    send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
     # Buy spot
     for code in account.codes_to_buy():
         if account.has_opened_short(code):
+
             try:
                 # Test if a close_short order is open
                 open = Order.objects.get(account=account,
@@ -377,13 +367,9 @@ def rebalance(account_id, reload=False, release=True):
         valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
         if valid:
 
-            # Determine final order value
-            val = qty * price
-
-            # Create object, place order and apply offset
+            # Create object and place order
             clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
-            filled, average = send_create_order(account.id, clientid, 'buy', 'spot', code, qty, reduce_only)
-            account.offset_order(code, 'buy_spot', qty, val, filled, average)
+            send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
 
 
 # Update open orders of an account
@@ -461,7 +447,7 @@ def market_close(account_id):
                     # Create object, place order and apply offset
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     filled, average = send_create_order(account.id,
-                                                        clientid, 'buy', 'future', code, qty,
+                                                        clientid, 'close_short', 'buy', 'future', code, qty,
                                                         reduce_only=True,
                                                         market_order=True
                                                         )
@@ -495,7 +481,7 @@ def market_sell(account_id):
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
                     filled, average = send_create_order(account.id,
-                                                        clientid, 'sell', 'spot', code, qty,
+                                                        clientid, 'sell_spot', 'sell', 'spot', code, qty,
                                                         reduce_only,
                                                         market_order=True
                                                         )
@@ -510,7 +496,7 @@ def market_sell(account_id):
 
 # Send create order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
-def send_create_order(account_id, clientid, side, wallet, code, qty, reduce_only=False, market_order=False):
+def send_create_order(account_id, clientid, action, side, wallet, code, qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
     log.info('Place {0} order in {1}'.format(side, wallet))
@@ -592,14 +578,16 @@ def send_create_order(account_id, clientid, side, wallet, code, qty, reduce_only
 
         log.info('Order placement success')
 
+        # Offset resources used and free
+        val = qty * price
+        account.offset_order_new(code, action, qty, val)
+
         # Update object status
         filled, average = account.update_order_object(wallet, response)
-
         if filled:
-            log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
 
-        # Offset filled quantity
-        return filled, average
+            # Offset trade
+            account.offset_order_filled(code, action, filled, average)
 
 
 # Send fetch orderid
@@ -626,13 +614,15 @@ def send_fetch_orderid(account_id, order_id):
 
     else:
 
-        # Update object and dataframe
+        # Update object
         filled, average = account.update_order_object(order.market.wallet, response)
-
         if filled:
-            log.info('Trade detected', clienti=order.clientid, account=account.name)
 
-        return account_id, filled
+            # Offset trade
+            account.offset_order_filled(order.market.base.code, order.action, filled, average)
+
+            # Rebalance
+            rebalance.delay(account_id, release=False)
 
 
 # Send fetch all open orders
@@ -718,3 +708,7 @@ def send_cancel_order(account_id, order_id):
         else:
             # Update object and dataframe
             filled, average = account.update_order_object(order.market.wallet, response)
+            if filled:
+
+                # Offset filled quantity
+                return account_id, filled

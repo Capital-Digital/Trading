@@ -39,7 +39,8 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         if state == 'SUCCESS':
             if quantity:
-                rebalance.delay(account_id, release=False)
+                pass
+                # rebalance.delay(account_id, release=False)
         else:
             log.info('')
             log.error('Error with task {0}'.format(task.name))

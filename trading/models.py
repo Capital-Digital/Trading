@@ -48,6 +48,7 @@ class Account(models.Model):
     params = models.JSONField(null=True, blank=True)
     valid_credentials = models.BooleanField(null=True, default=None)
     active = models.BooleanField(null=True, blank=False, default=False)
+    busy = models.BooleanField(null=True, blank=False, default=False)
     order_type = models.CharField(max_length=10, null=True, choices=(('limit', 'limit'), ('market', 'market')),
                                   default='limit')
     limit_price_tolerance = models.DecimalField(default=0, max_digits=4, decimal_places=3)
@@ -579,8 +580,6 @@ class Account(models.Model):
                 log.warning('Cancel user order')
                 from trading.tasks import send_cancel_order
                 send_cancel_order.delay(self.id, orderid)
-                # self.offset_order_cancelled()
-
                 return
 
             else:
@@ -599,36 +598,37 @@ class Account(models.Model):
             else:
                 filled_new = 0
 
-            # Update attributes
-            order.cost = response['cost']
-            order.average = response['average']
-            order.fee = response['fee']
-            order.price = response['price']
-            order.remaining = response['remaining']
-            order.status = status
-            order.filled = filled_total
-            order.response = response
-            order.save()
-
-            log.info(' ')
-            log.info('Update order with clientID {0}'.format(order.clientid))
-            log.info('Update order with status {0}'.format(status))
-            log.info('Update order for {0} ({1})'.format(order.market.base.code, order.market.wallet))
-            log.info('Update order to {0}'.format(order.action.replace('_', ' ')))
-
-            if filled_total:
-                log.info('Trade total {0}'.format(filled_total))
             if filled_new:
-                log.info('Trade new {0}'.format(filled_new))
 
-            return filled_new, order.average
+                # Update attributes
+                order.cost = response['cost']
+                order.average = response['average']
+                order.fee = response['fee']
+                order.price = response['price']
+                order.remaining = response['remaining']
+                order.status = status
+                order.filled = filled_total
+                order.response = response
+                order.save()
+
+                log.info(' ')
+                log.info('Update order with clientID {0}'.format(order.clientid))
+                log.info('Update order with status {0}'.format(status))
+                log.info('Update order for {0} ({1})'.format(order.market.base.code, order.market.wallet))
+                log.info('Update order to {0}'.format(order.action.replace('_', ' ')))
+                log.info('Trade new {0}'.format(filled_new))
+                log.info('Trade total {0}'.format(filled_total))
+
+                return filled_new, order.average
+
+            else:
+                return False, False
 
     # Offset transfer
     def offset_transfer(self, source, destination, amount, transfer_id):
 
         log.bind(id=transfer_id)
         log.info(' ')
-        log.info('Offset transfer')
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
         log.info('Offset transfer amount is {0} {1}'.format(round(amount, 1), self.quote))
 
@@ -656,53 +656,16 @@ class Account(models.Model):
         log.info('Offset transfer complete')
         log.unbind('id')
 
-    # Offset a new order
-    def offset_order(self, code, action, qty, val, filled, average):
+    # Offset quantity after a trade
+    def offset_order_filled(self, code, action, filled, average):
 
         log.info(' ')
-        log.info('Offset order')
-        log.info('Offset order to {0}'.format(action.replace('_', ' ')))
+        log.info('Offset trade to {0}'.format(action.replace('_', ' ')))
 
         offset = self.balances.copy()
+
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
-
-        # No trade yet
-        if not filled:
-
-            log.info('Offset used and free resources')
-            log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
-
-            if action == 'buy_spot':
-
-                # Offset order value from free and used quote
-                offset.loc[self.quote, ('spot', 'free', 'quantity')] = -val
-                offset.loc[self.quote, ('spot', 'free', 'value')] = -val
-                offset.loc[self.quote, ('spot', 'used', 'quantity')] = val
-                offset.loc[self.quote, ('spot', 'used', 'value')] = val
-
-            if action == 'sell_spot':
-
-                # Offset order quantity and value from free and used code
-                offset.loc[code, ('spot', 'free', 'quantity')] = -qty
-                offset.loc[code, ('spot', 'free', 'value')] = -val
-                offset.loc[code, ('spot', 'used', 'quantity')] = qty
-                offset.loc[code, ('spot', 'used', 'value')] = val
-
-            if action == 'close_short':
-                pass
-
-            if action == 'open_short':
-
-                margin_value = val / 20
-
-                # Offset margin value from used and free quote
-                offset.loc[self.quote, ('future', 'free', 'quantity')] = -margin_value
-                offset.loc[self.quote, ('future', 'free', 'value')] = -margin_value
-                offset.loc[self.quote, ('future', 'used', 'quantity')] = margin_value
-                offset.loc[self.quote, ('future', 'used', 'value')] = margin_value
-
-        else:
 
             # Determine trade value
             filled_value = filled * average
@@ -711,7 +674,6 @@ class Account(models.Model):
             log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
             if action == 'buy_spot':
-
                 offset.loc[code, ('spot', 'free', 'quantity')] = filled
                 offset.loc[code, ('spot', 'free', 'value')] = filled_value
                 offset.loc[code, ('spot', 'total', 'quantity')] = filled
@@ -727,7 +689,6 @@ class Account(models.Model):
                 offset.loc[code, ('account', 'target', 'delta')] = filled
 
             if action == 'sell_spot':
-
                 offset.loc[code, ('spot', 'free', 'quantity')] = -filled
                 offset.loc[code, ('spot', 'free', 'value')] = -filled_value
                 offset.loc[code, ('spot', 'total', 'quantity')] = -filled
@@ -743,7 +704,6 @@ class Account(models.Model):
                 offset.loc[code, ('account', 'target', 'delta')] = -filled
 
             if action == 'close_short':
-
                 # Offset position size and value
                 offset.loc[code, ('position', 'open', 'quantity')] = filled
                 offset.loc[code, ('position', 'open', 'value')] = filled_value
@@ -753,7 +713,6 @@ class Account(models.Model):
                 offset.loc[code, ('account', 'target', 'delta')] = filled
 
             if action == 'open_short':
-
                 # Offset position size and value
                 offset.loc[code, ('position', 'open', 'quantity')] = -filled
                 offset.loc[code, ('position', 'open', 'value')] = -filled_value
@@ -761,6 +720,55 @@ class Account(models.Model):
                 offset.loc[code, ('account', 'current', 'exposure')] = -filled
                 offset.loc[code, ('account', 'current', 'value')] = -filled_value
                 offset.loc[code, ('account', 'target', 'delta')] = -filled
+
+        offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
+        updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
+        self.balances.loc[offset.index, offset.columns] = updated
+        self.save()
+
+        log.info('Offset complete')
+
+    # Offset used resources after an order is opened
+    def offset_order_new(self, code, action, qty, val):
+
+        log.info(' ')
+        log.info('Offset used and free resources')
+
+        offset = self.balances.copy()
+        for col in offset.columns.get_level_values(0).unique().tolist():
+            offset.loc[:, col] = np.nan
+
+        log.info('Offset to {0}'.format(action.replace('_', ' ')))
+        log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
+
+        if action == 'buy_spot':
+
+            # Offset order value from free and used quote
+            offset.loc[self.quote, ('spot', 'free', 'quantity')] = -val
+            offset.loc[self.quote, ('spot', 'free', 'value')] = -val
+            offset.loc[self.quote, ('spot', 'used', 'quantity')] = val
+            offset.loc[self.quote, ('spot', 'used', 'value')] = val
+
+        if action == 'sell_spot':
+
+            # Offset order quantity and value from free and used code
+            offset.loc[code, ('spot', 'free', 'quantity')] = -qty
+            offset.loc[code, ('spot', 'free', 'value')] = -val
+            offset.loc[code, ('spot', 'used', 'quantity')] = qty
+            offset.loc[code, ('spot', 'used', 'value')] = val
+
+        if action == 'close_short':
+            pass
+
+        if action == 'open_short':
+
+            margin_value = val / 20
+
+            # Offset margin value from used and free quote
+            offset.loc[self.quote, ('future', 'free', 'quantity')] = -margin_value
+            offset.loc[self.quote, ('future', 'free', 'value')] = -margin_value
+            offset.loc[self.quote, ('future', 'used', 'quantity')] = margin_value
+            offset.loc[self.quote, ('future', 'used', 'value')] = margin_value
 
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset

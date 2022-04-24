@@ -545,7 +545,7 @@ class Account(models.Model):
         return clientid
 
     # Update order object
-    def update_order_object(self, wallet, response):
+    def update_order_object(self, wallet, response, new=False):
         #
         orderid = response['id']
         status = response['status'].lower()
@@ -598,24 +598,25 @@ class Account(models.Model):
             else:
                 filled_new = 0
 
-            if filled_new:
+            order.response = response
+            order.status = status
+            order.price = response['price']
+            order.cost = response['cost']
+            order.response = response
+            order.average = response['average']
+            order.fee = response['fee']
+            order.remaining = response['remaining']
+            order.filled = filled_total
 
-                # Update attributes
-                order.cost = response['cost']
-                order.average = response['average']
-                order.fee = response['fee']
-                order.price = response['price']
-                order.remaining = response['remaining']
-                order.status = status
-                order.filled = filled_total
-                order.response = response
-                order.save()
-
+            if new:
                 log.info(' ')
                 log.info('Update order with clientID {0}'.format(order.clientid))
                 log.info('Update order with status {0}'.format(status))
                 log.info('Update order for {0} ({1})'.format(order.market.base.code, order.market.wallet))
                 log.info('Update order to {0}'.format(order.action.replace('_', ' ')))
+
+            if filled_new:
+
                 log.info('Trade new {0}'.format(filled_new))
                 log.info('Trade total {0}'.format(filled_total))
 

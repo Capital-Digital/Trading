@@ -594,7 +594,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         account.offset_order_new(code, action, qty, val)
 
         # Update object status
-        filled, average = account.update_order_object(wallet, response)
+        filled, average = account.update_order_object(wallet, response, new=True)
         if filled:
 
             # Offset trade

@@ -414,17 +414,20 @@ class Account(models.Model):
 
     # Return absolute positions value
     def position_abs_value(self):
-        if self.has_opened_short:
+        if self.has_opened_short():
             return abs(self.balances.position.open.value.dropna()).sum()
         else:
             return 0
 
     # Return free margin
     def free_margin(self):
-        total = self.balances.future.total.quantity[self.quote]
-        if np.isnan(total):
-            total = 0
-        return max(0, total - self.position_abs_value())
+        if ('future', 'total', 'value') in self.balances.columns.tolist():
+            total = self.balances.future.total.quantity[self.quote]
+            if np.isnan(total):
+                total = 0
+            return max(0, total - self.position_abs_value())
+        else:
+            return 0
 
     # Validate order size and cost
     def validate_order(self, wallet, code, qty, cost, action=None):

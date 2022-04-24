@@ -310,8 +310,6 @@ def rebalance(account_id, reload=False, release=True):
                 desired_val = delta * price
                 val = min(account.free_margin(), desired_val)
 
-                log.info(val)
-
                 # Transfer is needed ?
                 if val < desired_val:
                     amount = min(desired_val - val, account.balances.spot.free.quantity[account.quote])
@@ -319,8 +317,6 @@ def rebalance(account_id, reload=False, release=True):
                     if transfer_id:
                         account.offset_transfer('spot', 'future', amount, transfer_id)
                         val += amount
-
-                log.info(val)
 
                 # Determine quantity from available resources
                 qty = val / price

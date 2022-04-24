@@ -491,7 +491,6 @@ class Account(models.Model):
                 # If cost not satisfied and close short
                 # set reduce_only = True
                 if not min_notional:
-                    log.info('Cost ERROR')
                     if market.exchange.exid == 'binance':
                         if market.type == 'derivative':
                             if market.margined.code == self.quote:

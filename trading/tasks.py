@@ -328,7 +328,7 @@ def rebalance(account_id, reload=False, release=True):
                     val = qty * price
 
                     # Create object, place order and apply offset
-                    clientid = account.create_object('spot', code, 'buy', 'open_short', qty)
+                    clientid = account.create_object('future', code, 'sell', 'open_short', qty)
                     filled, average = send_create_order(account.id, clientid, 'sell', 'future', code, qty)
                     account.offset_order(code, 'open_short', qty, val, filled, average)
 

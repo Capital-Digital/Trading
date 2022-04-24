@@ -432,6 +432,8 @@ class Account(models.Model):
         else:
             market, flip = self.exchange.get_perp_market(code, self.quote)
 
+        print(action, wallet, code, self.quote, market, flip)
+
         # Format decimal
         size = format_decimal(counting_mode=self.exchange.precision_mode,
                               precision=market.precision['amount'],

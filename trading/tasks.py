@@ -236,13 +236,14 @@ def rebalance(account_id, reload=False, release=True):
         # Release resources
         ###################
 
-        log.info(' ')
-        log.info('Release resources')
-        log.info('*****************')
-
         # Sell spot
         for code in account.codes_to_sell():
             if account.has_spot_asset('free', code):
+
+                log.info(' ')
+                log.info('Release resources', action='sell_spot')
+                log.info('*****************')
+
                 free = account.balances.spot.free.quantity[code]
                 delta = account.balances.account.target.delta[code]
 
@@ -261,6 +262,11 @@ def rebalance(account_id, reload=False, release=True):
         # Close short
         for code in account.codes_to_buy():
             if account.has_opened_short(code):
+
+                log.info(' ')
+                log.info('Release resources', action='close_short')
+                log.info('*****************')
+
                 opened = account.balances.position.open.quantity[code]
                 delta = account.balances.account.target.delta[code]
 
@@ -279,13 +285,13 @@ def rebalance(account_id, reload=False, release=True):
     # Allocate free resources
     #########################
 
-    log.info(' ')
-    log.info('Allocate resources')
-    log.info('******************')
-
     # Open short
     for code in account.codes_to_sell():
         if not account.has_spot_asset('free', code):
+
+            log.info(' ')
+            log.info('Allocate resources', action='open_short')
+            log.info('******************')
 
             # Test if a sell spot order is open
             if account.has_spot_asset('used', code):
@@ -324,6 +330,11 @@ def rebalance(account_id, reload=False, release=True):
 
     # Buy spot
     for code in account.codes_to_buy():
+
+        log.info(' ')
+        log.info('Allocate resources', action='buy_spot')
+        log.info('******************')
+
         if account.has_opened_short(code):
 
             try:
@@ -618,8 +629,21 @@ def send_fetch_orderid(account_id, order_id):
         filled, average = account.update_order_object(order.market.wallet, response)
         if filled:
 
+            code = order.market.base.code
+
             # Offset trade
-            account.offset_order_filled(order.market.base.code, order.action, filled, average)
+            account.offset_order_filled(code, order.action, filled, average)
+            pct = account.balances.account.current.percent[code]
+            log.info('Percentage for {0} is now {1}'.format(code, pct))
+
+            t = 0
+            while account.busy:
+                log.info(' ')
+                log.info('Wait account is ready before allocating free resources', account=account.name)
+                time.sleep(1)
+                t += 1
+                if t == 10:
+                    raise Exception('Account is still busy after 10s')
 
             # Rebalance
             rebalance.delay(account_id, release=False)
@@ -707,8 +731,4 @@ def send_cancel_order(account_id, order_id):
 
         else:
             # Update object and dataframe
-            filled, average = account.update_order_object(order.market.wallet, response)
-            if filled:
-
-                # Offset filled quantity
-                return account_id, filled
+            account.update_order_object(order.market.wallet, response)

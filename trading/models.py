@@ -721,9 +721,22 @@ class Account(models.Model):
                 offset.loc[code, ('account', 'current', 'value')] = -filled_value
                 offset.loc[code, ('account', 'target', 'delta')] = -filled
 
+        pct = self.balances.account.current.percent[code]
+        log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))
+
+        # Apply offset
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
+
+        # Update new percentage
+        account_value = self.account_value()
+        for c in [code, self.quote]:
+            exposure = self.balances.account.current.exposure[c]
+            pct = exposure / account_value
+            self.balances.loc[c, ('account', 'current', 'percent')] = pct
+            log.info('Percentage for {0} is now {1}%'.format(code, round(pct, 1)))
+
         self.save()
 
         log.info('Offset complete')

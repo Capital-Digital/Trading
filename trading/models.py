@@ -250,11 +250,8 @@ class Account(models.Model):
             spot_val = 0
 
         if ('future', 'total', 'value') in self.balances.columns:
-            if self.has_future_asset(self.quote):
-                futu_val = self.balances.future.total.value[self.quote]
-                if np.isnan(futu_val):
-                    futu_val = 0
-            else:
+            futu_val = self.balances.future.total.value.dropna().sum()
+            if len(futu_val) == 0:
                 futu_val = 0
         else:
             futu_val = 0

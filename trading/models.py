@@ -224,8 +224,11 @@ class Account(models.Model):
         # and select strategy coins and quote
         stratcoins = self.strategy.get_codes()
         quote = [self.quote]
+        codes = list(set(nodust + stratcoins + quote))
+        
+        print(codes)
 
-        self.balances = self.balances.loc[list(set(nodust + stratcoins + quote))]
+        self.balances = self.balances.loc[codes]
 
         # Create missing value columns
         for i in ['total', 'free', 'used']:

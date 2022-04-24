@@ -241,7 +241,7 @@ class Account(models.Model):
             posidx = self.balances.position.open.value.dropna().index.tolist()
 
         # Keep assets from our strategy and quote
-        strat = self.strategy.strategy.get_codes()
+        strat = self.strategy.get_codes()
         strat.append(self.quote)
 
         keep = list(set(posidx + nodust + strat))

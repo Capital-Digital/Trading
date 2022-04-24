@@ -467,15 +467,14 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, code, qty, cost, action=None):
 
+        log.info('Validate order {0} {1}'.format(code, wallet))
+
         if wallet == 'spot':
             market, flip = self.exchange.get_spot_market(code, self.quote)
         else:
             market, flip = self.exchange.get_perp_market(code, self.quote)
 
         if market:
-
-            print(market)
-
             # Format decimal
             size = format_decimal(counting_mode=self.exchange.precision_mode,
                                   precision=market.precision['amount'],
@@ -484,8 +483,6 @@ class Account(models.Model):
             # Test amount limits MIN and MAX
             if limit_amount(market, size):
 
-                log.info('Limit ok', size=size)
-
                 # Test cost limits MIN and MAX
                 min_notional = limit_cost(market, cost)
                 reduce_only = False
@@ -493,19 +490,20 @@ class Account(models.Model):
                 # If cost not satisfied and close short
                 # set reduce_only = True
                 if not min_notional:
+                    log.info('Cost ERROR')
                     if market.exchange.exid == 'binance':
                         if market.type == 'derivative':
                             if market.margined.code == self.quote:
                                 if action == 'close_short':
-                                    reduce_only = True
+                                    return True, size, True
 
                     # Else return
-                    if not reduce_only:
-                        log.info(' ')
-                        log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
-                        return False, size, False
+                    log.info(' ')
+                    log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
+                    return False, size, False
 
-                return True, size, reduce_only
+                else:
+                    return True, size, reduce_only
 
             else:
                 log.info(' ')

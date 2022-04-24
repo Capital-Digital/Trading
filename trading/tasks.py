@@ -398,7 +398,7 @@ def update_orders(account_id):
     if orders.exists():
         for order in orders:
 
-            log.info('Update order', id=order.orderid)
+            # log.info('Update order', id=order.orderid)
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
         pass

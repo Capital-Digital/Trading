@@ -96,3 +96,15 @@ def limit_cost(market, cost):
 
     return True
 
+
+# Set order status to error
+def order_error(clientid, exception, kwargs):
+
+    from trading.models import Order
+    order = Order.objects.get(clientid=clientid)
+
+    order.status = 'error'
+    order.response = dict(exception=str(exception))
+    order.save()
+
+    pprint(kwargs)

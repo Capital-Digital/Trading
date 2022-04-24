@@ -73,7 +73,7 @@ def bulk_rebalance(strategy_id, reload=False):
 @app.task(name='Trading_____Bulk_update_orders')
 def bulk_update_orders():
     #
-    for account in Account.objects.filter(active=True, exchange__exid='binance', name='Principal'):
+    for account in Account.objects.filter(active=True):
         update_orders.delay(account.id)
 
 
@@ -393,7 +393,7 @@ def update_orders(account_id):
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account,
                                   status='open'
-                                  ).exclude(orderid__isnull=True)
+                                  )
 
     if orders.exists():
         for order in orders:
@@ -574,40 +574,31 @@ def send_create_order(account_id, clientid, side, wallet, code, qty, reduce_only
         response = client.create_order(**kwargs)
 
     except ccxt.BadRequest as e:
-        pprint(kwargs)
+        order_error(clientid, e, kwargs)
         log.error('BadRequest error')
-        raise Exception('{0}'.format(str(e)))
+        return None, None
 
     except ccxt.InsufficientFunds as e:
-
-        order = Order.objects.get(clientid=clientid)
-        order.status = 'canceled'
-        order.response = dict(exception=str(e))
-        order.save()
-
-        log.error('Order placement failed', cause=str(e))
-        log.error('{0} {1} {2}'.format(side.title(), qty, code))
-        log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
-        log.error('Order price {0}'.format(price))
-        log.error('Order clientid {0}'.format(clientid))
-
+        order_error(clientid, e, kwargs)
+        log.error('Insufficient funds error')
         return None, None
 
     except ccxt.ExchangeError as e:
-        pprint(kwargs)
+        order_error(clientid, e, kwargs)
         log.error('Exchange error')
-        raise Exception('{0}'.format(str(e)))
+        return None, None
 
     else:
 
         log.info('Order placement success')
 
-        # Update object and dataframe
+        # Update object status
         filled, average = account.update_order_object(wallet, response)
 
         if filled:
             log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
 
+        # Offset filled quantity
         return filled, average
 
 
@@ -626,8 +617,8 @@ def send_fetch_orderid(account_id, order_id):
         response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
 
     except ccxt.OrderNotFound:
-        log.error('Order {} not found'.format(order.clientid), id=order_id)
-        order.status = 'not_found'
+        log.error('Unknown order {}'.format(order.clientid), id=order_id)
+        order.status = 'unknown'
         order.save()
 
     except Exception as e:
@@ -637,6 +628,9 @@ def send_fetch_orderid(account_id, order_id):
 
         # Update object and dataframe
         filled, average = account.update_order_object(order.market.wallet, response)
+
+        if filled:
+            log.info('Trade detected', clienti=order.clientid, account=account.name)
 
         return account_id, filled
 
@@ -705,17 +699,23 @@ def send_transfer(account_id, source, dest, quantity):
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_cancel_order')
 def send_cancel_order(account_id, order_id):
     #
-    order = Order.objects.get(orderid=order_id)
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-    client.options['defaultType'] = order.market.wallet
-
     try:
-        response = client.cancel_order(id=order_id, symbol=order.market.symbol)
+        order = Order.objects.get(orderid=order_id)
 
-    except Exception as e:
-        log.error('Order canceled failure', e=str(e))
+    except MultipleObjectsReturned:
+        log.error('Multiple orders were found')
 
     else:
-        # Update object and dataframe
-        filled, average = account.update_order_object(order.market.wallet, response)
+        account = Account.objects.get(id=account_id)
+        client = account.exchange.get_ccxt_client(account)
+        client.options['defaultType'] = order.market.wallet
+
+        try:
+            response = client.cancel_order(id=order_id, symbol=order.market.symbol)
+
+        except Exception as e:
+            log.error('Order canceled failure', e=str(e))
+
+        else:
+            # Update object and dataframe
+            filled, average = account.update_order_object(order.market.wallet, response)

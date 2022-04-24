@@ -35,11 +35,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name in ['Trading_____Send_fetch_orderid']:
 
-        log.info('Signal received', task=task.name)
-
         account_id, quantity = retval
-
-        log.info('Quantity filled {0}'.format(quantity), account_id=account_id, state=state)
 
         if state == 'SUCCESS':
             if quantity:

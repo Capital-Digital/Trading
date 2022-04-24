@@ -224,13 +224,12 @@ def update_prices(exid, wallet=None):
 
     for symbol in symbols:
 
-        dic = {k: tickers[symbol][k] for k in ['bid',
-                                               'ask',
-                                               'last',
-                                               'bidVolume',
-                                               'askVolume',
-                                               'quoteVolume',
-                                               'baseVolume']}
+        if wallet == 'spot':
+            keys = ['bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']
+        elif wallet == 'future':
+            keys = ['last', 'quoteVolume', 'baseVolume']
+
+        dic = {k: tickers[symbol][k] for k in keys}
         dic['timestamp'] = int(dt.timestamp())
 
         args = dict(exchange=exchange,

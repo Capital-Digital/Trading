@@ -467,6 +467,7 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, code, qty, price, action=None):
 
+        log.bind(account=self.name)
         log.info('Validate order {0} {1}'.format(code, wallet))
 
         if wallet == 'spot':
@@ -610,13 +611,15 @@ class Account(models.Model):
             order.save()
 
             log.info(' ')
-            log.info('Update object')
-            log.info('Order with clientID {0}'.format(order.clientid))
-            log.info('Order with status {0}'.format(status))
-            log.info('Order for code {0} ({1})'.format(order.market.base.code, order.market.wallet))
-            log.info('Order to {0}'.format(order.action.replace('_', ' ')))
-            log.info('Trade total {0}'.format(filled_total))
-            log.info('Trade new {0}'.format(filled_new))
+            log.info('Update order with clientID {0}'.format(order.clientid))
+            log.info('Update order with status {0}'.format(status))
+            log.info('Update order for {0} ({1})'.format(order.market.base.code, order.market.wallet))
+            log.info('Update order to {0}'.format(order.action.replace('_', ' ')))
+
+            if filled_total:
+                log.info('Trade total {0}'.format(filled_total))
+            if filled_new:
+                log.info('Trade new {0}'.format(filled_new))
 
             return filled_new, order.average
 

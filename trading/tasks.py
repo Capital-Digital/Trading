@@ -136,6 +136,7 @@ def create_balances(account_id):
         account_id = account_id[0]
 
     account = Account.objects.get(id=account_id)
+    log.bind(account=account.name)
 
     # Fetch account
     account.get_assets_balances()
@@ -154,7 +155,7 @@ def create_balances(account_id):
     account.drop_dust_coins()
     account.check_columns()
 
-    log.unbind('worker')
+    log.unbind('worker', 'account')
 
 
 # Update funds object
@@ -297,13 +298,13 @@ def rebalance(account_id, reload=False, release=True):
             # Test if a sell spot order is open
             if account.has_spot_asset('used', code):
                 pending = account.balances.spot.used.quantity[code]
-                log.info('Open order to sell spot detected {0} {1}'.format(round(pending, 3), code))
             else:
                 pending = 0
 
             # Determine delta quantity
             price = account.balances.price['spot']['bid'][code]
             delta = account.balances.account.target.delta[code] - pending  # Offset sell_spot
+
             if delta > 0:
 
                 # Determine value
@@ -347,7 +348,6 @@ def rebalance(account_id, reload=False, release=True):
                 pending = 0
             else:
                 pending = open.remaining
-                log.info('Open order to close short detected {0} {1}'.format(round(pending, 3), code))
         else:
             pending = 0
 
@@ -691,7 +691,6 @@ def send_transfer(account_id, source, dest, quantity):
             return transfer_id
 
     else:
-        log.info('Transfer condition not satisfied')
         log.unbind('worker', 'account', 'id')
 
 

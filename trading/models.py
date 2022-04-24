@@ -607,6 +607,7 @@ class Account(models.Model):
             order.fee = response['fee']
             order.remaining = response['remaining']
             order.filled = filled_total
+            order.save()
 
             if new:
                 log.info(' ')

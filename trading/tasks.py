@@ -408,6 +408,8 @@ def market_sell(account_id):
                                                         market_order=True
                                                         )
                     account.offset_order(code, 'sell_spot', qty, val, filled, average)
+    else:
+        log.info('No free asset found', account=account.name)
 
 
 # Update open orders of an account

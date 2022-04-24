@@ -386,24 +386,36 @@ class Account(models.Model):
     # Return True is account has asset in spot wallet
     def has_spot_asset(self, key, code=None):
         if ('spot', key, 'quantity') in self.balances.columns:
-            if code:
-                if self.balances.spot.total.value[code] > 1:
-                    return True
+            codes = self.balances.spot[key]['quantity'].dropna().index.tolist()
+            if codes:
+                if code:
+                    if self.balances.spot[key]['value'][code] > 1:
+                        return True
+                    else:
+                        return False
                 else:
-                    return False
+                    return True
             else:
                 return False
+        else:
+            return False
 
     # Return True is account has asset in future wallet
     def has_future_asset(self, code=None):
         if ('future', 'total', 'quantity') in self.balances.columns:
-            if code:
-                if code in self.balances.future.total.quantity.dropna().index:
-                    return True
+            codes = self.balances.future.total['quantity'].dropna().index.tolist()
+            if codes:
+                if code:
+                    if code in self.balances.future.total.quantity.dropna().index:
+                        return True
+                    else:
+                        return False
                 else:
-                    return False
+                    return True
             else:
                 return False
+        else:
+            return False
 
     # Return True is account has opened short
     def has_opened_short(self, code=None):

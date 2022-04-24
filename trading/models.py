@@ -239,6 +239,8 @@ class Account(models.Model):
         # Keep asset with an opened position
         if self.has_opened_short():
             posidx = self.balances.position.open.value.dropna().index.tolist()
+        else:
+            posidx = []
 
         # Keep assets from our strategy and quote
         strat = self.strategy.get_codes()

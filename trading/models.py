@@ -427,14 +427,10 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, code, qty, cost, action=None):
 
-        # log.info('Validate order size {0} {1}'.format(round(qty, 3), code), action=action)
-
-        # Select market
-        markets = Market.objects.filter(base__code=code, quote__code=self.quote, exchange=self.exchange)
-        if wallet == 'spot':
-            market = markets.get(type='spot')
+        if action in ['buy_spot', 'sell_spot']:
+            market = self.exchange.get_spot_market(code, self.quote)
         else:
-            market = markets.get(type='derivative', contract_type='perpetual')
+            market = self.exchange.get_perp_market(code, self.quote)
 
         # Format decimal
         size = format_decimal(counting_mode=self.exchange.precision_mode,

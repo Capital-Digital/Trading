@@ -217,8 +217,8 @@ class Account(models.Model):
                     value = price * value
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
-        # Select assets with more than $1
-        nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 1
+        # Select assets with more than $10
+        nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 10
         nodust = nodust[nodust].index.tolist()
 
         # Select positions
@@ -383,13 +383,13 @@ class Account(models.Model):
         delta = self.balances.account.target.delta
         return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
-    # Return True is account has asset in spot wallet
+    # Return True is account has more than $10 of an asset in spot wallet
     def has_spot_asset(self, key, code=None):
         if ('spot', key, 'quantity') in self.balances.columns:
             codes = self.balances.spot[key]['quantity'].dropna().index.tolist()
             if codes:
                 if code:
-                    if self.balances.spot[key]['value'][code] > 1:
+                    if self.balances.spot[key]['value'][code] > 10:
                         return True
                     else:
                         return False

@@ -380,6 +380,36 @@ def rebalance(account_id, reload=False, release=True):
             account.offset_order(code, 'buy_spot', qty, val, filled, average)
 
 
+# Market sell
+@app.task(name='Trading_____Market_sell')
+def market_sell(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    if account.has_spot_asset('free'):
+        for code, free in account.balances.spot.free.quantity.dropna().items():
+
+            if code != account.quote:
+
+                # Determine order size and value
+                price = account.balances.price['spot']['bid'][code]
+                val = qty * price
+
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
+                if valid:
+                    # Determine final order value
+                    val = qty * price
+
+                    # Create object, place order and apply offset
+                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
+                    filled, average = send_create_order(account.id,
+                                                        clientid, 'sell', 'spot', code, qty,
+                                                        reduce_only,
+                                                        market_order=True
+                                                        )
+                    account.offset_order(code, 'sell_spot', qty, val, filled, average)
+
+
 # Update open orders of an account
 @app.task(name='Trading_____Update_orders')
 def update_orders(account_id):

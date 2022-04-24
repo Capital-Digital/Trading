@@ -742,9 +742,9 @@ class Account(models.Model):
     # Market sell spot account
     def market_sell(self):
         #
-        for code, amount in self.balances.spot.free.quantity.T.items():
-            if code != self.quote:
-                if not np.isnan(amount):
+        if ('spot', 'total', 'quantity') in self.balances.columns:
+            for code, amount in self.balances.spot.free.quantity.dropna().T.items():
+                if code != self.quote:
 
                     log.info('Sell {0}'.format(code))
 
@@ -758,6 +758,8 @@ class Account(models.Model):
 
                         from trading.tasks import send_create_order
                         send_create_order.delay(*args, then_rebalance=False)
+        else:
+            log.info('No asset found in spot wallet')
 
     # Market close position
     def market_close(self):

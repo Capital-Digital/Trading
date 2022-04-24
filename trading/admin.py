@@ -41,7 +41,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def market_sell_spot(self, request, queryset):
         for account in queryset:
-            account.market_sell()
+            market_sell.delay(account.id)
 
     market_sell_spot.short_description = "Market sell"
 

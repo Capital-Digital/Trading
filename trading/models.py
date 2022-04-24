@@ -251,8 +251,6 @@ class Account(models.Model):
 
         if ('future', 'total', 'value') in self.balances.columns:
             futu_val = self.balances.future.total.value.dropna().sum()
-            if len(futu_val) == 0:
-                futu_val = 0
         else:
             futu_val = 0
 

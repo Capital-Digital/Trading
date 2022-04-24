@@ -221,10 +221,11 @@ class Account(models.Model):
         nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 1
         nodust = nodust[nodust].index.tolist()
 
-        # and select strategy coins
+        # and select strategy coins and quote
         stratcoins = self.strategy.get_codes()
+        quote = [self.quote]
 
-        self.balances = self.balances.loc[list(set(nodust + stratcoins))]
+        self.balances = self.balances.loc[list(set(nodust + stratcoins + quote))]
 
         # Create missing value columns
         for i in ['total', 'free', 'used']:

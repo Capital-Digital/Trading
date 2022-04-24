@@ -754,53 +754,6 @@ class Account(models.Model):
     def offset_order_cancelled(self, code, side, qty, val, filled=0):
         pass
 
-    # Market sell spot account
-    def market_sell(self):
-        #
-        if ('spot', 'total', 'quantity') in self.balances.columns:
-            for code, amount in self.balances.spot.free.quantity.dropna().T.items():
-                if code != self.quote:
-
-                    log.info('Sell {0}'.format(code))
-
-                    price = self.balances.price.spot.bid
-                    value = amount * price
-                    valid, order = self.prep_order('spot', code, amount, value, price, 'sell_spot', 'sell')
-
-                    if valid:
-                        order['order_type'] = 'market'
-                        args = order.values()
-
-                        from trading.tasks import send_create_order
-                        send_create_order.delay(*args, then_rebalance=False)
-        else:
-            log.info('No asset found in spot wallet')
-
-    # Market close position
-    def market_close(self):
-        #
-        if 'position' in self.balances.columns.get_level_values(0).tolist():
-
-            for code in self.balances.position.open.quantity.dropna().index.tolist():
-
-                log.info('Close position {0}'.format(code))
-
-                amount = self.balances.position.open.quantity[code]
-                side = 'buy' if amount < 0 else 'sell'
-                amount = abs(amount)
-                price = self.balances.price.spot.bid[code]
-                value = amount * price
-                valid, order = self.prep_order('future', code, amount, value, price, 'close_short', side)
-
-                if valid:
-                    order['order_type'] = 'market'
-                    args = order.values()
-                    from trading.tasks import send_create_order
-                    send_create_order.delay(*args, then_rebalance=False)
-
-        else:
-            log.info('No position found')
-
 
 class Fund(models.Model):
     objects = models.Manager()

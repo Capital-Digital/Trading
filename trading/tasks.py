@@ -380,6 +380,36 @@ def rebalance(account_id, reload=False, release=True):
             account.offset_order(code, 'buy_spot', qty, val, filled, average)
 
 
+# Market close
+@app.task(name='Trading_____Market_sell')
+def market_sell(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    if 'position' in account.balances.columns.get_level_values(0).tolist():
+
+        opened = account.balances.position.open.quantity.dropna()
+        if len(opened) > 0:
+            for code in opened.index.tolist():
+
+                log.info('Close position {0}'.format(code))
+
+                amount = account.balances.position.open.quantity[code]
+                side = 'buy' if amount < 0 else 'sell'
+                amount = abs(amount)
+                price = account.balances.price.spot.bid[code]
+                value = amount * price
+                valid, order = account.prep_order('future', code, amount, value, price, 'close_short', side)
+
+                if valid:
+                    order['order_type'] = 'market'
+                    args = order.values()
+                    send_create_order.delay(*args, then_rebalance=False)
+        else:
+            log.info('No position found')
+    else:
+        log.info('No position found')
+
+
 # Market sell
 @app.task(name='Trading_____Market_sell')
 def market_sell(account_id):

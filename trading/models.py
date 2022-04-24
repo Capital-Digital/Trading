@@ -432,41 +432,45 @@ class Account(models.Model):
         else:
             market, flip = self.exchange.get_perp_market(code, self.quote)
 
-        print(action, wallet, code, self.quote, market, flip)
+        if market:
 
-        # Format decimal
-        size = format_decimal(counting_mode=self.exchange.precision_mode,
-                              precision=market.precision['amount'],
-                              n=qty)
+            # Format decimal
+            size = format_decimal(counting_mode=self.exchange.precision_mode,
+                                  precision=market.precision['amount'],
+                                  n=qty)
 
-        # Test amount limits MIN and MAX
-        if limit_amount(market, size):
+            # Test amount limits MIN and MAX
+            if limit_amount(market, size):
 
-            # Test cost limits MIN and MAX
-            min_notional = limit_cost(market, cost)
-            reduce_only = False
+                # Test cost limits MIN and MAX
+                min_notional = limit_cost(market, cost)
+                reduce_only = False
 
-            # If cost not satisfied and close short
-            # set reduce_only = True
-            if not min_notional:
-                if market.exchange.exid == 'binance':
-                    if market.type == 'derivative':
-                        if market.margined.code == self.quote:
-                            if action == 'close_short':
-                                reduce_only = True
+                # If cost not satisfied and close short
+                # set reduce_only = True
+                if not min_notional:
+                    if market.exchange.exid == 'binance':
+                        if market.type == 'derivative':
+                            if market.margined.code == self.quote:
+                                if action == 'close_short':
+                                    reduce_only = True
 
-                # Else return
-                if not reduce_only:
-                    log.info(' ')
-                    log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
-                    return False, size, False
+                    # Else return
+                    if not reduce_only:
+                        log.info(' ')
+                        log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
+                        return False, size, False
 
-            return True, size, reduce_only
+                return True, size, reduce_only
+
+            else:
+                log.info(' ')
+                log.info('Condition not satisfied ({0} {1})'.format(round(size, 3), code))
+                return False, size, False
 
         else:
-            log.info(' ')
-            log.info('Condition not satisfied ({0} {1})'.format(round(size, 3), code))
-            return False, size, False
+            log.error('Unable to validate order of {0} {1}'.format(round(qty, 3), code))
+            return False, qty, False
 
     # Create order object
     def create_object(self, wallet, code, side, action, qty):

@@ -171,15 +171,12 @@ class Account(models.Model):
 
             else:
                 try:
-
                     bid, ask = currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask'])
-
                 except TypeError as e:
-
                     log.error('{0}'.format(str(e)))
                     raise Exception('Unable to select spot price of {0}/{1}'.format(currency.code, self.quote))
-
                 else:
+                    # Insert prices
                     self.balances.loc[code, ('price', 'spot', 'bid')] = bid
                     self.balances.loc[code, ('price', 'spot', 'ask')] = ask
 
@@ -194,21 +191,9 @@ class Account(models.Model):
 
         codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
-
-            try:
-                market = Market.objects.get(base__code=code,
-                                            quote__code=self.quote,
-                                            type='derivative',
-                                            contract_type='perpetual',
-                                            exchange=self.exchange)
-
-            except ObjectDoesNotExist:
-
-                # log.error('Future market {0}/{1} not found'.format(code, self.quote))
-                self.balances.loc[code, ('price', 'future', 'last')] = np.nan
-
-            else:
-                self.balances.loc[code, ('price', 'future', 'last')] = market.get_latest_price('last')
+            market, flip = self.exchange.get_perp_market(code, self.quote)
+            price = market.get_latest_price('last') if market else np.nan
+            self.balances.loc[code, ('price', 'future', 'last')] = price
 
         self.save()
         log.info('{0} future prices complete'.format(action))

@@ -443,83 +443,78 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
     client = account.exchange.get_ccxt_client(account)
     client.options['defaultType'] = wallet
 
-    # Determine market
+    # Select market
+    if wallet == 'spot':
+        market, flip = account.exchange.get_spot_market(code, account.quote)
+    else:
+        market, flip = account.exchange.get_perp_market(code, account.quote)
+
+    # Determine price
+    if wallet == 'future':
+        key = 'last'
+    elif not flip and side == 'buy':
+        key = 'ask'
+    elif not flip and side == 'sell':
+        key = 'bid'
+    elif flip and side == 'buy':
+        key = 'bid'
+    elif flip and side == 'sell':
+        key = 'ask'
+
+    price = market.get_latest_price(key)
+
+    log.info('{0} {1} {2}'.format(side.title(), desired_qty, code))
+    log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
+    log.info('Order clientid {0}'.format(clientid))
+
+    kwargs = dict(
+        symbol=market.symbol,
+        type=account.order_type,
+        side=side,
+        amount=desired_qty,
+        price=price,
+        params=dict(newClientOrderId=clientid)
+    )
+
+    if market_order:
+        del kwargs['price']
+
+    # Set parameters
+    if reduce_only:
+        kwargs['params']['reduceOnly'] = True
+
     try:
-        market = Market.objects.get(exchange=account.exchange,
-                                    quote__code=account.quote,
-                                    base__code=code,
-                                    wallet=wallet)
-    except MultipleObjectsReturned:
-        market = Market.objects.get(exchange=account.exchange,
-                                    quote__code=account.quote,
-                                    base__code=code,
-                                    wallet=wallet,
-                                    type='derivative',
-                                    contract_type='perpetual')
-    finally:
+        response = client.create_order(**kwargs)
 
-        # Determine price
-        if wallet == 'future':
-            key = 'last'
-        elif side == 'buy':
-            key = 'ask'
-        elif side == 'sell':
-            key = 'bid'
+    except ccxt.BadRequest as e:
+        pprint(kwargs)
+        raise Exception('{0}'.format(str(e)))
 
-        price = market.get_latest_price(key)
+    except ccxt.InsufficientFunds as e:
 
-        log.info('{0} {1} {2}'.format(side.title(), desired_qty, code))
-        log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
-        log.info('Order clientid {0}'.format(clientid))
+        order = Order.objects.get(clientid=clientid)
+        order.status = 'canceled'
+        order.response = dict(exception=str(e))
+        order.save()
 
-        kwargs = dict(
-            symbol=market.symbol,
-            type=account.order_type,
-            side=side,
-            amount=desired_qty,
-            price=price,
-            params=dict(newClientOrderId=clientid)
-        )
+        log.error('Order placement failed', cause=str(e))
+        log.error('{0} {1} {2}'.format(side.title(), desired_qty, code))
+        log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
+        log.error('Order price {0}'.format(price))
+        log.error('Order clientid {0}'.format(clientid))
+        # log.unbind('worker')
 
-        if market_order:
-            del kwargs['price']
+    else:
 
-        # Set parameters
-        if reduce_only:
-            kwargs['params']['reduceOnly'] = True
+        log.info('Order placement success')
 
-        try:
-            response = client.create_order(**kwargs)
+        # Update object and dataframe
+        filled, average = account.update_order_object(wallet, response)
 
-        except ccxt.BadRequest as e:
-            pprint(kwargs)
-            raise Exception('{0}'.format(str(e)))
+        if filled:
+            log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
 
-        except ccxt.InsufficientFunds as e:
-
-            order = Order.objects.get(clientid=clientid)
-            order.status = 'canceled'
-            order.response = dict(exception=str(e))
-            order.save()
-
-            log.error('Order placement failed', cause=str(e))
-            log.error('{0} {1} {2}'.format(side.title(), desired_qty, code))
-            log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
-            log.error('Order price {0}'.format(price))
-            log.error('Order clientid {0}'.format(clientid))
-            # log.unbind('worker')
-
-        else:
-
-            log.info('Order placement success')
-
-            # Update object and dataframe
-            filled, average = account.update_order_object(wallet, response)
-
-            if filled:
-                log.info('Filled {0} {1} at average price {2}'.format(filled, code, average))
-
-            return filled, average
+        return filled, average
 
 
 # Send fetch orderid

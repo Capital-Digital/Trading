@@ -621,6 +621,64 @@ class Exchange(models.Model):
             log.error('Instance has not data attribute', exid=self.exid)
             return False
 
+    # Return a spot market
+    def get_spot_market(self, base, quote):
+        try:
+            # Select market
+            market = Market.objects.get(quote__code=quote,
+                                        base__code=base,
+                                        type='spot',
+                                        exchange=self
+                                        )
+        except ObjectDoesNotExist:
+            log.info('Unable to select spot market {0}/{1}'.format(base, quote))
+            try:
+                # Flip base and quote if market is not found
+                market = Market.objects.get(quote__code=base,
+                                            base__code=quote,
+                                            type='spot',
+                                            exchange=self
+                                            )
+            except ObjectDoesNotExist:
+                raise Exception('Unable to select spot market {0}/{1}'.format(quote, base))
+            else:
+                flip = True
+        else:
+            flip = False
+
+        return market, flip
+
+    # Return a derivative perp market
+    def get_perp_market(self, base, quote):
+        try:
+            # Select market
+            market = Market.objects.get(quote__code=quote,
+                                        base__code=base,
+                                        type='derivative',
+                                        contract_type='perpetual',
+                                        exchange=self
+                                        )
+        except ObjectDoesNotExist:
+            log.info('Unable to select perp market {0}/{1}'.format(base, quote))
+            try:
+                # Flip base and quote if market is not found
+                market = Market.objects.get(quote__code=base,
+                                            base__code=quote,
+                                            type='derivative',
+                                            contract_type='perpetual',
+                                            exchange=self
+                                            )
+            except ObjectDoesNotExist:
+                log.warning('Unable to select perp market {0}/{1}'.format(quote, base))
+                return None, None
+
+            else:
+                flip = True
+        else:
+            flip = False
+
+        return market, flip
+
 
 class Currency(models.Model):
     name, code = [models.CharField(max_length=100, blank=True, null=True) for i in range(2)]
@@ -640,15 +698,16 @@ class Currency(models.Model):
 
     def get_latest_price(self, exchange, quote, key):
         if self.code != quote:
+
+            # Select market
+            market, flip = self.exchange.get_spot_market(self.code, quote)
+
             try:
-                tickers = Tickers.objects.get(market__quote__code=quote,
-                                              market__base__code=self.code,
-                                              market__type='spot',
-                                              market__exchange=exchange,
-                                              year=get_year(),
-                                              semester=get_semester())
+                # Select ticker object
+                tickers = Tickers.objects.get(market=market, year=get_year(), semester=get_semester())
+
             except ObjectDoesNotExist:
-                log.error('Unable to get price for {0}'.format(self.code))
+                log.error('Unable to select tickers object for spot market {0}'.format(market.symbol))
 
             else:
                 dt = datetime.now().replace(minute=0, second=0, microsecond=0)
@@ -658,15 +717,22 @@ class Currency(models.Model):
                     dic = tickers.data[now]
 
                 except KeyError:
-                    log.error('Key {0} not found'.format(now),
-                              key=key,
-                              code=self.code,
-                              wallet='spot',
-                              quote=quote)
+                    base = quote if flip else self.code
+                    quote = self.code if flip else quote
+
+                    log.error('Key {0} not found'.format(now), key=key, base=base, wallet='spot', quote=quote)
+
                 else:
                     if isinstance(key, list):
-                        return [dic[k] for k in key]
+                        # Select multiple keys
+                        bid, ask = [dic[k] for k in key]
+
+                        if flip:
+                            return ask, bid
+                        else:
+                            return bid, ask
                     else:
+                        # Return a single key
                         return dic[key]
         else:
             if isinstance(key, list):

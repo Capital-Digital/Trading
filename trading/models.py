@@ -481,11 +481,10 @@ class Account(models.Model):
     def create_object(self, wallet, code, side, action, qty):
 
         # Select market
-        markets = Market.objects.filter(base__code=code, quote__code=self.quote, exchange=self.exchange)
         if wallet == 'spot':
-            market = markets.get(type='spot')
-        else:
-            market = markets.get(type='derivative', contract_type='perpetual')
+            market, flip = self.exchange.get_spot_market(code, self.quote)
+        elif wallet == 'future':
+            market, flip = self.exchange.get_perp_market(code, self.quote)
 
         # Generate order_id
         alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'

@@ -487,7 +487,7 @@ class Account(models.Model):
                 min_notional = limit_cost(market, cost)
                 reduce_only = False
 
-                log.info('Min notional {0}'.format(min_notional))
+                log.info('Min notional {0} for {1}'.format(min_notional, cost))
 
                 # If cost not satisfied and close short
                 # set reduce_only = True

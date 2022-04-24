@@ -700,7 +700,7 @@ class Currency(models.Model):
         if self.code != quote:
 
             # Select market
-            market, flip = self.exchange.get_spot_market(self.code, quote)
+            market, flip = exchange.get_spot_market(self.code, quote)
 
             try:
                 # Select ticker object

@@ -47,13 +47,13 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def market_close_positions(self, request, queryset):
         for account in queryset:
-            account.market_close()
+            market_close.delay(account.id)
 
     market_close_positions.short_description = "Market close"
 
     def rebalance_account(self, request, queryset):
         for account in queryset:
-            rebalance.delay(account.id, get_balances=True, release=True)
+            rebalance.delay(account.id, reload=True, release=True)
 
     rebalance_account.short_description = "Rebalance"
 

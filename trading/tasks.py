@@ -380,6 +380,53 @@ def rebalance(account_id, reload=False, release=True):
             account.offset_order(code, 'buy_spot', qty, val, filled, average)
 
 
+# Update open orders of an account
+@app.task(name='Trading_____Update_orders')
+def update_orders(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    orders = Order.objects.filter(account=account,
+                                  status='open'
+                                  ).exclude(orderid__isnull=True)
+
+    if orders.exists():
+        for order in orders:
+
+            log.info('Update order', id=order.orderid)
+            send_fetch_orderid.delay(account_id, order.orderid)
+    else:
+        pass
+
+
+# Check an account credential
+@app.task(base=BaseTaskWithRetry, name='Trading_____Check_credentials')
+def check_credentials(account_id):
+    #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+    log.bind(user=account.name)
+
+    try:
+        # Check credentials
+        client.checkRequiredCredentials()
+
+    except ccxt.AuthenticationError as e:
+        account.valid_credentials = False
+        log.warning('Account credentials are invalid')
+
+    except Exception as e:
+        log.warning("Account credential can't be checked: {0}".format(e))
+        account.valid_credentials = False
+
+    else:
+        account.valid_credentials = True
+        # log.info('Account credentials are valid')
+
+    finally:
+        account.save()
+        log.unbind('user')
+
+
 # Market close
 @app.task(name='Trading_____Market_close')
 def market_close(account_id):
@@ -449,53 +496,6 @@ def market_sell(account_id):
                     account.offset_order(code, 'sell_spot', qty, val, filled, average)
     else:
         log.info('No free asset found', account=account.name)
-
-
-# Update open orders of an account
-@app.task(name='Trading_____Update_orders')
-def update_orders(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    orders = Order.objects.filter(account=account,
-                                  status='open'
-                                  ).exclude(orderid__isnull=True)
-
-    if orders.exists():
-        for order in orders:
-
-            log.info('Update order', id=order.orderid)
-            send_fetch_orderid.delay(account_id, order.orderid)
-    else:
-        pass
-
-
-# Check an account credential
-@app.task(base=BaseTaskWithRetry, name='Trading_____Check_credentials')
-def check_credentials(account_id):
-    #
-    account = Account.objects.get(id=account_id)
-    client = account.exchange.get_ccxt_client(account)
-    log.bind(user=account.name)
-
-    try:
-        # Check credentials
-        client.checkRequiredCredentials()
-
-    except ccxt.AuthenticationError as e:
-        account.valid_credentials = False
-        log.warning('Account credentials are invalid')
-
-    except Exception as e:
-        log.warning("Account credential can't be checked: {0}".format(e))
-        account.valid_credentials = False
-
-    else:
-        account.valid_credentials = True
-        # log.info('Account credentials are valid')
-
-    finally:
-        account.save()
-        log.unbind('user')
 
 
 # REST API

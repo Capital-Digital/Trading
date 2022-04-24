@@ -428,9 +428,9 @@ class Account(models.Model):
     def validate_order(self, wallet, code, qty, cost, action=None):
 
         if action in ['buy_spot', 'sell_spot']:
-            market = self.exchange.get_spot_market(code, self.quote)
+            market, flip = self.exchange.get_spot_market(code, self.quote)
         else:
-            market = self.exchange.get_perp_market(code, self.quote)
+            market, flip = self.exchange.get_perp_market(code, self.quote)
 
         # Format decimal
         size = format_decimal(counting_mode=self.exchange.precision_mode,

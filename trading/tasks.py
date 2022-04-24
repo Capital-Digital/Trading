@@ -593,6 +593,11 @@ def send_create_order(account_id, clientid, side, wallet, code, qty, reduce_only
 
         return None, None
 
+    except ccxt.ExchangeError as e:
+        pprint(kwargs)
+        log.error('Exchange error')
+        raise Exception('{0}'.format(str(e)))
+
     else:
 
         log.info('Order placement success')
@@ -631,9 +636,9 @@ def send_fetch_orderid(account_id, order_id):
     else:
 
         # Update object and dataframe
-        qty_filled = account.update_order_object(order.market.wallet, response)
+        filled, average = account.update_order_object(order.market.wallet, response)
 
-        return account_id, qty_filled
+        return account_id, filled
 
 
 # Send fetch all open orders
@@ -651,14 +656,10 @@ def send_fetch_all_open_orders(account_id):
 
         response = client.fetchOpenOrders()
 
-        qty = []
         for dic in response:
-            pprint(dic)
-            # Update corresponding order object
-            qty_filled = account.update_order_object(wallet, dic)
-            qty.append(qty_filled)
-
-        return account_id, qty
+            order_id = dic['id']
+            log.info('Cancel order {0}'.format(order_id))
+            send_cancel_order.delay(account_id, order_id)
 
 
 # Send transfer order
@@ -713,8 +714,8 @@ def send_cancel_order(account_id, order_id):
         response = client.cancel_order(id=order_id, symbol=order.market.symbol)
 
     except Exception as e:
-        log.error('Order canceled failure')
+        log.error('Order canceled failure', e=str(e))
 
     else:
         # Update object and dataframe
-        qty_filled = account.update_order_object(order.market.wallet, response)
+        filled, average = account.update_order_object(order.market.wallet, response)

@@ -149,7 +149,16 @@ class Account(models.Model):
         self.save()
         log.info('Get open positions complete')
 
-    # Insert bid/ask of spot markets
+    # Check coins of the strategy and quote are present
+    def add_missing_coin(self):
+
+        codes = self.strategy.get_codes()
+        codes.append(self.quote)
+        for code in list(set(codes)):
+            if code not in self.balances.index.tolist():
+                self.balances.loc[code] = np.nan
+
+    # Insert bid/ask of assets in spot wallet
     def get_spot_prices(self, update=False):
         #
         action = 'Update' if update else 'Get'
@@ -183,7 +192,7 @@ class Account(models.Model):
         self.save()
         log.info('{0} spot prices complete'.format(action))
 
-    # Insert bid/ask of future markets
+    # Insert bid/ask of assets in future wallet
     def get_futu_prices(self, update=False):
         #
         action = 'Update' if update else 'Get'
@@ -206,7 +215,7 @@ class Account(models.Model):
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
             for tp in ['free', 'total', 'used']:
-                for coin, value in self.balances[wallet][tp]['quantity'].items():
+                for coin, value in self.balances[wallet][tp]['quantity'].dropna().items():
 
                     if coin == self.quote:
                         price = 1
@@ -217,35 +226,37 @@ class Account(models.Model):
                     value = price * value
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
-        # Select assets with more than $10
+        self.save()
+        log.info('Calculate assets value complete')
+
+    # Drop dust coins
+    def drop_dust_coins(self):
+
+        # Keep assets with more than $10
         nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 10
         nodust = nodust[nodust].index.tolist()
 
-        # Select positions
+        # Keep asset with an opened position
         if self.has_opened_short():
             posidx = self.balances.position.open.value.dropna().index.tolist()
-            nodust = list(set(posidx + nodust))
 
-        self.balances = self.balances.loc[nodust, :]
+        # Keep assets from our strategy and quote
+        strat = self.strategy.strategy.get_codes()
+        strat.append(self.quote)
 
-        # add strategy coins and quote if missing
-        codes = self.strategy.get_codes()
-        codes.append(self.quote)
-        for code in list(set(codes)):
-            if code not in self.balances.index.tolist():
-                self.balances.loc[code] = np.nan
+        keep = list(set(posidx + nodust + strat))
+        self.balances = self.balances.loc[keep, :]
+        self.save()
 
-        # Create missing value columns
+    # Check and reorder columns
+    def check_columns(self):
         for i in ['total', 'free', 'used']:
             for wallet in ['spot', 'future']:
                 if (wallet, i, 'value') not in self.balances.columns:
                     self.balances[(wallet, i, 'value')] = np.nan
 
-        # reorder columns
         self.balances.sort_index(1, inplace=True)
         self.save()
-
-        log.info('Calculate assets value complete')
 
     # Return account total value
     def account_value(self):
@@ -336,7 +347,8 @@ class Account(models.Model):
             bid = self.balances.price.spot.bid[coin]
             exposure_value = exp * bid
 
-            log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
+            if not np.isnan(exposure_value):
+                log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
 
             percent = exposure_value / acc_value
 

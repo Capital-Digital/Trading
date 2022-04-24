@@ -386,7 +386,7 @@ def market_sell(account_id):
     #
     account = Account.objects.get(id=account_id)
     if account.has_spot_asset('free'):
-        for code, free in account.balances.spot.free.quantity.dropna().items():
+        for code, qty in account.balances.spot.free.quantity.dropna().items():
 
             if code != account.quote:
 

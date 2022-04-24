@@ -217,9 +217,15 @@ class Account(models.Model):
                     value = price * value
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
-        # Select coins with more than $1
+        # Select assets with more than $1
         nodust = self.balances.loc[:, (['spot', 'future'], 'total', 'value')].sum(axis=1) > 1
         nodust = nodust[nodust].index.tolist()
+
+        # Select positions
+        if self.has_opened_short():
+            posidx = self.balances.position.open.value.dropna().index.tolist()
+            nodust = list(set(posidx + nodust))
+
         self.balances = self.balances.loc[nodust, :]
 
         # add strategy coins and quote if missing

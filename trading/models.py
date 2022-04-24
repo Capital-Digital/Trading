@@ -387,14 +387,14 @@ class Account(models.Model):
     def has_spot_asset(self, key, code=None):
         if ('spot', key, 'quantity') in self.balances.columns:
             codes = self.balances.spot[key]['quantity'].dropna().index.tolist()
-            if codes:
-                if code:
+            if code:
+                if code in codes:
                     if self.balances.spot[key]['value'][code] > 10:
                         return True
                     else:
                         return False
                 else:
-                    return True
+                    return False
             else:
                 return False
         else:
@@ -406,8 +406,11 @@ class Account(models.Model):
             codes = self.balances.future.total['quantity'].dropna().index.tolist()
             if codes:
                 if code:
-                    if code in self.balances.future.total.quantity.dropna().index:
-                        return True
+                    if code in codes:
+                        if code in self.balances.future.total.quantity.dropna().index:
+                            return True
+                        else:
+                            return False
                     else:
                         return False
                 else:

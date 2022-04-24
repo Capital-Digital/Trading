@@ -433,7 +433,7 @@ def check_credentials(account_id):
 
 # Send create order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
-def send_create_order(account_id, clientid, side, wallet, code, desired_qty, reduce_only=False, market_order=False):
+def send_create_order(account_id, clientid, side, wallet, code, qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
     log.info('Place {0} order in {1}'.format(side, wallet))
@@ -461,9 +461,19 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
     elif flip and side == 'sell':
         key = 'ask'
 
+    # Change side
+    if flip and side == 'buy':
+        side = 'sell'
+    elif flip and side == 'sell':
+        side = 'buy'
+
     price = market.get_latest_price(key)
 
-    log.info('{0} {1} {2}'.format(side.title(), desired_qty, code))
+    # Change qty
+    if flip:
+        qty = qty / price
+
+    log.info('{0} {1} {2}'.format(side.title(), qty, code))
     log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
     log.info('Order clientid {0}'.format(clientid))
 
@@ -471,7 +481,7 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
         symbol=market.symbol,
         type=account.order_type,
         side=side,
-        amount=desired_qty,
+        amount=qty,
         price=price,
         params=dict(newClientOrderId=clientid)
     )
@@ -488,6 +498,7 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
 
     except ccxt.BadRequest as e:
         pprint(kwargs)
+        log.error('BadRequest error')
         raise Exception('{0}'.format(str(e)))
 
     except ccxt.InsufficientFunds as e:
@@ -498,11 +509,12 @@ def send_create_order(account_id, clientid, side, wallet, code, desired_qty, red
         order.save()
 
         log.error('Order placement failed', cause=str(e))
-        log.error('{0} {1} {2}'.format(side.title(), desired_qty, code))
+        log.error('{0} {1} {2}'.format(side.title(), qty, code))
         log.error('Order symbol {0} ({1})'.format(market.symbol, wallet))
         log.error('Order price {0}'.format(price))
         log.error('Order clientid {0}'.format(clientid))
-        # log.unbind('worker')
+
+        return None, None
 
     else:
 

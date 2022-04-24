@@ -474,6 +474,8 @@ class Account(models.Model):
 
         if market:
 
+            print(market)
+
             # Format decimal
             size = format_decimal(counting_mode=self.exchange.precision_mode,
                                   precision=market.precision['amount'],
@@ -481,6 +483,8 @@ class Account(models.Model):
 
             # Test amount limits MIN and MAX
             if limit_amount(market, size):
+
+                log.info('Limit ok', size=size)
 
                 # Test cost limits MIN and MAX
                 min_notional = limit_cost(market, cost)

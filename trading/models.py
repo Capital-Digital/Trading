@@ -153,6 +153,7 @@ class Account(models.Model):
     def get_spot_prices(self, update=False):
         #
         action = 'Update' if update else 'Get'
+        log.info(' ')
         log.info('{0} spot prices'.format(action))
 
         codes = self.balances.spot.total.quantity.index.tolist()
@@ -325,7 +326,7 @@ class Account(models.Model):
 
         if 'position' in self.balances.columns.get_level_values(0):
             pos_value = self.balances.position.open.value.dropna().sum()
-            exposure[self.quote] = max(0, exposure[self.quote] - abs(pos_value))
+            exposure[self.quote] -= abs(pos_value)
 
         self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
 

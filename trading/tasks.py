@@ -308,8 +308,9 @@ def rebalance(account_id, reload=False, release=True):
                 if val < desired_val:
                     amount = min(desired_val - val, account.balances.spot.free.quantity[account.quote])
                     transfer_id = send_transfer(account.id, 'spot', 'future', amount)
-                    account.offset_transfer('spot', 'future', amount, transfer_id)
-                    val += amount
+                    if transfer_id:
+                        account.offset_transfer('spot', 'future', amount, transfer_id)
+                        val += amount
 
                 # Determine quantity from available resources
                 qty = val / price
@@ -359,8 +360,9 @@ def rebalance(account_id, reload=False, release=True):
         if val < desired_val:
             amount = min(desired_val - val, account.free_margin())
             transfer_id = send_transfer(account.id, 'future', 'spot', amount)
-            account.offset_transfer('future', 'spot', amount, transfer_id)
-            val += amount
+            if transfer_id:
+                account.offset_transfer('future', 'spot', amount, transfer_id)
+                val += amount
 
         # Determine quantity from available resources
         qty = val / price
@@ -579,16 +581,16 @@ def send_fetch_all_open_orders(account_id):
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_transfer_funds')
 def send_transfer(account_id, source, dest, quantity):
     #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
+    # Generate transfer_id
+    alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
+    transfer_id = ''.join((random.choice(alphanumeric)) for x in range(5))
+
+    log.bind(worker=current_process().index, account=account.name, id=transfer_id)
+
     if quantity > 1:
-
-        account = Account.objects.get(id=account_id)
-        client = account.exchange.get_ccxt_client(account)
-
-        # Generate transfer_id
-        alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
-        transfer_id = ''.join((random.choice(alphanumeric)) for x in range(5))
-
-        log.bind(worker=current_process().index, account=account.name, id=transfer_id)
 
         log.info('Transfer {0}'.format(transfer_id))
         log.info('Transfer from {0} to {1}'.format(source, dest))
@@ -606,10 +608,12 @@ def send_transfer(account_id, source, dest, quantity):
         else:
 
             log.info('Transfer success')
-            return account_id, quantity, transfer_id
-
-        finally:
             log.unbind('worker', 'account', 'id')
+            return transfer_id
+
+    else:
+        log.info('Transfer condition not satisfied')
+        log.unbind('worker', 'account', 'id')
 
 
 # Send cancellation order

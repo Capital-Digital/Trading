@@ -631,7 +631,9 @@ class Exchange(models.Model):
                                         exchange=self
                                         )
         except ObjectDoesNotExist:
-            log.info('Unable to select spot market {0}/{1}'.format(base, quote))
+
+            # log.info('Unable to select spot market {0}/{1}'.format(base, quote))
+
             try:
                 # Flip base and quote if market is not found
                 market = Market.objects.get(quote__code=base,
@@ -659,7 +661,7 @@ class Exchange(models.Model):
                                         exchange=self
                                         )
         except ObjectDoesNotExist:
-            log.info('Unable to select perp market {0}/{1}'.format(base, quote))
+            # log.info('Unable to select perp market {0}/{1}'.format(base, quote))
             try:
                 # Flip base and quote if market is not found
                 market = Market.objects.get(quote__code=base,
@@ -669,7 +671,7 @@ class Exchange(models.Model):
                                             exchange=self
                                             )
             except ObjectDoesNotExist:
-                log.warning('Unable to select perp market {0}/{1}'.format(quote, base))
+                # log.warning('Unable to select perp market {0}/{1}'.format(quote, base))
                 return None, None
 
             else:

@@ -381,8 +381,8 @@ def rebalance(account_id, reload=False, release=True):
 
 
 # Market close
-@app.task(name='Trading_____Market_sell')
-def market_sell(account_id):
+@app.task(name='Trading_____Market_close')
+def market_close(account_id):
     #
     account = Account.objects.get(id=account_id)
     if 'position' in account.balances.columns.get_level_values(0).tolist():
@@ -394,16 +394,25 @@ def market_sell(account_id):
                 log.info('Close position {0}'.format(code))
 
                 amount = account.balances.position.open.quantity[code]
-                side = 'buy' if amount < 0 else 'sell'
-                amount = abs(amount)
+                qty = abs(amount)
                 price = account.balances.price.spot.bid[code]
-                value = amount * price
-                valid, order = account.prep_order('future', code, amount, value, price, 'close_short', side)
+                val = qty * price
 
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('spot', code, qty, val)
                 if valid:
-                    order['order_type'] = 'market'
-                    args = order.values()
-                    send_create_order.delay(*args, then_rebalance=False)
+
+                    # Determine final order value
+                    val = qty * price
+
+                    # Create object, place order and apply offset
+                    clientid = account.create_object('future', code, 'buy', 'close_short', qty)
+                    filled, average = send_create_order(account.id,
+                                                        clientid, 'buy', 'future', code, qty,
+                                                        reduce_only=True,
+                                                        market_order=True
+                                                        )
+                    account.offset_order(code, 'close_short', qty, val, filled, average)
         else:
             log.info('No position found')
     else:

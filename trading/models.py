@@ -319,7 +319,7 @@ class Account(models.Model):
 
         if 'position' in self.balances.columns.get_level_values(0):
             pos_value = self.balances.position.open.value.dropna().sum()
-            exposure[self.quote] -= abs(pos_value)
+            exposure[self.quote] = max(0, exposure[self.quote] - abs(pos_value))
 
         self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
 

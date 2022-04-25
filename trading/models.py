@@ -669,59 +669,59 @@ class Account(models.Model):
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
-            # Determine trade value
-            filled_value = filled * average
+        # Determine trade value
+        filled_value = filled * average
 
-            log.info('Offset trade of {0} {1}'.format(round(filled, 3), code))
-            log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
+        log.info('Offset trade of {0} {1}'.format(round(filled, 3), code))
+        log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
-            if action == 'buy_spot':
-                offset.loc[code, ('spot', 'free', 'quantity')] = filled
-                offset.loc[code, ('spot', 'free', 'value')] = filled_value
-                offset.loc[code, ('spot', 'total', 'quantity')] = filled
-                offset.loc[code, ('spot', 'total', 'value')] = filled_value
+        if action == 'buy_spot':
+            offset.loc[code, ('spot', 'free', 'quantity')] = filled
+            offset.loc[code, ('spot', 'free', 'value')] = filled_value
+            offset.loc[code, ('spot', 'total', 'quantity')] = filled
+            offset.loc[code, ('spot', 'total', 'value')] = filled_value
 
-                offset.loc[self.quote, ('spot', 'total', 'quantity')] = -filled_value
-                offset.loc[self.quote, ('spot', 'total', 'value')] = -filled_value
+            offset.loc[self.quote, ('spot', 'total', 'quantity')] = -filled_value
+            offset.loc[self.quote, ('spot', 'total', 'value')] = -filled_value
 
-                offset.loc[code, ('account', 'current', 'exposure')] = filled
-                offset.loc[code, ('account', 'current', 'value')] = filled_value
-                offset.loc[self.quote, ('account', 'current', 'exposure')] = -filled_value
-                offset.loc[self.quote, ('account', 'current', 'value')] = -filled_value
-                offset.loc[code, ('account', 'target', 'delta')] = filled
+            offset.loc[code, ('account', 'current', 'exposure')] = filled
+            offset.loc[code, ('account', 'current', 'value')] = filled_value
+            offset.loc[self.quote, ('account', 'current', 'exposure')] = -filled_value
+            offset.loc[self.quote, ('account', 'current', 'value')] = -filled_value
+            offset.loc[code, ('account', 'target', 'delta')] = filled
 
-            if action == 'sell_spot':
-                offset.loc[code, ('spot', 'free', 'quantity')] = -filled
-                offset.loc[code, ('spot', 'free', 'value')] = -filled_value
-                offset.loc[code, ('spot', 'total', 'quantity')] = -filled
-                offset.loc[code, ('spot', 'total', 'value')] = -filled_value
+        if action == 'sell_spot':
+            offset.loc[code, ('spot', 'free', 'quantity')] = -filled
+            offset.loc[code, ('spot', 'free', 'value')] = -filled_value
+            offset.loc[code, ('spot', 'total', 'quantity')] = -filled
+            offset.loc[code, ('spot', 'total', 'value')] = -filled_value
 
-                offset.loc[self.quote, ('spot', 'total', 'quantity')] = filled_value
-                offset.loc[self.quote, ('spot', 'total', 'value')] = filled_value
+            offset.loc[self.quote, ('spot', 'total', 'quantity')] = filled_value
+            offset.loc[self.quote, ('spot', 'total', 'value')] = filled_value
 
-                offset.loc[code, ('account', 'current', 'exposure')] = -filled
-                offset.loc[code, ('account', 'current', 'value')] = -filled_value
-                offset.loc[self.quote, ('account', 'current', 'exposure')] = filled_value
-                offset.loc[self.quote, ('account', 'current', 'value')] = filled_value
-                offset.loc[code, ('account', 'target', 'delta')] = -filled
+            offset.loc[code, ('account', 'current', 'exposure')] = -filled
+            offset.loc[code, ('account', 'current', 'value')] = -filled_value
+            offset.loc[self.quote, ('account', 'current', 'exposure')] = filled_value
+            offset.loc[self.quote, ('account', 'current', 'value')] = filled_value
+            offset.loc[code, ('account', 'target', 'delta')] = -filled
 
-            if action == 'close_short':
-                # Offset position size and value
-                offset.loc[code, ('position', 'open', 'quantity')] = filled
-                offset.loc[code, ('position', 'open', 'value')] = filled_value
+        if action == 'close_short':
+            # Offset position size and value
+            offset.loc[code, ('position', 'open', 'quantity')] = filled
+            offset.loc[code, ('position', 'open', 'value')] = filled_value
 
-                offset.loc[code, ('account', 'current', 'exposure')] = filled
-                offset.loc[code, ('account', 'current', 'value')] = filled_value
-                offset.loc[code, ('account', 'target', 'delta')] = filled
+            offset.loc[code, ('account', 'current', 'exposure')] = filled
+            offset.loc[code, ('account', 'current', 'value')] = filled_value
+            offset.loc[code, ('account', 'target', 'delta')] = filled
 
-            if action == 'open_short':
-                # Offset position size and value
-                offset.loc[code, ('position', 'open', 'quantity')] = -filled
-                offset.loc[code, ('position', 'open', 'value')] = -filled_value
+        if action == 'open_short':
+            # Offset position size and value
+            offset.loc[code, ('position', 'open', 'quantity')] = -filled
+            offset.loc[code, ('position', 'open', 'value')] = -filled_value
 
-                offset.loc[code, ('account', 'current', 'exposure')] = -filled
-                offset.loc[code, ('account', 'current', 'value')] = -filled_value
-                offset.loc[code, ('account', 'target', 'delta')] = -filled
+            offset.loc[code, ('account', 'current', 'exposure')] = -filled
+            offset.loc[code, ('account', 'current', 'value')] = -filled_value
+            offset.loc[code, ('account', 'target', 'delta')] = -filled
 
         pct = self.balances.account.current.percent[code]
         log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))

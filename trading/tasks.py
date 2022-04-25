@@ -722,8 +722,10 @@ def test(self, loop):
     process_id = current_process().index
     a = Account.objects.get(name='Principal')
 
-    def getpos(i):
-        m = Market.objects.get(id=i)
+    def getmk(i):
+        return Market.objects.get(id=i)
+
+    def getpos(m):
         try:
             p = Position.objects.get(account=a, market=m)
         except ObjectDoesNotExist:
@@ -732,9 +734,9 @@ def test(self, loop):
             return p
 
     try:
-        pos = getpos(process_id)
+        pos = getpos(getmk(process_id))
     except ObjectDoesNotExist:
-        pos = getpos(process_id + 1)
+        pos = getpos(getmk(process_id + 1))
     finally:
 
         log.info('Task {0} start with process {1}'.format(task_id, process_id))

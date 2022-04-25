@@ -888,11 +888,11 @@ class Position(models.Model):
     response_2 = models.JSONField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True
-    )
+    # user = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL,
+    #     on_delete=models.CASCADE,
+    #     null=True
+    # )
 
     class Meta:
         verbose_name_plural = "Positions"

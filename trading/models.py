@@ -662,7 +662,7 @@ class Account(models.Model):
     def offset_order_filled(self, code, action, filled, average):
 
         log.info(' ')
-        log.bin(account=self.name)
+        log.bind(account=self.name)
         log.info('Offset trade to {0}'.format(action.replace('_', ' ')))
 
         offset = self.balances.copy()

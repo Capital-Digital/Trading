@@ -717,3 +717,14 @@ def send_cancel_order(account_id, order_id):
         else:
             # Update object and dataframe
             account.update_order_object(order.market.wallet, response)
+
+
+@app.task(name='Test')
+def test():
+    t = 0
+    while t<10:
+        log.info('Wait 10s')
+        time.sleep(1)
+
+
+

@@ -898,7 +898,7 @@ class Position(models.Model):
         verbose_name_plural = "Positions"
 
     def __str__(self):
-        return 'position'
+        return str(self.pk)
 
     # Return margin ratio
     def get_margin_ratio(self):

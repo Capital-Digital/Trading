@@ -726,11 +726,12 @@ def test(self):
     task_id = self.request.id[:3]
     process_id = current_process().index
 
-    while t<=10:
-        log.info('Execute task {0} with process {1}'.format(task_id, process_id))
-        time.sleep(5)
-        t += 5
+    log.info('Task {0} execution start with process {1}'.format(task_id, process_id))
 
-    log.info('Task execution {0} complete'.format(task_id))
+    while t<=5:
+        time.sleep(1)
+        t += 1
+
+    log.info('Task {0} execution complete with process {1}'.format(task_id, process_id))
 
 

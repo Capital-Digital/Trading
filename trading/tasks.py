@@ -469,7 +469,7 @@ def market_close(account_id):
                                                         reduce_only=True,
                                                         market_order=True
                                                         )
-                    account.offset_order(code, 'close_short', qty, val, filled, average)
+                    account.offset_order_filled(code, 'close_short', filled, average)
         else:
             log.info('No position found')
     else:
@@ -503,7 +503,7 @@ def market_sell(account_id):
                                                         reduce_only,
                                                         market_order=True
                                                         )
-                    account.offset_order(code, 'sell_spot', qty, val, filled, average)
+                    account.offset_order_filled(code, 'sell_spot', filled, average)
     else:
         log.info('No free asset found', account=account.name)
 

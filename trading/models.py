@@ -662,6 +662,7 @@ class Account(models.Model):
     def offset_order_filled(self, code, action, filled, average):
 
         log.info(' ')
+        log.bin(account=self.name)
         log.info('Offset trade to {0}'.format(action.replace('_', ' ')))
 
         offset = self.balances.copy()
@@ -723,7 +724,7 @@ class Account(models.Model):
             offset.loc[code, ('account', 'current', 'value')] = -filled_value
             offset.loc[code, ('account', 'target', 'delta')] = -filled
 
-        pct = self.balances.account.current.percent[code]
+        pct = self.balances.account.current.percent[code] * 100
         log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))
 
         # Apply offset
@@ -734,19 +735,21 @@ class Account(models.Model):
         # Update new percentage
         account_value = self.account_value()
         for c in [code, self.quote]:
-            exposure = self.balances.account.current.exposure[c]
-            pct = exposure / account_value
+            exposure_value = self.balances.account.current.value[c]
+            pct = exposure_value / account_value
             self.balances.loc[c, ('account', 'current', 'percent')] = pct
-            log.info('Percentage for {0} is now {1}%'.format(code, round(pct, 1)))
+            log.info('Percentage for {0} is now {1}%'.format(code, round(pct * 100, 1)))
 
         self.save()
 
         log.info('Offset complete')
+        log.unbind('account')
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
 
         log.info(' ')
+        log.bind(account=self.name)
         log.info('Offset used and free resources')
 
         offset = self.balances.copy()
@@ -791,6 +794,7 @@ class Account(models.Model):
         self.save()
 
         log.info('Offset complete')
+        log.unbind('account')
 
     # Offset a cancelled order
     def offset_order_cancelled(self, code, side, qty, val, filled=0):

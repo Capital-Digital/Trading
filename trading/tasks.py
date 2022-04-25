@@ -721,17 +721,25 @@ def test(self):
     task_id = self.request.id[:3]
     process_id = current_process().index
     a = Account.objects.get(name='Principal')
-    m = Market.objects.get(id=process_id)
 
-    log.info('Task {0} start with process {1}'.format(task_id, process_id))
-    pos = Position.objects.create(account=a, market=m)
-    pos.size = 1
+    def create_market(i):
+        return Market.objects.get(id=i)
+    
+    try:
+        m = create_market(process_id)
+    except ObjectDoesNotExist:
+        m = create_market(process_id + 1)
+    finally:
 
-    while t<=1*10:
-        pos.size += 1
-        pos.save()
-        t += 1
+        log.info('Task {0} start with process {1}'.format(task_id, process_id))
+        pos = Position.objects.create(account=a, market=m)
+        pos.size = 1
 
-    log.info('Task {0} complete'.format(task_id))
+        while t<=1*10:
+            pos.size += 1
+            pos.save()
+            t += 1
+
+        log.info('Task {0} complete'.format(task_id))
 
 

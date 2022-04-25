@@ -721,9 +721,10 @@ def test(self):
     task_id = self.request.id[:3]
     process_id = current_process().index
     a = Account.objects.get(name='Principal')
+    m = Market.objects.get(id=process_id)
 
     log.info('Task {0} start with process {1}'.format(task_id, process_id))
-    pos = Position.objects.create(account=a, market__id=process_id)
+    pos = Position.objects.create(account=a, market=m)
     pos.size = 1
 
     while t<=1*10:

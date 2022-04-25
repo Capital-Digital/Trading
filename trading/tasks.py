@@ -31,8 +31,6 @@ import random
 
 log = structlog.get_logger(__name__)
 
-# warnings.simplefilter(action='ignore', category=FutureWarning)
-
 
 class BaseTaskWithRetry(Task):
     autoretry_for = (ccxt.DDoSProtection,
@@ -622,8 +620,6 @@ def send_fetch_orderid(account_id, order_id):
 
             # Offset trade
             account.offset_order_filled(code, order.action, filled, average)
-            pct = account.balances.account.current.percent[code]
-            log.info('Percentage for {0} is now {1}'.format(code, pct))
 
             t = 0
             while account.busy:

@@ -738,7 +738,7 @@ class Account(models.Model):
             exposure_value = self.balances.account.current.value[c]
             pct = exposure_value / account_value
             self.balances.loc[c, ('account', 'current', 'percent')] = pct
-            log.info('Percentage for {0} is now {1}%'.format(code, round(pct * 100, 1)))
+            log.info('Percentage for {0} is now {1}%'.format(c, round(pct * 100, 1)))
 
         self.save()
 

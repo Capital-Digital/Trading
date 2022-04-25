@@ -722,7 +722,7 @@ def test(self):
     process_id = current_process().index
 
     log.info('Task {0} start with process {1}'.format(task_id, process_id))
-    pos = Position.objects.get(account__name='Principal')
+    pos = Position.objects.create(account__name='Principal', market__id=process_id)
     pos.size = 1
 
     while t<=1*10:

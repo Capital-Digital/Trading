@@ -34,7 +34,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H',
 )
 
-log = logging.get_logger(__name__)
+# log = structlog.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 

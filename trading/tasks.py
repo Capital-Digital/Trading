@@ -29,11 +29,12 @@ from trading.models import Account, Order, Fund, Position
 import threading
 import random
 
-log = structlog.get_logger(__name__)
-log.basicConfig(
+logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H',
 )
+
+log = structlog.get_logger(__name__)
 
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 

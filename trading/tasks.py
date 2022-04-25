@@ -722,9 +722,12 @@ def test(self):
     process_id = current_process().index
 
     log.info('Task {0} start with process {1}'.format(task_id, process_id))
+    pos = Position.objects.get(account__name='Principal')
+    pos.size = 1
 
-    while t<=5:
-        time.sleep(1)
+    while t<=1*10:
+        pos.size += 1
+        pos.save()
         t += 1
 
     log.info('Task {0} complete'.format(task_id))

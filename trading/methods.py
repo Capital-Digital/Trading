@@ -107,4 +107,4 @@ def order_error(clientid, exception, kwargs):
     order.response = dict(exception=str(exception))
     order.save()
 
-    pprint(kwargs)
+    log.info(kwargs)

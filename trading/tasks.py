@@ -551,6 +551,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
     )
 
     if market_order:
+        kwargs['type'] = 'market'
         del kwargs['price']
 
     # Set parameters

@@ -723,7 +723,7 @@ def send_cancel_order(account_id, order_id):
 def test(self):
 
     t = 0
-    task_id = self.request.id
+    task_id = self.request.id[:3]
     process_id = current_process().index
 
     while t<10:

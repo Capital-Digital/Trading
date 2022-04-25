@@ -103,7 +103,7 @@ def prepare_accounts(account_id):
 
 # Cancel open orders of an account
 @app.task(name='Trading_____Cancel_orders')
-def cancel_orders(account_id):
+def cancel_orders(account_id, user_orders=False):
     #
     log.bind(worker=current_process().index)
     log.info('Cancel orders')
@@ -115,6 +115,13 @@ def cancel_orders(account_id):
     if orders.exists():
         for order in orders:
             send_cancel_order.delay(account_id, order.orderid)
+
+    if user_orders:
+        orders = send_fetch_all_open_orders.delay(account_id)
+        for order in orders:
+            order_id = order['id']
+            log.info('Cancel user order {0}'.format(order_id))
+            send_cancel_order.delay(account_id, order_id)
 
     log.info('Cancel orders complete')
     log.unbind('worker')
@@ -389,7 +396,7 @@ def update_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account,
-                                  status='open'
+                                  status__in=['open', 'unknown']
                                   )
 
     if orders.exists():
@@ -663,11 +670,7 @@ def send_fetch_all_open_orders(account_id):
         client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
         response = client.fetchOpenOrders()
-
-        for dic in response:
-            order_id = dic['id']
-            log.info('Cancel order {0}'.format(order_id))
-            send_cancel_order.delay(account_id, order_id)
+        return response
 
 
 # Send transfer order
@@ -732,3 +735,4 @@ def send_cancel_order(account_id, order_id):
         else:
             # Update object and dataframe
             account.update_order_object(order.market.wallet, response)
+

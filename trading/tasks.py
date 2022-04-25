@@ -719,12 +719,18 @@ def send_cancel_order(account_id, order_id):
             account.update_order_object(order.market.wallet, response)
 
 
-@app.task(name='Test')
-def test():
-    t = 0
-    while t<10:
-        log.info('Wait 10s')
-        time.sleep(1)
+@app.task(bind=True, name='Test')
+def test(self):
 
+    t = 0
+    task_id = self.request.id
+    process_id = current_process().index
+
+    while t<10:
+        log.info('Execute task {0} with process {1}'.format(task_id, process_id))
+        time.sleep(1)
+        t += 1
+
+    log.info('Task execution {0} complete'.format(task_id))
 
 

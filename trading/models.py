@@ -551,6 +551,8 @@ class Account(models.Model):
         status = response['status'].lower()
         clientid = response['clientOrderId']
 
+        log.bind(account=self.name)
+
         try:
             # Object with orderID exists ?
             order = Order.objects.get(account=self, orderid=orderid)
@@ -620,10 +622,12 @@ class Account(models.Model):
 
                 log.info('Trade new {0}'.format(filled_new))
                 log.info('Trade total {0}'.format(filled_total))
+                log.unbind('account')
 
                 return filled_new, order.average
 
             else:
+                log.unbind('account')
                 return False, False
 
     # Offset transfer

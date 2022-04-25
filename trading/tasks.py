@@ -261,7 +261,6 @@ def rebalance(account_id, reload=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
-
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
@@ -284,7 +283,6 @@ def rebalance(account_id, reload=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
-
                     # Create object and place order
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
@@ -330,7 +328,6 @@ def rebalance(account_id, reload=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
-
                     # Create object and place order
                     clientid = account.create_object('future', code, 'sell', 'open_short', qty)
                     send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
@@ -384,7 +381,6 @@ def rebalance(account_id, reload=False, release=True):
         # Format decimal and validate order
         valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
         if valid:
-
             # Create object and place order
             clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
             send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
@@ -401,7 +397,6 @@ def update_orders(account_id):
 
     if orders.exists():
         for order in orders:
-
             # log.info('Update order', id=order.orderid)
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
@@ -458,7 +453,6 @@ def market_close(account_id):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
-
                     # Determine final order value
                     val = qty * price
 
@@ -498,12 +492,9 @@ def market_sell(account_id):
 
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
-                    filled, average = send_create_order(account.id,
-                                                        clientid, 'sell_spot', 'sell', 'spot', code, qty,
-                                                        reduce_only,
-                                                        market_order=True
-                                                        )
-                    account.offset_order_filled(code, 'sell_spot', filled, average)
+                    send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only,
+                                      market_order=True
+                                      )
     else:
         log.info('No free asset found', account=account.name)
 
@@ -603,7 +594,6 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         # Update object status
         filled, average = account.update_order_object(wallet, response, new=True)
         if filled:
-
             # Offset trade
             account.offset_order_filled(code, action, filled, average)
 
@@ -665,7 +655,6 @@ def send_fetch_all_open_orders(account_id):
 
     # Iterate through wallets
     for wallet in account.exchange.get_wallets():
-
         client.options['defaultType'] = wallet
         client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
@@ -735,4 +724,3 @@ def send_cancel_order(account_id, order_id):
         else:
             # Update object and dataframe
             account.update_order_object(order.market.wallet, response)
-

@@ -715,7 +715,7 @@ def send_cancel_order(account_id, order_id):
 
 
 @app.task(bind=True, name='Test')
-def test(self):
+def test(self, loop):
 
     t = 0
     task_id = self.request.id[:3]
@@ -724,7 +724,7 @@ def test(self):
 
     def create_market(i):
         return Market.objects.get(id=i)
-    
+
     try:
         m = create_market(process_id)
     except ObjectDoesNotExist:
@@ -735,7 +735,7 @@ def test(self):
         pos = Position.objects.create(account=a, market=m)
         pos.size = 1
 
-        while t<=1*10:
+        while t<=loop:
             pos.size += 1
             pos.save()
             t += 1

@@ -30,7 +30,10 @@ import threading
 import random
 
 log = structlog.get_logger(__name__)
-
+log.basicConfig(
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%Y-%m-%d %H',
+)
 
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 

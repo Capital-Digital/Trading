@@ -132,7 +132,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     'dt_update',)
     readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'asset', 'value_usd', 'settlement',
                        'notional_value',
-                       'entry_price', 'initial_margin', 'maint_margin', 'order_initial_margin', 'user',
+                       'entry_price', 'initial_margin', 'maint_margin', 'order_initial_margin',
                        'last', 'hedge', 'liquidation_price',
                        'realized_pnl', 'unrealized_pnl',
                        'margin_mode', 'leverage', 'dt_update', 'dt_create', 'instrument_id', 'created_at',

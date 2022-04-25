@@ -728,7 +728,7 @@ def test(self):
 
     while t<=10:
         log.info('Execute task {0} with process {1}'.format(task_id, process_id))
-        time.sleep(1)
+        time.sleep(5)
         t += 5
 
     log.info('Task execution {0} complete'.format(task_id))

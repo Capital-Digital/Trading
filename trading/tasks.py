@@ -722,31 +722,15 @@ def test(self, loop):
     process_id = current_process().index
     a = Account.objects.get(name='Principal')
 
-    def getmk(i):
-        return Market.objects.get(id=i)
+    pos = Position.objects.get(account=a, pk=process_id)
+    log.info('Task {0} start with process {1}'.format(task_id, process_id))
+    pos.size = 1
 
-    def getpos(m):
-        try:
-            p = Position.objects.get(account=a, market=m)
-        except ObjectDoesNotExist:
-            p = Position.objects.create(account=a, market=m)
-        finally:
-            return p
+    while t<=loop:
+        pos.size += 1
+        pos.save()
+        t += 1
 
-    try:
-        pos = getpos(getmk(process_id))
-    except ObjectDoesNotExist:
-        pos = getpos(getmk(process_id + 1))
-    finally:
-
-        log.info('Task {0} start with process {1}'.format(task_id, process_id))
-        pos.size = 1
-
-        while t<=loop:
-            pos.size += 1
-            pos.save()
-            t += 1
-
-        log.info('Task {0} complete'.format(task_id))
+    log.info('Task {0} complete'.format(task_id))
 
 

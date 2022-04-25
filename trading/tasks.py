@@ -722,17 +722,22 @@ def test(self, loop):
     process_id = current_process().index
     a = Account.objects.get(name='Principal')
 
-    def create_market(i):
-        return Market.objects.get(id=i)
+    def getpos(i):
+        m = Market.objects.get(id=i)
+        try:
+            p = Position.objects.get(account=a, market=m)
+        except ObjectDoesNotExist:
+            p = Position.objects.create(account=a, market=m)
+        finally:
+            return p
 
     try:
-        m = create_market(process_id)
+        pos = getpos(process_id)
     except ObjectDoesNotExist:
-        m = create_market(process_id + 1)
+        pos = getpos(process_id + 1)
     finally:
 
         log.info('Task {0} start with process {1}'.format(task_id, process_id))
-        pos = Position.objects.create(account=a, market=m)
         pos.size = 1
 
         while t<=loop:

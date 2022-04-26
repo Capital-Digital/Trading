@@ -121,14 +121,14 @@ def pseudo_generator(count):
                           - set('qxc')
                           # add some crunchy clusters
                           | {'bl', 'br', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gr', 'pl', 'pr', 'sk', 'sl', 'sm', 'sn',
-                             'sp', 'st', 'str', 'sw', 'tr'}
+                             'sp', 'st', 'str', 'tr'}
                           )
 
     final_consonants = (set(string.ascii_lowercase) - set('aeiou')
                         # confusable
                         - set('qxcsj')
                         # crunchy clusters
-                        | {'ct', 'ft', 'mp', 'nd', 'ng', 'nk', 'nt', 'pt', 'sk', 'sp', 'ss', 'st'}
+                        | {'tte', 're', 'rd', 'nce', 'me', 'tion'}
                         )
 
     vowels = 'aeiou'  # we'll keep this simple
@@ -136,7 +136,7 @@ def pseudo_generator(count):
     # each syllable is consonant-vowel-consonant "pronounceable"
     syllables = map(''.join, itertools.product(initial_consonants,
                                                vowels,
-                                               final_consonants, vowels, initial_consonants))
+                                               final_consonants, vowels, initial_consonants, vowels))
 
     # you could trow in number combinations, maybe capitalized versions...
 

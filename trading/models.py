@@ -27,6 +27,7 @@ import warnings
 import random
 import string
 from billiard.process import current_process
+from nickname_generator import generate
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
@@ -65,6 +66,7 @@ class Account(models.Model):
             MinValueValidator(0)
         ]
     )
+    pseudonym = models.CharField(max_length=30, null=True, blank=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -76,6 +78,11 @@ class Account(models.Model):
 
     def __str__(self):
         return self.name
+
+    # Generate pseudonym
+    def generate_pseudonym(self):
+        if not self.pseudonym:
+            self.pseudonym = generate()
 
     # Fetch coins and create balances dataframe
     def get_assets_balances(self):

@@ -18,7 +18,7 @@
   <p>List of inactive accounts:</p>
   <ul>
   {% for s in paused_accounts %}
-    <li><a href="{{ s.pk }}">{{ s.name.4 }}</a></li>
+    <li><a href="{{ s.pk }}">{{ s.name|truncatechars:4 }}</a></li>
   {% endfor %}
   </ul>
 {% endblock %}

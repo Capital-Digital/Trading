@@ -21,7 +21,7 @@ class AccountListView(generic.ListView):
         return Account.objects.all()
 
 
-class AccountDetailView(SingleTableMixin, generic.DetailView):
+class AccountDetailView(generic.DetailView):
     model = Account
     table_class = CloseOrderTable
     context_table_name = 'table'

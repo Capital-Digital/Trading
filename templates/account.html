@@ -1,0 +1,36 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
+
+{% block content %}
+  <h1>{{account.name}}</h1>
+  <p>Data for account {{account.name}}</p>
+
+  <h2>Assets</h2>
+  <h3>Spot</h3>
+  <p>List of assets in spot wallet:</p>
+  <ul>
+  {% for s in active_accounts %}
+    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+  {% endfor %}
+  </ul>
+
+  <h3>Future</h3>
+  <p>List of assets in future wallet:</p>
+  <ul>
+  {% for s in active_accounts %}
+    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+  {% endfor %}
+  </ul>
+
+  <h2>Orders</h2>
+  <h3>Open orders</h3>
+  <p>List of open orders:</p>
+  <ul>
+  {% for s in active_accounts %}
+    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+  {% endfor %}
+  </ul>
+{% endblock %}

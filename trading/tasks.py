@@ -295,15 +295,22 @@ def rebalance(account_id, reload=False, release=True):
             log.info('Allocate resources', action='open_short')
             log.info('******************')
 
-            # Test if a sell spot order is open
-            if account.has_spot_asset('used', code):
-                pending = account.balances.spot.used.quantity[code]
+            try:
+                # Test if a ell spot order is open
+                open = Order.objects.get(account=account,
+                                         status='open',
+                                         market__base__code=code,
+                                         market__quote__code=account.quote,
+                                         action='sell_spot'
+                                         )
+            except ObjectDoesNotExist:
+                sell_spot = 0
             else:
-                pending = 0
+                sell_spot = open.amount
 
             # Determine delta quantity
             price = account.balances.price['spot']['bid'][code]
-            delta = account.balances.account.target.delta[code] - pending  # Offset sell_spot
+            delta = account.balances.account.target.delta[code] - sell_spot  # Offset sell_spot order size
 
             if delta > 0:
 
@@ -336,22 +343,18 @@ def rebalance(account_id, reload=False, release=True):
         log.info('Allocate resources', action='buy_spot')
         log.info('******************')
 
-        if account.has_opened_short(code):
-
-            try:
-                # Test if a close_short order is open
-                open = Order.objects.get(account=account,
-                                         status='open',
-                                         market__base__code=code,
-                                         market__quote__code=account.quote,
-                                         action='close_short'
-                                         )
-            except ObjectDoesNotExist:
-                pending = 0
-            else:
-                pending = open.remaining
+        try:
+            # Test if a close_short order is open
+            open = Order.objects.get(account=account,
+                                     status='open',
+                                     market__base__code=code,
+                                     market__quote__code=account.quote,
+                                     action='close_short'
+                                     )
+        except ObjectDoesNotExist:
+            close_short = 0
         else:
-            pending = 0
+            close_short = open.amount
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]
@@ -360,7 +363,7 @@ def rebalance(account_id, reload=False, release=True):
 
         # Determine order size and value
         price = account.balances.price['spot']['bid'][code]
-        delta = abs(account.balances.account.target.delta[code]) - pending  # Offset pending close_short
+        delta = abs(account.balances.account.target.delta[code]) - close_short  # Offset close_short order size
         desired_val = delta * price
         val = min(free, desired_val)
 

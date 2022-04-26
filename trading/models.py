@@ -330,6 +330,7 @@ class Account(models.Model):
         target = self.balances.account.target.quantity.dropna()
         acc_value = self.account_value()
 
+        log.info(' ')
         log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
 
         #  Select columns with assets quantities

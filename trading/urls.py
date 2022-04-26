@@ -6,5 +6,5 @@ from trading.views import combined_stats
 
 urlpatterns = [
     path('', combined_stats, name='index'),
-    path('/accounts', combined_stats, name='accounts'),
+    path('/summary', combined_stats, name='trading'),
 ]

@@ -8,7 +8,7 @@ from graphene_django.views import GraphQLView
 log = structlog.get_logger(__name__)
 
 urlpatterns = [
-    path('marketsdata/', include('marketsdata.urls')),
+    path('market/', include('marketsdata.urls')),
     path('strategy/', include('strategy.urls')),
     path('trading/', include('trading.urls')),
 

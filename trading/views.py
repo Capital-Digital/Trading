@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404
 
 class AccountListView(generic.ListView):
     model = Account
-    paginate_by = 10
+    paginate_by = 1
     context_object_name = 'accounts_list'
     template_name = 'accounts.html'
 

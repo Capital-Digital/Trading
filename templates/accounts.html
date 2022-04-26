@@ -11,14 +11,14 @@
   <p>List of active accounts:</p>
   <ul>
   {% for s in active_accounts %}
-    <li><a href="{{ s.pk }}">{{ s.name[:4] }}</a></li>
+    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
   {% endfor %}
   </ul>
   <h2>Inactive accounts</h2>
   <p>List of inactive accounts:</p>
   <ul>
   {% for s in paused_accounts %}
-    <li><a href="{{ s.pk }}">{{ s.name[:4] }}</a></li>
+    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
   {% endfor %}
   </ul>
 {% endblock %}

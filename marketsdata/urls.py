@@ -1,8 +1,8 @@
 from django.urls import path
 
-from marketsdata.views import index
+from marketsdata.views import marketsdata_stats
 
 
 urlpatterns = [
-    path('', index, name='index'),
+    path('', marketsdata_stats, name='index'),
 ]

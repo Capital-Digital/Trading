@@ -19,17 +19,7 @@
   {% if not orders_open %}
   <p class="text-success">Account has no open order</p>
   {% endif %}
-  <ul>
-  {% for s in orders_open %}
-    <li>{{ s.clientid }}</li>
-  {% endfor %}
-  </ul>
 
   <h4>Orders</h4>
   <p>List of open orders:</p>
-  <ul>
-  {% for order in orders %}
-    <li>{{ s.clientid }}</li>
-  {% endfor %}
-  </ul>
 {% endblock %}

@@ -6,6 +6,6 @@ from trading.views import combined_stats, list_accounts, info_account, AccountLi
 
 urlpatterns = [
     path('', combined_stats, name='index'),
-    path('', AccountListView.as_view(), name='accounts'),
+    path('accounts/', AccountListView.as_view(), name='accounts'),
     path('accounts/<int:pk>', AccountListView.as_view(), name='account'),
 ]

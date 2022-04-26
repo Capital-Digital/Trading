@@ -1,10 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base_generic.html" %}
+{% load static %}
 
-</body>
-</html>
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
+
+{% block content %}
+  <h1>Markets</h1>
+  <p>List of markets</p>
+  <h2>Exchanges</h2>
+  <p>Objects in database:</p>
+  <ul>
+    <li>Exchanges: {{ num_exchanges }}</li>
+    <li>Currencies: {{ num_currencies }}</li>
+    <li>Spot markets: {{ num_spot_markets }}</li>
+    <li>Derivative markets: {{ num_derivative_markets }}</li>
+  </ul>
+  <h2>Markets</h2>
+  <p>Objects in database:</p>
+  <ul>
+    <li>Active strategies: {{ num_active_strategies }}</li>
+    <li>Paused strategies: {{ num_paused_strategies }}</li>
+  </ul>
+  <h2>Currencies</h2>
+  <p>Objects in database:</p>
+  <ul>
+    <li>Account: {{ num_accounts }}</li>
+    <li>Open orders: {{ num_open_orders }}</li>
+    <li>Closed orders: {{ num_closed_orders }}</li>
+    <li>Canceled orders: {{ num_canceled_orders }}</li>
+  </ul>
+{% endblock %}

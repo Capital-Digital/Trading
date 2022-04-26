@@ -296,17 +296,20 @@ def rebalance(account_id, reload=False, release=True):
             log.info('******************')
 
             try:
-                # Test if a ell spot order is open
+                # Test if a sell spot order is open
+                market, flip = account.exchange.get_spot_market(code, account.quote)
                 open = Order.objects.get(account=account,
                                          status='open',
-                                         market__base__code=code,
-                                         market__quote__code=account.quote,
+                                         market=market,
                                          action='sell_spot'
                                          )
             except ObjectDoesNotExist:
                 sell_spot = 0
             else:
-                sell_spot = open.amount
+                if flip:
+                    sell_spot = open.amount / open.price
+                else:
+                    sell_spot = open.amount
 
             # Determine delta quantity
             price = account.balances.price['spot']['bid'][code]
@@ -345,16 +348,19 @@ def rebalance(account_id, reload=False, release=True):
 
         try:
             # Test if a close_short order is open
+            market, flip = account.exchange.get_perp_market(code, account.quote)
             open = Order.objects.get(account=account,
                                      status='open',
-                                     market__base__code=code,
-                                     market__quote__code=account.quote,
+                                     market=market,
                                      action='close_short'
                                      )
         except ObjectDoesNotExist:
             close_short = 0
         else:
-            close_short = open.amount
+            if flip:
+                close_short = open.amount / open.price
+            else:
+                close_short = open.amount
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]

@@ -76,13 +76,13 @@ class Account(models.Model):
     class Meta:
         verbose_name_plural = "Accounts"
 
+    def save(self, *args, **kwargs):
+        if not self.pseudonym:
+            self.pseudonym = generate().title()
+        super(Account, self).save(*args, **kwargs)
+
     def __str__(self):
         return self.name
-
-    # Generate pseudonym
-    def generate_pseudonym(self):
-        if not self.pseudonym:
-            self.pseudonym = generate()
 
     # Fetch coins and create balances dataframe
     def get_assets_balances(self):

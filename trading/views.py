@@ -39,8 +39,8 @@ def combined_stats(request):
 def list_accounts(request):
 
     # Generate counts of some main objects
-    active_accounts = Account.objects.filter(active=True).values_list('pk', flat=True)
-    paused_accounts = Account.objects.filter(active=False).values_list('pk', flat=True)
+    active_accounts = Account.objects.filter(active=True).values_list('pseudonym', flat=True)
+    paused_accounts = Account.objects.filter(active=False).values_list('pseudonym', flat=True)
 
     context = {
         'active_accounts': active_accounts,

@@ -6,6 +6,7 @@ from marketsdata.views import marketsdata_stats
 from strategy.views import strategy_stats
 from trading.models import Account, Order, Fund, Position
 from django.views import generic
+from django.shortcuts import get_object_or_404
 
 
 class AccountListView(generic.ListView):
@@ -14,6 +15,10 @@ class AccountListView(generic.ListView):
     context_object_name = 'accounts_list'
     queryset = Account.objects.all()
     template_name = 'accounts.html'
+
+
+class AccountDetailView(generic.DetailView):
+    model = Account
 
 
 def trading_stats(request):

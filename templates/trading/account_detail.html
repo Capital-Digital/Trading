@@ -8,8 +8,7 @@
   <h1>{{account.name}}</h1>
   <p>Data for account {{account.name}}</p>
 
-  <h2>Assets</h2>
-  <h3>Spot</h3>
+  <h2>Spot</h2>
   <p>List of assets in spot wallet:</p>
   <ul>
   {% for s in active_accounts %}
@@ -17,7 +16,7 @@
   {% endfor %}
   </ul>
 
-  <h3>Future</h3>
+  <h2>Future</h2>
   <p>List of assets in future wallet:</p>
   <ul>
   {% for s in active_accounts %}
@@ -26,7 +25,6 @@
   </ul>
 
   <h2>Orders</h2>
-  <h3>Open orders</h3>
   <p>List of open orders:</p>
   <ul>
   {% for s in active_accounts %}

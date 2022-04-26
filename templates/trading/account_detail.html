@@ -1,5 +1,7 @@
 {% extends "base_generic.html" %}
 {% load static %}
+{% load django_tables2 %}
+{% load render_table from django_tables2 %}
 
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 <img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
@@ -10,11 +12,7 @@
 
   <h4>Closed orders</h4>
   <p>List of assets in spot wallet:</p>
-  <ul>
-  {% for s in orders_closed %}
-    <li>{{ s.dt_update }} {{ s.side }} {{ s.market.symbol }} {{ s.market.wallet }} {{ s.amount }} {{ s.market.base.code }}</li>
-  {% endfor %}
-  </ul>
+  {% render_table table %}
 
   <h4>Open orders</h4>
   <p>List of assets in future wallet:</p>

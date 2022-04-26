@@ -1,8 +1,8 @@
 from django.urls import path
 from django.conf.urls import url, include
 
-from . import views
+from trading.views import index
 
 urlpatterns = [
-    path('', views.index_trading, name='index'),
+    path('', index, name='index'),
 ]

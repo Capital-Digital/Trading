@@ -128,7 +128,7 @@ def pseudo_generator(count):
                         # confusable
                         - set('qxcsj')
                         # crunchy clusters
-                        | {'tte', 're', 'rd', 'nce', 'me', 'tion'}
+                        | {'nette', 'tard', 'nce', 'me', 'tion', 'trude', 'wala'}
                         )
 
     vowels = 'aeiou'  # we'll keep this simple

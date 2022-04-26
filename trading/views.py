@@ -15,9 +15,9 @@ def trading_stats(request):
 
     context = {
         'num_accounts': num_accounts,
-        # 'num_open_orders': num_open_orders,
-        # 'num_closed_orders': num_closed_orders,
-        # 'num_canceled_orders': num_canceled_orders,
+        'num_open_orders': num_open_orders,
+        'num_closed_orders': num_closed_orders,
+        'num_canceled_orders': num_canceled_orders,
     }
 
     # Render the HTML template index.html with the data in the context variable
@@ -26,6 +26,9 @@ def trading_stats(request):
 
 def combined_stats(request):
     response1 = trading_stats(request)
+
+    print(response1)
+
     response2 = marketsdata_stats(request)
     return render('index.html', {
         **response1.context_data,

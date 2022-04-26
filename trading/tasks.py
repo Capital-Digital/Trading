@@ -296,7 +296,7 @@ def rebalance(account_id, reload=False, release=True):
             log.info('******************')
 
             try:
-                # Test if a sell spot order is open
+                # Test if a sell spot or an open short order is open
                 market, flip = account.exchange.get_spot_market(code, account.quote)
                 open = Order.objects.get(account=account,
                                          status='open',
@@ -347,7 +347,7 @@ def rebalance(account_id, reload=False, release=True):
         log.info('******************')
 
         try:
-            # Test if a close_short order is open
+            # Test if a close_short or a buy_spot order is open
             market, flip = account.exchange.get_perp_market(code, account.quote)
             open = Order.objects.get(account=account,
                                      status='open',

@@ -18,6 +18,9 @@
 
   <h2>Open orders</h2>
   <p>List of assets in future wallet:</p>
+  {% if not orders_open %}
+  <p>List of assets in spot wallet:</p>
+  {% endif %}
   <ul>
   {% for s in orders_open %}
     <li>{{ s.clientid }}</li>

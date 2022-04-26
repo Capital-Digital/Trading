@@ -34,3 +34,18 @@ def combined_stats(request):
         **response2.context_data,
         **response3.context_data
     })
+
+
+def list_accounts(request):
+
+    # Generate counts of some main objects
+    active_accounts = Account.objects.filter(active=True).values_list('pk', flat=True)
+    paused_accounts = Account.objects.filter(active=False).values_list('pk', flat=True)
+
+    context = {
+        'active_accounts': active_accounts,
+        'paused_accounts': paused_accounts,
+    }
+
+    # Render the HTML template index.html with the data in the context variable
+    return render(request, 'accounts.html', context=context)

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  {% block title %}<title>Trading app</title>{% endblock %}
+  {% block title %}<title>Boter</title>{% endblock %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
@@ -21,8 +21,9 @@
           {% block sidebar %}
            <ul class="sidebar-nav">
                <li><a href="{% url 'index' %}">Home</a></li>
-               <li><a href="">Accounts</a></li>
-               <li><a href="">Orders</a></li>
+               <li><a href="{% url 'markets' %}">Markets</a></li>
+               <li><a href="{% url 'strategies' %}">Strategies</a></li>
+               <li><a href="{% url 'accounts' %}">Accounts</a></li>
            </ul>
           {% endblock %}
       </div>

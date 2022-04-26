@@ -12,7 +12,7 @@
   <p>List of assets in spot wallet:</p>
   <ul>
   {% for s in orders_closed %}
-    <li>{{ s.clientid }}</li>
+    <li>{{ s.market.symbol }} {{ s.market.wallet }} {{ s.size }} {{ s.market.base.code }}</li>
   {% endfor %}
   </ul>
 

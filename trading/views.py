@@ -7,6 +7,8 @@ from strategy.views import strategy_stats
 from trading.models import Account, Order, Fund, Position
 from django.views import generic
 from django.shortcuts import get_object_or_404
+from trading.tables import CloseOrderTable
+from django_tables2 import SingleTableMixin
 
 
 class AccountListView(generic.ListView):
@@ -19,8 +21,10 @@ class AccountListView(generic.ListView):
         return Account.objects.all()
 
 
-class AccountDetailView(generic.DetailView):
+class AccountDetailView(SingleTableMixin, generic.DetailView):
     model = Account
+    table_class = CloseOrderTable
+    context_table_name = 'table'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

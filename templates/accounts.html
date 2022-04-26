@@ -10,7 +10,14 @@
   <h2>Active accounts</h2>
   <p>List of active accounts:</p>
   <ul>
-  {% for s in active_strategies %}
+  {% for s in active_accounts %}
+    <li>{{ s }}</li>
+  {% endfor %}
+  </ul>
+  <h2>Inactive accounts</h2>
+  <p>List of inactive accounts:</p>
+  <ul>
+  {% for s in paused_accounts %}
     <li>{{ s }}</li>
   {% endfor %}
   </ul>

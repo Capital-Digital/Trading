@@ -3,7 +3,7 @@ from django.shortcuts import render
 from marketsdata.models import Market, Exchange, Currency
 
 
-def index(request):
+def marketsdata_stats(request):
 
     # Generate counts of some main objects
     num_exchanges = Exchange.objects.count()

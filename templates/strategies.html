@@ -1,10 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base_generic.html" %}
+{% load static %}
 
-</body>
-</html>
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
+
+{% block content %}
+  <h1>Homepage</h1>
+  <p>Welcome to <em>Boter</em>!</p>
+  <h2>Strategies</h2>
+  <p>List:</p>
+  <ul>
+    <li>Active strategies: {{ active_strategies }}</li>
+    <li>Paused strategies: {{ paused_strategies }}</li>
+  </ul>
+{% endblock %}

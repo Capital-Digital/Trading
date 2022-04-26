@@ -1,4 +1,5 @@
 {% extends "base_generic.html" %}
+{% extends "navbar.html" %}
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 <img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
@@ -17,8 +18,8 @@
   <h2>Strategies</h2>
   <p>Records in database:</p>
   <ul>
-    <li>Strategies (active): {{ num_active_strategies }}</li>
-    <li>Strategies (paused): {{ num_paused_strategies }}</li>
+    <li>Active strategies: {{ num_active_strategies }}</li>
+    <li>Paused strategies: {{ num_paused_strategies }}</li>
   </ul>
   <h2>Accounts</h2>
   <p>Records in database:</p>

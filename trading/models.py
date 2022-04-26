@@ -27,11 +27,12 @@ import warnings
 import random
 import string
 from billiard.process import current_process
-from nickname_generator import generate
+from names_generator import generate_name
+import json
+
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-import json
 
 log = structlog.get_logger(__name__)
 
@@ -78,7 +79,7 @@ class Account(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pseudonym:
-            self.pseudonym = generate().title()
+            self.pseudonym = generate_name().replace('_', ' ').title()
         super(Account, self).save(*args, **kwargs)
 
     def __str__(self):

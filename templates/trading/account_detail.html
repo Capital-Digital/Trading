@@ -8,27 +8,27 @@
   <h1>{{account.name}}</h1>
   <p>Data for account {{account.name}}</p>
 
-  <h2>Spot</h2>
+  <h2>Closed orders</h2>
   <p>List of assets in spot wallet:</p>
   <ul>
-  {% for s in active_accounts %}
-    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+  {% for s in orders_closed %}
+    <li>{{ s.clientid }}</li>
   {% endfor %}
   </ul>
 
-  <h2>Future</h2>
+  <h2>Open orders</h2>
   <p>List of assets in future wallet:</p>
   <ul>
-  {% for s in active_accounts %}
-    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+  {% for s in orders_open %}
+    <li>{{ s.clientid }}</li>
   {% endfor %}
   </ul>
 
   <h2>Orders</h2>
   <p>List of open orders:</p>
   <ul>
-  {% for s in active_accounts %}
-    <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+  {% for order in orders %}
+    <li>{{ s.clientid }}</li>
   {% endfor %}
   </ul>
 {% endblock %}

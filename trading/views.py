@@ -22,28 +22,17 @@ class AccountListView(generic.ListView):
 class AccountDetailView(generic.DetailView):
     model = Account
 
-    def info_account(request, account_id):
-
-        account = Account.objects.get(id=account_id)
-        orders = Order.objects.filter(account=account)
-        orders_open = orders.filter(status='open')
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        orders = Order.objects.filter(account=self)
         orders_closed = orders.filter(status='closed')
-        orders_canceled = orders.filter(status='canceled')
-        trade_total = orders_closed.aggregate(Sum('cost'))['cost__sum']
 
-        context = {
-            'orders': orders,
-            'orders_open': orders_open,
-            'orders_closed': orders_closed,
-            'orders_canceled': orders_canceled,
-            'account_value': account.account_value(),
-            'account_strategy_name': account.strategy.name,
-            'account_name': account.name,
-            'trade_total': trade_total
-        }
-
-        # Render the HTML template index.html with the data in the context variable
-        return render(request, 'account.html', context=context)
+        context['orders'] = orders
+        context['orders_closed'] = orders_closed
+        context['orders_open'] = orders.filter(status='open')
+        context['orders_canceled'] = orders.filter(status='canceled')
+        context['orders_closed'] = orders_closed.aggregate(Sum('cost'))['cost__sum']
+        return context
 
 
 def trading_stats(request):

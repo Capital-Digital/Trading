@@ -25,7 +25,7 @@ class AccountDetailView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        orders = Order.objects.filter(account=context)
+        orders = Order.objects.filter(account=context.id)
         orders_closed = orders.filter(status='closed')
 
         context['orders'] = orders

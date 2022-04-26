@@ -135,8 +135,7 @@ def pseudo_generator(count):
 
     # each syllable is consonant-vowel-consonant "pronounceable"
     syllables = map(''.join, itertools.product(initial_consonants,
-                                               vowels,
-                                               final_consonants, vowels, initial_consonants, vowels))
+                                               vowels, final_consonants))
 
     # you could trow in number combinations, maybe capitalized versions...
 

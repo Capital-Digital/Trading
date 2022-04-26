@@ -28,15 +28,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        orders = Order.objects.filter(account=self.object)
-        orders_closed = orders.filter(status='closed').order_by('-id')[:5]
         table = CloseOrderTable(Order.objects.all())
-
         context['orders_closed'] = table
-        context['orders_open'] = orders.filter(status='open').order_by('-id')[:5]
-        context['orders_canceled'] = orders.filter(status='canceled').order_by('-id')[:5]
-        context['trade_total'] = orders_closed.aggregate(Sum('cost'))['cost__sum']
         return context
 
 

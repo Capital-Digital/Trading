@@ -283,8 +283,13 @@ class Account(models.Model):
         else:
             futu_val = 0
 
+        if ('position', 'open', 'value') in self.balances.columns:
+            pos_val = self.balances.position.open.value.dropna().sum()
+        else:
+            pos_val = 0
+
         # Sum wallets
-        return spot_val + futu_val
+        return spot_val + max(futu_val, pos_val)
 
     # Create columns with targets
     def get_target(self):

@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from django.db.models import Sum
 from django.shortcuts import render
 from django.template.response import TemplateResponse
 from marketsdata.views import marketsdata_stats
@@ -51,15 +52,24 @@ def list_accounts(request):
     return render(request, 'accounts.html', context=context)
 
 
-def info_account(request):
+def info_account(request, account_id):
 
-    # Generate counts of some main objects
-    active_accounts = Account.objects.filter(active=True)
-    paused_accounts = Account.objects.filter(active=False)
+    account = Account.objects.get(id=account_id)
+    orders = Order.objects.filter(account=account)
+    orders_open = orders.filter(status='open')
+    orders_closed = orders.filter(status='closed')
+    orders_canceled = orders.filter(status='canceled')
+    trade_total = orders_closed.aggregate(Sum('cost'))['cost__sum']
 
     context = {
-        'active_accounts': active_accounts,
-        'paused_accounts': paused_accounts,
+        'orders': orders,
+        'orders_open': orders_open,
+        'orders_closed': orders_closed,
+        'orders_canceled': orders_canceled,
+        'account_value': account.account_value(),
+        'account_strategy_name': account.strategy.name,
+        'account_name': account.name,
+        'trade_total': trade_total
     }
 
     # Render the HTML template index.html with the data in the context variable

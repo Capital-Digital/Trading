@@ -14,11 +14,4 @@
     <li><a href="{{ a.pk }}">{{ a.pseudonym }}</a></li>
   {% endfor %}
   </ul>
-  <h2>Inactive accounts</h2>
-  <p>List of inactive accounts:</p>
-  <ul>
-  {% for a in accounts_list %}
-    <li><a href="{{ a.pk }}">{{ a.pseudonym }}</a></li>
-  {% endfor %}
-  </ul>
 {% endblock %}

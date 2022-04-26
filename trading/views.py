@@ -26,11 +26,8 @@ def trading_stats(request):
 
 def combined_stats(request):
     response1 = trading_stats(request)
-
-    print(response1)
-
     response2 = marketsdata_stats(request)
-    return render('index.html', {
+    return render(request, 'index.html', {
         **response1.context_data,
         **response2.context_data
     })

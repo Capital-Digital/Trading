@@ -4,7 +4,6 @@ from trading.models import Account, Order, Fund, Position
 
 
 def trading_stats(request):
-    """View function for home page of site."""
 
     # Generate counts of some main objects
     num_accounts = Account.objects.all().count()

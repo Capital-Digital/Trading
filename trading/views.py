@@ -13,8 +13,10 @@ class AccountListView(generic.ListView):
     model = Account
     paginate_by = 10
     context_object_name = 'accounts_list'
-    queryset = Account.objects.all()
     template_name = 'accounts.html'
+
+    def get_queryset(self):
+        return Account.objects.all()
 
 
 class AccountDetailView(generic.DetailView):

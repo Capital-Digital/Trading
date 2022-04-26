@@ -5,27 +5,27 @@
 
 {% block content %}
   <h1>Homepage</h1>
-  <p>Welcome to the Trading app <em>Boter</em>!</p>
+  <p>Welcome to <em>Boter</em>!</p>
   <h2>Markets</h2>
   <p>Records in database:</p>
   <ul>
-    <li><strong>Exchanges:</strong> {{ num_exchanges }}</li>
-    <li><strong>Currencies:</strong> {{ num_currencies }}</li>
-    <li><strong>Spot markets:</strong> {{ num_spot_markets }}</li>
-    <li><strong>Derivative markets:</strong> {{ num_derivative_markets }}</li>
+    <li>Exchanges: {{ num_exchanges }}</li>
+    <li>Currencies: {{ num_currencies }}</li>
+    <li>Spot markets: {{ num_spot_markets }}</li>
+    <li>Derivative markets: {{ num_derivative_markets }}</li>
   </ul>
   <h2>Strategies</h2>
   <p>Records in database:</p>
   <ul>
-    <li><strong>Strategies (active):</strong> {{ num_active_strategies }}</li>
-    <li><strong>Strategies (paused):</strong> {{ num_paused_strategies }}</li>
+    <li>Strategies (active): {{ num_active_strategies }}</li>
+    <li>Strategies (paused): {{ num_paused_strategies }}</li>
   </ul>
   <h2>Accounts</h2>
   <p>Records in database:</p>
   <ul>
-    <li><strong>Account:</strong> {{ num_accounts }}</li>
-    <li><strong>Oopen orders:</strong> {{ num_open_orders }}</li>
-    <li><strong>Closed orders:</strong> {{ num_closed_orders }}</li>
-    <li><strong>Canceled orders:</strong> {{ num_canceled_orders }}</li>
+    <li>Account: {{ num_accounts }}</li>
+    <li>Open orders: {{ num_open_orders }}</li>
+    <li>Closed orders: {{ num_closed_orders }}</li>
+    <li>Canceled orders: {{ num_canceled_orders }}</li>
   </ul>
 {% endblock %}

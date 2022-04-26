@@ -26,8 +26,7 @@ from picklefield.fields import PickledObjectField
 import warnings
 import random
 import string
-from billiard.process import current_process
-from names_generator import generate_name
+from gibberish import Gibberish
 import json
 
 
@@ -79,7 +78,7 @@ class Account(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pseudonym:
-            self.pseudonym = generate_name().replace('_', ' ').title()
+            self.pseudonym = pseudo_generator(1)[0].title()
         super(Account, self).save(*args, **kwargs)
 
     def __str__(self):

@@ -8,6 +8,10 @@ import structlog
 from datetime import timedelta, datetime
 from pprint import pprint
 import ccxt
+import string
+import itertools
+import random
+
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
 log = structlog.get_logger(__name__)
@@ -108,3 +112,32 @@ def order_error(clientid, exception, kwargs):
     order.save()
 
     log.info(kwargs)
+
+
+# Generate pseudonym
+def pseudo_generator(count):
+    initial_consonants = (set(string.ascii_lowercase) - set('aeiou')
+                          # remove those easily confused with others
+                          - set('qxc')
+                          # add some crunchy clusters
+                          | {'bl', 'br', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gr', 'pl', 'pr', 'sk', 'sl', 'sm', 'sn',
+                             'sp', 'st', 'str', 'sw', 'tr'}
+                          )
+
+    final_consonants = (set(string.ascii_lowercase) - set('aeiou')
+                        # confusable
+                        - set('qxcsj')
+                        # crunchy clusters
+                        | {'ct', 'ft', 'mp', 'nd', 'ng', 'nk', 'nt', 'pt', 'sk', 'sp', 'ss', 'st'}
+                        )
+
+    vowels = 'aeiou'  # we'll keep this simple
+
+    # each syllable is consonant-vowel-consonant "pronounceable"
+    syllables = map(''.join, itertools.product(initial_consonants,
+                                               vowels,
+                                               final_consonants, vowels, initial_consonants))
+
+    # you could trow in number combinations, maybe capitalized versions...
+
+    return random.sample(set(syllables), count)

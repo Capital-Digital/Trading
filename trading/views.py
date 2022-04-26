@@ -5,6 +5,11 @@ from django.template.response import TemplateResponse
 from marketsdata.views import marketsdata_stats
 from strategy.views import strategy_stats
 from trading.models import Account, Order, Fund, Position
+from django.views import generic
+
+
+class AccountListView(generic.ListView):
+    model = Account
 
 
 def trading_stats(request):

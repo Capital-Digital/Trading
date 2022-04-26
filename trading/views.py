@@ -21,7 +21,7 @@ class AccountListView(generic.ListView):
         return Account.objects.all()
 
 
-class AccountDetailView(generic.DetailView):
+class AccountDetailView(SingleTableMixin, generic.DetailView):
     model = Account
     table_class = CloseOrderTable
     context_table_name = 'table'
@@ -31,8 +31,9 @@ class AccountDetailView(generic.DetailView):
 
         orders = Order.objects.filter(account=self.object)
         orders_closed = orders.filter(status='closed').order_by('-id')[:5]
+        table = CloseOrderTable(Order.objects.all())
 
-        context['orders_closed'] = CloseOrderTable(orders_closed)
+        context['orders_closed'] = table
         context['orders_open'] = orders.filter(status='open').order_by('-id')[:5]
         context['orders_canceled'] = orders.filter(status='canceled').order_by('-id')[:5]
         context['trade_total'] = orders_closed.aggregate(Sum('cost'))['cost__sum']

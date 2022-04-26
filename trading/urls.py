@@ -1,5 +1,5 @@
 from django.urls import path
-from django.conf.urls import url, include
+from django.conf.urls import url, include, re_path
 
 from trading.views import combined_stats
 

@@ -2,6 +2,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.template.response import TemplateResponse
 from marketsdata.views import marketsdata_stats
+from strategy.views import strategy_stats
 from trading.models import Account, Order, Fund, Position
 
 
@@ -27,7 +28,9 @@ def trading_stats(request):
 def combined_stats(request):
     response1 = trading_stats(request)
     response2 = marketsdata_stats(request)
+    response3 = strategy_stats(request)
     return render(request, 'index.html', {
         **response1.context_data,
-        **response2.context_data
+        **response2.context_data,
+        **response3.context_data
     })

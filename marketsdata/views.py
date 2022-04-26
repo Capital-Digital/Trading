@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.template.response import TemplateResponse
 from marketsdata.models import Market, Exchange, Currency
 
 
@@ -19,4 +20,4 @@ def marketsdata_stats(request):
     }
 
     # Render the HTML template index.html with the data in the context variable
-    return render(request, 'index.html', context=context)
+    return TemplateResponse(request, 'index.html', context=context)

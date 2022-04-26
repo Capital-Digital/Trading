@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.template.response import TemplateResponse
 from marketsdata.views import marketsdata_stats
 from trading.models import Account, Order, Fund, Position
 
@@ -20,7 +21,7 @@ def trading_stats(request):
     }
 
     # Render the HTML template index.html with the data in the context variable
-    return render(request, 'index.html', context=context)
+    return TemplateResponse(request, 'index.html', context=context)
 
 
 def combined_stats(request):

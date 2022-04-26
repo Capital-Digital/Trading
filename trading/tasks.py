@@ -200,7 +200,7 @@ def rebalance(account_id, reload=False, release=True):
     #
     account = Account.objects.get(id=account_id)
 
-    log.bind(worker=current_process().index, account=account.name)
+    log.bind(worker=current_process().index, account=account.name, release=release)
 
     log.info('')
     log.info('Rebalance...')
@@ -301,19 +301,19 @@ def rebalance(account_id, reload=False, release=True):
                 open = Order.objects.get(account=account,
                                          status='open',
                                          market=market,
-                                         action='sell_spot'
+                                         action__in=['sell_spot', 'open_short']
                                          )
             except ObjectDoesNotExist:
-                sell_spot = 0
+                open_order_size = 0
             else:
                 if flip:
-                    sell_spot = open.amount / open.price
+                    open_order_size = open.amount / open.price
                 else:
-                    sell_spot = open.amount
+                    open_order_size = open.amount
 
             # Determine delta quantity
             price = account.balances.price['spot']['bid'][code]
-            delta = account.balances.account.target.delta[code] - sell_spot  # Offset sell_spot order size
+            delta = account.balances.account.target.delta[code] - open_order_size  # Offset sell/close order size
 
             if delta > 0:
 
@@ -352,15 +352,15 @@ def rebalance(account_id, reload=False, release=True):
             open = Order.objects.get(account=account,
                                      status='open',
                                      market=market,
-                                     action='close_short'
+                                     action__in=['buy_spot', 'close_short']
                                      )
         except ObjectDoesNotExist:
-            close_short = 0
+            open_order_size = 0
         else:
             if flip:
-                close_short = open.amount / open.price
+                open_order_size = open.amount / open.price
             else:
-                close_short = open.amount
+                open_order_size = open.amount
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]
@@ -369,7 +369,7 @@ def rebalance(account_id, reload=False, release=True):
 
         # Determine order size and value
         price = account.balances.price['spot']['bid'][code]
-        delta = abs(account.balances.account.target.delta[code]) - close_short  # Offset close_short order size
+        delta = abs(account.balances.account.target.delta[code]) - open_order_size  # Offset buy/close order size
         desired_val = delta * price
         val = min(free, desired_val)
 
@@ -612,9 +612,8 @@ def send_fetch_orderid(account_id, order_id):
         response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
 
     except ccxt.OrderNotFound:
+        pprint(response)
         log.error('Unknown order {}'.format(order.clientid), id=order_id)
-        order.status = 'unknown'
-        order.save()
 
     except Exception as e:
         log.error('Unknown exception when fetching order {}'.format(order.clientid), id=order_id, e=str(e))

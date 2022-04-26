@@ -14,7 +14,6 @@
     <li><a href="{{ a.pk }}">{{ a.pseudonym }}</a></li>
   {% endfor %}
   </ul>
-    <p>Pagination ?</p>
 {% endblock %}
 
 {% block pagination %}
@@ -22,14 +21,14 @@
       <p>List of active accounts:</p>
       <div class="pagination">
           <span class="page-links">
-              {% if page_obj.has_previous %}
-                  <a href="{{ request.path }}?page={{ page_obj.previous_page_number }}">previous</a>
+              {% if accounts.has_previous %}
+                  <a href="{{ request.path }}?page={{ accounts.previous_page_number }}">previous</a>
               {% endif %}
               <span class="page-current">
-                  Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                  Page {{ accounts.number }} of {{ accounts.paginator.num_pages }}.
               </span>
-              {% if page_obj.has_next %}
-                  <a href="{{ request.path }}?page={{ page_obj.next_page_number }}">next</a>
+              {% if accounts.has_next %}
+                  <a href="{{ request.path }}?page={{ accounts.next_page_number }}">next</a>
               {% endif %}
           </span>
       </div>

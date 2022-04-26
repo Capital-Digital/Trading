@@ -731,23 +731,38 @@ class Account(models.Model):
         pct = self.balances.account.current.percent[code] * 100
         log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))
 
-        # Apply offset
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
-        updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
-        self.balances.loc[offset.index, offset.columns] = updated
+        try:
+            # Apply offset
+            updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
 
-        # Update new percentage
-        account_value = self.account_value()
-        for c in [code, self.quote]:
-            exposure_value = self.balances.account.current.value[c]
-            pct = exposure_value / account_value
-            self.balances.loc[c, ('account', 'current', 'percent')] = pct
-            log.info('Percentage for {0} is now {1}%'.format(c, round(pct * 100, 1)))
+        except KeyError:
+            log.info(filled)
+            log.info(average)
+            log.info('action {0}'.format(action))
+            log.info(offset.index)
+            log.info(offset.columns)
+            raise Exception('Unable to offset trade')
 
-        self.save()
+        else:
 
-        log.info('Offset complete')
-        log.unbind('account')
+            updated = updated.replace(0, np.nan)
+
+            # Update dataframe
+            self.balances.loc[offset.index, offset.columns] = updated
+
+            # Update new percentage
+            account_value = self.account_value()
+            for c in [code, self.quote]:
+                exposure_value = self.balances.account.current.value[c]
+                pct = exposure_value / account_value
+                self.balances.loc[c, ('account', 'current', 'percent')] = pct
+                log.info('Percentage for {0} is now {1}%'.format(c, round(pct * 100, 1)))
+
+            self.save()
+
+            log.info('Offset complete')
+            log.unbind('account')
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):

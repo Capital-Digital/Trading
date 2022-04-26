@@ -3,7 +3,7 @@ from django.shortcuts import render
 from trading.models import Account, Order, Fund, Position
 
 
-def index(request):
+def index_trading(request):
     """View function for home page of site."""
 
     # Generate counts of some main objects

@@ -13,7 +13,7 @@ urlpatterns = [
     # path('trading/', include('trading.urls')),
     path('admin/', admin.site.urls),
 
-    url(r"^", include("trading.urls", namespace="trading")),
+    url(r"^", include("trading.urls")),
     # url(r"^", include("marketsdata.urls", namespace="marketsdata")),
 
     path("graphql", GraphQLView.as_view(graphiql=True)),

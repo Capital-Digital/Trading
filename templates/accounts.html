@@ -21,14 +21,14 @@
       <p>List of active accounts:</p>
       <div class="pagination">
           <span class="page-links">
-              {% if accounts.has_previous %}
-                  <a href="{{ request.path }}?page={{ accounts.previous_page_number }}">previous</a>
+              {% if accounts_list.has_previous %}
+                  <a href="{{ request.path }}?page={{ accounts_list.previous_page_number }}">previous</a>
               {% endif %}
               <span class="page-current">
-                  Page {{ accounts.number }} of {{ accounts.paginator.num_pages }}.
+                  Page {{ accounts_list.number }} of {{ accounts_list.paginator.num_pages }}.
               </span>
-              {% if accounts.has_next %}
-                  <a href="{{ request.path }}?page={{ accounts.next_page_number }}">next</a>
+              {% if accounts_list.has_next %}
+                  <a href="{{ request.path }}?page={{ accounts_list.next_page_number }}">next</a>
               {% endif %}
           </span>
       </div>

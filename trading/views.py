@@ -30,7 +30,9 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context = super().get_context_data(**kwargs)
 
         orders = Order.objects.filter(account=self.object)
-        context['orders_closed'] = CloseOrderTable(orders)
+        table = CloseOrderTable(orders)
+
+        context['orders'] = table
         return context
 
 

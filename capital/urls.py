@@ -8,12 +8,13 @@ from graphene_django.views import GraphQLView
 log = structlog.get_logger(__name__)
 
 urlpatterns = [
-    path('markets/', include('marketsdata.urls')),
-    path('strategies/', include('strategy.urls')),
-    path('accounts/', include('trading.urls')),
 
     path('admin/', admin.site.urls),
     url(r"^", include("trading.urls")),
+
+    path('markets/', include('marketsdata.urls')),
+    path('strategies/', include('strategy.urls')),
+    path('accounts/', include('trading.urls')),
 
     path("graphql", GraphQLView.as_view(graphiql=True)),
 ]

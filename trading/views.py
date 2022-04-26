@@ -53,21 +53,6 @@ def combined_stats(request):
     })
 
 
-def list_accounts(request):
-
-    # Generate counts of some main objects
-    active_accounts = Account.objects.filter(active=True)
-    paused_accounts = Account.objects.filter(active=False)
-
-    context = {
-        'active_accounts': active_accounts,
-        'paused_accounts': paused_accounts,
-    }
-
-    # Render the HTML template index.html with the data in the context variable
-    return render(request, 'accounts.html', context=context)
-
-
 def info_account(request, account_id):
 
     account = Account.objects.get(id=account_id)

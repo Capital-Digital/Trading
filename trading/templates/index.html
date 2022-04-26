@@ -1,0 +1,14 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+  <h1>Homepage</h1>
+  <p>Welcome to the Trading app <em>Boter</em>!</p>
+  <h2>Some stats</h2>
+  <p>Records in database:</p>
+  <ul>
+    <li><strong>Account:</strong> {{ num_accounts }}</li>
+    <li><strong>Open orders:</strong> {{ num_open_orders }}</li>
+    <li><strong>Closed orders:</strong> {{ num_closed_orders }}</li>
+    <li><strong>Canceled orders:</strong> {{ num_canceled_orders }}</li>
+  </ul>
+{% endblock %}

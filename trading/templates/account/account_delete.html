@@ -1,9 +1,0 @@
-<h1>Delete account</h1>
-<form action="{% url 'account_delete' account.pk %}" method="post">
-    {% csrf_token %}
-    {{ form }}
-    Are you sure you want to delete the following account?<br><br>
-    {{ account.title }}<br><br>
-    <button class="button" type="submit">Delete</button>
-    <a href="{% url 'account_create' %}">Cancel</a>
-</form>

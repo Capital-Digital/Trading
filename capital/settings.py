@@ -60,7 +60,7 @@ ROOT_URLCONF = 'capital.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        "DIRS": [os.path.join(BASE_DIR, "../templates")],
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -253,12 +253,14 @@ DEFAULT_AUTO_FIELD='django.db.models.AutoField'
 
 SHELL_PLUS_IMPORTS = [
     'import django',
-    'import ccxt, ccxtpro',
+    'import ccxt',
     'import time',
     'import matplotlib.pyplot as plt',
     'import pandas as pd',
     'from capital.methods import *',
-    'from strategy.models import Strategy'
+    'from marketsdata.models import *',
+    'from trading.models import *',
+    'from strategy.models import *'
 ]
 
 NOTEBOOK_ARGUMENTS = [

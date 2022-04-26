@@ -5,10 +5,19 @@
 <img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
 
 {% block content %}
-  <h1>Homepage</h1>
-  <p>Welcome to <em>Boter</em>!</p>
+  <h1>Strategies</h1>
+  <p>Data from strategies</p>
   <h2>Strategies</h2>
   <p>List:</p>
+
+  <tbody>
+  {% for s in active_strategies %}
+   <tr>
+    <td>Strategy: {{ s }}</td>
+   </tr>
+  {% endfor %}
+  </tbody>
+
   <ul>
     <li>Active strategies: {{ active_strategies }}</li>
     <li>Paused strategies: {{ paused_strategies }}</li>

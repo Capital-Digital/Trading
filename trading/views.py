@@ -24,7 +24,7 @@ class AccountDetailView(generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         orders = Order.objects.filter(account=self.object)
         orders_closed = orders.filter(status='closed')
 
@@ -32,7 +32,7 @@ class AccountDetailView(generic.DetailView):
         context['orders_closed'] = orders_closed
         context['orders_open'] = orders.filter(status='open')
         context['orders_canceled'] = orders.filter(status='canceled')
-        context['orders_closed'] = orders_closed.aggregate(Sum('cost'))['cost__sum']
+        context['trade_total'] = orders_closed.aggregate(Sum('cost'))['cost__sum']
         return context
 
 

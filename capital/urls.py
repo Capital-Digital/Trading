@@ -14,7 +14,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     url(r"^", include("trading.urls")),
-    # url(r"^", include("marketsdata.urls", namespace="marketsdata")),
+    url(r"^", include("marketsdata.urls")),
 
     path("graphql", GraphQLView.as_view(graphiql=True)),
     # url(r"^admin/", admin.site.urls)

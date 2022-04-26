@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "bootstrap4",
     'guardian',
     "graphene_django",
+    "django_tables2",
 ]
 
 MIDDLEWARE = [

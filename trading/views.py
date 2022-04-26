@@ -15,8 +15,8 @@ class AccountListView(generic.ListView):
     context_object_name = 'accounts_list'
     template_name = 'accounts.html'
 
-    def get_queryset(self):
-        return Account.objects.all()
+    def accounts_active(self):
+        return Account.objects.filter(active=True)
 
 
 class AccountDetailView(generic.DetailView):

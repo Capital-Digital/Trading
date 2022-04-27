@@ -290,9 +290,6 @@ class Account(models.Model):
     def positions_pnl(self):
         if ('position', 'open', 'value') in self.balances.columns:
             pos_val = self.balances.position.open.unrealized_pnl.dropna().sum()
-        else:
-            pos_val = 0
-
         return pos_val
 
     # Create columns with targets

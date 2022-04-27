@@ -346,7 +346,7 @@ class Account(models.Model):
         log.info('Calculate delta')
 
         target = self.balances.account.target.quantity.dropna()
-        
+
         if self.has_opened_short():
             acc_value = self.assets_value() + self.positions_pnl()
         else:
@@ -613,6 +613,8 @@ class Account(models.Model):
 
         finally:
 
+            log.bind(orderid=order.orderid)
+
             # Get traded amount
             filled_prev = order.filled
             filled_total = response['filled']
@@ -645,12 +647,12 @@ class Account(models.Model):
 
                 log.info('Trade new {0}'.format(filled_new))
                 log.info('Trade total {0}'.format(filled_total))
-                log.unbind('account')
+                log.unbind('account', 'orderid')
 
                 return filled_new, order.average
 
             else:
-                log.unbind('account')
+                log.unbind('account', 'orderid')
                 return False, False
 
     # Offset transfer

@@ -612,7 +612,6 @@ def send_fetch_orderid(account_id, order_id):
         response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
 
     except ccxt.OrderNotFound:
-        pprint(response)
         log.error('Unknown order {}'.format(order.clientid), id=order_id)
 
     except Exception as e:

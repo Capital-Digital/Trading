@@ -11,5 +11,5 @@ class OrderTable(tables.Table):
     class Meta:
         model = Order
         fields = ('clientid', 'market__symbol', 'market__type', 'status', 'side', 'action', 'amount', 'price',
-                  'cost', 'render_dt_create', 'dt_update')
+                  'cost', 'dt_create', 'dt_update')
         exclude = ('ID',)

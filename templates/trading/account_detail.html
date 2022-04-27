@@ -81,7 +81,7 @@
       {% if user.is_authenticated %}
         {% if user == owner or user.is_superuser %}
 
-        <h2>Orders</h2>
+        <h4>Orders</h4>
         {% render_table table %}
         {% else %}
           <p>You are not authorized to view this account</p>

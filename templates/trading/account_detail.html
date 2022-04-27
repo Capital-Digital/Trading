@@ -12,17 +12,37 @@
   <h1>{{account.name}}</h1>
   <p>Data of account {{account.name}}</p>
 
-  <h4>Assets</h4>
-  <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
+  <ul class="nav nav-pills">
+    <li class="nav-item">
+      <a class="nav-link active" aria-current="page" href="#">Summary</a>
+      
 
-  <h4>Position</h4>
-  {% if has_position %}
-  <p>Position unrealized PnL is {{positions_pnl}} BUSD</p>
-  {% else %}
-  <p class="text-info">Account has no opened position</p>
-  {% endif %}
+      <h4>Assets</h4>
+      <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
 
-  {{account_value}}
+      <h4>Position</h4>
+      {% if has_position %}
+      <p>Position unrealized PnL is {{positions_pnl}} BUSD</p>
+      {% else %}
+      <p class="text-info">Account has no opened position</p>
+      {% endif %}
+
+      {{account_value}}
+
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Assets</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Positions</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Orders</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Trades</a>
+    </li>
+  </ul>
 
   <h4>Orders</h4>
   {% if not orders_open %}

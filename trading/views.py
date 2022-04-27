@@ -23,15 +23,12 @@ class AccountListView(generic.ListView):
 
 class AccountDetailView(SingleTableMixin, generic.DetailView):
     model = Account
-    # context_table_name = 'table'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         orders = Order.objects.filter(account=self.object)
-        table = CloseOrderTable(orders)
-
-        context['table'] = table
+        context['orders'] = orders
         return context
 
 

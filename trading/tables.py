@@ -5,4 +5,5 @@ from trading.models import Order
 class OrderTable(tables.Table):
     class Meta:
         model = Order
-        fields = ('clientid', 'market__symbol', 'market__type', 'dt_create', 'dt_update')
+        fields = ('clientid', 'market__symbol', 'market__type', 'status', 'side', 'action', 'amount', 'price',
+                  'cost', 'dt_create', 'dt_update')

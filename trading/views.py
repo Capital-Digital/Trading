@@ -24,7 +24,7 @@ class AccountListView(generic.ListView):
     model = Account
     paginate_by = 10
     context_object_name = 'accounts_list'
-    template_name = 'accounts.html'
+    template_name = 'trading/accounts.html'
 
     def get_queryset(self):
         return Account.objects.filter(active=True)

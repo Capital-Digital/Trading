@@ -15,7 +15,6 @@ urlpatterns = [
     path('', include('marketsdata.urls')),
     path('strategies/', include('strategy.urls')),
     path('trading', include('trading.urls')),
-
     path('users/', include('users.urls')),
     path("users/", include("django.contrib.auth.urls")),
 

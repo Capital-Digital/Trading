@@ -20,7 +20,7 @@ log = structlog.get_logger(__name__)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'pseudonym', 'user', 'exchange', 'quote', 'active', 'valid_credentials', 'get_limit_price_tolerance',
                     'updated_at',)
-    readonly_fields = ('valid_credentials', 'user')
+    readonly_fields = ('valid_credentials',)
     actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions']
     save_as = True
     save_on_top = True

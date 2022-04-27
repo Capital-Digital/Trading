@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "graphene_django",
     "django_tables2",
     "users",
+    "crispy_forms",
+    users.apps
 ]
 
 MIDDLEWARE = [
@@ -276,3 +278,5 @@ GRAPHENE = {
 }
 
 DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap.html"
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'

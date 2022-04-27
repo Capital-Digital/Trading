@@ -34,7 +34,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         table.localize=True
 
         context['table'] = table
-        context['assets_value'] = self.object.assets_value()
+        context['assets_value'] = round(self.object.assets_value(), 2)
         context['has_position'] = self.object.has_opened_short()
         context['positions_pnl'] = round(self.object.positions_pnl(), 2)
         context['orders_open'] = orders.filter(status='open')

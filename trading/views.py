@@ -9,6 +9,7 @@ from django.views import generic
 from django.shortcuts import get_object_or_404
 from trading.tables import OrderTable
 from django_tables2 import SingleTableMixin, LazyPaginator
+from datetime import timedelta, timezone
 
 
 class AccountListView(generic.ListView):
@@ -33,11 +34,16 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         table.paginator_class = LazyPaginator
         table.localize=True
 
+        now = timezone.now()
+        last_24h = now - timedelta(days=1)
+
         context['table'] = table
         context['assets_value'] = round(self.object.assets_value(), 2)
         context['has_position'] = self.object.has_opened_short()
         context['positions_pnl'] = round(self.object.positions_pnl(), 2)
         context['orders_open'] = orders.filter(status='open')
+        context['orders_canceled'] = orders.filter(status='canceled').filter(date__range=(now, last_24h))
+        context['orders_error'] = orders.filter(status='error').filter(date__range=(now, last_24h))
         return context
 
 

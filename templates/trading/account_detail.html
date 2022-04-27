@@ -36,16 +36,21 @@
       <h4>Orders</h4>
       {% if not orders_open %}
         <div class="alert alert-success" role="alert">
-          Account has no open order
+          Account has no open order.
         </div>
         {% else %}
         <div class="alert alert-info" role="alert">
-          Account has open order(s)
+          Account has open order(s).
+        </div>
+      {% endif %}
+      {% if orders_canceled %}
+        <div class="alert alert-error" role="alert">
+          Account had an error canceled int the last 24 hours.
         </div>
       {% endif %}
 
       <h4>Trades</h4>
-      
+
       <h4>Performance</h4>
 
     </div>

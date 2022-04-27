@@ -288,7 +288,7 @@ class Account(models.Model):
 
     # Return positions pnl
     def positions_pnl(self):
-        if ('position', 'open', 'value') in self.balances.columns:
+        if self.has_opened_short():
             pos_val = self.balances.position.open.unrealized_pnl.dropna().sum()
         return pos_val
 

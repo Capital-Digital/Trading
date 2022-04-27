@@ -9,7 +9,8 @@ from django.views import generic
 from django.shortcuts import get_object_or_404
 from trading.tables import OrderTable
 from django_tables2 import SingleTableMixin, LazyPaginator
-import datetime
+from django.utils import timezone
+from datetime import timedelta, datetime
 
 
 class AccountListView(generic.ListView):
@@ -34,8 +35,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         table.paginator_class = LazyPaginator
         table.localize=True
 
-        now = datetime.timezone.now()
-        last_24h = now - datetime.timedelta(days=1)
+        now = timezone.now()
+        last_24h = now - timedelta(days=1)
 
         context['table'] = table
         context['assets_value'] = round(self.object.assets_value(), 2)

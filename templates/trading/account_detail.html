@@ -16,7 +16,7 @@
   <p>List of assets in future wallet:</p>
   {% if not orders_open %}
   <p class="text-success">Account has no open order</p>
-  {% else %}
+  {% endif %}
   <table class="tg">
     <thead>
          <th style="width: 100px" class="tg-0lax"> Order ID </th>
@@ -47,5 +47,4 @@
   {%  endfor %}
 
    </table>
-  {% endif %}
 {% endblock %}

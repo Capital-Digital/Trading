@@ -7,7 +7,8 @@ from strategy.views import strategy_stats
 from trading.models import Account, Order, Fund, Position
 from django.views import generic
 from django.shortcuts import get_object_or_404
-from trading.tables import CloseOrderTable
+from trading.tables import OrderTable
+from django_tables2 import SingleTableView
 from django_tables2 import SingleTableMixin
 
 
@@ -26,10 +27,14 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
         orders = Order.objects.filter(account=self.object).order_by('-dt_create')
+
+        table = OrderTable(Order.objects.all())
+        context['table'] = table
+
         context['orders'] = orders
         context['orders_open'] = orders.filter(status='open')
+
         return context
 
 

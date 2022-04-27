@@ -1,10 +1,9 @@
 from django.urls import path
-
-from marketsdata.views import marketsdata_stats
+from marketsdata.views import ExchangeListView, MarketListView, CurrencyListView
 
 
 urlpatterns = [
-    path('exchanges', marketsdata_stats, name='exchanges'),
-    path('markets', marketsdata_stats, name='markets'),
-    path('currencies', marketsdata_stats, name='currencies'),
+    path('exchanges/', ExchangeListView.as_view(), name='exchanges'),
+    path('markets/', MarketListView.as_view(), name='markets'),
+    path('currencies/', CurrencyListView.as_view(), name='currencies'),
 ]

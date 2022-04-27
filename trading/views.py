@@ -30,11 +30,10 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         orders = Order.objects.filter(account=self.object).order_by('-dt_create')
 
         table = OrderTable(Order.objects.all())
+        table.paginate(page=self.request.GET.get("page", 1), per_page=5)
+
         context['table'] = table
-
-        context['orders'] = orders
         context['orders_open'] = orders.filter(status='open')
-
         return context
 
 

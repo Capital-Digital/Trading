@@ -12,43 +12,46 @@
   <h1>{{account.name}}</h1>
   <p>Data of account {{account.name}}</p>
 
-  <ul class="nav nav-pills">
-    <li class="nav-item">
-      <a class="nav-link active" aria-current="page" href="#">Summary</a>
+  <nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+      <button class="nav-link active" id="nav-account-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true">Summary</button>
+      <button class="nav-link" id="nav-account-assets-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">Assets</button>
+      <button class="nav-link" id="nav-account-positions-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Positions</button>
+      <button class="nav-link" id="nav-account-orders-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Orders</button>
+      <button class="nav-link" id="nav-account-trades-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Trades</button>
+      <button class="nav-link" id="nav-account-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Performance</button>
+    </div>
+  </nav>
+  <div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade show active" id="pan-account-summary-tab" role="tabpanel" aria-labelledby="nav-home-tab">
 
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#">Assets</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#">Positions</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#">Orders</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#">Trades</a>
-    </li>
-  </ul>
+    <h4>Assets</h4>
+    <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
+
+    <h4>Position</h4>
+    {% if has_position %}
+    <p>Position unrealized PnL is {{positions_pnl}} BUSD</p>
+    {% else %}
+    <p class="text-info">Account has no opened position</p>
+    {% endif %}
+
+    {{account_value}}
+
+    <h4>Orders</h4>
+    {% if not orders_open %}
+    <p class="text-success">Account has no open order</p>
+    {% else %}
+    <p class="text-info">Account has open order(s)</p>
+    {% endif %}
+    {% render_table table %}
+
+    </div>
+    <div class="tab-pane fade" id="pan-account-assets-tab" role="tabpanel" aria-labelledby="nav-profile-tab">...</div>
+    <div class="tab-pane fade" id="pan-account-positions-tab" role="tabpanel" aria-labelledby="nav-contact-tab">...</div>
+    <div class="tab-pane fade show active" id="pan-account-orders-tab" role="tabpanel" aria-labelledby="nav-home-tab">...</div>
+    <div class="tab-pane fade" id="pan-account-trades-tab" role="tabpanel" aria-labelledby="nav-profile-tab">...</div>
+    <div class="tab-pane fade" id="pan-account-performance-tab" role="tabpanel" aria-labelledby="nav-contact-tab">...</div>
+  </div>
 
 
-  <h4>Assets</h4>
-  <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
-
-  <h4>Position</h4>
-  {% if has_position %}
-  <p>Position unrealized PnL is {{positions_pnl}} BUSD</p>
-  {% else %}
-  <p class="text-info">Account has no opened position</p>
-  {% endif %}
-
-  {{account_value}}
-
-  <h4>Orders</h4>
-  {% if not orders_open %}
-  <p class="text-success">Account has no open order</p>
-  {% else %}
-  <p class="text-info">Account has open order(s)</p>
-  {% endif %}
-  {% render_table table %}
 {% endblock %}

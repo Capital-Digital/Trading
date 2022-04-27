@@ -8,8 +8,7 @@ from trading.models import Account, Order, Fund, Position
 from django.views import generic
 from django.shortcuts import get_object_or_404
 from trading.tables import OrderTable
-from django_tables2 import SingleTableView
-from django_tables2 import SingleTableMixin
+from django_tables2 import SingleTableMixin, LazyPaginator
 
 
 class AccountListView(generic.ListView):
@@ -30,7 +29,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         orders = Order.objects.filter(account=self.object).order_by('-dt_create')
 
         table = OrderTable(Order.objects.all())
-        table.paginate(page=self.request.GET.get("page", 1), per_page=5)
+        table.paginate(page=self.request.GET.get("page", 1), per_page=20)
+        table.paginator_class = LazyPaginator
 
         context['table'] = table
         context['orders_open'] = orders.filter(status='open')

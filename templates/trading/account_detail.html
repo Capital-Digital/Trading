@@ -13,11 +13,9 @@
   <p>Data of account {{account.name}}</p>
 
   <h4>Balances value</h4>
-  <p>Assets balance in spot and future wallet</p>
-  {{account_value}}
+  <p>Assets balance in spot and future wallet is {{assets_value}} BUSD</p>
 
   <h4>Position</h4>
-  <p>Unrealized profit and loss</p>
   {% if has_position %}
   <p>Position unrealized PnL is {{positions_pnl}} BUSD</p>
   {% else %}

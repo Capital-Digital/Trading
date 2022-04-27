@@ -4,6 +4,7 @@ from trading.models import Order
 
 class OrderTable(tables.Table):
     price = tables.Column(verbose_name='Limit')
+    dt_create = tables.DateTimeColumn(format='M d Y, h:m')
 
     def render_cost(self, **kwargs):
         return round(kwargs['value'], 2)

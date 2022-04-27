@@ -289,7 +289,7 @@ class Account(models.Model):
     # Return positions pnl
     def positions_pnl(self):
         if ('position', 'open', 'value') in self.balances.columns:
-            pos_val = self.balances.position.open.value.dropna().sum()
+            pos_val = self.balances.position.open.unrealized_pnl.dropna().sum()
         else:
             pos_val = 0
 
@@ -316,7 +316,7 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Determine values
-            value = self.assets_value() * target_pct
+            value = (self.assets_value() + self.positions_pnl()) * target_pct
 
             for coin, val in value.items():
                 self.balances.loc[coin, ('account', 'target', 'value')] = val

@@ -355,7 +355,13 @@ def rebalance(account_id, reload=False, release=True):
                                      action__in=['buy_spot', 'close_short']
                                      )
         except ObjectDoesNotExist:
-            open_order_size = 0
+
+            # If no order is found and if a short is opened then continue
+            if account.has_opened_short(code):
+                continue
+            else:
+                open_order_size = 0
+
         else:
             if flip:
                 open_order_size = open.amount / open.price

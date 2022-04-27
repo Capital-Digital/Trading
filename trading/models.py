@@ -713,6 +713,8 @@ class Account(models.Model):
 
             offset.loc[self.quote, ('spot', 'total', 'quantity')] = -filled_value
             offset.loc[self.quote, ('spot', 'total', 'value')] = -filled_value
+            offset.loc[self.quote, ('spot', 'used', 'quantity')] = -filled_value
+            offset.loc[self.quote, ('spot', 'used', 'value')] = -filled_value
 
             offset.loc[code, ('account', 'current', 'exposure')] = filled
             offset.loc[code, ('account', 'current', 'value')] = filled_value
@@ -723,11 +725,15 @@ class Account(models.Model):
         if action == 'sell_spot':
             offset.loc[code, ('spot', 'free', 'quantity')] = -filled
             offset.loc[code, ('spot', 'free', 'value')] = -filled_value
+            offset.loc[code, ('spot', 'used', 'quantity')] = -filled
+            offset.loc[code, ('spot', 'used', 'value')] = -filled_value
             offset.loc[code, ('spot', 'total', 'quantity')] = -filled
             offset.loc[code, ('spot', 'total', 'value')] = -filled_value
 
             offset.loc[self.quote, ('spot', 'total', 'quantity')] = filled_value
             offset.loc[self.quote, ('spot', 'total', 'value')] = filled_value
+            offset.loc[self.quote, ('spot', 'free', 'quantity')] = filled
+            offset.loc[self.quote, ('spot', 'free', 'value')] = filled_value
 
             offset.loc[code, ('account', 'current', 'exposure')] = -filled
             offset.loc[code, ('account', 'current', 'value')] = -filled_value

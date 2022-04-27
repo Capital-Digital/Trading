@@ -3,6 +3,7 @@
 {% load django_tables2 %}
 {% load render_table from django_tables2 %}
 {% load humanize %}
+{% load extras %}
 
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 <img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
@@ -22,6 +23,7 @@
          <th style="width: 100px" class="tg-0lax"> Market </th>
          <th style="width: 100px" class="tg-0lax"> Status </th>
          <th style="width: 100px" class="tg-0lax"> Side </th>
+         <th style="width: 100px" class="tg-0lax"> Action </th>
          <th style="width: 100px" class="tg-0lax"> Size </th>
          <th style="width: 100px" class="tg-0lax"> Cost </th>
          <th style="width: 170px" class="tg-0lax"> Create </th>
@@ -35,6 +37,7 @@
           <td style="width: 100px" class="tg-0lax">{{ order.market.symbol }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.status }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.side }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.action|drop_ }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.amount }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.cost|floatformat:2|intcomma }}</td>
           <td style="width: 170px" class="tg-0lax">{{ order.dt_create }}</td>

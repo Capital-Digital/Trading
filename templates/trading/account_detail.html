@@ -36,7 +36,7 @@
           <td style="width: 100px" class="tg-0lax">{{ order.status }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.side }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.amount }}</td>
-          <td style="width: 100px" class="tg-0lax">{{ order.cost|intcomma }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.cost|floatformat:2|intcomma }}</td>
           <td style="width: 170px" class="tg-0lax">{{ order.dt_create }}</td>
           <td style="width: 170px" class="tg-0lax">{{ order.dt_update }}</td>
      </tr>

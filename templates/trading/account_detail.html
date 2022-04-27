@@ -13,7 +13,7 @@
   <p>Data of account {{account.name}}</p>
   <nav>
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
-      <button class="nav-link active" id="nav-account-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true">Summary</button>
+      <button class="nav-link active" id="nav-account-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-account-summary" type="button" role="tab" aria-controls="nav-home" aria-selected="true">Summary</button>
       <button class="nav-link" id="nav-account-assets-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">Assets</button>
       <button class="nav-link" id="nav-account-positions-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Positions</button>
       <button class="nav-link" id="nav-account-orders-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Orders</button>
@@ -22,7 +22,7 @@
     </div>
   </nav>
   <div class="tab-content" id="nav-tabContent">
-    <div class="tab-pane fade show active" id="pan-account-summary-tab" role="tabpanel" aria-labelledby="nav-account-summary-tab">
+    <div class="tab-pane fade show active" id="nav-account-summary" role="tabpanel" aria-labelledby="nav-account-summary-tab">
 
       <h4>Assets</h4>
       <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
@@ -45,19 +45,19 @@
       {% render_table table %}
 
     </div>
-    <div class="tab-pane fade" id="pan-account-assets-tab" role="tabpanel" aria-labelledby="nav-account-assets-tab">
+    <div class="tab-pane fade" id="nav-account-assets" role="tabpanel" aria-labelledby="nav-account-assets-tab">
       Assets
     </div>
-    <div class="tab-pane fade" id="pan-account-positions-tab" role="tabpanel" aria-labelledby="nav-account-positions-tab">
+    <div class="tab-pane fade" id="nav-account-positions" role="tabpanel" aria-labelledby="nav-account-positions-tab">
       Content
     </div>
-    <div class="tab-pane fade show active" id="pan-account-orders-tab" role="tabpanel" aria-labelledby="nav-home-tab">
+    <div class="tab-pane fade show active" id="nav-account-orders" role="tabpanel" aria-labelledby="nav-account-orders-tab">
       edeef
     </div>
-    <div class="tab-pane fade" id="pan-account-trades-tab" role="tabpanel" aria-labelledby="nav-profile-tab">
+    <div class="tab-pane fade" id="nav-account-trades" role="tabpanel" aria-labelledby="nav-account-trades-tab">
       fefesss
     </div>
-    <div class="tab-pane fade" id="pan-account-performance-tab" role="tabpanel" aria-labelledby="nav-contact-tab">
+    <div class="tab-pane fade" id="nav-account-performance" role="tabpanel" aria-labelledby="nav-account-performance-tab">
       fggttrr
     </div>
   </div>

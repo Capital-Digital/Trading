@@ -37,15 +37,13 @@
       <h4>Orders</h4>
 
       {% if not orders_open %}
-      <div class="alert alert-success" role="alert">
-      Account has no open order
-      </div>
-      <p class="text-success">Account has no open order</p>
-      {% else %}
-      <div class="alert alert-info" role="alert">
-      Account has open order(s)
-      </div>
-      <p class="text-info">Account has open order(s)</p>
+        <div class="alert alert-success" role="alert">
+          Account has no open order
+        </div>
+        {% else %}
+        <div class="alert alert-info" role="alert">
+          Account has open order(s)
+        </div>
       {% endif %}
 
     </div>

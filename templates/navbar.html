@@ -21,15 +21,17 @@
 
         {% block content %}
         {% if user.is_authenticated %}
+    <span class="navbar-text">
           Hi {{ user.username }}!
+    </span>
         {% else %}
+    <span class="navbar-text">
           <p>You are not logged in</p>
           <a href="{% url 'login' %}">Log In</a>
+    </span>
         {% endif %}
         {% endblock %}
-      
-    <span class="navbar-text">
-    </span>
+
   </div>
 </nav>
 

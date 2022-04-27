@@ -19,7 +19,7 @@ class MarketListView(generic.ListView):
     model = Market
     paginate_by = 10
     context_object_name = 'markets_list'
-    template_name = 'markets.html'
+    template_name = 'marketsdata/markets.html'
 
     def get_queryset(self):
         return Market.objects.all()
@@ -29,7 +29,7 @@ class CurrencyListView(generic.ListView):
     model = Currency
     paginate_by = 10
     context_object_name = 'currencies_list'
-    template_name = 'currencies.html'
+    template_name = 'marketsdata/currencies.html'
 
     def get_queryset(self):
         return Currency.objects.all()

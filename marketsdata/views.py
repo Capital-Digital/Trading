@@ -20,4 +20,4 @@ def marketsdata_stats(request):
     }
 
     # Render the HTML template index.html with the data in the context variable
-    return TemplateResponse(request, 'index.html', context=context)
+    return TemplateResponse(request, 'exchanges.html', context=context)

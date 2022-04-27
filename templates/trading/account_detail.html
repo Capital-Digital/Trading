@@ -2,6 +2,7 @@
 {% load static %}
 {% load django_tables2 %}
 {% load render_table from django_tables2 %}
+{% load humanize %}
 
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 <img src="{% static 'catalog/images/local_library_model_uml.png' %}" alt="UML diagram" style="width:555px;height:540px;">
@@ -35,7 +36,7 @@
           <td style="width: 100px" class="tg-0lax">{{ order.status }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.side }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.amount }}</td>
-          <td style="width: 100px" class="tg-0lax">{{ order.cost }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.cost|intcomma }}</td>
           <td style="width: 170px" class="tg-0lax">{{ order.dt_create }}</td>
           <td style="width: 170px" class="tg-0lax">{{ order.dt_update }}</td>
      </tr>

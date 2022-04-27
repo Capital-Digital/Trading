@@ -13,7 +13,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', generic.TemplateView.as_view(template_name='home.html'), name='home'),
     path('', include('marketsdata.urls')),
-    path('', include('strategy.urls')),
+    path('strategies', include('strategy.urls')),
     path('', include('trading.urls')),
 
     path("account/", include("django.contrib.auth.urls")),

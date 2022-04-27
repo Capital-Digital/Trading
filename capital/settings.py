@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'guardian',
     "graphene_django",
     "django_tables2",
+    "users",
 ]
 
 MIDDLEWARE = [
@@ -110,8 +111,8 @@ AUTH_PASSWORD_VALIDATORS = [
     # },
 ]
 
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "home"
 
 EMAIL_HOST = "gator4021.hostgator.com"
 EMAIL_PORT = 465

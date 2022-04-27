@@ -179,7 +179,7 @@ def update_historical_balance(account_id):
         now = dt.strftime(datetime_directive_ISO_8601)
 
         # Calculate current account balance
-        current = account.account_value()
+        current = account.assets_value()
         hist = fund.historical_balance
 
         if not hist:

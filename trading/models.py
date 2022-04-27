@@ -269,7 +269,7 @@ class Account(models.Model):
         self.save()
 
     # Return account total value
-    def account_value(self):
+    def assets_value(self):
 
         if ('spot', 'total', 'value') in self.balances.columns:
             spot_val = self.balances.spot.total.value.sum()
@@ -283,13 +283,17 @@ class Account(models.Model):
         else:
             futu_val = 0
 
+        # Sum wallets
+        return spot_val + futu_val
+
+    # Return positions pnl
+    def positions_pnl(self):
         if ('position', 'open', 'value') in self.balances.columns:
             pos_val = self.balances.position.open.value.dropna().sum()
         else:
             pos_val = 0
 
-        # Sum wallets
-        return spot_val + max(futu_val, pos_val)
+        return pos_val
 
     # Create columns with targets
     def get_target(self):
@@ -312,7 +316,7 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Determine values
-            value = self.account_value() * target_pct
+            value = self.assets_value() * target_pct
 
             for coin, val in value.items():
                 self.balances.loc[coin, ('account', 'target', 'value')] = val
@@ -340,7 +344,7 @@ class Account(models.Model):
         log.info('Calculate delta')
 
         target = self.balances.account.target.quantity.dropna()
-        acc_value = self.account_value()
+        acc_value = self.assets_value()
 
         log.info(' ')
         log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
@@ -765,10 +769,10 @@ class Account(models.Model):
             self.balances.loc[offset.index, offset.columns] = updated
 
             # Update new percentage
-            account_value = self.account_value()
+            assets_value = self.assets_value()
             for c in [code, self.quote]:
                 exposure_value = self.balances.account.current.value[c]
-                pct = exposure_value / account_value
+                pct = exposure_value / assets_value
                 self.balances.loc[c, ('account', 'current', 'percent')] = pct
                 log.info('Percentage for {0} is now {1}%'.format(c, round(pct * 100, 1)))
 

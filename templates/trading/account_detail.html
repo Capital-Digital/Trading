@@ -15,10 +15,21 @@
   {% if not orders %}
   <p class="text-success">Account has no open order</p>
   {% else %}
-  <ul>
+  <table style="margin-left: 40px" class="tg">
+    <thead>
+         <th style="width: 50px" class="tg-0lax"> Order ID </th>
+         <th style="width: 100px" class="tg-0lax"> Market </th>
+    </thead>
+
   {% for order in orders %}
-    <li>{{ order.clientid }}</li>
-  {% endfor %}
-  </ul>
+
+    <tr>
+          <td style="width: 50px" class="tg-0lax">{{ order.clientid }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.market.symbol }}</td>
+     </tr>
+
+  {%  endfor %}
+
+   </table>
   {% endif %}
 {% endblock %}

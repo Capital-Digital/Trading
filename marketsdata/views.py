@@ -9,7 +9,7 @@ class ExchangeListView(generic.ListView):
     model = Exchange
     paginate_by = 10
     context_object_name = 'exchanges_list'
-    template_name = 'exchanges.html'
+    template_name = 'marketsdata/exchanges.html'
 
     def get_queryset(self):
         return Exchange.objects.all()

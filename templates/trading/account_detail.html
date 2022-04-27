@@ -43,9 +43,14 @@
           Account has open order(s).
         </div>
       {% endif %}
-      {% if orders_canceled %}
+      {% if not orders_canceled %}
+        <div class="alert alert-warning" role="alert">
+          An order was canceled in the last 24 hours.
+        </div>
+      {% endif %}
+      {% if not orders_error %}
         <div class="alert alert-error" role="alert">
-          Account had an error canceled int the last 24 hours.
+          An order was rejected in the last 24 hours.
         </div>
       {% endif %}
 

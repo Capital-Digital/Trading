@@ -13,6 +13,15 @@ from django.utils import timezone
 from datetime import timedelta, datetime
 
 
+class HomePage(generic.TemplateView):
+    """
+    Because our needs are so simple, all we have to do is
+    assign one value; template_name. The home.html file will be created
+    in the next lesson.
+    """
+    template_name = 'home.html'
+
+
 class AccountListView(generic.ListView):
     model = Account
     paginate_by = 10

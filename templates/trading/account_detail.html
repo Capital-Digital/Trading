@@ -21,6 +21,7 @@
     <thead>
          <th style="width: 100px" class="tg-0lax"> Order ID </th>
          <th style="width: 100px" class="tg-0lax"> Market </th>
+         <th style="width: 100px" class="tg-0lax"> Type </th>
          <th style="width: 100px" class="tg-0lax"> Status </th>
          <th style="width: 100px" class="tg-0lax"> Side </th>
          <th style="width: 100px" class="tg-0lax"> Action </th>
@@ -35,6 +36,7 @@
     <tr>
           <td style="width: 100px" class="tg-0lax">{{ order.clientid }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.market.symbol }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.market.type }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.status }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.side }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.action|drop_ }}</td>

@@ -639,7 +639,7 @@ def send_fetch_orderid(account_id, order_id):
                     raise Exception('Account is still busy after 10s')
 
             # Rebalance
-            rebalance.delay(account_id, release=False)
+            rebalance.delay(account_id)
 
 
 # Send fetch all open orders

@@ -346,7 +346,11 @@ class Account(models.Model):
         log.info('Calculate delta')
 
         target = self.balances.account.target.quantity.dropna()
-        acc_value = self.assets_value()
+        
+        if self.has_opened_short():
+            acc_value = self.assets_value() + self.positions_pnl()
+        else:
+            acc_value = self.assets_value()
 
         log.info(' ')
         log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))

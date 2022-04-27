@@ -23,7 +23,7 @@
         {% block content %}
         {% if user.is_authenticated %}
     <span class="navbar-text">
-          Hi {{ user.username }}!
+        <div>  Hi {{ user.username }}! </div>
         <a href="{% url 'logout' %}">Log Out</a>
     </span>
         {% else %}

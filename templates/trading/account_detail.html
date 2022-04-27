@@ -40,15 +40,15 @@
         </div>
         {% else %}
         <div class="alert alert-info" role="alert">
-          Account has open order(s).
+          An order is currently open.
         </div>
       {% endif %}
-      {% if not orders_canceled %}
+      {% if orders_canceled %}
         <div class="alert alert-warning" role="alert">
           An order was canceled in the last 24 hours.
         </div>
       {% endif %}
-      {% if not orders_error %}
+      {% if orders_error %}
         <div class="alert alert-danger" role="alert">
           An order was rejected in the last 24 hours.
         </div>

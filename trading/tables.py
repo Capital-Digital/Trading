@@ -5,8 +5,11 @@ from trading.models import Order
 class OrderTable(tables.Table):
 
     price = tables.Column(verbose_name='Price limit')
-    dt_create = tables.DateTimeColumn(format='M d Y, h:i:s').Column(verbose_name='Creation')
-    dt_update = tables.DateTimeColumn(format='M d Y, h:i:s').Column(verbose_name='Last update')
+    
+    dt_create = tables.DateTimeColumn(format='M d Y, h:i:s')
+    dt_update = tables.DateTimeColumn(format='M d Y, h:i:s')
+    dt_create = tables.Column(verbose_name='Creation')
+    dt_update = tables.Column(verbose_name='Last update')
 
     def render_cost(self, **kwargs):
         return round(kwargs['value'], 2)

@@ -3,6 +3,7 @@ from trading.models import Order
 
 
 class OrderTable(tables.Table):
+    price = tables.Column(verbose_name='Limit')
 
     class Meta:
         model = Order

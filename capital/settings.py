@@ -272,3 +272,5 @@ NOTEBOOK_ARGUMENTS = [
 GRAPHENE = {
     "SCHEMA": "django_root.schema.schema"
 }
+
+DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap.html"

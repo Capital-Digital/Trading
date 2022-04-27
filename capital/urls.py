@@ -11,7 +11,7 @@ log = structlog.get_logger(__name__)
 urlpatterns = [
 
     path('admin/', admin.site.urls),
-    path('markets/', include('marketsdata.urls')),
+    path('/', include('marketsdata.urls')),
     path('strategies/', include('strategy.urls')),
 
     path("account/", include("django.contrib.auth.urls")),

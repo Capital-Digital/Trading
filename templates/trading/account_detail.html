@@ -25,17 +25,15 @@
       <h4>Assets</h4>
       <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
 
-      <h4>Position</h4>
+      <h4>Positions</h4>
       {% if has_position %}
-      <p>Position unrealized PnL is {{positions_pnl}} BUSD</p>
+      <p>Positions unrealized PnL is {{positions_pnl}} BUSD</p>
       {% else %}
       <p class="text-info">Account has no opened position</p>
       {% endif %}
-
       {{account_value}}
 
       <h4>Orders</h4>
-
       {% if not orders_open %}
         <div class="alert alert-success" role="alert">
           Account has no open order
@@ -45,6 +43,10 @@
           Account has open order(s)
         </div>
       {% endif %}
+
+      <h4>Trades</h4>
+      
+      <h4>Performance</h4>
 
     </div>
     <div class="tab-pane fade" id="nav-account-assets" role="tabpanel" aria-labelledby="nav-account-assets-tab">

@@ -8,24 +8,32 @@
 
 {% block content %}
   <h1>{{account.name}}</h1>
-  <p>Data for account {{account.name}}</p>
+  <p>Order of account {{account.name}}</p>
 
-  <h4>Open orders</h4>
+  <h4>Order list</h4>
   <p>List of assets in future wallet:</p>
   {% if not orders %}
   <p class="text-success">Account has no open order</p>
   {% else %}
   <table class="tg">
     <thead>
-         <th style="width: 150px" class="tg-0lax"> Order ID </th>
+         <th style="width: 100px" class="tg-0lax"> Order ID </th>
          <th style="width: 100px" class="tg-0lax"> Market </th>
+         <th style="width: 100px" class="tg-0lax"> Status </th>
+         <th style="width: 100px" class="tg-0lax"> Side </th>
+         <th style="width: 100px" class="tg-0lax"> Size </th>
+         <th style="width: 100px" class="tg-0lax"> Cost </th>
     </thead>
 
   {% for order in orders %}
 
     <tr>
-          <td style="width: 150px" class="tg-0lax">{{ order.clientid }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.clientid }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.market.symbol }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.market.status }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.market.side }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.market.amount }}</td>
+          <td style="width: 100px" class="tg-0lax">{{ order.market.cost }}</td>
      </tr>
 
   {%  endfor %}

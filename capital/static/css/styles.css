@@ -3,3 +3,6 @@
     padding: 0;
     list-style: none;
 }
+div.tab-content {
+    margin-top: 25px;
+}

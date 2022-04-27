@@ -3,6 +3,9 @@
     padding: 0;
     list-style: none;
 }
+div#nav-tab {
+    margin-bottom: 25px;
+}
 nav.navbar {
     margin-bottom: 25px;
 }

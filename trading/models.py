@@ -315,10 +315,10 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Determine values
-            if self.has_opened_short():
-                value = (self.assets_value() + self.positions_pnl()) * target_pct
-            else:
-                value = self.assets_value() * target_pct
+            # if self.has_opened_short():
+            #     value = (self.assets_value() + self.positions_pnl()) * target_pct
+            # else:
+            value = self.assets_value() * target_pct
 
             for coin, val in value.items():
                 self.balances.loc[coin, ('account', 'target', 'value')] = val
@@ -347,10 +347,10 @@ class Account(models.Model):
 
         target = self.balances.account.target.quantity.dropna()
 
-        if self.has_opened_short():
-            acc_value = self.assets_value() + self.positions_pnl()
-        else:
-            acc_value = self.assets_value()
+        # if self.has_opened_short():
+        #     acc_value = self.assets_value() + self.positions_pnl()
+        # else:
+        acc_value = self.assets_value()
 
         log.info(' ')
         log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))

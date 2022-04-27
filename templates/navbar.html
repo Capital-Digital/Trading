@@ -1,31 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <div class="navbar navbar-inverse navbar-fixed-top">
-    {% block content %}
-    {% if user.is_authenticated %}
-      Hi {{ user.username }}!
-    {% else %}
-      <p>You are not logged in</p>
-      <a href="{% url 'login' %}">Log In</a>
-    {% endif %}
-    {% endblock %}
 
     <div class="navbar-inner">
                 <ul class="nav">
                     <li class="navbar-text">
-                        {{ object }}
-                    </li>
-                    <li></li>
-                    <li class="navbar-text">
-                        {{ object2 }}
-                    </li>
-                    <li></li>
-                    <li class="navbar-text">
-                        {{ object3 }}
-                    </li>
-                    <li></li>
-                    <li class="navbar-text">
-                        {{ object4 }}
+
+                    {% block content %}
+                    {% if user.is_authenticated %}
+                      Hi {{ user.username }}!
+                    {% else %}
+                      <p>You are not logged in</p>
+                      <a href="{% url 'login' %}">Log In</a>
+                    {% endif %}
+                    {% endblock %}
                     </li>
                 </ul>
     </div>

@@ -17,14 +17,14 @@
   {% else %}
   <table style="margin-left: 40px" class="tg">
     <thead>
-         <th style="width: 50px" class="tg-0lax"> Order ID </th>
+         <th style="width: 150px" class="tg-0lax"> Order ID </th>
          <th style="width: 100px" class="tg-0lax"> Market </th>
     </thead>
 
   {% for order in orders %}
 
     <tr>
-          <td style="width: 50px" class="tg-0lax">{{ order.clientid }}</td>
+          <td style="width: 150px" class="tg-0lax">{{ order.clientid }}</td>
           <td style="width: 100px" class="tg-0lax">{{ order.market.symbol }}</td>
      </tr>
 

@@ -27,7 +27,6 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         orders = Order.objects.filter(account=self.object)
-        account_value = self.object.account_value()
 
         table = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_create'))
         table.paginate(page=self.request.GET.get("page", 1), per_page=10)
@@ -35,7 +34,9 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         table.localize=True
 
         context['table'] = table
-        context['account_value'] = account_value
+        context['assets_value'] = self.object.assets_value()
+        context['has_position'] = self.object.has_opened_short()
+        context['positions_pnl'] = round(self.object.positions_pnl(), 2)
         context['orders_open'] = orders.filter(status='open')
         return context
 

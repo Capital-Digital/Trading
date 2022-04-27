@@ -23,7 +23,7 @@
     <div class="tab-pane fade show active" id="nav-account-summary" role="tabpanel" aria-labelledby="nav-account-summary-tab">
 
       {{owner}}
-      {% if user = owner %}
+      {% if user == owner %}
 
         <h4>Assets</h4>
         <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>

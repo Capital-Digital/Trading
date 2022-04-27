@@ -125,7 +125,7 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 USE_THOUSAND_SEPARATOR = True
-DATETIME_FORMAT = 'Y N j, H:i:s.u'
+SHORT_DATETIME_FORMAT = "Y-m-d H"
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'

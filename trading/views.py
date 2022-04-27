@@ -64,14 +64,14 @@ def trading_stats(request):
     }
 
     # Render the HTML template index.html with the data in the context variable
-    return TemplateResponse(request, 'index.html', context=context)
+    return TemplateResponse(request, 'home.html', context=context)
 
 
 def combined_stats(request):
     response1 = trading_stats(request)
     response2 = marketsdata_stats(request)
     response3 = strategy_stats(request)
-    return render(request, 'index.html', {
+    return render(request, 'home.html', {
         **response1.context_data,
         **response2.context_data,
         **response3.context_data

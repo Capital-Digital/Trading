@@ -5,6 +5,6 @@ from trading.views import AccountDetailView, AccountListView
 
 
 urlpatterns = [
-    path('list/', AccountListView.as_view(), name='accounts'),
+    path('accounts/', AccountListView.as_view(), name='accounts'),
     path('/<int:pk>', AccountDetailView.as_view(), name='account'),
 ]

@@ -11,11 +11,12 @@ log = structlog.get_logger(__name__)
 urlpatterns = [
 
     path('admin/', admin.site.urls),
+    path('', generic.TemplateView.as_view(template_name='home.html'), name='home'),
     path('', include('marketsdata.urls')),
-    path('strategies/', include('strategy.urls')),
+    path('', include('strategy.urls')),
+    path('', include('trading.urls')),
 
     path("account/", include("django.contrib.auth.urls")),
-    path('', generic.TemplateView.as_view(template_name='home.html'), name='home'),
     path("graphql", GraphQLView.as_view(graphiql=True)),
 ]
 

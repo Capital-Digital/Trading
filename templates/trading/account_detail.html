@@ -22,50 +22,48 @@
   <div class="tab-content" id="nav-tabContent">
     <div class="tab-pane fade show active" id="nav-account-summary" role="tabpanel" aria-labelledby="nav-account-summary-tab">
 
-      {% if user = user %}
+      {{owner}}
+      {% if user = owner %}
+
+        <h4>Assets</h4>
+        <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
+
+        <h4>Positions</h4>
+        {% if has_position %}
+        <p>Positions unrealized PnL is {{positions_pnl}} BUSD</p>
+        {% else %}
+        <p class="text-info">Account has no opened position</p>
+        {% endif %}
+        {{account_value}}
+
+        <h4>Orders</h4>
+        {% if not orders_open %}
+          <div class="alert alert-success" role="alert">
+            Account has no open order.
+          </div>
+          {% else %}
+          <div class="alert alert-info" role="alert">
+            An order is currently open.
+          </div>
+        {% endif %}
+        {% if orders_canceled %}
+          <div class="alert alert-warning" role="alert">
+            An order was canceled in the last 24 hours.
+          </div>
+        {% endif %}
+        {% if orders_error %}
+          <div class="alert alert-danger" role="alert">
+            An order was rejected in the last 24 hours.
+          </div>
+        {% endif %}
+
+        <h4>Trades</h4>
+
+        <h4>Performance</h4>
 
       {% else %}
         <p>You are not authorized to view this account</p>
       {% endif %}
-
-
-
-
-      <h4>Assets</h4>
-      <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
-
-      <h4>Positions</h4>
-      {% if has_position %}
-      <p>Positions unrealized PnL is {{positions_pnl}} BUSD</p>
-      {% else %}
-      <p class="text-info">Account has no opened position</p>
-      {% endif %}
-      {{account_value}}
-
-      <h4>Orders</h4>
-      {% if not orders_open %}
-        <div class="alert alert-success" role="alert">
-          Account has no open order.
-        </div>
-        {% else %}
-        <div class="alert alert-info" role="alert">
-          An order is currently open.
-        </div>
-      {% endif %}
-      {% if orders_canceled %}
-        <div class="alert alert-warning" role="alert">
-          An order was canceled in the last 24 hours.
-        </div>
-      {% endif %}
-      {% if orders_error %}
-        <div class="alert alert-danger" role="alert">
-          An order was rejected in the last 24 hours.
-        </div>
-      {% endif %}
-
-      <h4>Trades</h4>
-
-      <h4>Performance</h4>
 
     </div>
     <div class="tab-pane fade" id="nav-account-assets" role="tabpanel" aria-labelledby="nav-account-assets-tab">

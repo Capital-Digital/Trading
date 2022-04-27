@@ -43,8 +43,7 @@ INSTALLED_APPS = [
     "graphene_django",
     "django_tables2",
     "users",
-    "crispy_forms",
-    users.apps
+    "crispy_forms"
 ]
 
 MIDDLEWARE = [

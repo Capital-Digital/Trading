@@ -290,7 +290,7 @@ class Account(models.Model):
     def positions_pnl(self):
         if self.has_opened_short():
             pos_val = self.balances.position.open.unrealized_pnl.dropna().sum()
-        return pos_val
+            return pos_val
 
     # Create columns with targets
     def get_target(self):
@@ -313,7 +313,10 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'percent')] = pct
 
             # Determine values
-            value = (self.assets_value() + self.positions_pnl()) * target_pct
+            if self.has_opened_short():
+                value = (self.assets_value() + self.positions_pnl()) * target_pct
+            else:
+                value = self.assets_value() * target_pct
 
             for coin, val in value.items():
                 self.balances.loc[coin, ('account', 'target', 'value')] = val

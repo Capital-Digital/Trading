@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'guardian',
     "graphene_django",
     "django_tables2",
+    "accounts",
 ]
 
 MIDDLEWARE = [

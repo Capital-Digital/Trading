@@ -5,7 +5,7 @@ from trading.models import Order
 class OrderTable(tables.Table):
 
     price = tables.Column(verbose_name='Price limit')
-    
+
     dt_create = tables.DateTimeColumn(format='M d Y, h:i:s')
     dt_update = tables.DateTimeColumn(format='M d Y, h:i:s')
     dt_create = tables.Column(verbose_name='Creation')

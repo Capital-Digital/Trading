@@ -12,6 +12,10 @@
   <h1>{{account.name}}</h1>
   <p>Data of account {{account.name}}</p>
 
+  <h4>Balances value</h4>
+  <p>Assets balance in spot and future wallet</p>
+  {% account_value %}
+
   <h4>Order list</h4>
   <p>List of open, closed, and canceled orders</p>
   {% if not orders_open %}

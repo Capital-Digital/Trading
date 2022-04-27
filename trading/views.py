@@ -2,7 +2,6 @@ from django.http import HttpResponse
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.response import TemplateResponse
-from strategy.views import strategy_stats
 from trading.models import Account, Order, Fund, Position
 from django.views import generic
 from django.shortcuts import get_object_or_404

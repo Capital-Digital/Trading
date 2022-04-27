@@ -16,7 +16,9 @@ urlpatterns = [
     path('strategies/', include('strategy.urls')),
     path('accounts', include('trading.urls')),
 
-    path("account/", include("django.contrib.auth.urls")),
+    path("users/", include("django.contrib.auth.urls")),
+    path('users', include('users.urls')),
+
     path("graphql", GraphQLView.as_view(graphiql=True)),
 ]
 

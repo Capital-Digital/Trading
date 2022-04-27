@@ -29,6 +29,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
         orders = Order.objects.filter(account=self.object).order_by('-dt_create')
         context['orders'] = orders
+        context['orders_open'] = orders.filter(status='open')
         return context
 
 

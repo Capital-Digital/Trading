@@ -10,11 +10,11 @@
 
 {% block content %}
   <h1>{{account.name}}</h1>
-  <p>Order of account {{account.name}}</p>
+  <p>Data of account {{account.name}}</p>
 
   <h4>Order list</h4>
   <p>List of assets in future wallet:</p>
-  {% if not orders %}
+  {% if not orders_open %}
   <p class="text-success">Account has no open order</p>
   {% else %}
   <table class="tg">

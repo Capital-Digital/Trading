@@ -120,15 +120,16 @@ def pseudo_generator(count):
                           # remove those easily confused with others
                           - set('qxc')
                           # add some crunchy clusters
-                          | {'bl', 'br', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gr', 'pl', 'pr', 'sk', 'sl', 'sm', 'sn',
-                             'sp', 'st', 'str', 'tr'}
+                          | {'ch', 'b', 'c', 'br', 'cl', 'cr', 'd', 'dr', 'f', 'fl', 'fr', 'g', 'gl', 'gr', 'p', 'pl',
+                             'pr', 's', 'sk', 'sl', 'sm', 'sn', 'm', 'n',
+                             'sp', 'st', 'str', 't', 'tr'}
                           )
 
     final_consonants = (set(string.ascii_lowercase) - set('aeiou')
                         # confusable
                         - set('qxcsj')
                         # crunchy clusters
-                        | {'nette', 'tard', 'nce', 'me', 'tion', 'trude', 'wala'}
+                        | {'nette', 'uard', 'tard', 'nce', 'me', 'tion', 'trude', 'wala', 'ture', 'ne'}
                         )
 
     vowels = 'aeiou'  # we'll keep this simple

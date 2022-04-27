@@ -24,6 +24,7 @@
         {% if user.is_authenticated %}
     <span class="navbar-text">
           Hi {{ user.username }}!
+        <a href="{% url 'logout' %}">Log Out</a>
     </span>
         {% else %}
     <span class="navbar-text">

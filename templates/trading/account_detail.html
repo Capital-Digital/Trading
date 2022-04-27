@@ -22,7 +22,7 @@
   <div class="tab-content" id="nav-tabContent">
     <div class="tab-pane fade show active" id="nav-account-summary" role="tabpanel" aria-labelledby="nav-account-summary-tab">
 
-      {% if user.is_authenticated %}
+      {% if user = user %}
 
       {% else %}
         <p>You are not authorized to view this account</p>

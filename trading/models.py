@@ -67,7 +67,7 @@ class Account(models.Model):
         ]
     )
     pseudonym = models.CharField(max_length=30, null=True, blank=True)
-    user = models.ForeignKey(
+    owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True

@@ -46,7 +46,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         last_24h = now - timedelta(days=1)
 
         context['table'] = table
-        context['user'] = self.object.user
+        context['owner'] = self.object.user
         context['assets_value'] = round(self.object.assets_value(), 2)
         context['has_position'] = self.object.has_opened_short()
         context['positions_pnl'] = round(self.object.positions_pnl(), 2)

@@ -43,7 +43,6 @@
 
         {% endif %}
 
-      <canvas id="myChart" width="400" height="500"></canvas>
 
 
         {% if user.is_superuser %}
@@ -51,6 +50,8 @@
         {{labels}}
         {{data}}
 
+      <canvas id="myChart" width="400" height="500"></canvas>
+        
         {% endif %}
 
       <h4>Historical Weights</h4>

@@ -21,9 +21,11 @@
 
       <h4>Long assets</h4>
       <p>List of assets longed by the strategy</p>
+      <ul>
       {% for c in codes_long %}
-        <p>{{c}}</p>
+        <li><p>{{c}}</p></li>
       {% endfor %}
+      </ul>
 
       <h4>Short assets</h4>
       <p>List of assets shorted by the strategy</p>

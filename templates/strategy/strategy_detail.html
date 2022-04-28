@@ -23,7 +23,7 @@
       <p>Current weights of the strategy :</p>
       <ul>
       {% for code, last in weights.codes.items %}
-        <li>{{code}} &emsp; {{last}}%</li>
+        <li>{{last}} {{code}} %</li>
       {% endfor %}
       </ul>
       <p>Last update {{weights.datetime}} UTC</p>

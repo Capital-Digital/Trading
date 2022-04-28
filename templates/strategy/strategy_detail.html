@@ -28,10 +28,10 @@
                 var ctx = document.getElementById('myChart').getContext('2d');
                 var myChart = new Chart(ctx, {
                     type: 'line',
-                    labels: {{labels|safe}}
+                    labels: {{labels}}
                     data: {
                       datasets: [{
-                        data: {{data|safe}}
+                        data: {{data}}
                       }]
                     }
         });
@@ -46,8 +46,10 @@
 
 
         {% if user.is_superuser %}
+        {{labels}}
+        {{data}}
 
-      <canvas id="myChart" width="800" height="300"></canvas>
+         <canvas id="myChart" width="800" height="300"></canvas>
 
 
         {% endif %}

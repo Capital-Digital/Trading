@@ -13,7 +13,7 @@
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
       <button class="nav-link active" id="nav-strategy-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-summary" type="button" role="tab" aria-controls="nav-strategy-summary" aria-selected="true">Summary</button>
       <button class="nav-link" id="nav-strategy-weights-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-weights" type="button" role="tab" aria-controls="nav-strategy-weights" aria-selected="false">Weights</button>
-      <button class="nav-link" id="nav-strategy-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-performance" type="button" role="tab" aria-controls="nav-strategy-performance" aria-selected="false">Paper trade</button>
+      <button class="nav-link" id="nav-strategy-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-performance" type="button" role="tab" aria-controls="nav-strategy-performance" aria-selected="false">Performance</button>
     </div>
   </nav>
   <div class="tab-content" id="nav-tabContent">
@@ -22,8 +22,8 @@
       <h4>Assets</h4>
       <p>Assets traded with the strategy</p>
       <ul>
-      {% for c in codes %}
-        <li>{{c}}</li>
+      {% for weight in weights %}
+        <li>{{weight.code}} {{weight.last}}</li>
       {% endfor %}
       </ul>
 

@@ -5,6 +5,20 @@
 {% load humanize %}
 {% load extras %}
 
+{% block content %}
+  <h1>{{strategy.name}}</h1>
+  <p>Data of strategy {{strategy.name}}</p>
+  <nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+      <button class="nav-link active" id="nav-strategy-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-summary" type="button" role="tab" aria-controls="nav-strategy-summary" aria-selected="true">Weights</button>
+      <button class="nav-link" id="nav-strategy-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-performance" type="button" role="tab" aria-controls="nav-strategy-performance" aria-selected="false">Performance</button>
+    </div>
+  </nav>
+  <div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
+
+
+{% block scripts %}
         <script>
         // jquery function
         $(document).ready(function(){
@@ -39,19 +53,7 @@
         });
             });
         </script>
-
-{% block content %}
-  <h1>{{strategy.name}}</h1>
-  <p>Data of strategy {{strategy.name}}</p>
-  <nav>
-    <div class="nav nav-tabs" id="nav-tab" role="tablist">
-      <button class="nav-link active" id="nav-strategy-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-summary" type="button" role="tab" aria-controls="nav-strategy-summary" aria-selected="true">Weights</button>
-      <button class="nav-link" id="nav-strategy-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-performance" type="button" role="tab" aria-controls="nav-strategy-performance" aria-selected="false">Performance</button>
-    </div>
-  </nav>
-  <div class="tab-content" id="nav-tabContent">
-    <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
-
+{% endblock scripts %}
 
       <canvas id="myChart" width="400" height="100"></canvas>
       <h4>Historical Weights</h4>

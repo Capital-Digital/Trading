@@ -17,42 +17,6 @@
   <div class="tab-content" id="nav-tabContent">
     <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
 
-
-
-        {% if user.is_superuser %}
-        {% block scripts %}
-
-        <script>
-        // jquery function
-        $(document).ready(function(){
-                var ctx = document.getElementById('myChart').getContext('2d');
-                var myChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                      datasets: [{
-                        data: [{% for j in data %}{{ j }}, {% endfor %}]
-                      }]
-                    }
-        });
-            });
-        </script>
-
-
-        {% endblock scripts %}
-
-        {% endif %}
-
-
-
-        {% if user.is_superuser %}
-        {{labels}}
-        {{data}}
-
-         <canvas id="myChart" width="800" height="300"></canvas>
-
-
-        {% endif %}
-
       <h4>Historical Weights</h4>
       <p>Last update {{last_update}}.</p>
       {% render_table table_2 %}

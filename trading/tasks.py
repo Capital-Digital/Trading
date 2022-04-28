@@ -358,6 +358,7 @@ def rebalance(account_id, reload=False, release=True):
 
             # If no order is found and if a short is opened then continue
             if account.has_opened_short(code):
+                log.info('A short position is still opened, can not buy spot.')
                 continue
             else:
                 open_order_size = 0

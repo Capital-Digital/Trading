@@ -9,6 +9,31 @@
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
   <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script>
+
+        $(document).ready( function() {
+
+            // Save last active tab to sessionStorage
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
+                try {
+                    sessionStorage.setItem('lastTab', $(this).attr('href'));
+                } catch (error) {
+                    console.log(error);
+                }
+            });
+
+            // Get last active tab from sesssionStorage and go there
+            var lastTab = sessionStorage.getItem('lastTab');
+            if (lastTab) {
+                $('[href="' + lastTab + '"]').tab('show');
+            }
+
+        )};
+
+    </script>
+
 
     {% block head-content %}{% endblock head-content %}
     {% block nav %}{% include 'navbar.html' %}{% endblock nav %}

@@ -5,29 +5,6 @@
 {% load humanize %}
 {% load extras %}
 
-<script>
-
-    $(document).ready( function() {
-
-        // Save last active tab to sessionStorage
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
-            try {
-                sessionStorage.setItem('lastTab', $(this).attr('href'));
-            } catch (error) {
-                console.log(error);
-            }
-        });
-
-        // Get last active tab from sesssionStorage and go there
-        var lastTab = sessionStorage.getItem('lastTab');
-        if (lastTab) {
-            $('[href="' + lastTab + '"]').tab('show');
-        }
-
-    )};
-
-</script>
-
 {% block content %}
   <h1>{{strategy.name}}</h1>
   <p>Data of strategy {{strategy.name}}</p>

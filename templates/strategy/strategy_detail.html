@@ -30,7 +30,7 @@
                     type: 'line',
                     data: {
                       datasets: [{
-                        data: [{x:'2016-12-25', y:20}, {x:'2016-12-26', y:10}]
+                        data: {{data}}
                       }]
                     }
         });
@@ -46,10 +46,10 @@
 
         {% if user.is_superuser %}
 
+      <canvas id="myChart" width="400" height="500"></canvas>
         {{labels}}
         {{data}}
 
-      <canvas id="myChart" width="400" height="500"></canvas>
 
         {% endif %}
 

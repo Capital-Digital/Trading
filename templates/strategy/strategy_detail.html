@@ -28,15 +28,16 @@
         <div class="row align-items-start">
         <div class="col">
         <h4>Historical Returns</h4>
+            
+        {% autoescape off %}
+        {{ plot_div }}
+        {% endautoescape %}
+
         <p>24h rolling period</p>
         {% render_table table_1 %}
 
         </div>
         <div class="col">
-
-        {% autoescape off %}
-        {{ plot_div }}
-        {% endautoescape %}
 
         </div>
       </div>

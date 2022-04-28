@@ -10,7 +10,7 @@
       {% if user.is_superuser %}
         <ul>
         {% for s in strategies_list %}
-          <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+          <li><a href="{{ s.name|lower }}">{{ s.name }}</a></li>
         {% endfor %}
         </ul>
       {% endif %}

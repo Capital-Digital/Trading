@@ -11,16 +11,13 @@
 
   <nav>
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
-      <button class="nav-link active" id="nav-account-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-account-summary" type="button" role="tab" aria-controls="nav-account-summary" aria-selected="true">Summary</button>
-      <button class="nav-link" id="nav-account-assets-tab" data-bs-toggle="tab" data-bs-target="#nav-account-assets" type="button" role="tab" aria-controls="nav-account-assets" aria-selected="false">Assets</button>
-      <button class="nav-link" id="nav-account-positions-tab" data-bs-toggle="tab" data-bs-target="#nav-account-positions" type="button" role="tab" aria-controls="nav-account-positions" aria-selected="false">Positions</button>
-      <button class="nav-link" id="nav-account-orders-tab" data-bs-toggle="tab" data-bs-target="#nav-account-orders" type="button" role="tab" aria-controls="nav-account-orders" aria-selected="false">Orders</button>
-      <button class="nav-link" id="nav-account-trades-tab" data-bs-toggle="tab" data-bs-target="#nav-account-trades" type="button" role="tab" aria-controls="nav-account-trades" aria-selected="false">Trades</button>
-      <button class="nav-link" id="nav-account-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-account-performance" type="button" role="tab" aria-controls="nav-account-performance" aria-selected="false">Performance</button>
+      <button class="nav-link active" id="nav-strategy-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-summary" type="button" role="tab" aria-controls="nav-strategy-summary" aria-selected="true">Summary</button>
+      <button class="nav-link" id="nav-strategy-weights-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-weights" type="button" role="tab" aria-controls="nav-strategy-weights" aria-selected="false">Weights</button>
+      <button class="nav-link" id="nav-strategy-performance-tab" data-bs-toggle="tab" data-bs-target="#nav-strategy-performance" type="button" role="tab" aria-controls="nav-strategy-performance" aria-selected="false">Performance</button>
     </div>
   </nav>
   <div class="tab-content" id="nav-tabContent">
-    <div class="tab-pane fade show active" id="nav-account-summary" role="tabpanel" aria-labelledby="nav-account-summary-tab">
+    <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
 
       <h4>Assets</h4>
       <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
@@ -57,33 +54,10 @@
 
 
     </div>
-    <div class="tab-pane fade" id="nav-account-assets" role="tabpanel" aria-labelledby="nav-account-assets-tab">
+    <div class="tab-pane fade" id="nav-strategy-weights" role="tabpanel" aria-labelledby="nav-strategy-weights-tab">
 
     </div>
-    <div class="tab-pane fade" id="nav-account-positions" role="tabpanel" aria-labelledby="nav-account-positions-tab">
-
-    </div>
-    <div class="tab-pane fade" id="nav-account-orders" role="tabpanel" aria-labelledby="nav-account-orders-tab">
-
-      {% if user.is_authenticated %}
-        {% if user == owner or user.is_superuser %}
-
-        <h4>Orders</h4>
-        {% render_table table %}
-        {% else %}
-          <p>You are not authorized to view this account</p>
-        {% endif %}
-
-      {% else %}
-        <p>You are not logged in</p>
-        <a href="{% url 'login' %}">Log In</a>
-      {% endif %}
-
-    </div>
-    <div class="tab-pane fade" id="nav-account-trades" role="tabpanel" aria-labelledby="nav-account-trades-tab">
-
-    </div>
-    <div class="tab-pane fade" id="nav-account-performance" role="tabpanel" aria-labelledby="nav-account-performance-tab">
+    <div class="tab-pane fade" id="nav-strategy-performance" role="tabpanel" aria-labelledby="nav-strategy-performance-tab">
 
     </div>
   </div>

@@ -30,7 +30,7 @@
                     type: 'line',
                     data: {
                       datasets: [{
-                        data: {{data|safe}}
+                        data: {{data|safe||join:", "}}
                       }]
                     }
         });

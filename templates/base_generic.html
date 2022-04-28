@@ -13,18 +13,16 @@
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script type="text/javascript">
 
-        $(document).ready( function() {
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            console.log("tab shown...");
+            localStorage.setItem('activeTab', $(e.target).attr('href'));
+        });
 
-            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-                localStorage.setItem('activeTab', $(e.target).attr('href'));
-            });
-
-            var activeTab = localStorage.getItem('activeTab');
-            if(activeTab){
-                $('.nav-tabs a[href="' + activeTab + '"]').tab('show');
-            }
-
-        )};
+        // read hash from page load and change tab
+        var activeTab = localStorage.getItem('activeTab');
+        if(activeTab){
+            $('.nav-tabs a[href="' + activeTab + '"]').tab('show');
+        }
 
     </script>
 

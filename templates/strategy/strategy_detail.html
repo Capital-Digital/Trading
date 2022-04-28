@@ -21,6 +21,22 @@
         {% if user.is_superuser %}
         {% block scripts %}
 
+        <script>
+        // jquery function
+        $(document).ready(function(){
+                var ctx = document.getElementById('myChart').getContext('2d');
+                var myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: {{labels}},
+                        datasets: [{
+                            label: '# of users',
+                            data: {{data}}
+                        }]
+                    }
+        });
+            });
+        </script>
 
 
         {% endblock scripts %}

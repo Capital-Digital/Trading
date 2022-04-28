@@ -289,55 +289,59 @@ def rebalance(account_id, reload=False, release=True):
 
     # Open short
     for code in account.codes_to_sell():
-        if not account.has_spot_asset('free', code):
 
-            log.info(' ')
-            log.info('Allocate resources', action='open_short')
-            log.info('******************')
+        log.info(' ')
+        log.info('Allocate resources', action='open_short')
+        log.info('******************')
 
-            try:
-                # Test if a sell spot or an open short order is open
-                market, flip = account.exchange.get_spot_market(code, account.quote)
-                open = Order.objects.get(account=account,
-                                         status='open',
-                                         market=market,
-                                         action__in=['sell_spot', 'open_short']
-                                         )
-            except ObjectDoesNotExist:
-                open_order_size = 0
+        try:
+            # Test if a sell_spot or an open_short order is open
+            market, flip = account.exchange.get_spot_market(code, account.quote)
+            open = Order.objects.get(account=account,
+                                     status='open',
+                                     market=market,
+                                     action__in=['sell_spot', 'open_short']
+                                     )
+        except ObjectDoesNotExist:
+            if account.has_spot_asset('free', code):
+                log.waning('Can not open short there is {0} left in spot.'.format(code))
+                log.info(account.balances.spot)
+                continue
             else:
-                if flip:
-                    open_order_size = open.amount / open.price
-                else:
-                    open_order_size = open.amount
+                open_order_size = 0
+        else:
+            if flip:
+                open_order_size = open.amount / open.price
+            else:
+                open_order_size = open.amount
 
-            # Determine delta quantity
-            price = account.balances.price['spot']['bid'][code]
-            delta = account.balances.account.target.delta[code] - open_order_size  # Offset sell/close order size
+        # Determine delta quantity
+        price = account.balances.price['spot']['bid'][code]
+        delta = account.balances.account.target.delta[code] - open_order_size  # Offset sell/close order size
 
-            if delta > 0:
+        if delta > 0:
 
-                # Determine value
-                desired_val = delta * price
-                val = min(account.free_margin(), desired_val)
+            # Determine value
+            desired_val = delta * price
+            val = min(account.free_margin(), desired_val)
 
-                # Transfer is needed ?
-                if val < desired_val:
-                    amount = min(desired_val - val, account.balances.spot.free.quantity[account.quote])
-                    transfer_id = send_transfer(account.id, 'spot', 'future', amount)
-                    if transfer_id:
-                        account.offset_transfer('spot', 'future', amount, transfer_id)
-                        val += amount
+            # Transfer is needed ?
+            if val < desired_val:
+                amount = min(desired_val - val, account.balances.spot.free.quantity[account.quote])
+                transfer_id = send_transfer(account.id, 'spot', 'future', amount)
+                if transfer_id:
+                    account.offset_transfer('spot', 'future', amount, transfer_id)
+                    val += amount
 
-                # Determine quantity from available resources
-                qty = val / price
+            # Determine quantity from available resources
+            qty = val / price
 
-                # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', code, qty, price)
-                if valid:
-                    # Create object and place order
-                    clientid = account.create_object('future', code, 'sell', 'open_short', qty)
-                    send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
+            # Format decimal and validate order
+            valid, qty, reduce_only = account.validate_order('future', code, qty, price)
+            if valid:
+                # Create object and place order
+                clientid = account.create_object('future', code, 'sell', 'open_short', qty)
+                send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
     # Buy spot
     for code in account.codes_to_buy():
@@ -356,9 +360,10 @@ def rebalance(account_id, reload=False, release=True):
                                      )
         except ObjectDoesNotExist:
 
-            # If no order is found and if a short is opened then continue
+            # If no order is found and if a short is opened then cancel
             if account.has_opened_short(code):
-                log.info('A short position is still opened, can not buy spot.')
+                log.waning('Can not buy spot there is a short position still opened.')
+                log.info(account.balances.position)
                 continue
             else:
                 open_order_size = 0
@@ -397,6 +402,8 @@ def rebalance(account_id, reload=False, release=True):
             # Create object and place order
             clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
             send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
+
+    log.info('Rebalancing complete')
 
 
 # Update open orders of an account

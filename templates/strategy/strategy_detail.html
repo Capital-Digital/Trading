@@ -23,7 +23,7 @@
       <p>Target weights of the assets.</p>
       <ul>
       {% for code, last in weights %}
-        <li>{{last[0]}}% {{code}}</li>
+        <li>{{last}}% {{code}}</li>
       {% endfor %}
       </ul>
       <p>Last update {{weights.index.to_pydatetime().strftime(datetime_directive_ISO_8601)}}</p>

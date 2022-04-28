@@ -22,7 +22,10 @@
       <h4>Assets</h4>
       <p>List of assets traded by the strategy</p>
       {% for c in codes_long %}
-        <p>c codes_long</p>
+        <p>Asset {{c}}</p>
+      {% endfor %}
+      {% for c in codes_short %}
+        <p>Asset {{c}}</p>
       {% endfor %}
 
 

@@ -30,7 +30,7 @@
                     type: 'line',
                     data: {
                       datasets: [{
-                        data: {{data|safe|join:", "}}
+                        data: [{% for j in data %}{{ j }}, {% endfor %}]
                       }]
                     }
         });

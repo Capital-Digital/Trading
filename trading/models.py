@@ -752,13 +752,19 @@ class Account(models.Model):
             offset.loc[code, ('account', 'target', 'delta')] = filled
 
         if action == 'open_short':
-            # Offset position size and value
+
             offset.loc[code, ('position', 'open', 'quantity')] = -filled
             offset.loc[code, ('position', 'open', 'value')] = -filled_value
 
+            # Offset position size and value
             offset.loc[code, ('account', 'current', 'exposure')] = -filled
             offset.loc[code, ('account', 'current', 'value')] = -filled_value
             offset.loc[code, ('account', 'target', 'delta')] = -filled
+
+            # Create columns if needed
+            if ('position', 'open', 'quantity') not in self.balances.columns:
+                self.balances.loc[code, ('position', 'open', 'quantity')] = np.nan
+                self.balances.loc[code, ('position', 'open', 'value')] = np.nan
 
         pct = self.balances.account.current.percent[code] * 100
         log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))

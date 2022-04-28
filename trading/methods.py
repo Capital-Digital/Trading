@@ -55,7 +55,6 @@ def format_decimal(counting_mode, precision, n):
 
 # Return amount limit min or amount limit max if condition is not satisfy
 def limit_amount(market, amount):
-
     # Check amount limits
     if market.limits['amount']['min']:
         if amount < market.limits['amount']['min']:
@@ -103,7 +102,6 @@ def limit_cost(market, cost):
 
 # Set order status to error
 def order_error(clientid, exception, kwargs):
-
     from trading.models import Order
     order = Order.objects.get(clientid=clientid)
 
@@ -125,6 +123,10 @@ def pseudo_generator(count):
                              'sp', 'st', 'str', 't', 'tr'}
                           )
 
+    middle_consonants = (set(string.ascii_lowercase) - set('aeiou')
+                         | {'b', 'c', 'd', 'f', 'g', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'w', 'z', 'x'}
+                         )
+
     final_consonants = (set(string.ascii_lowercase) - set('aeiou')
                         # confusable
                         - set('qxcsj')
@@ -136,7 +138,10 @@ def pseudo_generator(count):
 
     # each syllable is consonant-vowel-consonant "pronounceable"
     syllables = map(''.join, itertools.product(initial_consonants,
-                                               vowels, final_consonants))
+                                               vowels,
+                                               middle_consonants,
+                                               vowels,
+                                               final_consonants))
 
     # you could trow in number combinations, maybe capitalized versions...
 

@@ -29,10 +29,9 @@
                 var myChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        datasets: [{
-                            label: '# of users',
-                            data: {{data}}
-                        }]
+                      datasets: [{
+                        data: [{x:'2016-12-25', y:20}, {x:'2016-12-26', y:10}]
+                      }]
                     }
         });
             });
@@ -51,7 +50,7 @@
         {{data}}
 
       <canvas id="myChart" width="400" height="500"></canvas>
-        
+
         {% endif %}
 
       <h4>Historical Weights</h4>

@@ -19,6 +19,11 @@
 
       <h4>Historical Weights</h4>
       <p>Last update {{last_update}}.</p>
+      
+      {% autoescape off %}
+      {{ plot_div }}
+      {% endautoescape %}
+
       {% render_table table_2 %}
 
     </div>

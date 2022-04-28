@@ -19,14 +19,19 @@
   <div class="tab-content" id="nav-tabContent">
     <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
 
-      <h4>Assets</h4>
-      <p>List of assets traded by the strategy</p>
+      <h4>Long assets</h4>
+      <p>List of assets longed by the strategy</p>
       {% for c in codes_long %}
-        <p>Asset {{c}}</p>
+        <p>{{c}}</p>
       {% endfor %}
+
+      <h4>Short assets</h4>
+      <p>List of assets shorted by the strategy</p>
+      <ul>
       {% for c in codes_short %}
-        <p>Asset {{c}}</p>
+        <li><p>{{c}}</p></li>
       {% endfor %}
+      </ul>
 
 
 

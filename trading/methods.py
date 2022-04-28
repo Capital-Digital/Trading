@@ -114,31 +114,24 @@ def order_error(clientid, exception, kwargs):
 
 # Generate pseudonym
 def pseudo_generator(count):
-    initial_consonants = (set(string.ascii_lowercase) - set('aeiou')
-                          # remove those easily confused with others
-                          - set('qxc')
-                          # add some crunchy clusters
-                          | {'ch', 'b', 'c', 'br', 'cl', 'cr', 'd', 'dr', 'f', 'fl', 'fr', 'g', 'gl', 'gr', 'p', 'pl',
-                             'pr', 's', 'sk', 'sl', 'sm', 'sn', 'm', 'n',
-                             'sp', 'st', 'str', 't', 'tr'}
-                          )
+    initial_consonants = ({'ch', 'b', 'c', 'br', 'cl', 'cr', 'd', 'dr', 'f', 'fl', 'fr', 'g', 'gl', 'gr', 'p', 'pl',
+                           'pr', 's', 'sk', 'sl', 'sm', 'sn', 'm', 'n',
+                           'sp', 'st', 'str', 't', 'tr'}
+    )
 
-    middle_consonants = (set(string.ascii_lowercase) - set('aeiou')
-                         | {'b', 'c', 'd', 'f', 'g', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'w', 'z', 'x'}
-                         )
+    middle_consonants = ({'b', 'c', 'd', 'f', 'g', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v'})
 
-    final_consonants = (set(string.ascii_lowercase) - set('aeiou')
-                        # confusable
-                        - set('qxcsj')
-                        # crunchy clusters
-                        | {'nette', 'uard', 'tard', 'nce', 'me', 'tion', 'trude', 'wala', 'ture', 'ne'}
-                        )
+    final_consonants = ({'nette', 'rd', 'tard', 'nce', 'se', 'me', 'tion', 'trude', 'la', 'ture', 'ne', 'nt', 'ux',
+                         'ne', 'son', 'pin', 'mot', 's', 'lier', 'mat', 'side', 'lle', 'nal', 'gio', 'çois', 'nan',
+                         'blier', 'chat'}
+    )
 
+    vowels_first = 'aeiouéè'  # we'll keep this simple
     vowels = 'aeiou'  # we'll keep this simple
 
     # each syllable is consonant-vowel-consonant "pronounceable"
     syllables = map(''.join, itertools.product(initial_consonants,
-                                               vowels,
+                                               vowels_first,
                                                middle_consonants,
                                                vowels,
                                                final_consonants))

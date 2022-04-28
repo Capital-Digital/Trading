@@ -6,5 +6,16 @@
 
 {% block content %}
   <h1>Strategies</h1>
-  <p>List of all strategies.</p>
+  <p>List of active strategies</p>
+
+      {% if user.is_superuser %}
+
+        <ul>
+        {% for s in strategies_list %}
+          <li><a href="{{ s.pk }}">{{ s.name }}</a></li>
+        {% endfor %}
+        </ul>
+
+      {% endif %}
+
 {% endblock %}

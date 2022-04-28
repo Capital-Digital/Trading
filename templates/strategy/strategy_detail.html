@@ -20,9 +20,6 @@
 
         {% if user.is_superuser %}
 
-        {{labels}}
-        {{data}}
-
         {% block scripts %}
 
         <script>
@@ -46,7 +43,13 @@
 
         {% endif %}
 
-      <canvas id="myChart" width="400" height="100"></canvas>
+      <canvas id="myChart" width="400" height="500"></canvas>
+
+
+
+        {{labels}}
+        {{data}}
+
       <h4>Historical Weights</h4>
       <p>Last update {{last_update}}.</p>
       {% render_table table_2 %}

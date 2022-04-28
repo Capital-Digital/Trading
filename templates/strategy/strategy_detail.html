@@ -22,8 +22,8 @@
       <h4>Assets</h4>
       <p>Assets traded with the strategy</p>
       <ul>
-      {% for weight in weights %}
-        <li>{{weights}} {{weight.code}} {{weight.last}}</li>
+      {% for code, last in weights.items %}
+        <li>{{code}} {{last}}</li>
       {% endfor %}
       </ul>
 

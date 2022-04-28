@@ -22,7 +22,7 @@
 
         {{labels}}
         {{data}}
-        
+
         {% block scripts %}
 
         <script>
@@ -32,7 +32,6 @@
                 var myChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: {{labels}},
                         datasets: [{
                             label: '# of users',
                             data: {{data}}

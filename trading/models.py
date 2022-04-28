@@ -362,7 +362,7 @@ class Account(models.Model):
         # Determine total exposure
         exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
 
-        if 'position' in self.balances.columns.get_level_values(0):
+        if self.has_opened_short():
             pos_value = self.balances.position.open.value.dropna().sum()
             exposure[self.quote] = max(0, exposure[self.quote] - abs(pos_value))
 
@@ -466,8 +466,9 @@ class Account(models.Model):
                     return True
                 else:
                     return False
-            else:
+            elif len(self.balances.position.open.quantity.dropna().index.tolist()):
                 return True
+            else: return False
         else:
             return False
 

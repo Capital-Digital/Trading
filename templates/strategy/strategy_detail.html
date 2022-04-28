@@ -22,8 +22,8 @@
       <h4>Target weights</h4>
       <p>Target weights of the assets.</p>
       <ul>
-      {% for code, last in weights %}
-        <li>{{last}}% {{code}}</li>
+      {% for code in weights %}
+        <li>{{code}}</li>
       {% endfor %}
       </ul>
       <p>Last update {{weights}}</p>

@@ -25,8 +25,17 @@
     </div>
     <div class="tab-pane fade" id="nav-strategy-performance" role="tabpanel" aria-labelledby="nav-strategy-performance-tab">
 
+        <script type="text/javascript">
+            $.get('{% url "line_chart_json" %}', function(data) {
+                var ctx = $("#myChart").get(0).getContext("2d");
+                new Chart(ctx, {
+                    type: 'line', data: data
+                });
+            });
+        </script>
+
       <h4>Historical Returns</h4>
-      <p>24h historical returns</p>
+      <p>24h rolling period</p>
 
       {% render_table table_1 %}
 

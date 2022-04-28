@@ -17,14 +17,6 @@
   <div class="tab-content" id="nav-tabContent">
     <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
 
-      <h4>Historical Weights</h4>
-      <p>Last update {{last_update}}.</p>
-
-      {% render_table table_2 %}
-
-    </div>
-    <div class="tab-pane fade" id="nav-strategy-performance" role="tabpanel" aria-labelledby="nav-strategy-performance-tab">
-
         <script type="text/javascript">
             $.get('{% url "line_chart_json" %}', function(data) {
                 var ctx = $("#myChart").get(0).getContext("2d");
@@ -33,6 +25,14 @@
                 });
             });
         </script>
+      
+      <h4>Historical Weights</h4>
+      <p>Last update {{last_update}}.</p>
+
+      {% render_table table_2 %}
+
+    </div>
+    <div class="tab-pane fade" id="nav-strategy-performance" role="tabpanel" aria-labelledby="nav-strategy-performance-tab">
 
       <h4>Historical Returns</h4>
       <p>24h rolling period</p>

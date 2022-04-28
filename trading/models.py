@@ -763,8 +763,9 @@ class Account(models.Model):
 
             # Create columns if needed
             if ('position', 'open', 'quantity') not in self.balances.columns:
-                self.balances.loc[code, ('position', 'open', 'quantity')] = np.nan
-                self.balances.loc[code, ('position', 'open', 'value')] = np.nan
+                self.balances.loc[code, ('position', 'open', 'quantity')] = 0
+                self.balances.loc[code, ('position', 'open', 'value')] = 0
+                self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = 0
 
         pct = self.balances.account.current.percent[code] * 100
         log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))

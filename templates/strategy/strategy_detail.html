@@ -22,7 +22,7 @@
       <h4>Weights</h4>
       <p>Assets weights at {{weights.datetime}}</p>
       <ul>
-      {% for code, last in weights.items %}
+      {% for code, last in weights.codes.items %}
         <li>{{code}} {{last}}%</li>
       {% endfor %}
       </ul>

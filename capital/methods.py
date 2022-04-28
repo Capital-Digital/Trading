@@ -7,6 +7,7 @@ log = structlog.get_logger(__name__)
 
 datetime_directive_m = "%y-%m-%d %H:%M"
 datetime_directive_s = "%Y-%m-%d %H:%M:%S"
+datetime_directive_literal = '%A %d %B %Y at %H:%M:%S'
 datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
 datetime_directive_ISO_8601 = "%Y-%m-%dT%H:%M:%SZ"
 directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'

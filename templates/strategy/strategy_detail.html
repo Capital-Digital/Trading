@@ -22,11 +22,11 @@
       <h4>Target weights</h4>
       <p>Target weights of the assets.</p>
       <ul>
-      {% for code, last in weights.items %}
-        <li>{{last}}% {{code}}</li>
+      {% for code, last in weights.items() %}
+        <li>{{last[0]}}% {{code}}</li>
       {% endfor %}
       </ul>
-      <p>Last update {{weights.datetime}} UTC</p>
+      <p>Last update {{weights.index.to_pydatetime().strftime(datetime_directive_ISO_8601)}}</p>
 
     </div>
     <div class="tab-pane fade" id="nav-strategy-weights" role="tabpanel" aria-labelledby="nav-strategy-weights-tab">

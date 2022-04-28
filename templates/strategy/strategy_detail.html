@@ -21,7 +21,7 @@
         {% if user.is_superuser %}
         {% block scripts %}
 
-        <script> src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"> </script>
+
                 <script>
                 // jquery function
                 $(document).ready(function(){
@@ -46,10 +46,12 @@
                     });
                 </script>
         {% endblock scripts %}
+
         {% endif %}
 
       <canvas id="myChart" width="400" height="100"></canvas>
       <h4>Historical Weights</h4>
+        {{labels}}
       <p>Last update {{last_update}}.</p>
       {% render_table table_2 %}
 

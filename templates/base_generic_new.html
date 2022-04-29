@@ -31,11 +31,6 @@
 
     </script>
 
-
-    {% block head-content %}{% endblock head-content %}
-    {% block nav %}{% include 'navbar_new.html' %}{% endblock nav %}
-    {% block content1 %}{% endblock content1 %}
-
 </head>
 <body>
 <div class="container-fluid">
@@ -110,6 +105,12 @@
 
         </div>
         <div class="col-sm-10 ">
+
+
+            {% block head-content %}{% endblock head-content %}
+            {% block nav %}{% include 'navbar_new.html' %}{% endblock nav %}
+            {% block content1 %}{% endblock content1 %}
+
              {% block content %}
              {% endblock %}
          </div>

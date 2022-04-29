@@ -606,10 +606,12 @@ def fetch_positions(account_id, wallet='future'):
                 obj.unrealized_pnl = float(position['unRealizedProfit'])
                 obj.liquidation = float(position['liquidationPrice'])
                 obj.response = opened
-                
                 obj.save()
 
-    log.info('Fetch positions complete')
+        log.info('Fetch positions complete')
+    else:
+        log.info('No position opened')
+
     log.unbind('account')
 
 

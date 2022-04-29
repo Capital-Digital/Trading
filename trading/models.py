@@ -421,6 +421,23 @@ class Account(models.Model):
         delta = self.balances.account.target.delta
         return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
 
+    # # Return a list of codes to buy spot
+    # def codes_to_buy_spot(self):
+    #     long = self.balances.account.target.percent > 0  # codes to long
+    #     return [c for c in self.codes_to_buy() if c in long[long].index.tolist()]  # codes to buy in spot
+    #
+    # # Return a list of codes to buy spot
+    # def codes_to_sell_spot(self):
+    #     spot = self.balances.spot.quantity.total.dropna().index.tolist()  # codes spot
+    #     return [c for c in self.codes_to_sell() if c in spot]  # codes to sell in spot
+    #
+    # # Return a list of codes to buy spot
+    # def codes_to_open_short(self):
+    #     spot = self.balances.spot.quantity.total.dropna().index.tolist()  # codes spot
+    #     short = self.balances.account.target.percent < 0  # codes to short
+    #     short = short[short].index.tolist()
+    #     return [c for c in self.codes_to_sell() if c in short and c not in spot]  # codes to sell and short not in spot
+
     # Return True is account has more than $10 of an asset in spot wallet
     def has_spot_asset(self, key, code=None):
         if ('spot', key, 'quantity') in self.balances.columns:

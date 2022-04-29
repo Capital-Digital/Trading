@@ -8,19 +8,17 @@
     Trading bot
   </a>
 
-  <li class="nav-item">
-    <a class="nav-link active" href="#">Active</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="#">Link</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="#">Link</a>
-  </li>
-  <li class="nav-item">
-  </li>
-
     <span class="navbar-text">
+
+      <li class="nav-item">
+        <a class="nav-link" href="#">Link</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Link</a>
+      </li>
+      <li class="nav-item">
+      </li>
+
     {% block content %}
         {% if user.is_authenticated %}
         <a href="{% url 'logout' %}">Log Out</a>

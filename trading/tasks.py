@@ -48,6 +48,14 @@ class BaseTaskWithRetry(Task):
 # Bulk actions
 ##############
 
+# Fetch assets and update objects
+@app.task(name='Trading_____Bulk_fetch_assets')
+def bulk_fetch_assets():
+    for exchange in Exchange.objects.all():
+        for account in Account.objects.filter(exchange=exchange, active=True):
+            for wallet in exchange.get_wallets():
+                fetch_assets.delay(account.id, wallet)
+
 
 # Cancel orders and query assets quantity and open positions
 @app.task(name='Trading_____Bulk_prepare_accounts')

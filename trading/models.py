@@ -1010,6 +1010,7 @@ class Stat(models.Model):
     positions_notional_value = models.FloatField(null=True)
     fee_avg_spot = models.FloatField(null=True)
     fee_avg_future = models.FloatField(null=True)
+    funding_rate_avg = models.FloatField(null=True)
     assets_value = models.FloatField(null=True)
     assets_distribution = PickledObjectField(null=True)
     historical_value = PickledObjectField(null=True)

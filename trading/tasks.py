@@ -523,14 +523,12 @@ def fetch_assets(account_id, wallet=None):
             obj = Asset.objects.get(currency=currency,
                                     exchange=account.exchange,
                                     account=account,
-                                    owner=account.owner,
                                     wallet=wallet
                                     )
         except ObjectDoesNotExist:
             obj = Asset.objects.create(currency=currency,
                                        exchange=account.exchange,
                                        account=account,
-                                       owner=account.owner,
                                        wallet=wallet
                                        )
         finally:

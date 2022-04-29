@@ -110,9 +110,9 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def refresh(self, request, queryset):
         for order in queryset:
-            order.refresh()
+            send_fetch_orderid.delay(order.orderid)
 
-    refresh.short_description = 'Refresh order'
+    refresh.short_description = 'Update order'
 
     def cancel_order(self, request, queryset):
         for order in queryset:

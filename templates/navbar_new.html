@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<ul class="nav navbar-light py-4" style="background-color: #e3f2fd;">
+<ul class="nav navbar-expand-lg navbar-light py-4" style="background-color: #e3f2fd;">
 
   <a class="navbar-brand" href="#">
     <img src="/static/image/icons8-robot-2-80.png" width="30" height="30" class="d-inline-block align-top" alt="">
@@ -19,13 +19,14 @@
       <li class="nav-item">
       </li>
 
-    {% block content %}
-        {% if user.is_authenticated %}
-        <a href="{% url 'logout' %}">Log Out</a>
-        {% else %}
-        <a href="{% url 'login' %}">Log In</a>
-    {% endif %}
-    {% endblock %}
+        {% block content %}
+            {% if user.is_authenticated %}
+            <a href="{% url 'logout' %}">Log Out</a>
+            {% else %}
+            <a href="{% url 'login' %}">Log In</a>
+        {% endif %}
+        {% endblock %}
+
     </span>
 </ul>
 

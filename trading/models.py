@@ -863,7 +863,7 @@ class Account(models.Model):
         pass
 
 
-class Asset(models.Model):
+class Fund(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='funds', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)

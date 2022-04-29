@@ -386,6 +386,8 @@ def rebalance(account_id, reload=False, release=True):
         desired_val = delta * price
         val = min(free, desired_val)
 
+        log.info('Order value to buy spot is {0}'.format(val))
+
         # Transfer is needed ?
         if val < desired_val:
             amount = min(desired_val - val, account.free_margin())
@@ -393,9 +395,12 @@ def rebalance(account_id, reload=False, release=True):
             if transfer_id:
                 account.offset_transfer('future', 'spot', amount, transfer_id)
                 val += amount
+                log.info('Order value before validation is {0}'.format(val))
 
         # Determine quantity from available resources
         qty = val / price
+
+        log.info('Order quantity before validation is {0}'.format(qty))
 
         # Format decimal and validate order
         valid, qty, reduce_only = account.validate_order('spot', code, qty, price)

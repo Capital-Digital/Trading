@@ -78,7 +78,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('account', 'exchange')
-    readonly_fields = ('account', 'historical_balance', 'dt_created', 'owner')
+    readonly_fields = ('account', 'historical_balance', 'dt_create', 'owner')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
@@ -214,7 +214,7 @@ class CustomerAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('transferid', 'account', 'exchange', 'currency', 'amount', 'from_wallet', 'to_wallet', 'status')
     readonly_fields = ('transferid', 'account', 'exchange', 'currency', 'amount', 'from_wallet', 'to_wallet', 'status',
-                       'response', 'datetime', 'timestamp', 'user')
+                       'response', 'datetime', 'timestamp', 'owner')
 
     list_filter = (
         ('exchange', admin.RelatedOnlyFieldListFilter),

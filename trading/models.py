@@ -876,15 +876,9 @@ class Asset(models.Model):
     total = models.FloatField(max_length=10, null=True, default=0)
     free = models.FloatField(max_length=10, null=True, default=0)
     used = models.FloatField(max_length=10, null=True, default=0)
-    dt_returned = models.DateTimeField(null=True)
+    dt_response = models.DateTimeField(null=True)
     dt_modified = models.DateTimeField(null=True)
     dt_created = models.DateTimeField(null=True)
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
 
     class Meta:
         verbose_name_plural = "Assets"

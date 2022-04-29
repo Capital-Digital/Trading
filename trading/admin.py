@@ -64,7 +64,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     'dt_modified',
                     )
     readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'dt_created',
-                       'dt_modified', 'dt_returned', )
+                       'dt_modified', 'dt_response', )
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)

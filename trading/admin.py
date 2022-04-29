@@ -110,7 +110,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def refresh(self, request, queryset):
         for order in queryset:
-            send_fetch_orderid.delay(order.orderid)
+            send_fetch_orderid.delay(order.account.id, order.orderid)
 
     refresh.short_description = 'Update order'
 

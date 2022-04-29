@@ -1,10 +1,9 @@
 import ccxt
 from django.db import models
-from django.db.models import Sum
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Avg, Sum
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from capital.methods import *
 from strategy.models import Strategy
@@ -579,7 +578,7 @@ class Account(models.Model):
 
         return clientid
 
-    # Update order object
+    # Update order object after an order is placed
     def update_order_object(self, wallet, response, new=False):
         #
         orderid = response['id']
@@ -865,6 +864,28 @@ class Account(models.Model):
     # Offset a cancelled order
     def offset_order_cancelled(self, code, side, qty, val, filled=0):
         pass
+
+    # Return sum of open orders size
+    def get_open_orders_size(self, code, side, actions):
+
+        # Test if a close_spot or a buy_spot order is open
+        market, flip = self.exchange.get_spot_market(code, self.quote)
+        qs = Order.objects.filter(account=self,
+                                  status__in=['open', 'preparation'],
+                                  market=market,
+                                  side=side,
+                                  action__in=actions
+                                  )
+        if not qs:
+            return 0
+        else:
+            qs_amount = qs.aggregate(Sum('amount'))
+            qs_price = qs.aggregate(Avg('price'))
+
+            if flip:
+                return qs_amount / qs_price
+            else:
+                return qs_amount
 
 
 class Asset(models.Model):

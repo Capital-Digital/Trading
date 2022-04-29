@@ -7,7 +7,7 @@ import time
 from itertools import accumulate
 from pprint import pprint
 from django.db.models.query import QuerySet
-from django.db.models import Q
+from django.db.models import Q, Sum, Avg
 import warnings
 import ccxt
 import numpy as np
@@ -86,7 +86,7 @@ def bulk_rebalance(strategy_id, reload=False):
 @app.task(name='Trading_____Bulk_update_orders')
 def bulk_update_orders():
     #
-    for account in Account.objects.filter(active=True):
+    for account in Account.objects.filter(active=True, busy=False):
         update_orders.delay(account.id)
 
 
@@ -271,12 +271,18 @@ def rebalance(account_id, reload=False, release=True):
         for code in account.codes_to_sell():
             if account.has_spot_asset('free', code):
 
+                # Return amount of open orders
+                open_order_size = account.get_open_orders_size(code,
+                                                               side='sell',
+                                                               actions=['sell_spot', 'open_short']
+                                                               )
+
                 log.info(' ')
                 log.info('Release resources', action='sell_spot')
                 log.info('*****************')
 
                 free = account.balances.spot.free.quantity[code]
-                delta = account.balances.account.target.delta[code]
+                delta = account.balances.account.target.delta[code] - open_order_size
 
                 # Determine order size and value
                 price = account.balances.price['spot']['bid'][code]
@@ -293,16 +299,22 @@ def rebalance(account_id, reload=False, release=True):
         for code in account.codes_to_buy():
             if account.has_opened_short(code):
 
+                # Return amount of open orders
+                open_order_size = account.get_open_orders_size(code,
+                                                               side='buy',
+                                                               actions=['buy_spot', 'close_short']
+                                                               )
+
                 log.info(' ')
                 log.info('Release resources', action='close_short')
                 log.info('*****************')
 
-                opened = account.balances.position.open.quantity[code]
-                delta = account.balances.account.target.delta[code]
+                opened = abs(account.balances.position.open.quantity[code])
+                delta = abs(account.balances.account.target.delta[code]) - open_order_size
 
                 # Determine order size and value
                 price = account.balances.price['future']['last'][code]
-                qty = abs(max(opened, delta))
+                qty = min(opened, delta)
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price, action='close_short')
@@ -317,26 +329,11 @@ def rebalance(account_id, reload=False, release=True):
     # Open short
     for code in account.codes_to_sell():
 
-        try:
-            # Test if a sell_spot or an open_short order is open
-            market, flip = account.exchange.get_spot_market(code, account.quote)
-            open = Order.objects.get(account=account,
-                                     status='open',
-                                     market=market,
-                                     side='sell',
-                                     action__in=['sell_spot', 'open_short', 'preparation']
-                                     )
-        except ObjectDoesNotExist:
-            if account.has_spot_asset('free', code):
-                log.info('Can not open short, {0} left in spot.'.format(code))
-                continue
-            else:
-                open_order_size = 0
-        else:
-            if flip:
-                open_order_size = open.amount / open.price
-            else:
-                open_order_size = open.amount
+        # Return amount of open orders
+        open_order_size = account.get_open_orders_size(code,
+                                                       side='sell',
+                                                       actions=['sell_spot', 'open_short']
+                                                       )
 
         log.info(' ')
         log.info('Allocate resources', action='open_short')
@@ -373,43 +370,26 @@ def rebalance(account_id, reload=False, release=True):
     # Buy spot
     for code in account.codes_to_buy():
 
-        try:
-            # Test if a close_short or a buy_spot order is open
-            market, flip = account.exchange.get_perp_market(code, account.quote)
-            open = Order.objects.get(account=account,
-                                     status='open',
-                                     market=market,
-                                     side='buy',
-                                     action__in=['buy_spot', 'close_short', 'preparation']
-                                     )
-        except ObjectDoesNotExist:
-
-            # If no order is found and if a short is opened then cancel
-            if account.has_opened_short(code):
-                log.info('Can not buy spot. A short position is opened but no close_order.')
-                continue
-            else:
-                open_order_size = 0
-
-        else:
-            if flip:
-                open_order_size = open.amount / open.price
-            else:
-                open_order_size = open.amount
+        # Return amount of open orders
+        open_order_size = account.get_open_orders_size(code,
+                                                       side='buy',
+                                                       actions=['buy_spot', 'close_short']
+                                                       )
 
         log.info(' ')
         log.info('Allocate resources', action='buy_spot')
         log.info('******************')
+
+        # Determine desired order size and value
+        price = account.balances.price['spot']['bid'][code]
+        delta = abs(account.balances.account.target.delta[code]) - open_order_size  # Offset buy/close order size
+        desired_val = delta * price
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]
         if np.isnan(free):
             free = 0
 
-        # Determine order size and value
-        price = account.balances.price['spot']['bid'][code]
-        delta = abs(account.balances.account.target.delta[code]) - open_order_size  # Offset buy/close order size
-        desired_val = delta * price
         val = min(free, desired_val)
 
         log.info('Order value to buy spot is {0}'.format(val))

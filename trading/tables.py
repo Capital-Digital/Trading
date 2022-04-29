@@ -6,10 +6,10 @@ class OrderTable(tables.Table):
 
     price = tables.Column(verbose_name='Price limit')
 
-    dt_create = tables.DateTimeColumn(format='M d Y, h:i:s')
-    dt_update = tables.DateTimeColumn(format='M d Y, h:i:s')
-    dt_create = tables.Column(verbose_name='Creation')
-    dt_update = tables.Column(verbose_name='Last update')
+    dt_created = tables.DateTimeColumn(format='M d Y, h:i:s')
+    dt_modified = tables.DateTimeColumn(format='M d Y, h:i:s')
+    dt_created = tables.Column(verbose_name='Creation')
+    dt_modified = tables.Column(verbose_name='Last update')
 
     def render_cost(self, **kwargs):
         return round(kwargs['value'], 2)
@@ -17,5 +17,5 @@ class OrderTable(tables.Table):
     class Meta:
         model = Order
         fields = ('clientid', 'market__symbol', 'market__type', 'status', 'side', 'action', 'amount', 'price',
-                  'cost', 'dt_create', 'dt_update')
+                  'cost', 'dt_created', 'dt_modified')
         exclude = ('ID',)

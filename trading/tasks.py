@@ -278,7 +278,7 @@ def rebalance(account_id, reload=False, release=True):
                                                                )
 
                 log.info(' ')
-                log.info('Release resources', action='sell_spot', open_order_size=open_order_size)
+                log.info('Release resources', action='sell_spot', open_order_size=round(open_order_size, 3))
                 log.info('*****************')
 
                 free = account.balances.spot.free.quantity[code]
@@ -306,7 +306,7 @@ def rebalance(account_id, reload=False, release=True):
                                                                )
 
                 log.info(' ')
-                log.info('Release resources', action='close_short', open_order_size=open_order_size)
+                log.info('Release resources', action='close_short', open_order_size=round(open_order_size, 3))
                 log.info('*****************')
 
                 opened = abs(account.balances.position.open.quantity[code])
@@ -337,7 +337,7 @@ def rebalance(account_id, reload=False, release=True):
                                                            )
 
             log.info(' ')
-            log.info('Allocate resources', action='open_short', open_order_size=open_order_size)
+            log.info('Allocate resources', action='open_short', open_order_size=round(open_order_size, 3))
             log.info('******************')
 
             # Determine delta quantity
@@ -379,7 +379,7 @@ def rebalance(account_id, reload=False, release=True):
                                                            )
 
             log.info(' ')
-            log.info('Allocate resources', action='buy_spot', open_order_size=open_order_size)
+            log.info('Allocate resources', action='buy_spot', open_order_size=round(open_order_size, 3))
             log.info('******************')
 
             # Determine desired order size and value

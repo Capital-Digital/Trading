@@ -1003,7 +1003,7 @@ class Stat(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='stats', null=True)
     order_execution_success_rate = models.FloatField(null=True)
     order_execution_time_avg = models.FloatField(null=True)
-    order_execution_value = models.FloatField(null=True)
+    trade_total_value = models.FloatField(null=True)
     order_executed = models.FloatField(null=True)
     assets_value = models.FloatField(null=True)
     positions_notional_value = models.FloatField(null=True)

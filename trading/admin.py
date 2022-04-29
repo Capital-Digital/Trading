@@ -1,25 +1,24 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
-from trading.models import Account, Fund, Position, Order, Asset
+from trading.models import Account, Fund, Position, Order, Asset, Stat
 from trading.tasks import *
 import structlog
 from celery import chain, group
 from django.contrib.admin import SimpleListFilter
 from django.contrib.postgres.fields import JSONField
 from prettyjson import PrettyJSONWidget
-from django.db.models import Count, Sum, F, Q, JSONField
+from django.db.models import Count, Sum, F, Q, JSONField, Avg
 import json
 from pygments import highlight, formatters, lexers
 from django.utils.safestring import mark_safe
-from django.db.models import Avg
 
 log = structlog.get_logger(__name__)
 
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials', )
-    readonly_fields = ('valid_credentials', )
+    list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials',)
+    readonly_fields = ('valid_credentials',)
     actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions', 'fetch_assets',
                'fetch_positions']
     save_as = True
@@ -71,7 +70,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     'dt_modified',
                     )
     readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'dt_created',
-                       'dt_modified', 'dt_response', )
+                       'dt_modified', 'dt_response',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
@@ -101,13 +100,16 @@ class CustomerAdmin(admin.ModelAdmin):
     get_used.short_description = 'Reserved'
 
 
-@admin.register(Fund)
+@admin.register(Stat)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'exchange')
-    readonly_fields = ('account', 'historical_balance', 'dt_create', 'owner')
+    list_display = ('account', 'order_execution_success_rate', 'order_execution_time_avg', 'trade_total_value',
+                    'order_executed', 'assets_value', 'positions_notional_value', 'historical_value',
+                    'historical_returns', 'dt_modified')
+    readonly_fields = ('account', 'order_execution_success_rate', 'order_execution_time_avg', 'trade_total_value',
+                       'order_executed', 'assets_value', 'positions_notional_value', 'historical_value',
+                       'historical_returns', 'dt_modified')
     list_filter = (
-        ('account', admin.RelatedOnlyFieldListFilter),
-        ('exchange', admin.RelatedOnlyFieldListFilter)
+        ('account', admin.RelatedOnlyFieldListFilter)
     )
     save_on_top = True
 
@@ -117,7 +119,7 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ('clientid', 'account', 'dt_modified', 'market', 'action', 'status', 'side', 'amount',
                     'get_cost', 'get_price', 'filled',)
 
-    readonly_fields = ('clientid', 'account', 'market', 'status',  'action', 'type', 'amount', 'side',
+    readonly_fields = ('clientid', 'account', 'market', 'status', 'action', 'type', 'amount', 'side',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
                        'last_trade_timestamp', 'price', 'fee', 'datetime', 'response', 'orderid', 'owner', 'sender')
     actions = ['place_order', 'refresh', 'cancel_order']
@@ -160,7 +162,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Position)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'exchange', 'market', 'get_side', 'size', 'get_asset','get_notional_value',
+    list_display = ('account', 'exchange', 'market', 'get_side', 'size', 'get_asset', 'get_notional_value',
                     'settlement',
                     'get_value_usd', 'get_initial_margin', 'leverage', 'get_contract_value',
                     'get_contract_value_curr', 'get_liquidation_price',
@@ -182,42 +184,50 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_side(self, obj):
         return True if obj.side == 'buy' else False
+
     get_side.boolean = True
     get_side.short_description = 'Side'
 
     def get_asset(self, obj):
         if obj.size:
             return obj.asset if obj.asset else 'Cont'
+
     get_asset.short_description = 'Asset'
 
     def get_notional_value(self, obj):
         if obj.notional_value:
             return round(obj.notional_value, 2)
+
     get_notional_value.short_description = 'Notional Value'
 
     def get_initial_margin(self, obj):
         if obj.initial_margin:
             return round(obj.initial_margin, 2)
+
     get_initial_margin.short_description = 'Initial Margin'
 
     def get_value_usd(self, obj):
         if obj.value_usd:
             return round(obj.value_usd, 2)
+
     get_value_usd.short_description = 'Dollar Value'
 
     def get_contract_value(self, obj):
         if obj.market:
             return obj.market.contract_value
+
     get_contract_value.short_description = 'Contract value'
 
     def get_contract_value_curr(self, obj):
         if obj.market:
             return obj.market.contract_currency
+
     get_contract_value_curr.short_description = 'Contract currency'
 
     def get_liquidation_price(self, obj):
         if obj.liquidation_price:
             return round(obj.liquidation_price, 2)
+
     get_liquidation_price.short_description = 'Liquidation'
 
     # Action
@@ -234,3 +244,14 @@ class CustomerAdmin(admin.ModelAdmin):
             account.refresh_positions()
 
     refresh_position.short_description = 'Refresh position'
+
+
+@admin.register(Fund)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('account', 'exchange')
+    readonly_fields = ('account', 'historical_balance', 'dt_create', 'owner')
+    list_filter = (
+        ('account', admin.RelatedOnlyFieldListFilter),
+        ('exchange', admin.RelatedOnlyFieldListFilter)
+    )
+    save_on_top = True

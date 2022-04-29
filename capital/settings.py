@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     "users",
     "crispy_forms",
     'chartjs',
-    'fontawesomefree',
+    'django_bootstrap_icons'
 ]
 
 MIDDLEWARE = [

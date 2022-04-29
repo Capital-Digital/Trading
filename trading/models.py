@@ -1048,30 +1048,3 @@ class Position(models.Model):
 
         type_order = 'close_long' if self.side == 'long' else 'close_short'
         self.account.create_order(self.market, self.size, type_order)
-
-
-class Transfer(models.Model):
-    objects = models.Manager()
-    exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='transfer', null=True)
-    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transfer', null=True)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='transfer', null=True)
-    amount = models.FloatField(null=True)
-    response = models.JSONField(null=True)
-    dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    from_wallet, to_wallet = [models.CharField(max_length=50, null=True) for i in range(2)]
-    transferid = models.BigIntegerField(null=True)
-    status = models.BooleanField(default=None, null=True)
-    datetime = models.DateTimeField(null=True)
-    timestamp = models.FloatField(null=True)
-
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True
-    )
-
-    class Meta:
-        verbose_name_plural = "Transfers"
-
-    def __str__(self):
-        return str(self.transferid)

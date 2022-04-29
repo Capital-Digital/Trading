@@ -234,16 +234,3 @@ class CustomerAdmin(admin.ModelAdmin):
             account.refresh_positions()
 
     refresh_position.short_description = 'Refresh position'
-
-
-@admin.register(Transfer)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('transferid', 'account', 'exchange', 'currency', 'amount', 'from_wallet', 'to_wallet', 'status')
-    readonly_fields = ('transferid', 'account', 'exchange', 'currency', 'amount', 'from_wallet', 'to_wallet', 'status',
-                       'response', 'datetime', 'timestamp', 'owner')
-
-    list_filter = (
-        ('exchange', admin.RelatedOnlyFieldListFilter),
-        ('account', admin.RelatedOnlyFieldListFilter),
-        ('currency', admin.RelatedOnlyFieldListFilter)
-    )

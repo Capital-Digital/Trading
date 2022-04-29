@@ -1039,10 +1039,9 @@ class Stat(models.Model):
     fee_avg_spot = models.FloatField(null=True)
     fee_avg_future = models.FloatField(null=True)
     funding_rate_avg = models.FloatField(null=True)
-    assets_value = models.FloatField(null=True)
     assets_distribution = PickledObjectField(null=True)
-    historical_value = PickledObjectField(null=True)
-    historical_returns = PickledObjectField(null=True)
+    account_value = models.FloatField(null=True)
+    account_value_history = PickledObjectField(null=True)
     dt_created = models.DateTimeField(null=True)
     dt_modified = models.DateTimeField(null=True)
 

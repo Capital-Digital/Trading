@@ -594,6 +594,7 @@ def fetch_positions(account_id, wallet='future'):
                 obj.leverage = float(position['leverage'])
                 obj.unrealized_pnl = float(position['unRealizedProfit'])
                 obj.liquidation_price = float(position['liquidationPrice'])
+                obj.instrument_id = position['symbol']
                 obj.settlement = market.margined
                 obj.response = opened
                 obj.save()

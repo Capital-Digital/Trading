@@ -67,7 +67,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Asset)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used')
-    readonly_fields = ('account', 'df_created', 'dt_modified', 'owner')
+    readonly_fields = ('account', 'dt_created', 'dt_modified', 'owner')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
@@ -78,7 +78,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('account', 'exchange')
-    readonly_fields = ('account', 'historical_balance', 'dt_created', 'dt', 'owner')
+    readonly_fields = ('account', 'historical_balance', 'dt_created', 'owner')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)

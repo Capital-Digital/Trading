@@ -106,6 +106,9 @@ def order_error(clientid, exception, kwargs):
     order = Order.objects.get(clientid=clientid)
 
     order.status = 'error'
+    if not isinstance(order.response, dict):
+        order.response = dict()
+
     order.response['exception'] = str(exception)
     order.response['dataframe'] = order.account.balances.to_json(orient='index')
     order.save()

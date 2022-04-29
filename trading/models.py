@@ -875,7 +875,7 @@ class Asset(models.Model):
     used = models.FloatField(max_length=10, null=True, default=0)
     dt_modified = models.DateTimeField(null=True)
     dt_created = models.DateTimeField(null=True)
-    user = models.ForeignKey(
+    owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True,
@@ -902,7 +902,7 @@ class Fund(models.Model):
     historical_balance = models.JSONField(null=True)
     dt = models.DateTimeField(null=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    user = models.ForeignKey(
+    owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True,
@@ -1066,7 +1066,7 @@ class Transfer(models.Model):
     datetime = models.DateTimeField(null=True)
     timestamp = models.FloatField(null=True)
 
-    user = models.ForeignKey(
+    owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True

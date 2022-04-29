@@ -29,9 +29,7 @@ import string
 from gibberish import Gibberish
 import json
 
-
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-
 
 log = structlog.get_logger(__name__)
 
@@ -305,7 +303,6 @@ class Account(models.Model):
             target_pct = self.strategy.load_targets()
 
             if self.quote == 'BUSD':
-
                 # Set BUSD as strategy stablecoin
                 i = target_pct.index.tolist()
                 i = [self.quote if x == 'USDT' else x for x in i]
@@ -468,7 +465,8 @@ class Account(models.Model):
                     return False
             elif len(self.balances.position.open.quantity.dropna().index.tolist()):
                 return True
-            else: return False
+            else:
+                return False
         else:
             return False
 
@@ -522,12 +520,22 @@ class Account(models.Model):
                             if market.margined.code == self.quote:
                                 if action == 'close_short':
                                     return True, size, True
-
-                    # Else return
-                    log.info(' ')
-                    log.info('Cost not satisfied for {2} {1} {0}'.format(wallet, market.base.code, size))
-                    return False, size, False
-
+                                else:
+                                    log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
+                                             .format(wallet, market.base.code, size), action=action)
+                                    return False, size, False
+                            else:
+                                log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True (m)'
+                                         .format(wallet, market.base.code, size), margined=market.margined.code)
+                                return False, size, False
+                        else:
+                            log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True (t)'
+                                     .format(wallet, market.base.code, size), type=market.type)
+                            return False, size, False
+                    else:
+                        log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
+                                 .format(wallet, market.base.code, size), exid=market.exchange.exid)
+                        return False, size, False
                 else:
                     return True, size, reduce_only
 
@@ -818,7 +826,6 @@ class Account(models.Model):
         log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
 
         if action == 'buy_spot':
-
             # Offset order value from free and used quote
             offset.loc[self.quote, ('spot', 'free', 'quantity')] = -val
             offset.loc[self.quote, ('spot', 'free', 'value')] = -val
@@ -826,7 +833,6 @@ class Account(models.Model):
             offset.loc[self.quote, ('spot', 'used', 'value')] = val
 
         if action == 'sell_spot':
-
             # Offset order quantity and value from free and used code
             offset.loc[code, ('spot', 'free', 'quantity')] = -qty
             offset.loc[code, ('spot', 'free', 'value')] = -val
@@ -837,7 +843,6 @@ class Account(models.Model):
             pass
 
         if action == 'open_short':
-
             margin_value = val / 20
 
             # Offset margin value from used and free quote
@@ -942,6 +947,7 @@ class Position(models.Model):
     response_2 = models.JSONField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
+
     # user = models.ForeignKey(
     #     settings.AUTH_USER_MODEL,
     #     on_delete=models.CASCADE,

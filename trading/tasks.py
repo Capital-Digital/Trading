@@ -281,10 +281,6 @@ def rebalance(account_id, reload=False, release=True):
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price)
                 if valid:
 
-                    if abs(opened) - qty == 0.001:
-                        log.warning('Increase position size of 0.001 to avoid dust position')
-                        qty = abs(opened)
-
                     # Create object and place order
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)

@@ -29,14 +29,6 @@
           <h4>Assets</h4>
           <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
 
-          <h4>Positions</h4>
-          {% if has_position %}
-          <p>Positions unrealized PnL is {{positions_pnl}} BUSD</p>
-          {% else %}
-          <p>Account has no opened position</p>
-          {% endif %}
-          {{account_value}}
-
           <h4>Orders</h4>
           {% if not orders_open %}
             <div class="alert alert-success" role="alert">

@@ -988,26 +988,17 @@ class Position(models.Model):
     settlement = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name='positions', null=True)
     last, liquidation_price = [models.FloatField(null=True) for i in range(2)]
     size = models.CharField(max_length=100, null=True)
-    asset = models.ForeignKey(Currency, on_delete=models.SET_NULL, related_name='position_asset', null=True)
-    hedge = models.FloatField(null=True)
     entry_price = models.FloatField(null=True)
     max_qty = models.FloatField(null=True)
     notional_value, initial_margin, maint_margin, order_initial_margin = [models.FloatField(null=True) for i in
                                                                           range(4)]
-    realized_pnl, unrealized_pnl, value_usd = [models.FloatField(null=True) for i in range(3)]
+    realized_pnl, unrealized_pnl = [models.FloatField(null=True) for i in range(2)]
     instrument_id, side = [models.CharField(max_length=150, null=True) for i in range(2)]
-    margin_mode = models.CharField(max_length=10, null=True, choices=(('isolated', 'isolated'),
-                                                                      ('crossed', 'crossed')))
+    margin_mode = models.CharField(max_length=10, null=True)
     leverage = models.IntegerField(null=True)
     response = models.JSONField(null=True)
     dt_created = models.DateTimeField(null=True)
     dt_modified = models.DateTimeField(null=True)
-
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True
-    )
 
     class Meta:
         verbose_name_plural = "Positions"

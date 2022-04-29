@@ -33,18 +33,14 @@
 
 </head>
 <body>
+
+{% block head-content %}{% endblock head-content %}
+{% block nav %}{% include 'navbar_new.html' %}{% endblock nav %}
+{% block content1 %}{% endblock content1 %}
+
 <div class="container-fluid">
     <div class="row">
          <div class="col-sm-2 ">
-              <div class="py-4 px-3 mb-4 bg-light">
-                    <div class="media d-flex align-items-center">
-                        <img src="/static/image/icons8-robot-2-80.png" width="65" class="mr-3 rounded-circle img-thumbnail shadow-sm">
-                          <div class="media-body">
-                            <h4 class="m-0">Trading bot</h4>
-                            <p class="font-weight-light text-muted mb-0">Crypto</p>
-                          </div>
-                    </div>
-              </div>
 
           <p class="text-gray font-weight-bold text-uppercase px-3 small pb-4 mb-0">Navigation</p>
 
@@ -106,11 +102,6 @@
 
         </div>
         <div class="col-sm-10 ">
-
-
-            {% block head-content %}{% endblock head-content %}
-            {% block nav %}{% include 'navbar_new.html' %}{% endblock nav %}
-            {% block content1 %}{% endblock content1 %}
 
              {% block content %}
              {% endblock %}

@@ -23,7 +23,6 @@
     <div class="tab-pane fade show active" id="nav-account-summary" role="tabpanel" aria-labelledby="nav-account-summary-tab">
 
       {% if user.is_authenticated %}
-
         {% if user == owner or user.is_superuser %}
 
           <h4>Assets</h4>

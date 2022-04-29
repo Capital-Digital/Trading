@@ -18,29 +18,11 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials', 'get_total',
-                    'get_free', 'get_used', )
+    list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials', )
     readonly_fields = ('valid_credentials', )
     actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions', 'fetch_assets']
     save_as = True
     save_on_top = True
-
-    # Columns
-
-    def get_total(self, obj):
-        return round(obj.total, 3)
-
-    get_total.short_description = 'Total'
-
-    def get_free(self, obj):
-        return round(obj.free, 3)
-
-    get_free.short_description = 'Free'
-
-    def get_used(self, obj):
-        return round(obj.used, 3)
-
-    get_used.short_description = 'Used'
 
     # Actions
 
@@ -78,13 +60,30 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Asset)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used')
+    list_display = ('account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used', )
     readonly_fields = ('account', 'dt_created', 'dt_modified', 'owner')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)
     )
     save_on_top = True
+
+    # Columns
+
+    def get_total(self, obj):
+        return round(obj.total, 3)
+
+    get_total.short_description = 'Total'
+
+    def get_free(self, obj):
+        return round(obj.free, 3)
+
+    get_free.short_description = 'Free'
+
+    def get_used(self, obj):
+        return round(obj.used, 3)
+
+    get_used.short_description = 'Used'
 
 
 @admin.register(Fund)

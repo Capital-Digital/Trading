@@ -60,9 +60,11 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Asset)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('get_owner', 'account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used', 'dt_modified',
+    list_display = ('get_owner', 'account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used',
+                    'dt_modified',
                     )
-    readonly_fields = ('account', 'dt_created', 'dt_modified', 'owner')
+    readonly_fields = ('owner', 'account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'dt_created',
+                       'dt_modified', 'dt_returned', )
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)

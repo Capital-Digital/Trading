@@ -1,6 +1,6 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
-from trading.models import Account, Fund, Position, Order, Transfer, Asset
+from trading.models import Account, Fund, Position, Order, Asset
 from trading.tasks import *
 import structlog
 from celery import chain, group

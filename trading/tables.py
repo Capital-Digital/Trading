@@ -61,9 +61,6 @@ class PositionTable(tables.Table):
     dt_modified = tables.DateTimeColumn(format='M d Y, h:i:s')
     dt_modified = tables.Column(verbose_name='Last update')
 
-    def entry_price(self, **kwargs):
-        return round(kwargs['value'], 1)
-
     def liquidation_price(self, **kwargs):
         return round(kwargs['value'], 1)
 

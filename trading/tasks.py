@@ -501,19 +501,15 @@ def market_close(account_id):
 
 
 # Fetch assets
-@app.task(name='Trading_____Fetch_assets')
+@app.task(base=BaseTaskWithRetry, name='Trading_____Fetch_assets')
 def fetch_assets(account_id, wallet=None):
     #
     account = Account.objects.get(id=account_id)
-
     log.bind(account=account.name, wallet=wallet)
     log.info('Fetch assets balance')
-
     client = account.exchange.get_ccxt_client(account)
-
     if wallet:
         client.options['defaultType'] = wallet
-
     response = client.fetchBalance()
 
     # Exclude LBTC from dictionaries (staking or earning account)
@@ -538,9 +534,6 @@ def fetch_assets(account_id, wallet=None):
             obj.dt_returned = response['datetime']
             obj.save()
 
-
-    # Timestamp index name
-    wallet.save()
     log.info('Fetch assets complete')
 
 

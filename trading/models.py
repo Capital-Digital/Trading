@@ -54,8 +54,6 @@ class Account(models.Model):
     email = models.EmailField(max_length=100, blank=True)
     api_key, api_secret = [models.CharField(max_length=100, blank=True) for i in range(2)]
     password = models.CharField(max_length=100, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True, null=True)
     leverage = models.DecimalField(
         default=1,
         max_digits=2, decimal_places=1,
@@ -64,6 +62,8 @@ class Account(models.Model):
             MinValueValidator(0)
         ]
     )
+    dt_created = models.DateTimeField(null=True)
+    dt_modified = models.DateTimeField(null=True)
     pseudonym = models.CharField(max_length=30, null=True, blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -77,7 +77,10 @@ class Account(models.Model):
     def save(self, *args, **kwargs):
         if not self.pseudonym:
             self.pseudonym = pseudo_generator(1)[0].title()
-        super(Account, self).save(*args, **kwargs)
+        if not self.pk:
+            self.dt_created = timezone.now()
+        self.dt_modified = timezone.now()
+        return super(Account, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.name

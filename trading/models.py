@@ -879,8 +879,8 @@ class Account(models.Model):
         if not qs:
             return 0
         else:
-            qs_amount = qs.aggregate(Sum('amount'))
-            qs_price = qs.aggregate(Avg('price'))
+            qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
+            qs_price = qs.aggregate(Avg('price'))['price__avg']
 
             if flip:
                 return qs_amount / qs_price

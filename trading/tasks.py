@@ -57,6 +57,14 @@ def bulk_fetch_assets():
                 fetch_assets.delay(account.id, wallet)
 
 
+# Fetch positions and update objects
+@app.task(name='Trading_____Bulk_fetch_positions')
+def bulk_fetch_positions():
+    for exchange in Exchange.objects.all():
+        for account in Account.objects.filter(exchange=exchange, active=True):
+            fetch_positions.delay(account.id)
+
+
 # Cancel orders and query assets quantity and open positions
 @app.task(name='Trading_____Bulk_prepare_accounts')
 def bulk_prepare_accounts():
@@ -512,7 +520,7 @@ def fetch_assets(account_id, wallet=None):
     #
     account = Account.objects.get(id=account_id)
     log.bind(account=account.name, wallet=wallet)
-    log.info('Fetch assets balance')
+    log.info('Fetch assets')
     client = account.exchange.get_ccxt_client(account)
     if wallet:
         client.options['defaultType'] = wallet
@@ -554,22 +562,21 @@ def fetch_assets(account_id, wallet=None):
             obj.save()
 
     log.info('Fetch assets complete')
+    log.unbind('account')
 
 
 # Fetch positions
 @app.task(base=BaseTaskWithRetry, name='Trading_____Fetch_positions')
-def fetch_positions(account_id, wallet=None):
+def fetch_positions(account_id, wallet='future'):
     account = Account.objects.get(id=account_id)
-    log.bind(account=account.name, wallet=wallet)
-    log.info('Fetch assets balance')
+    log.bind(account=account.name)
+    log.info('Fetch positions')
     client = account.exchange.get_ccxt_client(account)
-    if wallet:
-        client.options['defaultType'] = wallet
+    client.options['defaultType'] = wallet
 
     #  and query all futures endpoint
     response = client.fapiPrivateGetPositionRisk()
     opened = [i for i in response if float(i['positionAmt']) != 0]
-    closed = [i for i in response if float(i['positionAmt']) == 0]
 
     # Delete closed positions
     Position.objects.filter(exchange=account.exchange, account=account, wallet=wallet
@@ -601,6 +608,9 @@ def fetch_positions(account_id, wallet=None):
                 obj.unrealized_pnl = float(position['unRealizedProfit'])
                 obj.liquidation = float(position['liquidationPrice'])
                 obj.response = opened
+
+    log.info('Fetch positions complete')
+    log.unbind('account')
 
 
 # Market sell

@@ -20,7 +20,8 @@ log = structlog.get_logger(__name__)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials', )
     readonly_fields = ('valid_credentials', )
-    actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions', 'fetch_assets']
+    actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions', 'fetch_assets',
+               'fetch_positions']
     save_as = True
     save_on_top = True
 
@@ -32,6 +33,12 @@ class CustomerAdmin(admin.ModelAdmin):
                 fetch_assets.delay(account.id, wallet)
 
     fetch_assets.short_description = "Fetch assets"
+
+    def fetch_positions(self, request, queryset):
+        for account in queryset:
+            fetch_positions.delay(account.id)
+
+    fetch_positions.short_description = "Fetch positions"
 
     def market_sell_spot(self, request, queryset):
         for account in queryset:

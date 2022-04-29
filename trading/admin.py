@@ -108,9 +108,7 @@ class CustomerAdmin(admin.ModelAdmin):
     readonly_fields = ('account', 'order_execution_success_rate', 'order_execution_time_avg', 'trade_total_value',
                        'order_executed', 'assets_value', 'positions_notional_value', 'historical_value',
                        'historical_returns', 'dt_modified')
-    list_filter = (
-        ('account', admin.RelatedOnlyFieldListFilter)
-    )
+
     save_on_top = True
 
 

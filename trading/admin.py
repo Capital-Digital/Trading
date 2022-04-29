@@ -166,12 +166,11 @@ class CustomerAdmin(admin.ModelAdmin):
                     'last',
                     'entry_price', 'realized_pnl', 'unrealized_pnl', 'margin_mode',)
     readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'settlement',
-                       'notional_value',
-                       'entry_price', 'initial_margin', 'maint_margin', 'order_initial_margin',
+                       'notional_value', 'entry_price', 'initial_margin', 'maint_margin', 'order_initial_margin',
                        'last', 'liquidation_price',
                        'realized_pnl', 'unrealized_pnl',
                        'margin_mode', 'leverage', 'instrument_id',
-                       'response', 'max_qty')
+                       'response', 'max_qty', 'dt_modified', 'dt_created')
     actions = ['refresh_position', 'close_position']
     list_filter = (
         ('exchange', admin.RelatedOnlyFieldListFilter),

@@ -909,7 +909,6 @@ class Asset(models.Model):
         self.dt_modified = timezone.now()
         super(Asset, self).save(*args, **kwargs)
         if is_new:
-            log.info('New asset created')
             self.dt_created = timezone.now()
 
     def __str__(self):

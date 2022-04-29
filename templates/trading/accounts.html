@@ -1,4 +1,11 @@
 {% extends "base_generic.html" %}
+
+{% if user.is_authenticated %}
+    {% if user == owner or user.is_superuser %}
+        {% extends "base_generic_new.html" %}
+    {% endif %}
+{% endif %}
+
 {% load static %}
 
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">

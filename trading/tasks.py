@@ -216,6 +216,11 @@ def rebalance(account_id, reload=False, release=True):
     #
     account = Account.objects.get(id=account_id)
 
+    # Mark the account as busy to avoid concurrent
+    # rebalancing after a new trade is detected
+    account.busy = True
+    account.save()
+
     log.bind(worker=current_process().index, account=account.name, release=release)
 
     log.info('')
@@ -312,10 +317,6 @@ def rebalance(account_id, reload=False, release=True):
     # Open short
     for code in account.codes_to_sell():
 
-        log.info(' ')
-        log.info('Allocate resources', action='open_short')
-        log.info('******************')
-
         try:
             # Test if a sell_spot or an open_short order is open
             market, flip = account.exchange.get_spot_market(code, account.quote)
@@ -336,6 +337,10 @@ def rebalance(account_id, reload=False, release=True):
                 open_order_size = open.amount / open.price
             else:
                 open_order_size = open.amount
+
+        log.info(' ')
+        log.info('Allocate resources', action='open_short')
+        log.info('******************')
 
         # Determine delta quantity
         price = account.balances.price['spot']['bid'][code]
@@ -368,10 +373,6 @@ def rebalance(account_id, reload=False, release=True):
     # Buy spot
     for code in account.codes_to_buy():
 
-        log.info(' ')
-        log.info('Allocate resources', action='buy_spot')
-        log.info('******************')
-
         try:
             # Test if a close_short or a buy_spot order is open
             market, flip = account.exchange.get_perp_market(code, account.quote)
@@ -395,6 +396,10 @@ def rebalance(account_id, reload=False, release=True):
                 open_order_size = open.amount / open.price
             else:
                 open_order_size = open.amount
+
+        log.info(' ')
+        log.info('Allocate resources', action='buy_spot')
+        log.info('******************')
 
         # Get available resource
         free = account.balances.spot.free.quantity[account.quote]
@@ -430,6 +435,9 @@ def rebalance(account_id, reload=False, release=True):
             # Create object and place order
             clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
             send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
+
+    account.busy = False
+    account.save()
 
     log.info('Rebalancing complete')
 
@@ -646,8 +654,6 @@ def market_sell(account_id):
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_create_order')
 def send_create_order(account_id, clientid, action, side, wallet, code, qty, reduce_only=False, market_order=False):
     #
-    log.info(' ')
-    log.info('Place {0} {1} order'.format(action, code))
 
     # Initialize client
     account = Account.objects.get(id=account_id)
@@ -684,10 +690,6 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
     if flip:
         qty = qty / price
 
-    log.info('{0} {1} {2}'.format(action.title().replace('_', ' '), qty, code))
-    log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
-    log.info('Order clientid {0}'.format(clientid))
-
     kwargs = dict(
         symbol=market.symbol,
         type=account.order_type,
@@ -706,6 +708,12 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         kwargs['params']['reduceOnly'] = True
 
     try:
+        log.info(' ')
+        log.info('Place {0} {1} order'.format(action, code))
+        log.info('{0} {1} {2}'.format(action.title().replace('_', ' '), qty, code))
+        log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
+        log.info('Order clientid {0}'.format(clientid))
+
         response = client.create_order(**kwargs)
 
     except ccxt.BadRequest as e:
@@ -721,6 +729,11 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
     except ccxt.ExchangeError as e:
         order_error(clientid, e, kwargs)
         log.error('Exchange error')
+        return None, None
+
+    except Exception as e:
+        order_error(clientid, e, kwargs)
+        log.error('Unknown error')
         return None, None
 
     else:

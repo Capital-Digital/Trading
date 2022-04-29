@@ -525,11 +525,11 @@ class Account(models.Model):
                                              .format(wallet, market.base.code, size), action=action)
                                     return False, size, False
                             else:
-                                log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True (m)'
+                                log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
                                          .format(wallet, market.base.code, size), margined=market.margined.code)
                                 return False, size, False
                         else:
-                            log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True (t)'
+                            log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
                                      .format(wallet, market.base.code, size), type=market.type)
                             return False, size, False
                     else:
@@ -538,7 +538,6 @@ class Account(models.Model):
                         return False, size, False
                 else:
                     return True, size, reduce_only
-
             else:
                 log.info(' ')
                 log.info('Condition not satisfied ({0} {1})'.format(round(size, 3), code))

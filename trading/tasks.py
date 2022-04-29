@@ -278,7 +278,7 @@ def rebalance(account_id, reload=False, release=True):
                 qty = abs(max(opened, delta))
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('future', code, qty, price, action='close_short')
                 if valid:
 
                     # Create object and place order

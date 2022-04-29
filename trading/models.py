@@ -998,53 +998,28 @@ class Position(models.Model):
         self.dt_modified = timezone.now()
         return super(Position, self).save(*args, **kwargs)
 
-    # Return margin ratio
-    def get_margin_ratio(self):
-        if self.is_updated():
-            if self.account.is_fund_updated():
-                fund = self.account.fund.latest('dt_create')
-                return
-            else:
-                log.error('Cannot calculate margin ratio, fund is not updated')
-        else:
-            log.error('Cannot calculate margin ratio, position is not updated')
 
-    # Return True if a position has been updated recently
-    def is_updated(self):
-        return
+class Stat(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='stats', null=True)
+    order_execution_success_rate = models.FloatField(null=True)
+    order_execution_time_avg = models.FloatField(null=True)
+    order_execution_value = models.FloatField(null=True)
+    order_executed = models.FloatField(null=True)
+    assets_value = models.FloatField(null=True)
+    positions_notional_value = models.FloatField(null=True)
+    historical_value = PickledObjectField(null=True)
+    historical_returns = PickledObjectField(null=True)
+    dt_created = models.DateTimeField(null=True)
+    dt_modified = models.DateTimeField(null=True)
 
-    # Create an order to create a new position
-    def close(self):
-        log.bind(account=self.account.name)
+    class Meta:
+        verbose_name_plural = "Statistics"
 
-        log.info('Create position')
+    def __str__(self):
+        return str(self.pk)
 
-        type_order = 'open_long' if self.side == 'long' else 'open_short'
-        self.account.create_order(self.market, self.size, type_order)
-
-    # Create an order to add contracts to a position
-    def add(self, size):
-        log.bind(account=self.account.name)
-
-        log.info('Add contracts to position')
-
-        type_order = 'open_long' if self.side == 'long' else 'open_short'
-        self.account.create_order(self.market, size, type_order)
-
-    # Create an order to remove contracts to a position
-    def remove(self, size):
-        log.bind(account=self.account.name)
-
-        log.info('Remove contracts to position')
-
-        type_order = 'close_long' if self.side == 'long' else 'close_short'
-        self.account.create_order(self.market, size, type_order)
-
-    # Create an order to close an open position
-    def close(self):
-        log.bind(account=self.account.name)
-
-        log.info('Close position')
-
-        type_order = 'close_long' if self.side == 'long' else 'close_short'
-        self.account.create_order(self.market, self.size, type_order)
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.dt_created = timezone.now()
+        self.dt_modified = timezone.now()
+        return super(Stat, self).save(*args, **kwargs)

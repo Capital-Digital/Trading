@@ -583,11 +583,14 @@ def fetch_positions(account_id, wallet='future'):
                                               )
             finally:
 
-                quantity = float(position['positionAmt'])
+                amount = float(position['positionAmt'])
 
-                obj.quantity = quantity
-                obj.side = 'buy' if quantity > 0 else 'sell'
-                obj.value = quantity * float(position['markPrice'])
+                obj.size = amount
+                obj.side = 'buy' if amount > 0 else 'sell'
+                obj.notional_value = float(position['notional'])
+                obj.last = amount * float(position['markPrice'])
+                obj.entry_price = amount * float(position['entryPrice'])
+                obj.margin_mode = float(position['marginType'])
                 obj.leverage = float(position['leverage'])
                 obj.unrealized_pnl = float(position['unRealizedProfit'])
                 obj.liquidation = float(position['liquidationPrice'])

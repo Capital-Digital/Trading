@@ -50,7 +50,7 @@ class AssetTable(tables.Table):
 class PositionTable(tables.Table):
 
     market = tables.Column(verbose_name='Market')
-    quantity = tables.Column(verbose_name='Quantity')
+    amount = tables.Column(verbose_name='Amount')
     side = tables.Column(verbose_name='Side')
     unrealized_pnl = tables.Column(verbose_name='Unrealized PnL')
     notional_value = tables.Column(verbose_name='Notional value')

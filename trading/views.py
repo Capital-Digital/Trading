@@ -60,34 +60,4 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context['orders_error'] = orders.filter(status='error').filter(dt_modified__range=(last_24h, now))
         return context
 
-#
-# def trading_stats(request):
-#
-#     # Generate counts of some main objects
-#     num_accounts = Account.objects.all().count()
-#     num_open_orders = Order.objects.filter(status='open').count()
-#     num_closed_orders = Order.objects.filter(status='closed').count()
-#     num_canceled_orders = Order.objects.filter(status='canceled').count()
-#
-#     context = {
-#         'num_accounts': num_accounts,
-#         'num_open_orders': num_open_orders,
-#         'num_closed_orders': num_closed_orders,
-#         'num_canceled_orders': num_canceled_orders,
-#     }
-#
-#     # Render the HTML template index.html with the data in the context variable
-#     return TemplateResponse(request, 'home.html', context=context)
-#
-#
-# def combined_stats(request):
-#     response1 = trading_stats(request)
-#     response2 = marketsdata_stats(request)
-#     response3 = strategy_stats(request)
-#     return render(request, 'home.html', {
-#         **response1.context_data,
-#         **response2.context_data,
-#         **response3.context_data
-#     })
-
 

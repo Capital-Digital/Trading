@@ -1,6 +1,6 @@
 from prettyjson import PrettyJSONWidget
 from django.contrib import admin
-from trading.models import Account, Fund, Position, Order, Transfer
+from trading.models import Account, Fund, Position, Order, Transfer, Asset
 from trading.tasks import *
 import structlog
 from celery import chain, group
@@ -64,10 +64,21 @@ class CustomerAdmin(admin.ModelAdmin):
     check_credentials.short_description = "Check credentials"
 
 
+@admin.register(Asset)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used')
+    readonly_fields = ('account', 'df_created', 'dt_modified', 'owner')
+    list_filter = (
+        ('account', admin.RelatedOnlyFieldListFilter),
+        ('exchange', admin.RelatedOnlyFieldListFilter)
+    )
+    save_on_top = True
+
+
 @admin.register(Fund)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('account', 'exchange')
-    readonly_fields = ('account', 'historical_balance', 'dt_create', 'dt', 'user')
+    readonly_fields = ('account', 'historical_balance', 'dt_created', 'dt', 'owner')
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         ('exchange', admin.RelatedOnlyFieldListFilter)

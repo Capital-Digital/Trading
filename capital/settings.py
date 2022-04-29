@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "users",
     "crispy_forms",
     'chartjs',
+    'fontawesomefree',
 ]
 
 MIDDLEWARE = [

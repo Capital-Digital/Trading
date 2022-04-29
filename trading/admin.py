@@ -25,19 +25,14 @@ class CustomerAdmin(admin.ModelAdmin):
     save_as = True
     save_on_top = True
 
-    # Columns
-
-    def get_limit_price_tolerance(self, obj):
-        return str(round(obj.limit_price_tolerance * 100, 2)) + '%'
-
-    get_limit_price_tolerance.short_description = 'Limit Price Tolerance'
-
-    def get_fund(self, obj):
-        return int(Fund.objects.filter(account=obj).latest('dt_create').total)
-
-    get_fund.short_description = "Total"
-
     # Actions
+
+    def fetch_assets(self, request, queryset):
+        for account in queryset:
+            for wallet in account.exchange.get_wallets():
+                fetch_assets.delay(account.id, wallet)
+
+    fetch_assets.short_description = "Fetch assets"
 
     def market_sell_spot(self, request, queryset):
         for account in queryset:

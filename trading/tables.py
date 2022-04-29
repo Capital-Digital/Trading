@@ -67,15 +67,17 @@ class PositionTable(tables.Table):
     def render_liquidation_price(self, **kwargs):
         return round(kwargs['value'], 1)
 
+    def render_last(self, **kwargs):
+        return round(kwargs['value'], 1)
+
     def render_notional_value(self, **kwargs):
         return round(kwargs['value'], 1)
 
     def render_unrealized_pnl(self, **kwargs):
-        return round(kwargs['value'], 1)
+        return round(kwargs['value'], 2)
 
     class Meta:
         model = Asset
         fields = ('market__symbol', 'size', 'notional_value', 'side',  'unrealized_pnl', 'entry_price',
                   'liquidation_price', 'last', 'dt_modified')
-        exclude = ('ID',)
 

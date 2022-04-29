@@ -73,6 +73,7 @@ class CustomerAdmin(admin.ModelAdmin):
                        'dt_modified', 'dt_response',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
+        'wallet',
         ('exchange', admin.RelatedOnlyFieldListFilter)
     )
     save_on_top = True

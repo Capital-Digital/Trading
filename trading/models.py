@@ -188,8 +188,9 @@ class Account(models.Model):
                 try:
                     bid, ask = currency.get_latest_price(self.exchange, self.quote, ['bid', 'ask'])
                 except TypeError as e:
-                    log.error('{0}'.format(str(e)))
-                    raise Exception('Unable to select spot price of {0}/{1}'.format(currency.code, self.quote))
+                    log.warning('Unable to select spot price of market {0}/{1}'.format(currency.code, self.quote))
+                    if currency.code not in self.strategy.get_codes():
+                        log.info('Asset {0} should be sold by the user in another market'.format(currency.code))
                 else:
                     # Insert prices
                     self.balances.loc[code, ('price', 'spot', 'bid')] = bid
@@ -863,6 +864,37 @@ class Account(models.Model):
         pass
 
 
+class Asset(models.Model):
+    objects = models.Manager()
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='funds', null=True)
+    exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='funds', null=True)
+    currency = models.ForeignKey(Currency, on_delete=models.SET_NULL, related_name='funds', null=True)
+    wallet = models.CharField(max_length=20, null=True, blank=True)
+    total = models.FloatField(max_length=10, null=True, default=0)
+    free = models.FloatField(max_length=10, null=True, default=0)
+    used = models.FloatField(max_length=10, null=True, default=0)
+    dt_modified = models.DateTimeField(null=True)
+    dt_created = models.DateTimeField(null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        verbose_name_plural = "Assets"
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.dt_created = timezone.now()
+        self.dt_modified = timezone.now()
+        return super(Asset, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return str(self.currency.code)
+
+
 class Fund(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='funds', null=True)
@@ -905,7 +937,7 @@ class Order(models.Model):
     timestamp = models.BigIntegerField(null=True)
     dt_update = models.DateTimeField(auto_now=True)
     dt_create = models.DateTimeField(default=timezone.now, editable=False)
-    user = models.ForeignKey(
+    owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True

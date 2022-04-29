@@ -209,12 +209,18 @@ def rebalance(account_id, reload=False, release=True):
     if reload:
         create_balances(account_id)
 
+    # Add missing codes
+    account.add_missing_coin()
+
     # Update prices
     account.get_spot_prices(update=True)
     account.get_futu_prices(update=True)
 
     # Re-calculate assets value
     account.calculate_assets_value()
+
+    account.drop_dust_coins()
+    account.check_columns()
 
     # Calculate new delta
     account.get_target()

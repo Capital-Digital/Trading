@@ -54,7 +54,7 @@ class PositionTable(tables.Table):
     side = tables.Column(verbose_name='Side')
     entry_price = tables.Column(verbose_name='Entry price')
     liquidation_price = tables.Column(verbose_name='Liquidation price')
-    last_price = tables.Column(verbose_name='Last price')
+    last = tables.Column(verbose_name='Last price')
     unrealized_pnl = tables.Column(verbose_name='Unrealized PnL')
     notional_value = tables.Column(verbose_name='Notional value')
 
@@ -69,7 +69,7 @@ class PositionTable(tables.Table):
 
     class Meta:
         model = Asset
-        fields = ('market', 'size', 'side', 'entry_price', 'liquidation_price', 'last_price', 'unrealized_pnl',
-                  'notional_value', 'dt_modified')
+        fields = ('market', 'size', 'notional_value', 'side',  'unrealized_pnl', 'entry_price', 'liquidation_price',
+                  'last_price', 'dt_modified')
         exclude = ('ID',)
 

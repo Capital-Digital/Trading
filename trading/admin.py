@@ -60,7 +60,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Asset)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('owner', 'account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used', 'dt_modified',
+    list_display = ('get_owner', 'account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used', 'dt_modified',
                     )
     readonly_fields = ('account', 'dt_created', 'dt_modified', 'owner')
     list_filter = (
@@ -70,6 +70,11 @@ class CustomerAdmin(admin.ModelAdmin):
     save_on_top = True
 
     # Columns
+
+    def get_owner(self, obj):
+        return obj.account.owner
+
+    get_owner.short_description = 'Owner'
 
     def get_total(self, obj):
         return round(obj.total, 3)

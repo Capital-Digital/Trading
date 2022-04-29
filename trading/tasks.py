@@ -307,7 +307,8 @@ def rebalance(account_id, reload=False, release=True):
             open = Order.objects.get(account=account,
                                      status='open',
                                      market=market,
-                                     action__in=['sell_spot', 'open_short']
+                                     side='sell',
+                                     action__in=['sell_spot', 'open_short', 'preparation']
                                      )
         except ObjectDoesNotExist:
             if account.has_spot_asset('free', code):
@@ -363,13 +364,14 @@ def rebalance(account_id, reload=False, release=True):
             open = Order.objects.get(account=account,
                                      status='open',
                                      market=market,
-                                     action__in=['buy_spot', 'close_short']
+                                     side='buy',
+                                     action__in=['buy_spot', 'close_short', 'preparation']
                                      )
         except ObjectDoesNotExist:
 
             # If no order is found and if a short is opened then cancel
             if account.has_opened_short(code):
-                log.warning('Can not buy spot there is a short position still opened.')
+                log.warning('Can not buy spot. A short position is opened but no close_order.')
                 log.info(account.balances.position)
                 continue
             else:
@@ -569,7 +571,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
     if flip:
         qty = qty / price
 
-    log.info('{0} {1} {2}'.format(side.title(), qty, code))
+    log.info('{0} {1} {2}'.format(action.title().replace('_', ' '), qty, code))
     log.info('Order symbol {0} ({1})'.format(market.symbol, wallet))
     log.info('Order clientid {0}'.format(clientid))
 

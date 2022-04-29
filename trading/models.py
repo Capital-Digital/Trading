@@ -491,7 +491,7 @@ class Account(models.Model):
     def validate_order(self, wallet, code, qty, price, action=None):
 
         log.bind(account=self.name)
-        log.info('Validate order {0} {1}'.format(code, wallet))
+        log.info('Validate order {0} {1}'.format(code, wallet), qty=qty, price=price, action=action)
 
         if wallet == 'spot':
             market, flip = self.exchange.get_spot_market(code, self.quote)
@@ -666,7 +666,7 @@ class Account(models.Model):
     # Offset transfer
     def offset_transfer(self, source, destination, amount, transfer_id):
 
-        log.bind(id=transfer_id)
+        log.bind(id=transfer_id, account=self.name)
         log.info(' ')
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
         log.info('Offset transfer amount is {0} {1}'.format(round(amount, 1), self.quote))
@@ -693,7 +693,7 @@ class Account(models.Model):
         self.save()
 
         log.info('Offset transfer complete')
-        log.unbind('id')
+        log.unbind('id', 'account')
 
     # Offset quantity after a trade
     def offset_order_filled(self, code, action, filled, average):

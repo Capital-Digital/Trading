@@ -521,7 +521,7 @@ def market_sell(account_id):
 def send_create_order(account_id, clientid, action, side, wallet, code, qty, reduce_only=False, market_order=False):
     #
     log.info(' ')
-    log.info('Place {0} order in {1}'.format(side, wallet))
+    log.info('Place {0} {1} order'.format(action, code))
 
     # Initialize client
     account = Account.objects.get(id=account_id)

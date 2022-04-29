@@ -935,8 +935,8 @@ class Order(models.Model):
     fee, trades, response = [models.JSONField(null=True) for i in range(3)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
-    dt_update = models.DateTimeField(auto_now=True)
-    dt_create = models.DateTimeField(default=timezone.now, editable=False)
+    dt_created = models.DateTimeField()
+    dt_modified = models.DateTimeField()
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -945,6 +945,12 @@ class Order(models.Model):
 
     class Meta:
         verbose_name_plural = "Orders"
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.dt_created = timezone.now()
+        self.dt_modified = timezone.now()
+        return super(Order, self).save(*args, **kwargs)
 
     def __str__(self):
         if self.clientid:
@@ -971,19 +977,16 @@ class Position(models.Model):
     instrument_id, side = [models.CharField(max_length=150, null=True) for i in range(2)]
     margin_mode = models.CharField(max_length=10, null=True, choices=(('isolated', 'isolated'),
                                                                       ('crossed', 'crossed')))
-    # leverage = models.DecimalField(null=True, max_digits=5, decimal_places=2)
     leverage = models.IntegerField(null=True)
-    created_at = models.DateTimeField(null=True)
     response = models.JSONField(null=True)
-    response_2 = models.JSONField(null=True)
-    dt_update = models.DateTimeField(auto_now=True)
-    dt_create = models.DateTimeField(default=timezone.now, editable=False)
+    dt_created = models.DateTimeField()
+    dt_modified = models.DateTimeField()
 
-    # user = models.ForeignKey(
-    #     settings.AUTH_USER_MODEL,
-    #     on_delete=models.CASCADE,
-    #     null=True
-    # )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True
+    )
 
     class Meta:
         verbose_name_plural = "Positions"
@@ -991,12 +994,18 @@ class Position(models.Model):
     def __str__(self):
         return str(self.pk)
 
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.dt_created = timezone.now()
+        self.dt_modified = timezone.now()
+        return super(Position, self).save(*args, **kwargs)
+
     # Return margin ratio
     def get_margin_ratio(self):
         if self.is_updated():
             if self.account.is_fund_updated():
                 fund = self.account.fund.latest('dt_create')
-                return (self.margin * float(self.leverage)) / fund.equity
+                return
             else:
                 log.error('Cannot calculate margin ratio, fund is not updated')
         else:
@@ -1004,7 +1013,7 @@ class Position(models.Model):
 
     # Return True if a position has been updated recently
     def is_updated(self):
-        return True if (timezone.now() - self.dt_update).seconds < 60 * 5 else False
+        return
 
     # Create an order to create a new position
     def close(self):

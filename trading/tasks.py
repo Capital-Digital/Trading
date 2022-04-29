@@ -304,7 +304,7 @@ def rebalance(account_id, reload=False, release=True):
                                      )
         except ObjectDoesNotExist:
             if account.has_spot_asset('free', code):
-                log.waning('Can not open short there is {0} left in spot.'.format(code))
+                log.warning('Can not open short there is {0} left in spot.'.format(code))
                 log.info(account.balances.spot)
                 continue
             else:
@@ -362,7 +362,7 @@ def rebalance(account_id, reload=False, release=True):
 
             # If no order is found and if a short is opened then cancel
             if account.has_opened_short(code):
-                log.waning('Can not buy spot there is a short position still opened.')
+                log.warning('Can not buy spot there is a short position still opened.')
                 log.info(account.balances.position)
                 continue
             else:

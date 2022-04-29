@@ -25,7 +25,7 @@ from capital.error import *
 from capital.methods import *
 from marketsdata.models import Market, Currency, Exchange
 from trading.methods import *
-from trading.models import Account, Order, Fund, Position
+from trading.models import Account, Order, Fund, Position, Asset
 import threading
 import random
 
@@ -498,6 +498,50 @@ def market_close(account_id):
             log.info('No position found')
     else:
         log.info('No position found')
+
+
+# Fetch assets
+@app.task(name='Trading_____Fetch_assets')
+def fetch_assets(account_id, wallet=None):
+    #
+    account = Account.objects.get(id=account_id)
+
+    log.bind(account=account.name, wallet=wallet)
+    log.info('Fetch assets balance')
+
+    client = account.exchange.get_ccxt_client(account)
+
+    if wallet:
+        client.options['defaultType'] = wallet
+
+    response = client.fetchBalance()
+
+    # Exclude LBTC from dictionaries (staking or earning account)
+    total = {k: v for k, v in response['total'].items() if v > 0 and k != 'LDBTC'}
+    free = {k: v for k, v in response['free'].items() if v > 0 and k != 'LDBTC'}
+    used = {k: v for k, v in response['used'].items() if v > 0 and k != 'LDBTC'}
+
+    for k, v in total.items():
+        currency = Currency.objects.get(code=k)
+        try:
+            obj = Asset.objects.get(currency=currency, account=account, wallet=wallet)
+        except ObjectDoesNotExist:
+            obj = Asset.objects.create(currency=currency, account=account, wallet=wallet)
+        finally:
+            obj.total = v
+
+            if k in free.keys():
+                obj.free = free[k]
+            if k in used.keys():
+                obj.used = used[k]
+
+            obj.dt_returned = response['datetime']
+            obj.save()
+
+
+    # Timestamp index name
+    wallet.save()
+    log.info('Fetch assets complete')
 
 
 # Market sell

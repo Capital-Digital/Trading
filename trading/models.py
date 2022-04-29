@@ -935,8 +935,8 @@ class Order(models.Model):
     fee, trades, response = [models.JSONField(null=True) for i in range(3)]
     datetime, last_trade_timestamp = [models.DateTimeField(null=True) for i in range(2)]
     timestamp = models.BigIntegerField(null=True)
-    dt_created = models.DateTimeField()
-    dt_modified = models.DateTimeField()
+    dt_created = models.DateTimeField(null=True)
+    dt_modified = models.DateTimeField(null=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -979,8 +979,8 @@ class Position(models.Model):
                                                                       ('crossed', 'crossed')))
     leverage = models.IntegerField(null=True)
     response = models.JSONField(null=True)
-    dt_created = models.DateTimeField()
-    dt_modified = models.DateTimeField()
+    dt_created = models.DateTimeField(null=True)
+    dt_modified = models.DateTimeField(null=True)
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

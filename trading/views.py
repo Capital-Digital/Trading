@@ -2,10 +2,10 @@ from django.http import HttpResponse
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.response import TemplateResponse
-from trading.models import Account, Order, Fund, Position
+from trading.models import Account, Order, Fund, Position, Asset
 from django.views import generic
 from django.shortcuts import get_object_or_404
-from trading.tables import OrderTable
+from trading.tables import OrderTable, AssetTable
 from django_tables2 import SingleTableMixin, LazyPaginator
 from django.utils import timezone
 from datetime import timedelta, datetime
@@ -37,15 +37,18 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context = super().get_context_data(**kwargs)
         orders = Order.objects.filter(account=self.object)
 
-        table = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_created'))
-        table.paginate(page=self.request.GET.get("page", 1), per_page=10)
-        table.paginator_class = LazyPaginator
-        table.localize=True
+        table_asset = AssetTable(Asset.objects.filter(account=self.object).order_by('currency__code'))
+
+        table_order = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_created'))
+        table_order.paginate(page=self.request.GET.get("page", 1), per_page=10)
+        table_order.paginator_class = LazyPaginator
+        table_order.localize=True
 
         now = timezone.now()
         last_24h = now - timedelta(hours=6)
 
-        context['table'] = table
+        context['table_asset'] = table_asset
+        context['table_order'] = table_order
         context['owner'] = self.object.owner
         context['assets_value'] = round(self.object.assets_value(), 2)
         context['has_position'] = self.object.has_opened_short()

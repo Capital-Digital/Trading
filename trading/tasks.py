@@ -520,9 +520,19 @@ def fetch_assets(account_id, wallet=None):
     for k, v in total.items():
         currency = Currency.objects.get(code=k)
         try:
-            obj = Asset.objects.get(currency=currency, account=account, wallet=wallet)
+            obj = Asset.objects.get(currency=currency,
+                                    exchange=account.exchange,
+                                    account=account,
+                                    owner=account.owner,
+                                    wallet=wallet
+                                    )
         except ObjectDoesNotExist:
-            obj = Asset.objects.create(currency=currency, account=account, wallet=wallet)
+            obj = Asset.objects.create(currency=currency,
+                                       exchange=account.exchange,
+                                       account=account,
+                                       owner=account.owner,
+                                       wallet=wallet
+                                       )
         finally:
             obj.total = v
 

@@ -294,7 +294,6 @@ def rebalance(account_id, reload=False, release=True):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', code, qty, price, action='close_short')
                 if valid:
-
                     # Create object and place order
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
@@ -495,7 +494,6 @@ def market_close(account_id):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
-
                     # Create object, place order and apply offset
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty,
@@ -527,7 +525,7 @@ def fetch_assets(account_id, wallet=None):
 
     # Delete obsolete objects
     Asset.objects.filter(exchange=account.exchange, account=account, wallet=wallet
-                                  ).exclude(currency__code__in=[list(total.keys())]).delete()
+                         ).exclude(currency__code__in=[list(total.keys())]).delete()
 
     # Update objects
     for k, v in total.items():
@@ -558,6 +556,53 @@ def fetch_assets(account_id, wallet=None):
     log.info('Fetch assets complete')
 
 
+# Fetch positions
+@app.task(base=BaseTaskWithRetry, name='Trading_____Fetch_positions')
+def fetch_positions(account_id, wallet=None):
+    account = Account.objects.get(id=account_id)
+    log.bind(account=account.name, wallet=wallet)
+    log.info('Fetch assets balance')
+    client = account.exchange.get_ccxt_client(account)
+    if wallet:
+        client.options['defaultType'] = wallet
+
+    #  and query all futures endpoint
+    response = client.fapiPrivateGetPositionRisk()
+    opened = [i for i in response if float(i['positionAmt']) != 0]
+    closed = [i for i in response if float(i['positionAmt']) == 0]
+
+    # Delete closed positions
+    Position.objects.filter(exchange=account.exchange, account=account, wallet=wallet
+                            ).exclude(market__response__id__in=[p['symbol'] for p in opened]).delete()
+
+    if opened:
+        for position in opened:
+            market = Market.objects.get(exchange=account.exchange, response__id=position['symbol'], type='derivative')
+            try:
+                obj = Position.objects.get(market=market,
+                                           exchange=account.exchange,
+                                           account=account,
+                                           wallet=wallet
+                                           )
+            except ObjectDoesNotExist:
+                obj = Position.objects.create(market=market,
+                                              exchange=account.exchange,
+                                              account=account,
+                                              wallet=wallet
+                                              )
+            finally:
+
+                quantity = float(position['positionAmt'])
+
+                obj.quantity = quantity
+                obj.side = 'buy' if quantity > 0 else 'sell'
+                obj.value = quantity * float(position['markPrice'])
+                obj.leverage = float(position['leverage'])
+                obj.unrealized_pnl = float(position['unRealizedProfit'])
+                obj.liquidation = float(position['liquidationPrice'])
+                obj.response = opened
+
+
 # Market sell
 @app.task(name='Trading_____Market_sell')
 def market_sell(account_id):
@@ -574,7 +619,6 @@ def market_sell(account_id):
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
-
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only,
@@ -810,7 +854,6 @@ def send_cancel_order(account_id, order_id):
 
 @app.task(bind=True, name='Test')
 def test(self, loop):
-
     t = 0
     task_id = self.request.id[:3]
     process_id = current_process().index
@@ -820,11 +863,9 @@ def test(self, loop):
     log.info('Task {0} start with process {1}'.format(task_id, process_id))
     pos.size = 1
 
-    while t<=loop:
+    while t <= loop:
         pos.size += 1
         pos.save()
         t += 1
 
     log.info('Task {0} complete'.format(task_id))
-
-

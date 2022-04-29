@@ -885,6 +885,7 @@ class Asset(models.Model):
 
     def save(self, *args, **kwargs):
         if self._state.adding is True:
+            log.info('New asset created')
             self.dt_created = timezone.now()
         self.dt_modified = timezone.now()
         super(Asset, self).save(*args, **kwargs)

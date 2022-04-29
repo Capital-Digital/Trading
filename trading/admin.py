@@ -107,9 +107,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     'historical_returns', 'dt_modified')
     readonly_fields = ('account', 'order_execution_success_rate', 'order_execution_time_avg', 'trade_total_value',
                        'order_executed', 'assets_value', 'positions_notional_value', 'historical_value',
-                       'historical_returns', 'dt_modified')
-
-    save_on_top = True
+                       'historical_returns', 'dt_modified', 'dt_created')
 
 
 @admin.register(Order)

@@ -22,7 +22,15 @@
       </li>
     </ul>
     <span class="navbar-text">
-      Navbar text with an inline element
+
+        {% block content %}
+            {% if user.is_authenticated %}
+            <a href="{% url 'logout' %}">Log Out</a>
+            {% else %}
+            <a href="{% url 'login' %}">Log In</a>
+        {% endif %}
+        {% endblock %}
+
     </span>
   </div>
 </nav>

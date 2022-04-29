@@ -409,6 +409,7 @@ def rebalance(account_id, reload=False, release=True):
         qty = val / price
 
         log.info('Order quantity before validation is {0}'.format(qty))
+        log.info('Asset free value is {0}'.format(free))
 
         # Format decimal and validate order
         valid, qty, reduce_only = account.validate_order('spot', code, qty, price)

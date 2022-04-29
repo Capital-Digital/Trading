@@ -37,7 +37,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context = super().get_context_data(**kwargs)
         orders = Order.objects.filter(account=self.object)
 
-        table = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_create'))
+        table = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_created'))
         table.paginate(page=self.request.GET.get("page", 1), per_page=10)
         table.paginator_class = LazyPaginator
         table.localize=True

@@ -61,15 +61,21 @@ class PositionTable(tables.Table):
     dt_modified = tables.DateTimeColumn(format='M d Y, h:i:s')
     dt_modified = tables.Column(verbose_name='Last update')
 
+    def entry_price(self, **kwargs):
+        return round(kwargs['value'], 1)
+
+    def liquidation_price(self, **kwargs):
+        return round(kwargs['value'], 1)
+
     def render_notional_value(self, **kwargs):
-        return round(kwargs['value'], 3)
+        return round(kwargs['value'], 1)
 
     def render_unrealized_pnl(self, **kwargs):
-        return round(kwargs['value'], 3)
+        return round(kwargs['value'], 1)
 
     class Meta:
         model = Asset
         fields = ('market', 'size', 'notional_value', 'side',  'unrealized_pnl', 'entry_price', 'liquidation_price',
-                  'last_price', 'dt_modified')
+                  'last', 'dt_modified')
         exclude = ('ID',)
 

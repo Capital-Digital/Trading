@@ -884,10 +884,10 @@ class Asset(models.Model):
         verbose_name_plural = "Assets"
 
     def save(self, *args, **kwargs):
-        if not self.pk:
+        if self._state.adding is True:
             self.dt_created = timezone.now()
         self.dt_modified = timezone.now()
-        return super(Asset, self).save(*args, **kwargs)
+        super(Asset, self).save(*args, **kwargs)
 
     def __str__(self):
         return str(self.currency.code)

@@ -77,8 +77,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('clientid', 'account', 'dt_create', 'market', 'action', 'status', 'side', 'amount',
-                    'get_cost', 'get_price', 'filled', 'dt_update',)
+    list_display = ('clientid', 'account', 'dt_modified', 'market', 'action', 'status', 'side', 'amount',
+                    'get_cost', 'get_price', 'filled',)
 
     readonly_fields = ('clientid', 'account', 'market', 'status',  'action', 'type', 'amount', 'side',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
@@ -128,8 +128,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     'get_value_usd', 'get_initial_margin', 'leverage', 'get_contract_value',
                     'get_contract_value_curr', 'get_liquidation_price',
                     'last',
-                    'entry_price', 'realized_pnl', 'unrealized_pnl', 'margin_mode',
-                    'dt_update',)
+                    'entry_price', 'realized_pnl', 'unrealized_pnl', 'margin_mode',)
     readonly_fields = ('account', 'exchange', 'market', 'side', 'size', 'asset', 'value_usd', 'settlement',
                        'notional_value',
                        'entry_price', 'initial_margin', 'maint_margin', 'order_initial_margin',

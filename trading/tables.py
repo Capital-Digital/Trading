@@ -49,7 +49,7 @@ class AssetTable(tables.Table):
 
 class PositionTable(tables.Table):
 
-    market = tables.Column(verbose_name='Market')
+    market__symbol = tables.Column(verbose_name='Market')
     size = tables.Column(verbose_name='Size')
     side = tables.Column(verbose_name='Side')
     entry_price = tables.Column(verbose_name='Entry price')

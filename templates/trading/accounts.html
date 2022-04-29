@@ -1,9 +1,4 @@
-{% extends "base_generic.html" %}
-
-{% if user.is_authenticated %}
-    {% if user == owner or user.is_superuser %}
-    {% endif %}
-{% endif %}
+{% extends "base_generic_new.html" %}
 
 {% load static %}
 

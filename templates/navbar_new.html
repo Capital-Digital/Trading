@@ -1,37 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<nav class="navbar navbar-expand-lg py-3 navbar-light" style="background-color: #e3f2fd;">
-    <a class="navbar-brand" href="#">
-    <img src="/static/image/icons8-robot-2-80.png" width="30" height="30" class="d-inline-block align-top" alt="">
-    Trading bot
-    </a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="collapse navbar-collapse" id="navbarText">
-    <ul class="navbar-nav mr-auto">
-      <li class="nav-item active">
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#"></a>
-      </li>
-      <li class="nav-item">
-      </li>
-    </ul>
-    <span class="navbar-text">
+<nav class="navbar is-light" role="navigation" aria-label="main navigation">
 
-        {% block content %}
-            {% if user.is_authenticated %}
-            <a href="{% url 'logout' %}">Log Out</a>
-            {% else %}
-            <a href="{% url 'login' %}">Log In</a>
-        {% endif %}
-        {% endblock %}
+    <div class="navbar-brand">
+        <a class="navbar-item" href="https://bulma.io">
+            <img src="/static/image/icons8-robot-2-80.png" width="112" height="28">
+        </a>
+    </div>
 
-    </span>
-  </div>
+    <div class="navbar-menu">
+        <div class="navbar-start">
+            <a class="navbar-item">
+                Home
+            </a>
+        </div>
+
+        <div class="navbar-end">
+            <div class="navbar-item">
+                <form>
+                    <div class="field has-addons">
+                        <div class="control">
+                            <input class="input" type="text" placeholder="Add Todo">
+                        </div>
+                        <div class="control">
+                            <button type="submit" class="button is-link">Submit</button>
+
+                            {% block content %}
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'logout' %}">Log Out</a>
+                                    {% else %}
+                                    <a href="{% url 'login' %}">Log In</a>
+                                {% endif %}
+                            {% endblock %}
+
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </nav>
+
 
 
 

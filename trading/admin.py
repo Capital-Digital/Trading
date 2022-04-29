@@ -83,7 +83,7 @@ class CustomerAdmin(admin.ModelAdmin):
     def get_used(self, obj):
         return round(obj.used, 3)
 
-    get_used.short_description = 'Used'
+    get_used.short_description = 'Reserved'
 
 
 @admin.register(Fund)

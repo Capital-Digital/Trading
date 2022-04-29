@@ -792,6 +792,7 @@ def send_fetch_orderid(account_id, order_id):
                     raise Exception('Account is still busy after 10s')
 
             # Rebalance
+            log.info('Launch rebalancing after a new trade is detected')
             rebalance.delay(account_id)
 
 

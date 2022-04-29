@@ -579,7 +579,7 @@ def fetch_positions(account_id, wallet='future'):
     opened = [i for i in response if float(i['positionAmt']) != 0]
 
     # Delete closed positions
-    Position.objects.filter(exchange=account.exchange, account=account, wallet=wallet
+    Position.objects.filter(exchange=account.exchange, account=account
                             ).exclude(market__response__id__in=[p['symbol'] for p in opened]).delete()
 
     if opened:
@@ -588,14 +588,12 @@ def fetch_positions(account_id, wallet='future'):
             try:
                 obj = Position.objects.get(market=market,
                                            exchange=account.exchange,
-                                           account=account,
-                                           wallet=wallet
+                                           account=account
                                            )
             except ObjectDoesNotExist:
                 obj = Position.objects.create(market=market,
                                               exchange=account.exchange,
-                                              account=account,
-                                              wallet=wallet
+                                              account=account
                                               )
             finally:
 

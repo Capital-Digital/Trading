@@ -196,7 +196,7 @@ def update_historical_balance(account_id):
 
         # Calculate current account balance
         current = account.assets_value()
-        hist = stat.account_value_history
+        hist = stat.assets_value_history
 
         if not hist:
             hist = dict()
@@ -205,8 +205,8 @@ def update_historical_balance(account_id):
                          strategy_id=account.strategy.id,
                          strategy=account.strategy.name
                          )
-        stat.account_value_history = hist
-        log.info('Update account historical balance', current=current)
+        stat.assets_value_history = hist
+        log.info('Update assets historical value', current=current)
         stat.save()
 
 

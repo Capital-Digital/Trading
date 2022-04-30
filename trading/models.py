@@ -436,18 +436,15 @@ class Account(models.Model):
 
     # Return True is account has more than $10 of an asset in spot wallet
     def has_spot_asset(self, key, code=None):
-        if ('spot', key, 'quantity') in self.balances.columns:
-            codes = self.balances.spot[key]['quantity'].dropna().index.tolist()
+        codes = self.balances.spot[key]['quantity'].dropna().index.tolist()
+        if codes:
             if code:
                 if code in codes:
-                    if self.balances.spot[key]['value'][code] > 10:
-                        return True
-                    else:
-                        return False
+                    return True
                 else:
                     return False
             else:
-                return False
+                return True
         else:
             return False
 

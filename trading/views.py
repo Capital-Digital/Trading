@@ -54,7 +54,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
         # Account historical balance
         data_assets_hist = []
-        assets = self.object.stats.assets_value_history
+        assets = self.object.stats.get().assets_value_history
         data = [assets[k]['balance'] for k in assets.keys()]
         bench = Tickers.objects.get(market__symbol='BTC/USDT',
                                     market__exchange__exid='binance',

@@ -70,13 +70,11 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'height': 520,
             'width': 1100,
             'title_text': "Double Y Axis Example",
-            'plot_bgcolor': "#f8f9fa"
-        }
-        yaxes = {
-            'secondary_y': True
+            'plot_bgcolor': "#f8f9fa",
+            'yaxis': {'secondary_y': True}
         }
 
-        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout, 'add_traces': yaxes},
+        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout},
                           output_type='div',
                           )
 

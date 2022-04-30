@@ -352,14 +352,22 @@ class Account(models.Model):
         log.info('Calculate delta')
 
         target = self.balances.account.target.quantity.dropna()
+        assets_v = self.assets_value()
 
         if self.has_opened_short():
-            acc_value = self.assets_value() + self.positions_pnl()
+            position_v = self.positions_pnl()
+            acc_value = assets_v + position_v
         else:
-            acc_value = self.assets_value()
+            acc_value = assets_v
 
         log.info(' ')
         log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
+
+        if self.has_spot_asset('total'):
+            log.info('->Assets is {0} {1}'.format(round(acc_value, 1), self.quote))
+
+        if self.has_opened_short():
+            log.info('->Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
 
         #  Select columns with assets quantities
         mask = self.balances.columns.isin([('spot', 'total', 'quantity'),
@@ -811,9 +819,10 @@ class Account(models.Model):
                 qty = self.balances.account.current.exposure[c]
                 pct = exposure_value / account_value
                 self.balances.loc[c, ('account', 'current', 'percent')] = pct
-                log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
-                log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
-                log.info('Value___ for {0} is now {1}'.format(c, round(exposure_value, 1)))
+                if c is not self.quote:
+                    log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
+                    log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
+                    log.info('Value___ for {0} is now {1}'.format(c, round(exposure_value, 1)))
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):

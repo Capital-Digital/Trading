@@ -201,15 +201,17 @@ def update_stats(account_id):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
         idx = pd.DatetimeIndex([dt])
 
-        if not isinstance(stat.assets_value_history, pd.DataFrame):
-            stat.assets_value_history = pd.DataFrame()
+        if not isinstance(stat.account_value, pd.DataFrame):
+            stat.account_value = pd.DataFrame()
 
-        if idx not in stat.assets_value_history.index:
+        if idx not in stat.account_value.index:
 
-            val = round(account.assets_value(), 1)
+            assets = round(account.assets_value(), 1)
+            positions = round(account.positions_pnl(), 1)
+            val = assets + positions
             sid = account.strategy.id
 
-            stat.assets_value_history.loc[idx, ('balance', 'strategy_id')] = (val, sid)
+            stat.account_value.loc[idx, ('balance', 'strategy_id')] = (val, sid)
             stat.save()
 
             log.info('Update account value complete')
@@ -223,8 +225,8 @@ def update_stats(account_id):
 
 
 # Compare return with Bitcoin and Ethereum
-@app.task(name='Trading_____Calculate_cumprod')
-def stats_cumprod(account_id):
+@app.task(name='Trading_____Calculate_benchmark')
+def stats_benchmark(account_id):
     account = Account.objects.get(id=account_id)
 
     try:
@@ -238,10 +240,10 @@ def stats_cumprod(account_id):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
         idx = pd.DatetimeIndex([dt])
 
-        if not isinstance(stat.cumprod, pd.DataFrame):
-            stat.cumprod = pd.DataFrame()
+        if not isinstance(stat.benchmark, pd.DataFrame):
+            stat.benchmark = pd.DataFrame()
 
-        if idx not in stat.cumprod.index:
+        if idx not in stat.benchmark.index:
 
             val = round(account.assets_value(), 1)
             sid = account.strategy.id

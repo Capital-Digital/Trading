@@ -872,7 +872,7 @@ class Account(models.Model):
                                   side=side,
                                   action__in=actions
                                   )
-        if not qs:
+        if not qs.exists():
             log.info('No pending order found for {0}'.format(code))
             return 0
         else:

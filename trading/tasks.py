@@ -304,13 +304,18 @@ def rebalance(account_id, reload=False, release=True):
     for coin, val in current[current != 0].sort_values(ascending=False).items():
         log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
-    for coin, val in current[current != 0].sort_values(ascending=False).items():
-        log.info('-> {0} {1}'.format(round(account.balances.account.current.exposure[coin], 3), coin))
-
     # Display target percent
     target = account.balances.account.target.percent
     for coin, val in target[target != 0].sort_values(ascending=False).items():
         log.info('Target for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+    log.info(' ')
+    log.info('Assets')
+    log.info('*******')
+    log.info(' ')
+
+    for coin, val in current[current != 0].sort_values(ascending=False).items():
+        log.info('Exposure -> {0} {1}'.format(round(account.balances.account.current.exposure[coin], 3), coin))
 
     if release:
 

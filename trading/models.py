@@ -498,7 +498,7 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, side, code, qty, price, action=None):
 
-        log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet))
+        log.info('-> Validate order to {0} {1} in {2}'.format(side, code, wallet))
 
         if wallet == 'spot':
             market, flip = self.exchange.get_spot_market(code, self.quote)
@@ -703,7 +703,7 @@ class Account(models.Model):
     # Offset quantity after a trade
     def offset_order_filled(self, clientid, code, action, filled, average):
 
-        log.info('Offset trade for order {0}'.format(clientid))
+        log.info('-> Offset trade for order {0}'.format(clientid))
         offset = self.balances.copy()
 
         for col in offset.columns.get_level_values(0).unique().tolist():
@@ -712,8 +712,8 @@ class Account(models.Model):
         # Determine trade value
         filled_value = filled * average
 
-        log.info('Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 3), code))
-        log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
+        log.info('-> Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 3), code))
+        log.info('-> Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
         if action == 'buy_spot':
             offset.loc[code, ('spot', 'free', 'quantity')] = filled
@@ -779,6 +779,7 @@ class Account(models.Model):
         pct = self.balances.account.current.percent[code] * 100
         exp = self.balances.account.current.exposure[code]
         val = self.balances.account.current.value[code]
+        log.info('')
         log.info('Percenta for {0} was {1}%'.format(code, round(pct, 1)))
         log.info('Quantity for {0} was {1}'.format(code, round(exp, 3)))
         log.info('Value___ for {0} was {1}'.format(code, round(val, 1)))
@@ -818,14 +819,13 @@ class Account(models.Model):
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
 
-        log.info(' ')
-        log.info('Offset used and free resources')
+        log.info('-> Offset used and free resources')
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
-        log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
+        log.info('-> Offset resources {0} {1}'.format(round(qty, 3), code))
 
         if action == 'buy_spot':
             # Offset order value from free and used quote

@@ -828,7 +828,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 
     else:
 
-        log.info('Order placement success')
+        log.info('-> Order placement success')
 
         # Offset resources used and free
         val = qty * price

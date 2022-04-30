@@ -164,7 +164,7 @@ class Account(models.Model):
         codes.append(self.quote)
         for code in list(set(codes)):
             if code not in self.balances.index.tolist():
-                self.balances.loc[code] = np.nan
+                self.balances.loc[code, ('spot', 'total', 'quantity')] = np.nan
 
     # Insert bid/ask of assets in spot wallet
     def get_spot_prices(self, update=False):

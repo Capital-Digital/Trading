@@ -528,7 +528,7 @@ def rebalance(account_id, reload=False, release=True):
 
     log.info(' ')
     log.info('Rebalancing complete')
-    log.unbind('worker', 'account')
+    log.unbind('account')
 
 
 # Update open orders of an account
@@ -938,11 +938,7 @@ def send_transfer(account_id, source, dest, quantity):
         else:
 
             log.info('Transfer success')
-            log.unbind('worker', 'account', 'id')
             return transfer_id
-
-    else:
-        log.unbind('worker', 'account', 'id')
 
 
 # Send cancellation order

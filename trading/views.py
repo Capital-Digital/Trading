@@ -70,7 +70,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'width': 1100,
             'plot_bgcolor': "#f8f9fa"
         }
-        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div')
+        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div', )
 
         # Set y-axes titles
         plot_div_1.update_yaxes(title_text="<b>primary</b> yaxis title", secondary_y=False)

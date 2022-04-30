@@ -338,9 +338,8 @@ def rebalance(account_id, reload=False, release=True):
         for code in account.codes_to_sell():
             if account.has_spot_asset('free', code):
 
-                log.bind(action='sell_spot')
-
                 log.info(' ')
+                log.bind(action='sell_spot')
                 log.info('Sell spot')
                 log.info('*********')
 
@@ -369,13 +368,14 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
+                log.unbind('action')
+
         # Close short
         for code in account.codes_to_buy():
             if account.has_opened_short(code):
 
-                log.bind(action='close_short')
-
                 log.info(' ')
+                log.bind(action='close_short')
                 log.info('Close short')
                 log.info('***********')
 
@@ -405,6 +405,8 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
+                log.unbind('action')
+
     # Allocate free resources
     #########################
 
@@ -412,9 +414,8 @@ def rebalance(account_id, reload=False, release=True):
     for code in account.codes_to_sell():
         if not account.has_spot_asset('total', code):
 
-            log.bind(action='open_short')
-
             log.info(' ')
+            log.bind(action='open_short')
             log.info('Open short')
             log.info('**********')
 
@@ -463,13 +464,14 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('future', code, 'sell', 'open_short', qty)
                     send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
+                log.unbind('action')
+
     # Buy spot
     for code in account.codes_to_buy():
         if not account.has_opened_short(code):
 
-            log.bind(action='buy_spot')
-
             log.info(' ')
+            log.bind(action='buy_spot')
             log.info('Buy spot')
             log.info('********')
 

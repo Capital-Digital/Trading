@@ -184,7 +184,8 @@ def update_historical_balance(account_id):
     account = Account.objects.get(id=account_id)
 
     try:
-        fund = Stat.objects.get(account=account, exchange=account.exchange)
+        from trading.models import Fund
+        fund = Fund.objects.get(account=account, exchange=account.exchange)
 
     except ObjectDoesNotExist:
         fund = Stat.objects.create(account=account, exchange=account.exchange)

@@ -1030,6 +1030,7 @@ class Position(models.Model):
 
 
 class Stat(models.Model):
+    objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='stats', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='stats', null=True)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='stats', null=True)

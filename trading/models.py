@@ -880,7 +880,7 @@ class Account(models.Model):
                                   action=action
                                   )
         if not qs.exists():
-            log.info('No pending order found for {0} in spot'.format(code))
+            # log.info('No pending order found for {0} in spot'.format(code))
             return 0
         else:
 
@@ -915,7 +915,7 @@ class Account(models.Model):
                                   action=action
                                   )
         if not qs.exists():
-            log.info('No pending order found for {0} in future'.format(code))
+            # log.info('No pending order found for {0} in future'.format(code))
             return 0
         else:
 

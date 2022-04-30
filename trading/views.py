@@ -65,12 +65,16 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         data_assets_hist.append(go.Line(x=x, y=bench, name='Bitcoin', line=dict(color='#ff8c00', width=2)))
 
         layout_weights = {
-            'yaxis_title': 'Asset weight (%)',
+            'yaxis_title': 'Account balance',
             'height': 520,
             'width': 1100,
             'plot_bgcolor': "#f8f9fa"
         }
         plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div')
+
+        # Set y-axes titles
+        plot_div_1.update_yaxes(title_text="<b>primary</b> yaxis title", secondary_y=False)
+        plot_div_1.update_yaxes(title_text="<b>secondary</b> yaxis title", secondary_y=True)
 
         context['plot_div_1'] = plot_div_1
         context['table_asset'] = table_asset

@@ -61,8 +61,11 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                     market__type='spot', year=get_year(), semester=get_semester())
         x = [k for k in assets.keys()]
         bench = [bench.data[k]['last'] for k in bench.data.keys() if k in x]
-        data_assets_hist.append(go.Line(x=x, y=data, name='Balance', line=dict(color='#a9a9a9', width=2)))
-        data_assets_hist.append(go.Line(x=x, y=bench, name='Bitcoin', line=dict(color='#ff8c00', width=2)))
+        data_assets_hist.append(go.Line(x=x, y=data, name='Balance', line=dict(color='#a9a9a9', width=2)
+                                        )
+                                )
+        data_assets_hist.append(go.Line(x=x, y=bench, name='Bitcoin', line=dict(color='#ff8c00', width=2))
+                                )
 
         layout_weights = {
             'yaxis_title': 'Account balance',
@@ -71,7 +74,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'plot_bgcolor': "#f8f9fa"
         }
         plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div',
-                          ).update_yaxes(title_text="<b>primary</b> yaxis title", secondary_y=False)
+                          )
 
 
         context['plot_div_1'] = plot_div_1

@@ -1043,7 +1043,7 @@ class Stat(models.Model):
     fee_avg_future = models.FloatField(null=True)
     funding_rate_avg = models.FloatField(null=True)
     assets_distribution = PickledObjectField(null=True)
-    account_value = models.FloatField(null=True)
+    account_value = PickledObjectField(null=True)
     benchmark = models.FloatField(null=True)
     assets_value_history = PickledObjectField(null=True)
     assets_return = PickledObjectField(null=True)

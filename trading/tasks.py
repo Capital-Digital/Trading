@@ -210,8 +210,8 @@ def update_stats(account_id):
             positions = round(account.positions_pnl(), 1)
             val = assets + positions
             sid = account.strategy.id
-            
-            stat.account_value.loc[idx, ('balance', 'strategy_id')] = (val, sid)
+
+            stat.account_value.loc[idx[0], ('balance', 'strategy_id')] = (val, sid)
             stat.save()
 
             log.info('Update account value complete')

@@ -511,6 +511,7 @@ class Account(models.Model):
     def validate_order(self, wallet, side, code, qty, price, action=None):
 
         log.bind(account=self.name)
+        log.info(' ')
         log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet), qty=qty, price=price, action=action)
 
         if wallet == 'spot':
@@ -541,30 +542,29 @@ class Account(models.Model):
                                 if action == 'close_short':
                                     return True, size, True
                                 else:
-                                    log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
+                                    log.info('Cost not satisfied for {2} {1} {0}'
                                              .format(wallet, market.base.code, size), action=action)
                                     return False, size, False
                             else:
-                                log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
+                                log.info('Cost not satisfied for {2} {1} {0}'
                                          .format(wallet, market.base.code, size), margined=market.margined.code)
                                 return False, size, False
                         else:
-                            log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
+                            log.info('Cost not satisfied for {2} {1} {0}'
                                      .format(wallet, market.base.code, size), type=market.type)
                             return False, size, False
                     else:
-                        log.info('Cost not satisfied for {2} {1} {0}. Can not set reduce_only to True'
+                        log.info('Cost not satisfied for {2} {1} {0}'
                                  .format(wallet, market.base.code, size), exid=market.exchange.exid)
                         return False, size, False
                 else:
                     return True, size, reduce_only
             else:
-                log.info(' ')
-                log.info('Condition not satisfied ({0} {1})'.format(round(size, 3), code))
+                log.info('Condition not satisfied ({0} {1})'.format(size, code))
                 return False, size, False
 
         else:
-            log.error('Unable to validate order of {0} {1}'.format(round(qty, 3), code))
+            log.error('Unable to validate order, market {0}/{1} not found'.format(code, self.quote))
             return False, qty, False
 
     # Create order object

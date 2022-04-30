@@ -373,14 +373,14 @@ def rebalance(account_id, reload=False, release=True):
                 delta = account.balances.account.target.delta[code]
                 delta_new = abs(delta) - open_order_size
 
-                log.info('-> Opened short position is {0} {1}'.format(round(opened, 3), code))
+                log.info('-> Opened short position is {0} {1}'.format(round(-opened, 3), code))
                 log.info('-> Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
                 # Determine order size and value
                 price = account.balances.price['future']['last'][code]
                 qty = min(opened, delta_new)
 
-                log.info('-> Desired quantity to sell is {0} {1}'.format(round(qty, 3), code))
+                log.info('-> Desired quantity to close is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price,
@@ -435,10 +435,11 @@ def rebalance(account_id, reload=False, release=True):
                         account.offset_transfer('spot', 'future', amount, transfer_id)
                         val += amount
 
-                        log.info('-> Max. order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
+                        log.info('-> Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Determine quantity from available resources
                 qty = val / price
+                log.info('-> Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', 'sell', code, qty, price)

@@ -207,7 +207,7 @@ def update_stats(account_id):
         if idx[0] not in stat.account_value.index:
 
             # Append new index
-            stat.account_value.index.append(idx)
+            stat.account_value.index = stat.account_value.index.append(idx)
 
             assets = round(account.assets_value(), 1)
             positions = round(account.positions_pnl(), 1)

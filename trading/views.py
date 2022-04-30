@@ -76,7 +76,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'secondary_y': True
         }
 
-        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout, 'yaxes': yaxes},
+        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout, 'add_traces': yaxes},
                           output_type='div',
                           )
 

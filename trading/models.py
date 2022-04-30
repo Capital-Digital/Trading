@@ -1044,6 +1044,7 @@ class Stat(models.Model):
     funding_rate_avg = models.FloatField(null=True)
     assets_distribution = PickledObjectField(null=True)
     account_value = models.FloatField(null=True)
+    benchmark = models.FloatField(null=True)
     assets_value_history = PickledObjectField(null=True)
     assets_return = PickledObjectField(null=True)
     dt_created = models.DateTimeField(null=True)

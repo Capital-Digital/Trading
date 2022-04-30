@@ -221,6 +221,44 @@ def update_stats(account_id):
             # eth = Currency.objects.get(code='ETH').get_latest_price(account.exchange, 'BUSD', 'last')
             #
 
+
+# Compare return with Bitcoin and Ethereum
+@app.task(name='Trading_____Calculate_cumprod')
+def stats_cumprod(account_id):
+    account = Account.objects.get(id=account_id)
+
+    try:
+        stat = Stat.objects.get(account=account, exchange=account.exchange, strategy=account.strategy)
+
+    except ObjectDoesNotExist:
+        stat = Stat.objects.create(account=account, exchange=account.exchange, strategy=account.strategy)
+
+    finally:
+
+        dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+        idx = pd.DatetimeIndex([dt])
+
+        if not isinstance(stat.cumprod, pd.DataFrame):
+            stat.cumprod = pd.DataFrame()
+
+        if idx not in stat.cumprod.index:
+
+            val = round(account.assets_value(), 1)
+            sid = account.strategy.id
+
+            stat.assets_value_history.loc[idx, ('balance', 'strategy_id')] = (val, sid)
+            stat.save()
+
+            log.info('Update account value complete')
+
+        else:
+            log.info('Account value is already present')
+
+            # btc = Currency.objects.get(code='BTC').get_latest_price(account.exchange, 'BUSD', 'last')
+            # eth = Currency.objects.get(code='ETH').get_latest_price(account.exchange, 'BUSD', 'last')
+            #
+
+
 # Rebalance fund of an account
 @app.task(name='Trading_____Rebalance_account')
 def rebalance(account_id, reload=False, release=True):

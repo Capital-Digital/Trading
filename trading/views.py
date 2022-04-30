@@ -65,13 +65,19 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         data_assets_hist.append(go.Scatter(x=x, y=data, name='Balance', line=dict(color='#a9a9a9', width=2)))
         data_assets_hist.append(go.Scatter(x=x, y=bench, name='Bitcoin', line=dict(color='#ff8c00', width=2)))
 
+        yaxis = dict(title='Crude and Model')
+        yaxis2 = dict(title='Model Difference',
+                      overlaying='y',
+                      side='right')
+
         layout = {
             'yaxis_title': 'Account balance',
             'height': 520,
             'width': 1100,
             'title_text': "Double Y Axis Example",
             'plot_bgcolor': "#f8f9fa",
-            'yaxis': {'automargin': True}
+            'yaxis': yaxis,
+            'yaxis2': yaxis2
         }
 
         plot_div_1 = plot({'data': data_assets_hist, 'layout': layout},

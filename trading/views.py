@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.response import TemplateResponse
-from trading.models import Account, Order, Fund, Position, Asset, Stat
+from trading.models import Account, Order, Fund, Position, Asset
 from django.views import generic
 from django.shortcuts import get_object_or_404
 from trading.tables import OrderTable, AssetTable, PositionTable
@@ -54,7 +54,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
         # Account historical balance
         data_assets_hist = []
-        assets = Stat.objects.get(account=self.object, strategy=self.object.strategy).assets_value_historical
+        assets = self.object.stats.assets_value_history
         data = [assets[k]['balance'] for k in assets.keys()]
         bench = Tickers.objects.get(market__symbol='BTC/USDT',
                                     market__exchange__exid='binance',

@@ -71,7 +71,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'width': 1100,
             'title_text': "Double Y Axis Example",
             'plot_bgcolor': "#f8f9fa",
-            'yaxis': {'secondary_y': True}
+            'yaxis': {'automargin': True}
         }
 
         plot_div_1 = plot({'data': data_assets_hist, 'layout': layout},

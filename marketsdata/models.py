@@ -599,7 +599,7 @@ class Exchange(models.Model):
 
             # log.info('Preload dataframe complete')
 
-            log.info('Dataframe ready with {0}h for {1} codes'.format(len(self.data), len(codes)))
+            log.info('Dataframe ready with {0}h for {1} code(s)'.format(len(self.data), len(codes)))
             return self.data
 
         else:

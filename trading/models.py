@@ -295,6 +295,13 @@ class Account(models.Model):
             pos_val = 0
         return pos_val
 
+    # Sum assets value with position PnL
+    def account_value(self):
+        if self.has_opened_short():
+            return self.assets_value() + self.positions_pnl()
+        else:
+            return self.assets_value()
+
     # Create columns with targets
     def get_target(self):
         #
@@ -346,10 +353,10 @@ class Account(models.Model):
 
         target = self.balances.account.target.quantity.dropna()
 
-        # if self.has_opened_short():
-        #     acc_value = self.assets_value() + self.positions_pnl()
-        # else:
-        acc_value = self.assets_value()
+        if self.has_opened_short():
+            acc_value = self.assets_value() + self.positions_pnl()
+        else:
+            acc_value = self.assets_value()
 
         log.info(' ')
         log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
@@ -418,23 +425,6 @@ class Account(models.Model):
     def codes_to_buy(self):
         delta = self.balances.account.target.delta
         return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
-
-    # # Return a list of codes to buy spot
-    # def codes_to_buy_spot(self):
-    #     long = self.balances.account.target.percent > 0  # codes to long
-    #     return [c for c in self.codes_to_buy() if c in long[long].index.tolist()]  # codes to buy in spot
-    #
-    # # Return a list of codes to buy spot
-    # def codes_to_sell_spot(self):
-    #     spot = self.balances.spot.quantity.total.dropna().index.tolist()  # codes spot
-    #     return [c for c in self.codes_to_sell() if c in spot]  # codes to sell in spot
-    #
-    # # Return a list of codes to buy spot
-    # def codes_to_open_short(self):
-    #     spot = self.balances.spot.quantity.total.dropna().index.tolist()  # codes spot
-    #     short = self.balances.account.target.percent < 0  # codes to short
-    #     short = short[short].index.tolist()
-    #     return [c for c in self.codes_to_sell() if c in short and c not in spot]  # codes to sell and short not in spot
 
     # Return True is account has more than $10 of an asset in spot wallet
     def has_spot_asset(self, key, code=None):
@@ -508,8 +498,6 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, side, code, qty, price, action=None):
 
-        log.bind(account=self.name)
-        log.info(' ')
         log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet))
 
         if wallet == 'spot':
@@ -712,15 +700,10 @@ class Account(models.Model):
         self.balances.loc[offset.index, offset.columns] = updated
         self.save()
 
-        log.info('Offset transfer complete')
-
     # Offset quantity after a trade
-    def offset_order_filled(self, code, action, filled, average):
+    def offset_order_filled(self, clientid, code, action, filled, average):
 
-        log.info(' ')
-        log.bind(account=self.name)
-        log.info('Offset trade to {0}'.format(action.replace('_', ' ')))
-
+        log.info('Offset trade for order {0}'.format(clientid))
         offset = self.balances.copy()
 
         for col in offset.columns.get_level_values(0).unique().tolist():
@@ -729,7 +712,7 @@ class Account(models.Model):
         # Determine trade value
         filled_value = filled * average
 
-        log.info('Offset trade of {0} {1}'.format(round(filled, 3), code))
+        log.info('Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 3), code))
         log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
         if action == 'buy_spot':
@@ -794,7 +777,11 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = 0
 
         pct = self.balances.account.current.percent[code] * 100
-        log.info('Percentage for {0} was {1}%'.format(code, round(pct, 1)))
+        exp = self.balances.account.current.exposure[code]
+        val = self.balances.account.current.value[code]
+        log.info('Percenta for {0} was {1}%'.format(code, round(pct, 1)))
+        log.info('Quantity for {0} was {1}'.format(code, round(exp, 3)))
+        log.info('Value___ for {0} was {1}'.format(code, round(val, 1)))
 
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         try:
@@ -815,16 +802,18 @@ class Account(models.Model):
 
             # Update dataframe
             self.balances.loc[offset.index, offset.columns] = updated
+            self.save()
 
             # Update new percentage
-            assets_value = self.assets_value()
+            account_value = self.account_value()
             for c in [code, self.quote]:
                 exposure_value = self.balances.account.current.value[c]
-                pct = exposure_value / assets_value
+                qty = self.balances.account.current.quantity[c]
+                pct = exposure_value / account_value
                 self.balances.loc[c, ('account', 'current', 'percent')] = pct
-                log.info('Percentage for {0} is now {1}%'.format(c, round(pct * 100, 1)))
-
-            self.save()
+                log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
+                log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
+                log.info('Value___ for {0} is now {1}'.format(c, round(exposure_value, 1)))
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
@@ -885,10 +874,10 @@ class Account(models.Model):
                                   action__in=actions
                                   )
         if not qs:
+            log.info('No pending order found for {0}'.format(code))
             return 0
         else:
 
-            log.bind(account=self.name)
             log.info(' ')
             log.info('Found {0} open orders in {1}'.format(qs.count(), market.symbol))
 

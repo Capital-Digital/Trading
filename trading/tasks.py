@@ -838,7 +838,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         filled, average = account.update_order_object(wallet, response, new=True)
         if filled:
             # Offset trade
-            account.offset_order_filled(code, action, filled, average)
+            account.offset_order_filled(clientid, code, action, filled, average)
 
 
 # Send fetch orderid
@@ -872,7 +872,7 @@ def send_fetch_orderid(account_id, order_id):
             code = order.market.base.code
 
             # Offset trade
-            account.offset_order_filled(code, order.action, filled, average)
+            account.offset_order_filled(order.clientid, code, order.action, filled, average)
 
             t = 0
             while account.busy:

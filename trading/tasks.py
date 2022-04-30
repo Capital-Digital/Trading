@@ -70,7 +70,9 @@ def bulk_fetch_positions():
 def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
+            log.bind(account=account.name)
             prepare_accounts.delay(account.id)
+            log.unbind('account')
 
 
 # Bulk rebalance assets of all accounts
@@ -112,13 +114,10 @@ def bulk_check_credentials():
 @app.task(name='Trading_____Prepare_accounts')
 def prepare_accounts(account_id):
     #
-    log.bind(worker=current_process().index)
     log.info('Prepare accounts')
 
     account = Account.objects.get(id=account_id)
     chord(cancel_orders.s(account.id))(create_balances.s())
-
-    log.unbind('worker')
 
 
 # Cancel open orders of an account
@@ -153,13 +152,11 @@ def cancel_orders(account_id, user_orders=False):
 @app.task(name='Trading_____Create_balances')
 def create_balances(account_id):
     #
-    log.bind(worker=current_process().index)
 
     if isinstance(account_id, list):
         account_id = account_id[0]
 
     account = Account.objects.get(id=account_id)
-    log.bind(account=account.name)
 
     # Fetch account
     account.get_assets_balances()
@@ -177,8 +174,6 @@ def create_balances(account_id):
 
     account.drop_dust_coins()
     account.check_columns()
-
-    log.unbind('worker', 'account')
 
 
 # Create or update stats object

@@ -103,7 +103,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Stat)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('account', 'order_execution_success_rate', 'order_execution_time_avg', 'trade_total_value',
+    list_display = ('account', 'exchange', 'strategy', 'order_execution_success_rate', 'order_execution_time_avg',
+                    'trade_total_value',
                     'order_executed', 'account_value', 'positions_notional_value', 'account_value_history',
                     'account_return', 'dt_modified')
     readonly_fields = ('account', 'order_execution_success_rate', 'order_execution_time_avg', 'trade_total_value',

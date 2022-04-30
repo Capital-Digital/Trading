@@ -25,7 +25,7 @@ from capital.error import *
 from capital.methods import *
 from marketsdata.models import Market, Currency, Exchange
 from trading.methods import *
-from trading.models import Account, Order, Fund, Position, Asset
+from trading.models import Account, Order, Fund, Position, Asset, Stat
 import threading
 import random
 
@@ -184,10 +184,10 @@ def update_historical_balance(account_id):
     account = Account.objects.get(id=account_id)
 
     try:
-        fund = Fund.objects.get(account=account, exchange=account.exchange)
+        fund = Stat.objects.get(account=account, exchange=account.exchange)
 
     except ObjectDoesNotExist:
-        fund = Fund.objects.create(account=account, exchange=account.exchange)
+        fund = Stat.objects.create(account=account, exchange=account.exchange)
 
     finally:
 

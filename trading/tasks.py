@@ -194,20 +194,16 @@ def update_historical_balance(account_id):
         dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         now = dt.strftime(datetime_directive_ISO_8601)
 
-        # Calculate current account balance
-        current = account.assets_value()
-        hist = stat.assets_value_history
+        if not isinstance(stat.assets_value_history, pd.DataFrame):
+            stat.assets_value_history = pd.DataFrame()
 
-        if not hist:
-            hist = dict()
+        if now not in stat.assets_value_history.index:
+            stat.assets_value_history.loc[now, ('balance', 'strategy_id')] = account.assets_value(), account.strategy.id
+            log.info('Update assets historical value')
+            stat.save()
 
-        hist[now] = dict(balance=round(current, 1),
-                         strategy_id=account.strategy.id,
-                         strategy=account.strategy.name
-                         )
-        stat.assets_value_history = hist
-        log.info('Update assets historical value', current=current)
-        stat.save()
+        else:
+            log.info('Assets historical value is present')
 
 
 # Rebalance fund of an account

@@ -641,7 +641,13 @@ class Account(models.Model):
 
         finally:
 
-            log.bind(orderid=order.orderid)
+            if new:
+                log.info(' ')
+                log.info('Update order {0}'.format(order.clientid),
+                         action=order.action,
+                         code=order.market.base.code,
+                         wallet=order.market.wallet
+                         )
 
             # Get traded amount
             filled_prev = order.filled
@@ -649,7 +655,15 @@ class Account(models.Model):
 
             # Determine new trade
             if filled_total > filled_prev:
+
                 filled_new = filled_total - filled_prev
+                log.info('-> Trade of {0} {1} detected'.format(filled_new, order.market.base.code))
+
+                if filled_total < order.amount:
+                    log.info('-> Order is partially filled')
+                else:
+                    log.info('-> Order is filled')
+
             else:
                 filled_new = 0
 
@@ -664,19 +678,9 @@ class Account(models.Model):
             order.filled = filled_total
             order.save()
 
-            if new:
-                log.info(' ')
-                log.info('Update order with clientID {0}'.format(order.clientid))
-                log.info('Update order with status {0}'.format(status))
-                log.info('Update order for {0} ({1})'.format(order.market.base.code, order.market.wallet))
-                log.info('Update order to {0}'.format(order.action.replace('_', ' ')))
-
             if filled_new:
-
-                log.info('Trade new {0}'.format(filled_new))
-                log.info('Trade total {0}'.format(filled_total))
+                log.info('-> Update status to {0}'.format(status))
                 log.unbind('account', 'orderid')
-
                 return filled_new, order.average
 
             else:

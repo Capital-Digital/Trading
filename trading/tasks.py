@@ -115,10 +115,7 @@ def prepare_accounts(account_id):
     log.info('Prepare accounts')
 
     account = Account.objects.get(id=account_id)
-
-    log.bind(account=account.name)
     chord(cancel_orders.s(account.id))(create_balances.s())
-    log.unbind('account')
 
 
 # Cancel open orders of an account
@@ -158,6 +155,7 @@ def create_balances(account_id):
         account_id = account_id[0]
 
     account = Account.objects.get(id=account_id)
+    log.bind(account=account.name)
 
     # Fetch account
     account.get_assets_balances()
@@ -176,6 +174,7 @@ def create_balances(account_id):
     account.drop_dust_coins()
     account.check_columns()
 
+    log.unbind('account')
 
 # Create or update stats object
 @app.task(name='Trading_____Update_stats')

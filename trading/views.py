@@ -9,6 +9,10 @@ from trading.tables import OrderTable, AssetTable, PositionTable
 from django_tables2 import SingleTableMixin, LazyPaginator
 from django.utils import timezone
 from datetime import timedelta, datetime
+from plotly.offline import plot
+import plotly.graph_objects as go
+from marketsdata.models import Tickers
+from capital.methods import get_year, get_semester
 
 
 class HomePage(generic.TemplateView):
@@ -43,11 +47,32 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         table_order = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_created'))
         table_order.paginate(page=self.request.GET.get("page", 1), per_page=10)
         table_order.paginator_class = LazyPaginator
-        table_order.localize=True
+        table_order.localize = True
 
         now = timezone.now()
         last_24h = now - timedelta(hours=6)
 
+        # Account historical balance
+        data_assets_hist = []
+        assets = self.object.stats.assets_value_historical
+        data = [assets[k]['balance'] for k in assets.keys()]
+        bench = Tickers.objects.get(market__symbol='BTC/USDT',
+                                    market__exchange__exid='binance',
+                                    market__type='spot', year=get_year(), semester=get_semester())
+        x = [k for k in assets.keys()]
+        bench = [bench.data[k]['last'] for k in bench.data.keys() if k in x]
+        data_assets_hist.append(go.Line(x=x, y=data, name='Balance', line=dict(color='#a9a9a9', width=2)))
+        data_assets_hist.append(go.Line(x=x, y=bench, name='Bitcoin', line=dict(color='#ff8c00', width=2)))
+
+        layout_weights = {
+            'yaxis_title': 'Asset weight (%)',
+            'height': 520,
+            'width': 1100,
+            'plot_bgcolor': "#f8f9fa"
+        }
+        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div')
+
+        context['plot_div_1'] = plot_div_1
         context['table_asset'] = table_asset
         context['table_position'] = table_position
         context['table_order'] = table_order
@@ -59,5 +84,3 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context['orders_canceled'] = orders.filter(status='canceled').filter(dt_modified__range=(last_24h, now))
         context['orders_error'] = orders.filter(status='error').filter(dt_modified__range=(last_24h, now))
         return context
-
-

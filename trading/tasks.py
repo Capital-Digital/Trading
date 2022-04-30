@@ -266,7 +266,6 @@ def rebalance(account_id, reload=False, release=True):
     account.save()
 
     log.bind(worker=current_process().index, account=account.name)
-
     log.info('')
 
     if reload:
@@ -339,11 +338,11 @@ def rebalance(account_id, reload=False, release=True):
         for code in account.codes_to_sell():
             if account.has_spot_asset('free', code):
 
+                log.bind(action='sell_spot')
+
                 log.info(' ')
                 log.info('Sell spot')
                 log.info('*********')
-
-                log.bind(action='sell_spot')
 
                 # Return amount of open orders
                 open_order_size = account.get_open_orders_size(code,
@@ -374,11 +373,11 @@ def rebalance(account_id, reload=False, release=True):
         for code in account.codes_to_buy():
             if account.has_opened_short(code):
 
+                log.bind(action='close_short')
+
                 log.info(' ')
                 log.info('Close short')
                 log.info('***********')
-
-                log.bind(action='close_short')
 
                 # Return amount of open orders
                 open_order_size = account.get_open_orders_size(code,
@@ -413,11 +412,11 @@ def rebalance(account_id, reload=False, release=True):
     for code in account.codes_to_sell():
         if not account.has_spot_asset('total', code):
 
+            log.bind(action='open_short')
+
             log.info(' ')
             log.info('Open short')
             log.info('**********')
-
-            log.bind(action='open_short')
 
             # Return amount of open orders
             open_order_size = account.get_open_orders_size(code,
@@ -468,11 +467,11 @@ def rebalance(account_id, reload=False, release=True):
     for code in account.codes_to_buy():
         if not account.has_opened_short(code):
 
+            log.bind(action='buy_spot')
+
             log.info(' ')
             log.info('Buy spot')
             log.info('********')
-
-            log.bind(action='buy_spot')
 
             # Return amount of open orders
             open_order_size = account.get_open_orders_size(code,
@@ -520,11 +519,14 @@ def rebalance(account_id, reload=False, release=True):
                 clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
                 send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
 
+            log.unbind('action')
+
     account.busy = False
     account.save()
 
     log.info(' ')
     log.info('Rebalancing complete')
+    log.unbind('worker', 'account')
 
 
 # Update open orders of an account

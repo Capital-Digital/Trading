@@ -889,7 +889,7 @@ class Account(models.Model):
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
 
-            log.info('-> Total order amount is {0} {1}'.format(qs.count(), market.base.code))
+            log.info('-> Total order amount is {0} {1}'.format(qs_amount, market.base.code))
 
             if flip:
                 return qs_amount / qs_price

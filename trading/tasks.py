@@ -371,18 +371,20 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('Total free assets in spot is {0} {1}'.format(round(free, 3), code))
                 log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
-                # Determine order size and value
-                price = account.balances.price['spot']['bid'][code]
-                qty = min(free, delta)
+                if delta:
 
-                log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
+                    # Determine order size and value
+                    price = account.balances.price['spot']['bid'][code]
+                    qty = min(free, delta)
 
-                # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
-                if valid:
-                    # Create object, place order and apply offset
-                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
-                    send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
+                    log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
+
+                    # Format decimal and validate order
+                    valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
+                    if valid:
+                        # Create object, place order and apply offset
+                        clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
+                        send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
                 log.unbind('action')
 
@@ -408,18 +410,20 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('Opened short position is {0} {1}'.format(round(-opened, 3), code))
                 log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
-                # Determine order size and value
-                price = account.balances.price['future']['last'][code]
-                qty = min(opened, delta_new)
+                if delta_new:
 
-                log.info('Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
+                    # Determine order size and value
+                    price = account.balances.price['future']['last'][code]
+                    qty = min(opened, delta_new)
 
-                # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
-                if valid:
-                    # Create object and place order
-                    clientid = account.create_object('future', code, 'buy', 'close_short', qty)
-                    send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
+                    log.info('Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
+
+                    # Format decimal and validate order
+                    valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
+                    if valid:
+                        # Create object and place order
+                        clientid = account.create_object('future', code, 'buy', 'close_short', qty)
+                        send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
                 log.unbind('action')
 
@@ -447,7 +451,7 @@ def rebalance(account_id, reload=False, release=True):
 
             log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
-            if delta > 0:
+            if delta:
 
                 # Determine value
                 desired_val = delta * price
@@ -455,7 +459,7 @@ def rebalance(account_id, reload=False, release=True):
                 val = min(free_margin, desired_val)
 
                 log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-                log.info('and free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
+                log.info('Free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
                 log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Transfer is needed ?
@@ -480,7 +484,7 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('future', code, 'sell', 'open_short', qty)
                     send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
-                log.unbind('action')
+            log.unbind('action')
 
     # Buy spot
     for code in account.codes_to_buy():
@@ -505,37 +509,39 @@ def rebalance(account_id, reload=False, release=True):
             log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
             log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
 
-            # Get available resource
-            free = account.balances.spot.free.quantity[account.quote]
-            if np.isnan(free):
-                free = 0
+            if delta:
 
-            val = min(free, desired_val)
+                # Get available resource
+                free = account.balances.spot.free.quantity[account.quote]
+                if np.isnan(free):
+                    free = 0
 
-            log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-            log.info('and available resources is {1} {0}'.format(account.quote, round(free, 3)))
-            log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
+                val = min(free, desired_val)
 
-            # Transfer is needed ?
-            if val < desired_val:
-                amount = min(desired_val - val, account.free_margin())
-                transfer_id = send_transfer(account.id, 'future', 'spot', amount)
-                if transfer_id:
-                    account.offset_transfer('future', 'spot', amount, transfer_id)
-                    val += amount
+                log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
+                log.info('and available resources is {1} {0}'.format(account.quote, round(free, 3)))
+                log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
-                    log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
+                # Transfer is needed ?
+                if val < desired_val:
+                    amount = min(desired_val - val, account.free_margin())
+                    transfer_id = send_transfer(account.id, 'future', 'spot', amount)
+                    if transfer_id:
+                        account.offset_transfer('future', 'spot', amount, transfer_id)
+                        val += amount
 
-            # Determine quantity from available resources
-            qty = val / price
-            log.info('Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
+                        log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
-            # Format decimal and validate order
-            valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price, 'buy_spot')
-            if valid:
-                # Create object and place order
-                clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
-                send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
+                # Determine quantity from available resources
+                qty = val / price
+                log.info('Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
+
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price, 'buy_spot')
+                if valid:
+                    # Create object and place order
+                    clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
+                    send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
 
             log.unbind('action')
 
@@ -818,7 +824,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
     try:
         log.info(' ')
         log.info('Place order {0} to {1} {2} {3}'.format(clientid, action.replace('_', ' '), qty, code))
-        log.info('-> {0}'.format(market.symbol))
+        log.info('{0}'.format(market.symbol))
 
         response = client.create_order(**kwargs)
 
@@ -844,7 +850,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 
     else:
 
-        log.info('-> Order placement success')
+        log.info('Order placement success')
 
         # Offset resources used and free
         val = qty * price

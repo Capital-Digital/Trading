@@ -28,9 +28,12 @@
           <h4>Assets</h4>
           <p>Assets value in spot and future wallet is {{assets_value}} BUSD</p>
 
+          {% if user.is_superuser %}
           {% autoescape off %}
           {{ plot_div_1 }}
           {% endautoescape %}
+          {% endif %}
+
 
           <h4>Orders</h4>
           {% if not orders_open %}

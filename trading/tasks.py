@@ -636,7 +636,6 @@ def fetch_assets(account_id, wallet=None):
             obj.dt_returned = response['datetime']
             obj.save()
 
-    log.info('Fetch assets complete')
     log.unbind('account')
 
 

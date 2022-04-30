@@ -678,11 +678,9 @@ class Account(models.Model):
 
             if filled_new:
                 log.info('-> Update status to {0}'.format(status))
-                log.unbind('account')
                 return filled_new, order.average
 
             else:
-                log.unbind('account')
                 return False, False
 
     # Offset transfer
@@ -715,7 +713,6 @@ class Account(models.Model):
         self.save()
 
         log.info('Offset transfer complete')
-        log.unbind('id', 'account')
 
     # Offset quantity after a trade
     def offset_order_filled(self, code, action, filled, average):
@@ -829,8 +826,6 @@ class Account(models.Model):
 
             self.save()
 
-            log.unbind('account')
-
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
 
@@ -875,7 +870,7 @@ class Account(models.Model):
         self.balances.loc[offset.index, offset.columns] = updated
         self.save()
 
-        log.unbind('account', 'action')
+        log.unbind('action')
 
     # Offset a cancelled order
     def offset_order_cancelled(self, code, side, qty, val, filled=0):

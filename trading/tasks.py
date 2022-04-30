@@ -155,7 +155,7 @@ def create_balances(account_id):
         account_id = account_id[0]
 
     account = Account.objects.get(id=account_id)
-    log.bind(account=account.name)
+    log.bind(account=account.name, worker=current_process().index)
 
     # Fetch account
     account.get_assets_balances()
@@ -174,7 +174,8 @@ def create_balances(account_id):
     account.drop_dust_coins()
     account.check_columns()
 
-    log.unbind('account')
+    log.unbind('account', 'worker')
+
 
 # Create or update stats object
 @app.task(name='Trading_____Update_stats')

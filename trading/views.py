@@ -67,9 +67,9 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
         layout_weights = {
             'yaxis_title': 'Account balance',
-            'secondary_y': True,
             'height': 520,
             'width': 1100,
+            'yaxis_secondary': True,
             'plot_bgcolor': "#f8f9fa"
         }
         plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div',

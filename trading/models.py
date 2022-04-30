@@ -830,7 +830,6 @@ class Account(models.Model):
     def offset_order_new(self, code, action, qty, val):
 
         log.info(' ')
-        log.bind(account=self.name, action=action)
         log.info('Offset used and free resources')
 
         offset = self.balances.copy()
@@ -869,8 +868,6 @@ class Account(models.Model):
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
         self.save()
-
-        log.unbind('action')
 
     # Offset a cancelled order
     def offset_order_cancelled(self, code, side, qty, val, filled=0):

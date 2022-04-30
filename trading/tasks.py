@@ -314,24 +314,25 @@ def rebalance(account_id, reload=False, release=True):
     # Display target percent
     target = account.balances.account.target.percent
     log.info('Long coins')
-    log.info('------------------------')
+    log.info('---------------------------')
     for coin, val in target[target > 0].sort_values(ascending=False).items():
         log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
-    log.info('------------------------')
+    log.info('---------------------------')
     for coin, val in target[target > 0].sort_values(ascending=False).items():
         log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
+    log.info('---------------------------')
 
     log.info('')
     log.info('Short coins')
-    log.info('------------------------')
+    log.info('---------------------------')
     for coin, val in target[target < 0].sort_values(ascending=False).items():
         log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
-    log.info('------------------------')
+    log.info('---------------------------')
     for coin, val in target[target < 0].sort_values(ascending=False).items():
         log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
-    log.info('------------------------')
+    log.info('---------------------------')
 
     log.info(' ')
     log.info('Delta')
@@ -342,6 +343,7 @@ def rebalance(account_id, reload=False, release=True):
     delta = account.balances.account.target.delta
     for coin, val in delta[delta != 0].sort_values(ascending=False).items():
         log.info('Delta qty for {0}: {1}'.format(coin, round(val, 3)))
+    log.info('---------------------------')
 
     if release:
 
@@ -354,8 +356,8 @@ def rebalance(account_id, reload=False, release=True):
 
                 log.info(' ')
                 log.bind(action='sell_spot')
-                log.info('Sell spot')
-                log.info('*********')
+                log.info('Sell spot {0}'.format(code))
+                log.info('*************')
 
                 # Return amount of open orders
                 open_order_size = account.get_open_orders_size(code,
@@ -390,8 +392,8 @@ def rebalance(account_id, reload=False, release=True):
 
                 log.info(' ')
                 log.bind(action='close_short')
-                log.info('Close short')
-                log.info('***********')
+                log.info('Close short {0}'.format(code))
+                log.info('***************')
 
                 # Return amount of open orders
                 open_order_size = account.get_open_orders_size(code,
@@ -430,8 +432,8 @@ def rebalance(account_id, reload=False, release=True):
 
             log.info(' ')
             log.bind(action='open_short')
-            log.info('Open short')
-            log.info('**********')
+            log.info('Open short {0}'.format(code))
+            log.info('**************')
 
             # Return amount of open orders
             open_order_size = account.get_open_orders_size(code,
@@ -486,8 +488,8 @@ def rebalance(account_id, reload=False, release=True):
 
             log.info(' ')
             log.bind(action='buy_spot')
-            log.info('Buy spot')
-            log.info('********')
+            log.info('Buy spot {0}'.format(code))
+            log.info('************')
 
             # Return amount of open orders
             open_order_size = account.get_open_orders_size(code,

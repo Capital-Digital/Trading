@@ -181,6 +181,7 @@ def create_balances(account_id):
 # Update funds object
 @app.task(name='Trading_____Update_historical_balance')
 def update_historical_balance(account_id):
+    from marketsdata.models import Tickers
     account = Account.objects.get(id=account_id)
 
     try:
@@ -199,7 +200,17 @@ def update_historical_balance(account_id):
 
         if now not in stat.assets_value_history.index:
             val = round(account.assets_value(), 1)
-            stat.assets_value_history.loc[now, ('balance', 'strategy_id')] = val, account.strategy.id
+            sid = account.strategy.id
+            btc = Tickers.objects.get(market__symbol='BTC/USDT',
+                                      market__exchange__exid='binance',
+                                      market__type='spot',
+                                      year=get_year(),
+                                      semester=get_semester()
+                                      )
+            # Create dataframe and filter indexes
+            btc = pd.DataFrame(btc.data).T['last'].filter(items = val.index, axis=0)
+
+            stat.assets_value_history.loc[now, ('balance', 'strategy_id', 'bitcoin_price')] = val, sid, btc
             log.info('Update assets historical value')
             stat.save()
 

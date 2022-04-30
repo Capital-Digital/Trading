@@ -198,7 +198,8 @@ def update_historical_balance(account_id):
             stat.assets_value_history = pd.DataFrame()
 
         if now not in stat.assets_value_history.index:
-            stat.assets_value_history.loc[now, ('balance', 'strategy_id')] = account.assets_value(), account.strategy.id
+            val = round(account.assets_value(), 1)
+            stat.assets_value_history.loc[now, ('balance', 'strategy_id')] = val, account.strategy.id
             log.info('Update assets historical value')
             stat.save()
 

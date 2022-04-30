@@ -498,7 +498,7 @@ class Account(models.Model):
     # Validate order size and cost
     def validate_order(self, wallet, side, code, qty, price, action=None):
 
-        log.info('-> Validate order to {0} {1} in {2}'.format(side, code, wallet))
+        log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet))
 
         if wallet == 'spot':
             market, flip = self.exchange.get_spot_market(code, self.quote)
@@ -528,29 +528,29 @@ class Account(models.Model):
                                 if action == 'close_short':
                                     return True, size, True
                                 else:
-                                    log.info('Cost not satisfied for {2} {1} {0}'
+                                    log.info('-> Cost not satisfied for {2} {1} {0}'
                                              .format(wallet, market.base.code, size), action=action)
                                     return False, size, False
                             else:
-                                log.info('Cost not satisfied for {2} {1} {0}'
+                                log.info('-> Cost not satisfied for {2} {1} {0}'
                                          .format(wallet, market.base.code, size), margined=market.margined.code)
                                 return False, size, False
                         else:
-                            log.info('Cost not satisfied for {2} {1} {0}'
+                            log.info('-> Cost not satisfied for {2} {1} {0}'
                                      .format(wallet, market.base.code, size), type=market.type)
                             return False, size, False
                     else:
-                        log.info('Cost not satisfied for {2} {1} {0}'
+                        log.info('-> Cost not satisfied for {2} {1} {0}'
                                  .format(wallet, market.base.code, size), exid=market.exchange.exid)
                         return False, size, False
                 else:
                     return True, size, reduce_only
             else:
-                log.info('Condition not satisfied ({0} {1})'.format(size, code))
+                log.info('-> Condition not satisfied ({0} {1})'.format(size, code))
                 return False, size, False
 
         else:
-            log.error('Unable to validate order, market {0}/{1} not found'.format(code, self.quote))
+            log.error('-> Unable to validate order, market {0}/{1} not found'.format(code, self.quote))
             return False, qty, False
 
     # Create order object
@@ -675,7 +675,6 @@ class Account(models.Model):
     def offset_transfer(self, source, destination, amount, transfer_id):
 
         log.bind(id=transfer_id, account=self.name)
-        log.info(' ')
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
         log.info('Offset transfer amount is {0} {1}'.format(round(amount, 1), self.quote))
 
@@ -703,7 +702,7 @@ class Account(models.Model):
     # Offset quantity after a trade
     def offset_order_filled(self, clientid, code, action, filled, average):
 
-        log.info('-> Offset trade for order {0}'.format(clientid))
+        log.info('Offset trade for order {0}'.format(clientid))
         offset = self.balances.copy()
 
         for col in offset.columns.get_level_values(0).unique().tolist():
@@ -712,8 +711,8 @@ class Account(models.Model):
         # Determine trade value
         filled_value = filled * average
 
-        log.info('-> Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 3), code))
-        log.info('-> Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
+        log.info('Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 3), code))
+        log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
         if action == 'buy_spot':
             offset.loc[code, ('spot', 'free', 'quantity')] = filled
@@ -819,13 +818,13 @@ class Account(models.Model):
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
 
-        log.info('-> Offset used and free resources')
+        log.info('Offset used and free resources')
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
-        log.info('-> Offset resources {0} {1}'.format(round(qty, 3), code))
+        log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
 
         if action == 'buy_spot':
             # Offset order value from free and used quote

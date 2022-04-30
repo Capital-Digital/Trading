@@ -352,14 +352,14 @@ def rebalance(account_id, reload=False, release=True):
                 free = account.balances.spot.free.quantity[code]
                 delta = account.balances.account.target.delta[code] - open_order_size
 
-                log.info('-> Total free assets in spot is {0} {1}'.format(round(free, 3), code))
-                log.info('-> Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+                log.info('Total free assets in spot is {0} {1}'.format(round(free, 3), code))
+                log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
                 # Determine order size and value
                 price = account.balances.price['spot']['bid'][code]
                 qty = min(free, delta)
 
-                log.info('-> Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
+                log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
@@ -389,14 +389,14 @@ def rebalance(account_id, reload=False, release=True):
                 delta = account.balances.account.target.delta[code]
                 delta_new = abs(delta) - open_order_size
 
-                log.info('-> Opened short position is {0} {1}'.format(round(-opened, 3), code))
-                log.info('-> Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+                log.info('Opened short position is {0} {1}'.format(round(-opened, 3), code))
+                log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
                 # Determine order size and value
                 price = account.balances.price['future']['last'][code]
                 qty = min(opened, delta_new)
 
-                log.info('-> Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
+                log.info('Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
@@ -429,7 +429,7 @@ def rebalance(account_id, reload=False, release=True):
             price = account.balances.price['spot']['bid'][code]
             delta = account.balances.account.target.delta[code] - open_order_size  # Offset sell/close order size
 
-            log.info('-> Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+            log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
             if delta > 0:
 
@@ -438,9 +438,9 @@ def rebalance(account_id, reload=False, release=True):
                 free_margin = account.free_margin()
                 val = min(free_margin, desired_val)
 
-                log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-                log.info('-> and free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
-                log.info('-> Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
+                log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
+                log.info('and free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
+                log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Transfer is needed ?
                 if val < desired_val:
@@ -451,11 +451,11 @@ def rebalance(account_id, reload=False, release=True):
                         account.offset_transfer('spot', 'future', amount, transfer_id)
                         val += amount
 
-                        log.info('-> Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
+                        log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Determine quantity from available resources
                 qty = val / price
-                log.info('-> Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
+                log.info('Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', 'sell', code, qty, price, 'open_short')
@@ -486,8 +486,8 @@ def rebalance(account_id, reload=False, release=True):
             delta = abs(account.balances.account.target.delta[code]) - open_order_size  # Offset buy/close order size
             desired_val = delta * price
 
-            log.info('-> Delta quantity for {1} is {0}'.format(round(delta, 3), code))
-            log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
+            log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+            log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
 
             # Get available resource
             free = account.balances.spot.free.quantity[account.quote]
@@ -496,9 +496,9 @@ def rebalance(account_id, reload=False, release=True):
 
             val = min(free, desired_val)
 
-            log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-            log.info('-> and available resources is {1} {0}'.format(account.quote, round(free, 3)))
-            log.info('-> Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
+            log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
+            log.info('and available resources is {1} {0}'.format(account.quote, round(free, 3)))
+            log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
             # Transfer is needed ?
             if val < desired_val:
@@ -508,11 +508,11 @@ def rebalance(account_id, reload=False, release=True):
                     account.offset_transfer('future', 'spot', amount, transfer_id)
                     val += amount
 
-                    log.info('-> Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
+                    log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
             # Determine quantity from available resources
             qty = val / price
-            log.info('-> Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
+            log.info('Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
 
             # Format decimal and validate order
             valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price, 'buy_spot')

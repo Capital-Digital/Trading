@@ -67,6 +67,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
         layout_weights = {
             'yaxis_title': 'Account balance',
+            'secondary_y': True,
             'height': 520,
             'width': 1100,
             'plot_bgcolor': "#f8f9fa"

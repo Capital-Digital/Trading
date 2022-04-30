@@ -71,7 +71,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'width': 1100,
             'plot_bgcolor': "#f8f9fa"
         }
-        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights}, output_type='div',
+        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout_weights, 'trace': {'secondary_y': False}},
+                          output_type='div',
                           )
 
         context['plot_div_1'] = plot_div_1

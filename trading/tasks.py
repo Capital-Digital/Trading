@@ -347,7 +347,7 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('-> Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
                 if valid:
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
@@ -383,8 +383,7 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('-> Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price,
-                                                                 action='close_short')
+                valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
                 if valid:
                     # Create object and place order
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
@@ -442,7 +441,7 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('-> Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', 'sell', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('future', 'sell', code, qty, price, 'open_short')
                 if valid:
                     # Create object and place order
                     clientid = account.create_object('future', code, 'sell', 'open_short', qty)
@@ -498,7 +497,7 @@ def rebalance(account_id, reload=False, release=True):
             log.info('-> Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
 
             # Format decimal and validate order
-            valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price)
+            valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price, 'buy_spot')
             if valid:
                 # Create object and place order
                 clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)

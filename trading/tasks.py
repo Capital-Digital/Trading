@@ -198,13 +198,13 @@ def update_stats(account_id):
 
     finally:
 
-        dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+        dt = dt_aware_now(0)
         idx = pd.DatetimeIndex([dt])
 
         if not isinstance(stat.account_value, pd.DataFrame):
             stat.account_value = pd.DataFrame()
 
-        if idx not in stat.account_value.index:
+        if idx[0] not in stat.account_value.index:
 
             assets = round(account.assets_value(), 1)
             positions = round(account.positions_pnl(), 1)

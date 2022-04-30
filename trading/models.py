@@ -510,7 +510,7 @@ class Account(models.Model):
 
         log.bind(account=self.name)
         log.info(' ')
-        log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet), qty=qty, price=price, action=action)
+        log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet))
 
         if wallet == 'spot':
             market, flip = self.exchange.get_spot_market(code, self.quote)

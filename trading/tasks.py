@@ -199,19 +199,17 @@ def update_stats(account_id):
     finally:
 
         dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-        now = dt.strftime(datetime_directive_ISO_8601)
+        idx = pd.DatetimeIndex([dt])
 
         if not isinstance(stat.assets_value_history, pd.DataFrame):
             stat.assets_value_history = pd.DataFrame()
 
-        if now not in stat.assets_value_history.index:
+        if idx not in stat.assets_value_history.index:
 
             val = round(account.assets_value(), 1)
             sid = account.strategy.id
-            btc = Currency.objects.get(code='BTC').get_latest_price(account.exchange, 'BUSD', 'last')
-            eth = Currency.objects.get(code='ETH').get_latest_price(account.exchange, 'BUSD', 'last')
 
-            stat.assets_value_history.loc[now, ('balance', 'strategy_id', 'bitcoin', 'ethereum')] = (val, sid, btc, eth)
+            stat.assets_value_history.loc[idx, ('balance', 'strategy_id')] = (val, sid)
             stat.save()
 
             log.info('Update account value complete')
@@ -219,6 +217,9 @@ def update_stats(account_id):
         else:
             log.info('Account value is already present')
 
+            # btc = Currency.objects.get(code='BTC').get_latest_price(account.exchange, 'BUSD', 'last')
+            # eth = Currency.objects.get(code='ETH').get_latest_price(account.exchange, 'BUSD', 'last')
+            #
 
 # Rebalance fund of an account
 @app.task(name='Trading_____Rebalance_account')

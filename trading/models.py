@@ -900,6 +900,16 @@ class Account(models.Model):
         if not qs:
             return 0
         else:
+
+            log.bind(account=self.name)
+            log.info('Found {0} open orders in {1}'.format(qs.count(), market.symbol))
+
+            for order in qs:
+                log.info('Found {1} order {0}. {2}/{3} filled'.format(order.clientid,
+                                                                      order.side,
+                                                                      order.filled,
+                                                                      order.amount), action=order.action)
+
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
 

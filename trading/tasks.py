@@ -71,7 +71,6 @@ def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
             prepare_accounts.delay(account.id)
-            update_historical_balance.delay(account.id)
 
 
 # Bulk rebalance assets of all accounts
@@ -80,6 +79,14 @@ def bulk_rebalance(strategy_id, reload=False):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)
     for account in accounts:
         rebalance.delay(account.id, reload)
+
+
+# Bulk update stats
+@app.task(name='Trading_Bulk_update_stats')
+def bulk_update_stats():
+    accounts = Account.objects.filter(active=True)
+    for account in accounts:
+        update_stats.delay(account.id)
 
 
 # Bulk update open orders of all accounts
@@ -178,10 +185,9 @@ def create_balances(account_id):
     log.unbind('worker', 'account')
 
 
-# Update funds object
-@app.task(name='Trading_____Update_historical_balance')
-def update_historical_balance(account_id):
-    from marketsdata.models import Tickers
+# Create or update stats object
+@app.task(name='Trading_____Update_stats')
+def update_stats(account_id):
     account = Account.objects.get(id=account_id)
 
     try:
@@ -192,7 +198,7 @@ def update_historical_balance(account_id):
 
     finally:
 
-        dt = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        dt = datetime.now().replace(minute=0, second=0, microsecond=0)
         now = dt.strftime(datetime_directive_ISO_8601)
 
         if not isinstance(stat.assets_value_history, pd.DataFrame):
@@ -203,14 +209,15 @@ def update_historical_balance(account_id):
             val = round(account.assets_value(), 1)
             sid = account.strategy.id
             btc = Currency.objects.get(code='BTC').get_latest_price(account.exchange, 'BUSD', 'last')
-            
-            stat.assets_value_history.loc[now, ('balance', 'strategy_id', 'bitcoin_price')] = (val, sid, btc)
+            eth = Currency.objects.get(code='ETH').get_latest_price(account.exchange, 'BUSD', 'last')
+
+            stat.assets_value_history.loc[now, ('balance', 'strategy_id', 'bitcoin', 'ethereum')] = (val, sid, btc, eth)
             stat.save()
 
-            log.info('Update assets historical value')
+            log.info('Update account value complete')
 
         else:
-            log.info('Assets historical value is present')
+            log.info('Account value is already present')
 
 
 # Rebalance fund of an account

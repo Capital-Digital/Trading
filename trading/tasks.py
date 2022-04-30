@@ -184,11 +184,10 @@ def update_historical_balance(account_id):
     account = Account.objects.get(id=account_id)
 
     try:
-        from trading.models import Fund
-        fund = Fund.objects.get(account=account, exchange=account.exchange)
+        stat = Stat.objects.get(account=account, exchange=account.exchange, strategy=account.strategy)
 
     except ObjectDoesNotExist:
-        fund = Stat.objects.create(account=account, exchange=account.exchange)
+        stat = Stat.objects.create(account=account, exchange=account.exchange, strategy=account.strategy)
 
     finally:
 
@@ -197,7 +196,7 @@ def update_historical_balance(account_id):
 
         # Calculate current account balance
         current = account.assets_value()
-        hist = fund.historical_balance
+        hist = stat.account_value_history
 
         if not hist:
             hist = dict()
@@ -206,9 +205,9 @@ def update_historical_balance(account_id):
                          strategy_id=account.strategy.id,
                          strategy=account.strategy.name
                          )
-        fund.historical_balance = hist
-        log.info('Save account current balance', current=current)
-        fund.save()
+        stat.account_value_history = hist
+        log.info('Update account historical balance', current=current)
+        stat.save()
 
 
 # Rebalance fund of an account

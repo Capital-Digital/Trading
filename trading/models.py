@@ -905,7 +905,7 @@ class Account(models.Model):
                                   status__in=['open', 'preparation'],
                                   market=market,
                                   side=side,
-                                  actions=action
+                                  action=action
                                   )
         if not qs.exists():
             log.info('No pending order found for {0} in future'.format(code))

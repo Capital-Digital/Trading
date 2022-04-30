@@ -313,10 +313,21 @@ def rebalance(account_id, reload=False, release=True):
 
     # Display target percent
     target = account.balances.account.target.percent
-    for coin, val in target[target != 0].sort_values(ascending=False).items():
+    log.info('Long coins')
+    for coin, val in target[target > 0].sort_values(ascending=False).items():
         log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
 
-    for coin, val in target[target != 0].sort_values(ascending=False).items():
+    log.info('-----------------')
+    for coin, val in target[target > 0].sort_values(ascending=False).items():
+        log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
+
+    log.info('')
+    log.info('Short coins')
+    for coin, val in target[target < 0].sort_values(ascending=False).items():
+        log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+    log.info('-----------------')
+    for coin, val in target[target < 0].sort_values(ascending=False).items():
         log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
 
     log.info(' ')

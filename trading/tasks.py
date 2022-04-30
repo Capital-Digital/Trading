@@ -362,13 +362,11 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('*************')
 
                 # Return amount of open orders
-                open_order_size = account.get_open_orders_size(code,
-                                                               side='sell',
-                                                               actions=['sell_spot', 'open_short']
-                                                               )
+                open_spot = account.get_open_orders_spot(code, side='sell', action='sell_spot')
+                open_futu = account.get_open_orders_futu(code, side='sell', action='open_short')
 
                 free = account.balances.spot.free.quantity[code]
-                delta = account.balances.account.target.delta[code] - open_order_size
+                delta = account.balances.account.target.delta[code] - (open_spot + open_futu)
 
                 log.info('Total free assets in spot is {0} {1}'.format(round(free, 3), code))
                 log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
@@ -400,14 +398,12 @@ def rebalance(account_id, reload=False, release=True):
                 log.info('***************')
 
                 # Return amount of open orders
-                open_order_size = account.get_open_orders_size(code,
-                                                               side='buy',
-                                                               actions=['buy_spot', 'close_short']
-                                                               )
+                open_spot = account.get_open_orders_spot(code, side='buy', action='buy_spot')
+                open_futu = account.get_open_orders_futu(code, side='buy', action='close_short')
 
                 opened = abs(account.balances.position.open.quantity[code])
                 delta = account.balances.account.target.delta[code]
-                delta_new = abs(delta) - open_order_size
+                delta_new = abs(delta) - (open_spot + open_futu)
 
                 log.info('Opened short position is {0} {1}'.format(round(-opened, 3), code))
                 log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
@@ -442,14 +438,12 @@ def rebalance(account_id, reload=False, release=True):
             log.info('**************')
 
             # Return amount of open orders
-            open_order_size = account.get_open_orders_size(code,
-                                                           side='sell',
-                                                           actions=['sell_spot', 'open_short']
-                                                           )
+            open_spot = account.get_open_orders_spot(code, side='sell', action='sell_spot')
+            open_futu = account.get_open_orders_futu(code, side='sell', action='open_short')
 
             # Determine delta quantity
             price = account.balances.price['spot']['bid'][code]
-            delta = account.balances.account.target.delta[code] - open_order_size  # Offset sell/close order size
+            delta = account.balances.account.target.delta[code] - (open_spot + open_futu)  # Offset sell/close order
 
             log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
@@ -498,14 +492,12 @@ def rebalance(account_id, reload=False, release=True):
             log.info('************')
 
             # Return amount of open orders
-            open_order_size = account.get_open_orders_size(code,
-                                                           side='buy',
-                                                           actions=['buy_spot', 'close_short']
-                                                           )
+            open_spot = account.get_open_orders_spot(code, side='buy', action='buy_spot')
+            open_futu = account.get_open_orders_futu(code, side='buy', action='close_short')
 
             # Determine desired order size and value
             price = account.balances.price['spot']['bid'][code]
-            delta = abs(account.balances.account.target.delta[code]) - open_order_size  # Offset buy/close order size
+            delta = abs(account.balances.account.target.delta[code]) - (open_spot + open_futu)  # Offset buy/close order
             desired_val = delta * price
 
             log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))

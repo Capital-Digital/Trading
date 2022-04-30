@@ -201,6 +201,7 @@ def update_historical_balance(account_id):
         if now not in stat.assets_value_history.index:
             val = round(account.assets_value(), 1)
             sid = account.strategy.id
+            
             btc = Tickers.objects.get(market__symbol='BTC/USDT',
                                       market__exchange__exid='binance',
                                       market__type='spot',
@@ -208,7 +209,7 @@ def update_historical_balance(account_id):
                                       semester=get_semester()
                                       )
             # Create dataframe and filter indexes
-            btc = pd.DataFrame(btc.data).T['last'].filter(items = val.index, axis=0)
+            btc = pd.DataFrame(btc.data).T['last'].filter(items=stat.assets_value_history.index, axis=0)
 
             stat.assets_value_history.loc[now, ('balance', 'strategy_id', 'bitcoin_price')] = val, sid, btc
             log.info('Update assets historical value')

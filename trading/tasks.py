@@ -423,7 +423,7 @@ def rebalance(account_id, reload=False, release=True):
                 val = min(free_margin, desired_val)
 
                 log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-                log.info('-> Free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
+                log.info('-> and free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
                 log.info('-> Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Transfer is needed ?
@@ -479,10 +479,9 @@ def rebalance(account_id, reload=False, release=True):
 
             val = min(free, desired_val)
 
-            log.info('-> Available {0} resources is {1} {0}'.format(account.quote, round(free, 3)))
             log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-
-            log.info('Order value to buy spot is {0}'.format(val))
+            log.info('-> and available resources is {1} {0}'.format(account.quote, round(free, 3)))
+            log.info('-> Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
             # Transfer is needed ?
             if val < desired_val:
@@ -491,13 +490,12 @@ def rebalance(account_id, reload=False, release=True):
                 if transfer_id:
                     account.offset_transfer('future', 'spot', amount, transfer_id)
                     val += amount
-                    log.info('Order value before validation is {0}'.format(val))
+
+                    log.info('-> Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
             # Determine quantity from available resources
             qty = val / price
-
-            log.info('Order quantity before validation is {0}'.format(qty))
-            log.info('Asset free value is {0}'.format(free))
+            log.info('-> Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
 
             # Format decimal and validate order
             valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price)

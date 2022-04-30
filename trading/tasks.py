@@ -320,6 +320,19 @@ def rebalance(account_id, reload=False, release=True):
     for coin, val in target[target != 0].sort_values(ascending=False).items():
         log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
 
+    log.info(' ')
+    log.info('Delta')
+    log.info('*******')
+    log.info(' ')
+
+    # Display target percent
+    delta = account.balances.account.delta.quantity
+    for coin, val in delta[delta != 0].sort_values(ascending=False).items():
+        log.info('Delta qty for {0}: {1}%'.format(coin, round(val * 100, 1)))
+
+    for coin, val in target[target != 0].sort_values(ascending=False).items():
+        log.info('Delta val for {0}: {1}'.format(account.quote, round(account.balances.account.delta.value[coin], 1)))
+
     if release:
 
         # Release resources

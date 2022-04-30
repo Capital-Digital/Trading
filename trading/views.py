@@ -62,8 +62,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         x = [k for k in assets.keys()]
         bench = [bench.data[k]['last'] for k in bench.data.keys() if k in x]
 
-        data_assets_hist.append(go.Line(x=x, y=data, name='Balance', secondary_y=False, line=dict(color='#a9a9a9', width=2)))
-        data_assets_hist.append(go.Line(x=x, y=bench, name='Bitcoin', secondary_y=True, line=dict(color='#ff8c00', width=2)))
+        data_assets_hist.append(go.Line(x=x, y=data, name='Balance', line=dict(color='#a9a9a9', width=2)))
+        data_assets_hist.append(go.Line(x=x, y=bench, name='Bitcoin', line=dict(color='#ff8c00', width=2)))
 
         layout_weights = {
             'yaxis_title': 'Account balance',

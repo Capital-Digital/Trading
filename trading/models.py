@@ -862,7 +862,7 @@ class Account(models.Model):
         pass
 
     # Return sum of open orders size
-    def get_open_orders_spot(self, code, side, action):
+    def get_open_orders_spot(self, code, side, actions):
 
         # Test if a close_spot or a buy_spot order is open
         market, flip = self.exchange.get_spot_market(code, self.quote)
@@ -870,10 +870,10 @@ class Account(models.Model):
                                   status__in=['open', 'preparation'],
                                   market=market,
                                   side=side,
-                                  action=action
+                                  action__in=actions
                                   )
         if not qs.exists():
-            log.info('No pending order found for {0}'.format(code))
+            log.info('No pending order found for {0} in spot'.format(code))
             return 0
         else:
 
@@ -897,7 +897,7 @@ class Account(models.Model):
                 return qs_amount
 
     # Return sum of open orders size
-    def get_open_orders_futu(self, code, side, action):
+    def get_open_orders_futu(self, code, side, actions):
 
         # Test if a close_spot or a buy_spot order is open
         market, flip = self.exchange.get_spot_market(code, self.quote)
@@ -905,10 +905,10 @@ class Account(models.Model):
                                   status__in=['open', 'preparation'],
                                   market=market,
                                   side=side,
-                                  action=action
+                                  actions__in=actions
                                   )
         if not qs.exists():
-            log.info('No pending order found for {0}'.format(code))
+            log.info('No pending order found for {0} in future'.format(code))
             return 0
         else:
 

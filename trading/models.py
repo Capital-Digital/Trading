@@ -438,7 +438,10 @@ class Account(models.Model):
         if codes:
             if code:
                 if code in codes:
-                    return True
+                    if self.balances.spot[key]['value'][code] > 10:
+                        return True
+                    else:
+                        return False
                 else:
                     return False
             else:

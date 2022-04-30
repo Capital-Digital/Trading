@@ -337,7 +337,6 @@ class Account(models.Model):
 
         finally:
 
-            log.info('Get target weights complete')
             self.save()
 
     # Calculate net exposure and delta
@@ -408,7 +407,6 @@ class Account(models.Model):
                 self.balances.loc[coin, ('account', 'target', 'percent')] = 0
                 self.balances.loc[coin, ('account', 'target', 'value')] = 0
 
-        log.info('Calculate delta complete')
         self.save()
 
     # Return a list of codes to sell

@@ -155,10 +155,6 @@ def create_balances(account_id):
     #
     log.bind(worker=current_process().index)
 
-    log.info('')
-    log.info('Create balances...')
-    log.info('')
-
     if isinstance(account_id, list):
         account_id = account_id[0]
 
@@ -275,11 +271,14 @@ def rebalance(account_id, reload=False, release=True):
     log.bind(worker=current_process().index, account=account.name)
 
     log.info('')
-    log.info('Rebalance...')
-    log.info('')
 
     if reload:
+
+        log.info('Rebalance with a fresh dataframe...')
         create_balances(account_id)
+
+    else:
+        log.info('Rebalance...')
 
     # Add missing codes
     account.add_missing_coin()
@@ -307,6 +306,10 @@ def rebalance(account_id, reload=False, release=True):
     current = account.balances.account.current.percent
     for coin, val in current[current != 0].sort_values(ascending=False).items():
         log.info('Percentage for {0}: {1}%'.format(coin, round(val * 100, 1)), account=account.name)
+
+    exposure = account.balances.account.current.exposure
+    for coin, val in exposure[exposure != 0].sort_values(ascending=False).items():
+        log.info('-> {0} {1}'.format(round(val, 3), coin), account=account.name)
 
     # Display target percent
     target = account.balances.account.target.percent
@@ -344,7 +347,7 @@ def rebalance(account_id, reload=False, release=True):
                 price = account.balances.price['spot']['bid'][code]
                 qty = min(free, delta)
 
-                log.info('-> Desired quantity to sell is {0} {1}'.format(round(qty, 3), code))
+                log.info('-> Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price)
@@ -380,7 +383,7 @@ def rebalance(account_id, reload=False, release=True):
                 price = account.balances.price['future']['last'][code]
                 qty = min(opened, delta_new)
 
-                log.info('-> Desired quantity to close is {0} {1}'.format(round(qty, 3), code))
+                log.info('-> Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price,
@@ -866,7 +869,7 @@ def send_fetch_orderid(account_id, order_id):
             # Rebalance
             log.info(' ')
             log.info('Launch rebalancing after a new trade is detected')
-            rebalance.delay(account_id)
+            rebalance.delay(account_id, reload=False)
 
 
 # Send fetch all open orders

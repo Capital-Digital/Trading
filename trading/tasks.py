@@ -353,8 +353,6 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
-                log.unbind('action')
-
         # Close short
         for code in account.codes_to_buy():
             if account.has_opened_short(code):
@@ -392,8 +390,6 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
-                log.unbind('action')
-
     # Allocate free resources
     #########################
 
@@ -426,9 +422,9 @@ def rebalance(account_id, reload=False, release=True):
                 free_margin = account.free_margin()
                 val = min(free_margin, desired_val)
 
-                log.info('-> Desired order value is {0} {0}'.format(round(desired_val, 1), account.quote))
-                log.info('-> Free margin is {1} {0}'.format(round(free_margin, 1), account.quote))
-                log.info('-> Maximum order value is {1} {0}'.format(round(val, 1), account.quote))
+                log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
+                log.info('-> Free margin is {0} {1}'.format(round(free_margin, 1), account.quote))
+                log.info('-> Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Transfer is needed ?
                 if val < desired_val:
@@ -439,7 +435,7 @@ def rebalance(account_id, reload=False, release=True):
                         account.offset_transfer('spot', 'future', amount, transfer_id)
                         val += amount
 
-                        log.info('-> Max. order value after transfer is {1} {0}'.format(round(val, 1), account.quote))
+                        log.info('-> Max. order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
                 # Determine quantity from available resources
                 qty = val / price
@@ -450,8 +446,6 @@ def rebalance(account_id, reload=False, release=True):
                     # Create object and place order
                     clientid = account.create_object('future', code, 'sell', 'open_short', qty)
                     send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
-
-                log.unbind('action')
 
     # Buy spot
     for code in account.codes_to_buy():
@@ -474,12 +468,18 @@ def rebalance(account_id, reload=False, release=True):
             delta = abs(account.balances.account.target.delta[code]) - open_order_size  # Offset buy/close order size
             desired_val = delta * price
 
+            log.info('-> Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+            log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
+
             # Get available resource
             free = account.balances.spot.free.quantity[account.quote]
             if np.isnan(free):
                 free = 0
 
             val = min(free, desired_val)
+
+            log.info('-> Available {0} resources is {1} {0}'.format(account.quote, round(free, 3)))
+            log.info('-> Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
 
             log.info('Order value to buy spot is {0}'.format(val))
 
@@ -504,8 +504,6 @@ def rebalance(account_id, reload=False, release=True):
                 # Create object and place order
                 clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
                 send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
-
-            log.unbind('action')
 
     account.busy = False
     account.save()

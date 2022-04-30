@@ -680,11 +680,11 @@ class Account(models.Model):
 
             if filled_new:
                 log.info('-> Update status to {0}'.format(status))
-                log.unbind('account', 'orderid')
+                log.unbind('account')
                 return filled_new, order.average
 
             else:
-                log.unbind('account', 'orderid')
+                log.unbind('account')
                 return False, False
 
     # Offset transfer

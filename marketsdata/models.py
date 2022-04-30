@@ -563,7 +563,7 @@ class Exchange(models.Model):
 
         if codes:
 
-            log.info('Preload dataframe', length=len(codes))
+            log.info('Load dataframe', length=len(codes))
 
             now = datetime.now().replace(minute=0, second=0, microsecond=0)
             start = now - timedelta(hours=length)
@@ -599,7 +599,7 @@ class Exchange(models.Model):
 
             # log.info('Preload dataframe complete')
 
-            log.info('Preload dataframe complete', length=len(codes))
+            log.info('Dataframe ready with {0} periods and for {1} codes'.format(len(self.data), len(codes)))
             return self.data
 
         else:

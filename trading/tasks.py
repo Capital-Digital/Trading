@@ -70,9 +70,7 @@ def bulk_fetch_positions():
 def bulk_prepare_accounts():
     for exchange in Exchange.objects.all():
         for account in Account.objects.filter(exchange=exchange, active=True):
-            log.bind(account=account.name)
             prepare_accounts.delay(account.id)
-            log.unbind('account')
 
 
 # Bulk rebalance assets of all accounts
@@ -117,7 +115,10 @@ def prepare_accounts(account_id):
     log.info('Prepare accounts')
 
     account = Account.objects.get(id=account_id)
+
+    log.bind(account=account.name)
     chord(cancel_orders.s(account.id))(create_balances.s())
+    log.unbind('account')
 
 
 # Cancel open orders of an account

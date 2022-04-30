@@ -53,17 +53,12 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         last_24h = now - timedelta(hours=6)
 
         # Account historical balance
-        data_assets_hist = []
-        assets = self.object.stats.get().assets_value_history
-        data = [assets[k]['balance'] for k in assets.keys()]
-        bench = Tickers.objects.get(market__symbol='BTC/USDT',
-                                    market__exchange__exid='binance',
-                                    market__type='spot', year=get_year(), semester=get_semester())
-        x = [k for k in assets.keys()]
-        bench = [bench.data[k]['last'] for k in bench.data.keys() if k in x]
-
-        data_assets_hist.append(go.Line(x=x, y=data, yaxis='y1', name='Balance', line=dict(color='#a9a9a9', width=2)))
-        data_assets_hist.append(go.Line(x=x, y=bench, yaxis='y2', name='Bitcoin', line=dict(color='#ff8c00', width=2)))
+        # data_assets_hist = []
+        # assets = self.object.stats.get().assets_value_history
+        # data = [assets[k]['balance'] for k in assets.keys()]
+        #
+        # data_assets_hist.append(go.Line(x=x, y=data, yaxis='y1', name='Balance', line=dict(color='#a9a9a9', width=2)))
+        # data_assets_hist.append(go.Line(x=x, y=bench, yaxis='y2', name='Bitcoin', line=dict(color='#ff8c00', width=2)))
 
         yaxis = dict(title='Balance')
         yaxis2 = dict(title='Bitcoin',
@@ -79,11 +74,11 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'yaxis2': yaxis2
         }
 
-        plot_div_1 = plot({'data': data_assets_hist, 'layout': layout},
-                          output_type='div',
-                          )
+        # plot_div_1 = plot({'data': data_assets_hist, 'layout': layout},
+        #                   output_type='div',
+        #                   )
 
-        context['plot_div_1'] = plot_div_1
+        # context['plot_div_1'] = plot_div_1
         context['table_asset'] = table_asset
         context['table_position'] = table_position
         context['table_order'] = table_order

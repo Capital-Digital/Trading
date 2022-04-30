@@ -518,7 +518,6 @@ def update_orders(account_id):
 
     if orders.exists():
         for order in orders:
-            # log.info('Update order', id=order.orderid)
             send_fetch_orderid.delay(account_id, order.orderid)
     else:
         pass
@@ -823,6 +822,8 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 def send_fetch_orderid(account_id, order_id):
     #
     account = Account.objects.get(id=account_id)
+    log.bind(worker=current_process().index, account=account.name)
+
     client = account.exchange.get_ccxt_client(account)
     order = Order.objects.get(orderid=order_id)
 
@@ -852,7 +853,7 @@ def send_fetch_orderid(account_id, order_id):
             t = 0
             while account.busy:
                 log.info(' ')
-                log.info('Wait account is ready before allocating free resources', account=account.name)
+                log.info('Wait account is ready before allocating free resources')
                 time.sleep(1)
                 t += 1
                 if t == 10:
@@ -861,6 +862,8 @@ def send_fetch_orderid(account_id, order_id):
             # Rebalance
             log.info(' ')
             log.info('Launch rebalancing after a new trade is detected')
+            log.bind('worker', 'account')
+
             rebalance.delay(account_id, reload=False)
 
 

@@ -878,7 +878,6 @@ class Account(models.Model):
             return 0
         else:
 
-            log.info(' ')
             log.info('Found {0} open orders in {1}'.format(qs.count(), market.symbol))
 
             for order in qs:

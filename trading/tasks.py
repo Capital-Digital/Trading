@@ -122,13 +122,16 @@ def prepare_accounts(account_id):
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id, user_orders=False):
     #
-    log.bind(worker=current_process().index)
-    log.info('Cancel orders')
 
     account = Account.objects.get(id=account_id)
+
+    log.bind(account=account.name, worker=current_process().index)
+    log.info('Cancel orders')
+
     orders = Order.objects.filter(account=account,
-                                  status__in=['new', 'partially_filled', 'open']
-                                  ).exclude(orderid__isnull=True)
+                                  status__in=['new',
+                                              'partially_filled',
+                                              'open']).exclude(orderid__isnull=True)
     if orders.exists():
         for order in orders:
             send_cancel_order.delay(account_id, order.orderid)
@@ -141,7 +144,7 @@ def cancel_orders(account_id, user_orders=False):
             send_cancel_order.delay(account_id, order_id)
 
     log.info('Cancel orders complete')
-    log.unbind('worker')
+    log.unbind('worker', 'account')
 
     return account_id
 
@@ -173,8 +176,6 @@ def create_balances(account_id):
 
     account.drop_dust_coins()
     account.check_columns()
-
-    log.unbind('account', 'worker')
 
 
 # Create or update stats object

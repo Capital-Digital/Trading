@@ -508,10 +508,10 @@ class Account(models.Model):
             return 0
 
     # Validate order size and cost
-    def validate_order(self, wallet, code, qty, price, action=None):
+    def validate_order(self, wallet, side, code, qty, price, action=None):
 
         log.bind(account=self.name)
-        log.info('Validate order {0} {1}'.format(code, wallet), qty=qty, price=price, action=action)
+        log.info('Validate order to {0} {1} in {2}'.format(side, code, wallet), qty=qty, price=price, action=action)
 
         if wallet == 'spot':
             market, flip = self.exchange.get_spot_market(code, self.quote)
@@ -660,9 +660,9 @@ class Account(models.Model):
                 log.info('-> Trade of {0} {1} detected'.format(filled_new, order.market.base.code))
 
                 if filled_total < order.amount:
-                    log.info('-> Order is partially filled')
+                    log.info('-> Order {0} is partially filled'.format(order.clientid))
                 else:
-                    log.info('-> Order is filled')
+                    log.info('-> Order {0} is filled'.format(order.clientid))
 
             else:
                 filled_new = 0
@@ -831,21 +831,19 @@ class Account(models.Model):
 
             self.save()
 
-            log.info('Offset complete')
             log.unbind('account')
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
 
         log.info(' ')
-        log.bind(account=self.name)
+        log.bind(account=self.name, action=action)
         log.info('Offset used and free resources')
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
-        log.info('Offset to {0}'.format(action.replace('_', ' ')))
         log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
 
         if action == 'buy_spot':
@@ -879,8 +877,7 @@ class Account(models.Model):
         self.balances.loc[offset.index, offset.columns] = updated
         self.save()
 
-        log.info('Offset complete')
-        log.unbind('account')
+        log.unbind('account', 'action')
 
     # Offset a cancelled order
     def offset_order_cancelled(self, code, side, qty, val, filled=0):
@@ -902,16 +899,20 @@ class Account(models.Model):
         else:
 
             log.bind(account=self.name)
+            log.info(' ')
             log.info('Found {0} open orders in {1}'.format(qs.count(), market.symbol))
 
             for order in qs:
-                log.info('Found {1} order {0}. {2}/{3} filled'.format(order.clientid,
-                                                                      order.side,
-                                                                      order.filled,
-                                                                      order.amount), action=order.action)
+                log.info('-> order {0} to {1} {2}. {3}/{4} filled'.format(order.clientid,
+                                                                          order.action.replace('_', ' '),
+                                                                          market.base.code,
+                                                                          order.filled,
+                                                                          order.amount))
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
+
+            log.info('-> Total order amount is {0} {1}'.format(qs.count(), market.base.code))
 
             if flip:
                 return qs_amount / qs_price

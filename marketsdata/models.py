@@ -722,7 +722,13 @@ class Currency(models.Model):
                     base = quote if flip else self.code
                     quote = self.code if flip else quote
 
-                    log.error('Key {0} not found'.format(now), key=key, base=base, wallet='spot', quote=quote)
+                    log.error('Key {0} not found'.format(now),
+                              key=key,
+                              base=base,
+                              now=now,
+                              wallet='spot',
+                              quote=quote
+                              )
 
                 else:
                     if isinstance(key, list):
@@ -815,7 +821,9 @@ class Market(models.Model):
             except KeyError:
                 log.error('Key {0} not found'.format(now),
                           symbol=self.symbol,
-                          wallet=self.wallet
+                          wallet=self.wallet,
+                          key=key,
+                          now=now
                           )
             else:
                 return price

@@ -954,6 +954,33 @@ class Account(models.Model):
             else:
                 return qs_amount
 
+    # Return True if all markets needed to synchronize the account are update
+    def is_tradable(self):
+
+        symbols_long = [c + '/' + self.quote for c in self.strategy.get_codes_long()]
+        symbols_short = [c + '/' + self.quote for c in self.strategy.get_codes_short()]
+        update = []
+
+        for symbol in symbols_long:
+            market = Market.objects.get(exchange=self.exchange,
+                                        symbol=symbol,
+                                        type='spot'
+                                        )
+            update.append(market.is_updated())
+
+        for symbol in symbols_short:
+            market = Market.objects.get(exchange=self.exchange,
+                                        symbol=symbol,
+                                        type='derivative',
+                                        contract_type='perpetual'
+                                        )
+            update.append(market.is_updated())
+
+        if False in update:
+            return False
+        else:
+            return True
+
 
 class Asset(models.Model):
     objects = models.Manager()

@@ -78,6 +78,11 @@ def bulk_prepare_accounts():
 def bulk_rebalance(strategy_id, reload=False):
     accounts = Account.objects.filter(strategy__id=strategy_id, active=True)
     for account in accounts:
+
+        while not account.is_tradable():
+            log.warning('Wait all {0} markets are updated before synchronisation of the account'.format(account.quote))
+            time.sleep(0.1)
+
         rebalance.delay(account.id, reload)
 
 

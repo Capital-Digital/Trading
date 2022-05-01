@@ -153,28 +153,25 @@ def synchronize_orders(account_id, user_orders=False):
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id, user_orders=False):
     #
-
     account = Account.objects.get(id=account_id)
 
     log.bind(account=account.name)
     if hasattr(current_process, 'index'):
         log.bind(worker=current_process().index)
 
-    orders = Order.objects.filter(account=account,
-                                  status__in=['new',
-                                              'partially_filled',
-                                              'open']).exclude(orderid__isnull=True)
+    orders = Order.objects.filter(account=account, status='open')  # .exclude(orderid__isnull=True)
+
     if orders.exists():
         for order in orders:
             log.info('Cancel order {0}'.format(order.clientid))
             send_cancel_order(account_id, order.orderid)
 
     if user_orders:
-        wallet, dic = send_fetch_all_open_orders(account_id)
-        for order in dic:
+        wallet, response = send_fetch_all_open_orders(account_id)
+        for dic in response:
 
-            orderid = order['id']
-            symbol = order['symbol']
+            orderid = dic['id']
+            symbol = dic['symbol']
 
             log.info('Cancel order {0}'.format(orderid))
             send_cancel_order(account_id, orderid, wallet, symbol)

@@ -171,9 +171,12 @@ def cancel_orders(account_id, user_orders=False):
     if user_orders:
         wallet, dic = send_fetch_all_open_orders(account_id)
         for order in dic:
+
             orderid = order['id']
+            symbol = order['symbol']
+
             log.info('Cancel order {0}'.format(orderid))
-            send_cancel_order(account_id, orderid)
+            send_cancel_order(account_id, orderid, wallet, symbol)
 
     log.info('Cancel orders complete')
     log.unbind('worker', 'account')
@@ -1012,10 +1015,14 @@ def send_transfer(account_id, source, dest, quantity):
 
 # Send cancellation order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_cancel_order')
-def send_cancel_order(account_id, orderid):
+def send_cancel_order(account_id, orderid, wallet=None, symbol=None):
     #
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
     try:
         order = Order.objects.get(orderid=orderid)
+        wallet = order.market.wallet
+        symbol = order.symbol
 
     except MultipleObjectsReturned:
         log.error('Multiple orders were found')
@@ -1027,12 +1034,10 @@ def send_cancel_order(account_id, orderid):
         update_object = True
 
     finally:
-        account = Account.objects.get(id=account_id)
-        client = account.exchange.get_ccxt_client(account)
-        client.options['defaultType'] = order.market.wallet
+        client.options['defaultType'] = wallet
 
         try:
-            response = client.cancel_order(id=orderid, symbol=order.market.symbol)
+            response = client.cancel_order(id=orderid, symbol=symbol)
 
         except Exception as e:
             log.error('Order canceled failure {0}'.format(orderid), e=str(e))

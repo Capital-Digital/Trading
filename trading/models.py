@@ -815,16 +815,16 @@ class Account(models.Model):
             # Update new percentage
             account_value = self.account_value()
             for c in [code, self.quote]:
-                exposure_value = self.balances.account.current.value[c]
-                delta = self.balances.account.target.delta[c]
+                exp = self.balances.account.current.value[c]
+                dta = self.balances.account.target.delta[c]
                 qty = self.balances.account.current.exposure[c]
-                pct = exposure_value / account_value
+                pct = exp / account_value
                 self.balances.loc[c, ('account', 'current', 'percent')] = pct
                 if c is not self.quote:
                     log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
                     log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
-                    log.info('Value___ for {0} is now {1}'.format(c, round(exposure_value, 1)))
-                    log.info('Delta___ for {0} is now {1}'.format(c, round(delta, 3)))
+                    log.info('Value___ for {0} is now {1}'.format(c, round(exp, 1)))
+                    log.info('Delta___ for {0} is now {1}'.format(c, round(dta, 3)))
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):

@@ -22,6 +22,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Trading_____Rebalance_account':
 
+        log.info('signal received, sync. complete')
         account_id = args
         account = Account.objects.get(id=account_id)
 

@@ -265,7 +265,10 @@ def rebalance(account_id, reload=False, release=True):
     account.busy = True
     account.save()
 
-    log.bind(worker=current_process().index, account=account.name)
+    log.bind(account=account.name)
+    if hasattr(current_process, 'index'):
+        log.bind(worker=current_process().index)
+
     log.info('')
 
     if reload:

@@ -1012,28 +1012,39 @@ def send_transfer(account_id, source, dest, quantity):
 
 # Send cancellation order
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_cancel_order')
-def send_cancel_order(account_id, order_id):
+def send_cancel_order(account_id, orderid):
     #
     try:
-        order = Order.objects.get(orderid=order_id)
+        order = Order.objects.get(orderid=orderid)
 
     except MultipleObjectsReturned:
         log.error('Multiple orders were found')
+        return
 
+    except ObjectDoesNotExist:
+        update_object = False
     else:
+        update_object = True
+
+    finally:
         account = Account.objects.get(id=account_id)
         client = account.exchange.get_ccxt_client(account)
         client.options['defaultType'] = order.market.wallet
 
         try:
-            response = client.cancel_order(id=order_id, symbol=order.market.symbol)
+            response = client.cancel_order(id=orderid, symbol=order.market.symbol)
 
         except Exception as e:
-            log.error('Order canceled failure', e=str(e))
+            log.error('Order canceled failure {0}'.format(orderid), e=str(e))
 
         else:
-            # Update object and dataframe
-            account.update_order_object(order.market.wallet, response)
+            log.info('Order {0} canceled'.format(orderid))
+            if update_object:
+                # Update object and dataframe
+                log.info('Update object of order {0}'.format(orderid))
+                account.update_order_object(order.market.wallet, response)
+            else:
+                log.info('Order {0} has no object'.format(orderid))
 
 
 @app.task(bind=True, name='Test')

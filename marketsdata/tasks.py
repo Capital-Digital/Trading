@@ -216,7 +216,7 @@ def update_prices(exid, wallet=None):
     symbols.sort()
 
     log.info('High priority symbols for price update')
-    log.info(symbols)
+    log.info(symbols_strategies)
 
     # Insert high priority symbols first
     # and drop duplicate whilst preserving order
@@ -227,6 +227,8 @@ def update_prices(exid, wallet=None):
 
     for symbol in symbols:
 
+        print(symbol)
+        
         if wallet == 'spot':
             keys = ['bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']
         elif wallet == 'future':

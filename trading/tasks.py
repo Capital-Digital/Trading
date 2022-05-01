@@ -628,19 +628,20 @@ def update_orders(account_id):
 
                     t = 0
                     while account.busy:
-                        log.info('Wait account is ready before allocating free resources')
+                        log.info('Account is busy, wait before new sync.')
                         time.sleep(1)
                         t += 1
-                        if t == 10:
-                            raise Exception('Account is still busy after 10s')
+                        if t > 10:
+                            raise Exception('Account is busy after more than 10s')
 
                     log.info('Sync. account after a trade')
                     rebalance.delay(account_id, reload=False)
 
-        log.info('Open order update complete in account {0}'.format(account.name))
+        # log.info('Open order update complete in account {0}'.format(account.name))
 
     else:
-        log.info('Open order not found in account {0}'.format(account.name))
+        pass
+        # log.info('Open order not found in account {0}'.format(account.name))
 
 
 # Check an account credential

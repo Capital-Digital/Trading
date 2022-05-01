@@ -440,6 +440,10 @@ class Account(models.Model):
         codes = list(set(self.codes_to_sell() + self.codes_synthetic_cash()))
         return [c for c in codes if self.has_spot_asset('free', c)]
 
+    # Return a list of codes to open short
+    def codes_to_open_short(self):
+        return [c for c in self.codes_to_sell() if c not in self.codes_to_sell_spot()]
+
     # Return a list of codes to buy
     def codes_to_buy(self):
         delta = self.balances.account.target.delta

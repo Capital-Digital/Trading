@@ -944,6 +944,8 @@ def send_fetch_orderid(account_id, order_id):
 
     else:
 
+        log.info('Update order object {0}'.format(order_id[:6]))
+
         # Update instance
         account.refresh_from_db()
 

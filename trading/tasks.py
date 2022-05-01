@@ -125,12 +125,12 @@ def prepare_accounts(account_id):
 
 
 # Synchronize open orders
-@app.task(name='Trading_____Sync_orders')
-def synchronize_orders(account_id, user_orders=False):
+@app.task(bind=True, name='Trading_____Sync_orders')
+def synchronize_orders(self, account_id, user_orders=False):
     #
     account = Account.objects.get(id=account_id)
     log.bind(account=account.name)
-    if hasattr(current_process, 'index'):
+    if self.request.id:
         log.bind(worker=current_process().index)
 
     if user_orders:
@@ -150,13 +150,13 @@ def synchronize_orders(account_id, user_orders=False):
 
 
 # Cancel open orders of an account
-@app.task(name='Trading_____Cancel_orders')
-def cancel_orders(account_id, user_orders=False):
+@app.task(bind=True, name='Trading_____Cancel_orders')
+def cancel_orders(self, account_id, user_orders=False):
     #
     account = Account.objects.get(id=account_id)
 
     log.bind(account=account.name)
-    if hasattr(current_process, 'index'):
+    if self.request.id:
         log.bind(worker=current_process().index)
 
     orders = Order.objects.filter(account=account, status='open')  # .exclude(orderid__isnull=True)
@@ -179,15 +179,15 @@ def cancel_orders(account_id, user_orders=False):
     log.info('Cancel orders complete')
 
     log.unbind('account')
-    if hasattr(current_process, 'index'):
+    if self.request.id:
         log.unbind('worker')
 
     return account_id
 
 
 # Create balances dataframe
-@app.task(name='Trading_____Create_balances')
-def create_balances(account_id):
+@app.task(bind=True, name='Trading_____Create_balances')
+def create_balances(self, account_id):
     #
 
     if isinstance(account_id, list):
@@ -196,7 +196,7 @@ def create_balances(account_id):
     account = Account.objects.get(id=account_id)
 
     log.bind(account=account.name)
-    if hasattr(current_process, 'index'):
+    if self.request.id:
         log.bind(worker=current_process().index)
 
     # Fetch account
@@ -294,10 +294,12 @@ def stats_benchmark(account_id):
 
 
 # Rebalance fund of an account
-@app.task(name='Trading_____Rebalance_account')
-def rebalance(account_id, reload=False, release=True):
+@app.task(bind=True, name='Trading_____Rebalance_account')
+def rebalance(self, account_id, reload=False, release=True):
     #
     account = Account.objects.get(id=account_id)
+
+    log.info('Task id is {0}'.format(self.request.id))
 
     # Mark the account as busy to avoid concurrent
     # rebalancing after a new trade is detected
@@ -305,7 +307,7 @@ def rebalance(account_id, reload=False, release=True):
     account.save()
 
     log.bind(account=account.name)
-    if hasattr(current_process, 'index'):
+    if self.request.id:
         log.bind(worker=current_process().index)
 
     log.info('')
@@ -950,12 +952,12 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 
 
 # Fetch an order by its orderid
-@app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_orderid')
-def send_fetch_orderid(account_id, order_id):
+@app.task(bind=True, base=BaseTaskWithRetry, name='Trading_____Send_fetch_orderid')
+def send_fetch_orderid(self, account_id, order_id):
     #
     account = Account.objects.get(id=account_id)
     log.bind(account=account.name)
-    if hasattr(current_process, 'index'):
+    if self.request.id:
         log.bind(worker=current_process().index)
 
     order = Order.objects.get(orderid=order_id)

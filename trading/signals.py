@@ -6,7 +6,7 @@ import marketsdata.tasks
 from trading.models import Account
 from trading.tasks import *
 from celery.signals import task_success, task_postrun, task_failure
-
+from celery.signals import worker_ready
 import structlog
 
 log = structlog.get_logger(__name__)

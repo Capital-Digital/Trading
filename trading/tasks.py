@@ -636,8 +636,11 @@ def update_orders(account_id):
 
                     log.info('Sync. account after a trade')
                     rebalance.delay(account_id, reload=False)
+
+        log.info('Open order update complete in account {0}'.format(account.name))
+
     else:
-        pass
+        log.info('Open order not found in account {0}'.format(account.name))
 
 
 # Check an account credential

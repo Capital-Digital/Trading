@@ -24,7 +24,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
         print(args)
         log.info(args)
-        
+
         account_id = args
         account = Account.objects.get(id=account_id)
         log.info('signal received, sync. complete', account=account.name)

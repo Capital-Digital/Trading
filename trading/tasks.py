@@ -179,7 +179,10 @@ def cancel_orders(account_id, user_orders=False):
             send_cancel_order(account_id, orderid, wallet, symbol)
 
     log.info('Cancel orders complete')
-    log.unbind('worker', 'account')
+
+    log.unbind('account')
+    if hasattr(current_process, 'index'):
+        log.unbind('worker')
 
     return account_id
 

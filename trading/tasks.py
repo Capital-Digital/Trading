@@ -403,8 +403,9 @@ def rebalance(account_id, reload=False, release=True):
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty, price)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
+                # Refresh obj
+                account.refresh_from_db()
             log.unbind('action')
-        account.refresh_from_db()
 
         # Close short
         for code in account.codes_to_buy():
@@ -441,8 +442,8 @@ def rebalance(account_id, reload=False, release=True):
                         clientid = account.create_object('future', code, 'buy', 'close_short', qty, price)
                         send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
+                    account.refresh_from_db()
                 log.unbind('action')
-        account.refresh_from_db()
 
     # Allocate free resources
     #########################
@@ -499,8 +500,8 @@ def rebalance(account_id, reload=False, release=True):
                 clientid = account.create_object('future', code, 'sell', 'open_short', qty, price)
                 send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
+            account.refresh_from_db()
         log.unbind('action')
-    account.refresh_from_db()
 
     # Buy spot
     for code in account.codes_to_buy():
@@ -558,8 +559,8 @@ def rebalance(account_id, reload=False, release=True):
                 clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty, price)
                 send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
 
+            account.refresh_from_db()
         log.unbind('action')
-    account.refresh_from_db()
 
     account.busy = False
     account.save()
@@ -834,8 +835,9 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         del kwargs['price']
 
     # Set parameters
-    if reduce_only:
+    if reduce_only or action == 'close_short':
         kwargs['params']['reduceOnly'] = True
+        log.info('Set reduceOnly to True')
 
     try:
         log.info(' ')
@@ -905,7 +907,10 @@ def send_fetch_orderid(account_id, order_id):
 
     else:
 
-        # Update object
+        # Update instance
+        account.refresh_from_db()
+
+        # Update dataframe
         filled, average = account.update_order_object(order.market.wallet, response)
         if filled:
 
@@ -956,10 +961,6 @@ def send_transfer(account_id, source, dest, quantity):
     # Generate transfer_id
     alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
     transfer_id = ''.join((random.choice(alphanumeric)) for x in range(5))
-
-    log.bind(account=account.name, id=transfer_id)
-    if hasattr(current_process, 'index'):
-        log.bind(worker=current_process().index)
 
     if quantity > 1:
 

@@ -5,7 +5,7 @@ from trading.models import Order, Asset
 class OrderTable(tables.Table):
 
     price = tables.Column(verbose_name='Price limit')
-    average = tables.Column(verbose_name='Average price')
+    average = tables.Column(verbose_name='Price avg')
     filled = tables.Column(verbose_name='Filled')
 
     dt_created = tables.DateTimeColumn(format='M d Y, h:i:s')

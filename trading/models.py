@@ -370,8 +370,8 @@ class Account(models.Model):
                 log.info('-> Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
 
             # Determine synthetic cash of each coin
-            spot = self.balances.spot.total.quantity.fillna(0)
-            posi = abs(self.balances.position.open.quantity.fillna(0))
+            spot = self.balances.spot.total.quantity
+            posi = abs(self.balances.position.open.quantity)
             self.balances.loc[:, ('account', 'current', 'synthetic_cash')] = ((posi + spot) - posi).drop(self.quote)
 
             # Determine the total exposure of each coin
@@ -439,6 +439,10 @@ class Account(models.Model):
     def codes_to_buy(self):
         delta = self.balances.account.target.delta
         return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
+
+    # Return a list of codes with simultaneous spot and short exposure
+    def codes_synthetic_cash(self):
+        return self.balances.account.current.synthetic_cash.dropna().index.tolist()
 
     # Return True is account has more than $10 of an asset in spot wallet
     def has_spot_asset(self, key, code=None):

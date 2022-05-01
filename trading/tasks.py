@@ -169,8 +169,8 @@ def cancel_orders(account_id, user_orders=False):
             send_cancel_order(account_id, order.orderid)
 
     if user_orders:
-        orders = send_fetch_all_open_orders(account_id)
-        for order in orders:
+        wallet, dic = send_fetch_all_open_orders(account_id)
+        for order in dic:
             orderid = order['id']
             log.info('Cancel order {0}'.format(orderid))
             send_cancel_order(account_id, orderid)

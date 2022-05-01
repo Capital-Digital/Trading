@@ -658,12 +658,9 @@ class Account(models.Model):
 
             if new:
                 log.info(' ')
-                log.info('Update order {0}'.format(order.clientid),
-                         action=order.action,
-                         code=order.market.base.code,
-                         wallet=order.market.wallet
-                         )
-
+                log.info('Update order {0}'.format(order.clientid))
+                log.info('------------------')
+    
             # Get traded amount
             filled_prev = order.filled
             filled_total = response['filled']
@@ -740,7 +737,7 @@ class Account(models.Model):
         # Determine trade value
         filled_value = filled * average
 
-        log.info('Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 3), code))
+        log.info('Offset {0} {1} {2}'.format(action.title().replace('_', ' '), round(filled, 4), code))
         log.info('Offset trade value of {0} {1}'.format(round(filled_value, 1), self.quote))
 
         if action == 'buy_spot':
@@ -810,9 +807,9 @@ class Account(models.Model):
         dta = self.balances.account.target.delta[code]
         log.info('')
         log.info('Percenta for {0} was {1}%'.format(code, round(pct, 1)))
-        log.info('Quantity for {0} was {1}'.format(code, round(exp, 3)))
+        log.info('Quantity for {0} was {1}'.format(code, round(exp, 4)))
         log.info('Value___ for {0} was {1}'.format(code, round(val, 1)))
-        log.info('Delta___ for {0} was {1}'.format(code, round(dta, 3)))
+        log.info('Delta___ for {0} was {1}'.format(code, round(dta, 4)))
 
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         try:
@@ -847,7 +844,7 @@ class Account(models.Model):
                     log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
                     log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
                     log.info('Value___ for {0} is now {1}'.format(c, round(exp, 1)))
-                    log.info('Delta___ for {0} is now {1}'.format(c, round(dta, 3)))
+                    log.info('Delta___ for {0} is now {1}'.format(c, round(dta, 4)))
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
@@ -858,7 +855,7 @@ class Account(models.Model):
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
-        log.info('Offset resources {0} {1}'.format(round(qty, 3), code))
+        log.info('Offset resources {0} {1}'.format(round(qty, 4), code))
 
         if action == 'buy_spot':
             # Offset order value from free and used quote

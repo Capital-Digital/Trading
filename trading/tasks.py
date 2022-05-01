@@ -327,7 +327,8 @@ def rebalance(account_id, reload=False, release=True):
         log.info('-------------------------')
         for coin, val in target[target > 0].sort_values(ascending=False).items():
             if coin != account.quote:
-                log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
+                log.info('Target qty for {0}: {1}'.format(coin,
+                                                          round(account.balances.account.target.quantity[coin], 4)))
         log.info('-------------------------')
 
     if account.codes_to_sell():
@@ -339,7 +340,7 @@ def rebalance(account_id, reload=False, release=True):
             log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
         log.info('-------------------------')
         for coin, val in target[target < 0].sort_values(ascending=False).items():
-            log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
+            log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 4)))
         log.info('-------------------------')
 
     log.info(' ')
@@ -350,7 +351,7 @@ def rebalance(account_id, reload=False, release=True):
     # Display target percent
     delta = account.balances.account.target.delta
     for coin, val in delta[delta != 0].sort_values(ascending=False).items():
-        log.info('Delta qty for {0}: {1}'.format(coin, round(val, 3)))
+        log.info('Delta qty for {0}: {1}'.format(coin, round(val, 4)))
     log.info('---------------------------')
 
     if release:
@@ -375,14 +376,14 @@ def rebalance(account_id, reload=False, release=True):
 
             if delta:
 
-                log.info('Total free assets in spot is {0} {1}'.format(round(free, 3), code))
-                log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+                log.info('Total free assets in spot is {0} {1}'.format(round(free, 4), code))
+                log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
 
                 # Determine order size and value
                 price = account.balances.price['spot']['bid'][code]
                 qty = min(free, delta)
 
-                log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
+                log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 4), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
@@ -412,14 +413,14 @@ def rebalance(account_id, reload=False, release=True):
 
                 if delta_new:
 
-                    log.info('Opened short position is {0} {1}'.format(round(-opened, 3), code))
-                    log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+                    log.info('Opened short position is {0} {1}'.format(round(-opened, 4), code))
+                    log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
 
                     # Determine order size and value
                     price = account.balances.price['future']['last'][code]
                     qty = min(opened, delta_new)
 
-                    log.info('Maximum quantity to close is {0} {1}'.format(round(qty, 3), code))
+                    log.info('Maximum quantity to close is {0} {1}'.format(round(qty, 4), code))
 
                     # Format decimal and validate order
                     valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
@@ -452,7 +453,7 @@ def rebalance(account_id, reload=False, release=True):
 
         if delta > 0:
 
-            log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+            log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
 
             # Determine value
             desired_val = delta * price
@@ -476,7 +477,7 @@ def rebalance(account_id, reload=False, release=True):
 
             # Determine quantity from available resources
             qty = val / price
-            log.info('Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
+            log.info('Maximum order quantity is {0} {1}'.format(round(qty, 4), code))
 
             # Format decimal and validate order
             valid, qty, reduce_only = account.validate_order('future', 'sell', code, qty, price, 'open_short')
@@ -515,9 +516,9 @@ def rebalance(account_id, reload=False, release=True):
 
             val = min(free, desired_val)
 
-            log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+            log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
             log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-            log.info('and available resources is {1} {0}'.format(account.quote, round(free, 3)))
+            log.info('Available resources is {1} {0}'.format(account.quote, round(free, 1)))
             log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
 
             # Transfer is needed ?
@@ -532,7 +533,7 @@ def rebalance(account_id, reload=False, release=True):
 
             # Determine quantity from available resources
             qty = val / price
-            log.info('Maximum order quantity is {0} {1}'.format(round(qty, 3), code))
+            log.info('Maximum order quantity is {0} {1}'.format(round(qty, 4), code))
 
             # Format decimal and validate order
             valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price, 'buy_spot')

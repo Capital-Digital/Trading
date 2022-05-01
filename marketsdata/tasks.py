@@ -215,6 +215,9 @@ def update_prices(exid, wallet=None):
     symbols = list(set(itertools.chain.from_iterable(symbols)))
     symbols.sort()
 
+    log.info('High priority symbols for price update')
+    log.info(symbols)
+
     # Insert high priority symbols first
     # and drop duplicate whilst preserving order
     symbols = symbols_strategies + symbols

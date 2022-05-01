@@ -349,7 +349,7 @@ class Account(models.Model):
     # Calculate net exposure and delta
     def calculate_delta(self):
         #
-        if 'account' not in self.balances.columns.get_level_values(0):
+        if 'account' in self.balances.columns.get_level_values(0):
 
             log.info('Calculate delta')
 
@@ -428,7 +428,7 @@ class Account(models.Model):
 
             self.save()
         else:
-            raise Exception('Dataframe does not has a column for account data, please run get_delta()')
+            raise Exception('Dataframe does not has a column for account data, please run get_target()')
 
     # Return a list of codes to sell
     def codes_to_sell(self):

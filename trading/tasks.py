@@ -1033,7 +1033,7 @@ def send_cancel_order(account_id, orderid, wallet=None, symbol=None):
     try:
         order = Order.objects.get(orderid=orderid)
         wallet = order.market.wallet
-        symbol = order.symbol
+        symbol = order.market.symbol
 
     except MultipleObjectsReturned:
         log.error('Multiple orders were found')

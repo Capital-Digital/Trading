@@ -685,7 +685,7 @@ class Account(models.Model):
             if filled_total > filled_prev:
 
                 filled_new = filled_total - filled_prev
-                log.info('-> Trade of {0} {1} detected'.format(filled_new, order.market.base.code))
+                log.info('-> Trade of {0} {1} detected'.format(round(filled_new, 4), order.market.base.code))
 
                 if filled_total < order.amount:
                     log.info('-> Order {0} is partially filled'.format(order.clientid))

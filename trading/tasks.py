@@ -435,7 +435,12 @@ def rebalance(account_id, reload=False, release=True):
 
     # Open short
     for code in account.codes_to_sell():
-        #if not account.has_spot_asset('total', code):
+        # if not account.has_spot_asset('total', code):
+
+        log.info(' ')
+        log.bind(action='open_short')
+        log.info('Open short {0}'.format(code))
+        log.info('**************')
 
         # Return amount of open orders
         open_spot = account.get_open_orders_spot(code, side='sell', action='sell_spot')
@@ -446,11 +451,6 @@ def rebalance(account_id, reload=False, release=True):
         delta = account.balances.account.target.delta[code] - (open_spot + open_futu)  # Offset sell/close order
 
         if delta > 0:
-
-            log.info(' ')
-            log.bind(action='open_short')
-            log.info('Open short {0}'.format(code))
-            log.info('**************')
 
             log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
@@ -491,6 +491,11 @@ def rebalance(account_id, reload=False, release=True):
     for code in account.codes_to_buy():
         # if not account.has_opened_short(code):
 
+        log.info(' ')
+        log.bind(action='buy_spot')
+        log.info('Buy spot {0}'.format(code))
+        log.info('************')
+
         # Return amount of open orders
         open_spot = account.get_open_orders_spot(code, side='buy', action='buy_spot')
         open_futu = account.get_open_orders_futu(code, side='buy', action='close_short')
@@ -500,11 +505,6 @@ def rebalance(account_id, reload=False, release=True):
         delta = max(0, abs(account.balances.account.target.delta[code]) - (open_spot + open_futu))
 
         if delta:
-
-            log.info(' ')
-            log.bind(action='buy_spot')
-            log.info('Buy spot {0}'.format(code))
-            log.info('************')
 
             desired_val = delta * price
 

@@ -506,9 +506,6 @@ def rebalance(account_id, reload=False, release=True):
 
             desired_val = delta * price
 
-            log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
-            log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
-
             # Get available resource
             free = account.balances.spot.free.quantity[account.quote]
             if np.isnan(free):
@@ -516,6 +513,7 @@ def rebalance(account_id, reload=False, release=True):
 
             val = min(free, desired_val)
 
+            log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
             log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
             log.info('and available resources is {1} {0}'.format(account.quote, round(free, 3)))
             log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))

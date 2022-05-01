@@ -388,7 +388,7 @@ def rebalance(account_id, reload=False, release=True):
                 valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
                 if valid:
                     # Create object, place order and apply offset
-                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
+                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty, price)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
             log.unbind('action')
@@ -425,7 +425,7 @@ def rebalance(account_id, reload=False, release=True):
                     valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
                     if valid:
                         # Create object and place order
-                        clientid = account.create_object('future', code, 'buy', 'close_short', qty)
+                        clientid = account.create_object('future', code, 'buy', 'close_short', qty, price)
                         send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
                 log.unbind('action')
@@ -482,7 +482,7 @@ def rebalance(account_id, reload=False, release=True):
             valid, qty, reduce_only = account.validate_order('future', 'sell', code, qty, price, 'open_short')
             if valid:
                 # Create object and place order
-                clientid = account.create_object('future', code, 'sell', 'open_short', qty)
+                clientid = account.create_object('future', code, 'sell', 'open_short', qty, price)
                 send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
         log.unbind('action')
@@ -538,7 +538,7 @@ def rebalance(account_id, reload=False, release=True):
             valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price, 'buy_spot')
             if valid:
                 # Create object and place order
-                clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty)
+                clientid = account.create_object('spot', code, 'buy', 'buy_spot', qty, price)
                 send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
 
         log.unbind('action')
@@ -617,7 +617,7 @@ def market_close(account_id):
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
                     # Create object, place order and apply offset
-                    clientid = account.create_object('future', code, 'buy', 'close_short', qty)
+                    clientid = account.create_object('future', code, 'buy', 'close_short', qty, price)
                     send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty,
                                       reduce_only=True,
                                       market_order=True
@@ -750,7 +750,7 @@ def market_sell(account_id):
                 valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
                 if valid:
                     # Create object, place order and apply offset
-                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
+                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty, price)
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only,
                                       market_order=True
                                       )

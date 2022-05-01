@@ -581,7 +581,7 @@ class Account(models.Model):
             return False, qty, False
 
     # Create order object
-    def create_object(self, wallet, code, side, action, qty):
+    def create_object(self, wallet, code, side, action, qty, price):
 
         # Select market
         if wallet == 'spot':
@@ -602,6 +602,8 @@ class Account(models.Model):
             side=side,
             action=action,
             amount=qty,
+            price=price,
+            cost=qty * price,
             status='preparation',
             sender='app'
         )

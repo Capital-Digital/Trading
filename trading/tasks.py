@@ -322,7 +322,7 @@ def rebalance(account_id, reload=False, release=True):
     # Display target percent
     target = account.balances.account.target.percent
 
-    if account.codes_to_buy():
+    if account.codes_long():
 
         log.info('Long coins')
         log.info('-------------------------')
@@ -336,7 +336,7 @@ def rebalance(account_id, reload=False, release=True):
                                                           round(account.balances.account.target.quantity[coin], 4)))
         log.info('-------------------------')
 
-    if account.codes_to_sell():
+    if account.codes_sell():
 
         log.info('')
         log.info('Short coins')

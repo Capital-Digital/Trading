@@ -451,6 +451,16 @@ class Account(models.Model):
         buy = delta.loc[delta < 0].index.values.tolist()
         return [i for i in buy if i != self.quote]
 
+    # Return a list of codes to long
+    def codes_long(self):
+        target = self.balances.account.target.quantity
+        return target.loc[target > 0].index.values.tolist()
+
+    # Return a list of codes to short
+    def codes_short(self):
+        target = self.balances.account.target.quantity
+        return target.loc[target < 0].index.values.tolist()
+
     # Return a list of codes with simultaneous spot and short exposure
     def codes_synthetic_cash(self):
         return self.balances.account.current.synthetic_cash.dropna().index.tolist()

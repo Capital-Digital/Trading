@@ -236,7 +236,7 @@ class Exchange(models.Model):
             s.set_codes_length()
 
         # Sort strategies
-        strategies = Strategy.objects.filter(exchange__exid=self.exid).order_by('codes_length')
+        strategies = Strategy.objects.filter(exchange__exid=self.exid, production=True).order_by('codes_length')
 
         symbols = []
         for s in strategies:

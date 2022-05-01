@@ -435,6 +435,11 @@ class Account(models.Model):
         delta = self.balances.account.target.delta
         return [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
 
+    # Return a list of codes to sell in spot
+    def codes_to_sell_spot(self):
+        codes = list(set(self.codes_to_sell() + self.codes_synthetic_cash()))
+        return [c for c in codes if self.has_spot_asset('free', c)]
+
     # Return a list of codes to buy
     def codes_to_buy(self):
         delta = self.balances.account.target.delta

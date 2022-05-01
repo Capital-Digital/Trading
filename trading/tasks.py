@@ -356,40 +356,39 @@ def rebalance(account_id, reload=False, release=True):
         ###################
 
         # Sell spot
-        for code in account.codes_to_sell():
-            if account.has_spot_asset('free', code):
+        for code in account.codes_to_sell_spot():
 
-                log.info(' ')
-                log.bind(action='sell_spot')
-                log.info('Sell spot {0}'.format(code))
-                log.info('*************')
+            log.info(' ')
+            log.bind(action='sell_spot')
+            log.info('Sell spot {0}'.format(code))
+            log.info('*************')
 
-                # Return amount of open orders
-                open_spot = account.get_open_orders_spot(code, side='sell', action='sell_spot')
-                open_futu = account.get_open_orders_futu(code, side='sell', action='open_short')
+            # Return amount of open orders
+            open_spot = account.get_open_orders_spot(code, side='sell', action='sell_spot')
+            open_futu = account.get_open_orders_futu(code, side='sell', action='open_short')
 
-                free = account.balances.spot.free.quantity[code]
-                delta = max(0, account.balances.account.target.delta[code] - (open_spot + open_futu))
+            free = account.balances.spot.free.quantity[code]
+            delta = max(0, account.balances.account.target.delta[code] - (open_spot + open_futu))
 
-                if delta:
+            if delta:
 
-                    log.info('Total free assets in spot is {0} {1}'.format(round(free, 3), code))
-                    log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
+                log.info('Total free assets in spot is {0} {1}'.format(round(free, 3), code))
+                log.info('Delta quantity for {1} is {0}'.format(round(delta, 3), code))
 
-                    # Determine order size and value
-                    price = account.balances.price['spot']['bid'][code]
-                    qty = min(free, delta)
+                # Determine order size and value
+                price = account.balances.price['spot']['bid'][code]
+                qty = min(free, delta)
 
-                    log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
+                log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 3), code))
 
-                    # Format decimal and validate order
-                    valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
-                    if valid:
-                        # Create object, place order and apply offset
-                        clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
-                        send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
+                # Format decimal and validate order
+                valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
+                if valid:
+                    # Create object, place order and apply offset
+                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty)
+                    send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
-                log.unbind('action')
+            log.unbind('action')
 
         # Close short
         for code in account.codes_to_buy():

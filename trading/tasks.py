@@ -313,28 +313,31 @@ def rebalance(account_id, reload=False, release=True):
 
     # Display target percent
     target = account.balances.account.target.percent
-    log.info('Long coins')
-    log.info('-------------------------')
-    for coin, val in target[target > 0].sort_values(ascending=False).items():
-        if coin != account.quote:
+
+    if account.codes_to_buy():
+
+        log.info('Long coins')
+        log.info('-------------------------')
+        for coin, val in target[target > 0].sort_values(ascending=False).items():
+            if coin != account.quote:
+                log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
+        log.info('-------------------------')
+        for coin, val in target[target > 0].sort_values(ascending=False).items():
+            if coin != account.quote:
+                log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
+        log.info('-------------------------')
+
+    if account.codes_to_sell():
+
+        log.info('')
+        log.info('Short coins')
+        log.info('-------------------------')
+        for coin, val in target[target < 0].sort_values(ascending=False).items():
             log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
-
-    log.info('-------------------------')
-    for coin, val in target[target > 0].sort_values(ascending=False).items():
-        if coin != account.quote:
+        log.info('-------------------------')
+        for coin, val in target[target < 0].sort_values(ascending=False).items():
             log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
-    log.info('-------------------------')
-
-    log.info('')
-    log.info('Short coins')
-    log.info('-------------------------')
-    for coin, val in target[target < 0].sort_values(ascending=False).items():
-        log.info('Target pct for {0}: {1}%'.format(coin, round(val * 100, 1)))
-
-    log.info('-------------------------')
-    for coin, val in target[target < 0].sort_values(ascending=False).items():
-        log.info('Target qty for {0}: {1}'.format(coin, round(account.balances.account.target.quantity[coin], 3)))
-    log.info('-------------------------')
+        log.info('-------------------------')
 
     log.info(' ')
     log.info('Delta')

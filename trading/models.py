@@ -917,7 +917,7 @@ class Account(models.Model):
             for order in qs:
                 log.info('-> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
                                                           market.base.code))
-                log.info('-> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount))
+                log.info('-> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
@@ -948,11 +948,9 @@ class Account(models.Model):
             log.info('Found {0} open orders in {1} future'.format(qs.count(), market.symbol))
 
             for order in qs:
-                log.info('-> order {0} to {1} {2}. {3}/{4} filled'.format(order.clientid,
-                                                                          order.action.replace('_', ' '),
-                                                                          market.base.code,
-                                                                          order.filled,
-                                                                          order.amount))
+                log.info('-> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
+                                                          market.base.code))
+                log.info('-> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']

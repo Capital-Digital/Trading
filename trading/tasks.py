@@ -662,7 +662,7 @@ def market_close(account_id):
                 price = account.balances.price.spot.bid[code]
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price)
                 if valid:
                     # Create object, place order and apply offset
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty, price)
@@ -795,7 +795,7 @@ def market_sell(account_id):
                 price = account.balances.price['spot']['bid'][code]
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price)
                 if valid:
                     # Create object, place order and apply offset
                     clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty, price)

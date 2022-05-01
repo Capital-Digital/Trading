@@ -464,7 +464,10 @@ class Account(models.Model):
 
     # Return a list of codes with simultaneous spot and short exposure
     def codes_synthetic_cash(self):
-        return self.balances.account.current.synthetic_cash.dropna().index.tolist()
+        if ('account', 'current', 'synthetic_cash') in self.balances.columns:
+            return self.balances.account.current.synthetic_cash.dropna().index.tolist()
+        else:
+            return []
 
     # Return True is account has more than $10 of an asset in spot wallet
     def has_spot_asset(self, key, code=None):

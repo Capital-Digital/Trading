@@ -130,7 +130,10 @@ def cancel_orders(account_id, user_orders=False):
 
     account = Account.objects.get(id=account_id)
 
-    log.bind(account=account.name, worker=current_process().index)
+    log.bind(account=account.name)
+    if hasattr(current_process, 'index'):
+        log.bind(worker=current_process().index)
+
     log.info('Cancel orders')
 
     orders = Order.objects.filter(account=account,
@@ -163,7 +166,10 @@ def create_balances(account_id):
         account_id = account_id[0]
 
     account = Account.objects.get(id=account_id)
-    log.bind(account=account.name, worker=current_process().index)
+
+    log.bind(account=account.name)
+    if hasattr(current_process, 'index'):
+        log.bind(worker=current_process().index)
 
     # Fetch account
     account.get_assets_balances()
@@ -878,7 +884,9 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 def send_fetch_orderid(account_id, order_id):
     #
     account = Account.objects.get(id=account_id)
-    log.bind(worker=current_process().index, account=account.name)
+    log.bin(account=account.name)
+    if hasattr(current_process, 'index'):
+        log.bind(worker=current_process().index)
 
     client = account.exchange.get_ccxt_client(account)
     order = Order.objects.get(orderid=order_id)
@@ -949,7 +957,9 @@ def send_transfer(account_id, source, dest, quantity):
     alphanumeric = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVWWXYZ01234689'
     transfer_id = ''.join((random.choice(alphanumeric)) for x in range(5))
 
-    log.bind(worker=current_process().index, account=account.name, id=transfer_id)
+    log.bind(account=account.name, id=transfer_id)
+    if hasattr(current_process, 'index'):
+        log.bind(worker=current_process().index)
 
     if quantity > 1:
 

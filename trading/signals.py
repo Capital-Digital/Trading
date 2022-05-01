@@ -20,18 +20,19 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         if state == 'SUCCESS':
             pass
 
-    if task.name == 'Update_account':
+    if task.name == 'Trading_____Rebalance_account':
 
-        acid, signal = args
+        account_id = args
+        account = Account.objects.get(id=account_id)
+
         if state == 'SUCCESS':
 
             log.info('')
-            log.info('Accounts update successful')
-
-            if signal:
-                pass
+            log.info('Account {0} update successful'.format(account.name))
         else:
-            log.error('Accounts update failure')
+            log.info('Account {0} update failure'.format(account.name))
+            account.busy = False
+            account.save()
 
     if task.name in ['Trading_____Send_fetch_orderid']:
 
@@ -40,7 +41,6 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
         if state == 'SUCCESS':
             if quantity:
                 pass
-                # rebalance.delay(account_id, release=False)
         else:
             log.info('')
             log.error('Error with task {0}'.format(task.name))

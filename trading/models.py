@@ -348,10 +348,10 @@ class Account(models.Model):
 
             log.info(' ')
             log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
-            log.info('*** Assets is {0} {1}'.format(round(assets_v, 1), self.quote))
+            log.info('---Assets is {0} {1}'.format(round(assets_v, 1), self.quote))
 
             if self.has_opened_short():
-                log.info('*** Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
+                log.info('---Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
 
             # Determine synthetic cash of each coin
             if 'position' in self.balances.columns.get_level_values(0):

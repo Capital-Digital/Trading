@@ -349,82 +349,86 @@ class Account(models.Model):
     # Calculate net exposure and delta
     def calculate_delta(self):
         #
-        log.info('Calculate delta')
+        if 'account' not in self.balances.columns.get_level_values(0):
 
-        target = self.balances.account.target.quantity.dropna()
-        assets_v = self.assets_value()
+            log.info('Calculate delta')
 
-        if self.has_opened_short():
-            position_v = self.positions_pnl()
-            acc_value = assets_v + position_v
-        else:
-            acc_value = assets_v
+            target = self.balances.account.target.quantity.dropna()
+            assets_v = self.assets_value()
 
-        log.info(' ')
-        log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
-        log.info('-> Assets is {0} {1}'.format(round(assets_v, 1), self.quote))
-
-        if self.has_opened_short():
-            log.info('-> Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
-        
-        # Determine synthetic cash of each coin
-        spot = self.balances.spot.total.quantity.fillna(0)
-        posi = self.balances.position.open.quantity.fillna(0)
-        self.balances.loc[:, ('account', 'current', 'synthetic_cash')] = (posi - (posi + spot)).drop(self.quote)
-
-        # Determine the total exposure of each coin
-        mask = self.balances.columns.isin([('spot', 'total', 'quantity'),
-                                           ('future', 'total', 'quantity'),
-                                           ('position', 'open', 'quantity')])
-
-        exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
-        if self.has_opened_short():
-            pos_value = self.balances.position.open.value.dropna().sum()
-            exposure[self.quote] = max(0, exposure[self.quote] - abs(pos_value))
-
-        self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
-
-        # Determine the percentage allocated to each coin
-        for coin, exp in self.balances.account.current.exposure.items():
-            bid = self.balances.price.spot.bid[coin]
-            exposure_value = exp * bid
-
-            if not np.isnan(exposure_value):
-                log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
-
-            percent = exposure_value / acc_value
-
-            self.balances.loc[coin, ('account', 'current', 'percent')] = percent
-
-        # Determine the net value allocated to each coin
-        for coin, exp in self.balances.account.current.exposure.items():
-            bid = self.balances.price.spot.bid[coin]
-            self.balances.loc[coin, ('account', 'current', 'value')] = exp * bid
-
-        # Iterate through target coins and calculate delta
-        for coin in target.index.tolist():
-
-            # Coins already in account ?
-            if coin in self.balances.index.tolist():
-                qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
-                self.balances.loc[coin, ('account', 'target', 'delta')] = qty - target[coin]
-
-            # Coins not in account ?
+            if self.has_opened_short():
+                position_v = self.positions_pnl()
+                acc_value = assets_v + position_v
             else:
-                self.balances.loc[coin, ('account', 'target', 'delta')] = -target[coin]
+                acc_value = assets_v
 
-        # Iterate through coins in account and calculate delta
-        for coin in self.balances.index.tolist():
+            log.info(' ')
+            log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
+            log.info('-> Assets is {0} {1}'.format(round(assets_v, 1), self.quote))
 
-            # Coin not in target ?
-            if coin not in target.index.tolist():
-                qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
-                self.balances.loc[coin, ('account', 'target', 'delta')] = qty
-                self.balances.loc[coin, ('account', 'target', 'quantity')] = 0
-                self.balances.loc[coin, ('account', 'target', 'percent')] = 0
-                self.balances.loc[coin, ('account', 'target', 'value')] = 0
+            if self.has_opened_short():
+                log.info('-> Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
 
-        self.save()
+            # Determine synthetic cash of each coin
+            spot = self.balances.spot.total.quantity.fillna(0)
+            posi = self.balances.position.open.quantity.fillna(0)
+            self.balances.loc[:, ('account', 'current', 'synthetic_cash')] = (posi - (posi + spot)).drop(self.quote)
+
+            # Determine the total exposure of each coin
+            mask = self.balances.columns.isin([('spot', 'total', 'quantity'),
+                                               ('future', 'total', 'quantity'),
+                                               ('position', 'open', 'quantity')])
+
+            exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
+            if self.has_opened_short():
+                pos_value = self.balances.position.open.value.dropna().sum()
+                exposure[self.quote] = max(0, exposure[self.quote] - abs(pos_value))
+
+            self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
+
+            # Determine the percentage allocated to each coin
+            for coin, exp in self.balances.account.current.exposure.items():
+                bid = self.balances.price.spot.bid[coin]
+                exposure_value = exp * bid
+
+                if not np.isnan(exposure_value):
+                    log.info('Total exposure of {0} is {1} {2}'.format(coin, round(exposure_value, 1), self.quote))
+
+                percent = exposure_value / acc_value
+
+                self.balances.loc[coin, ('account', 'current', 'percent')] = percent
+
+            # Determine the net value allocated to each coin
+            for coin, exp in self.balances.account.current.exposure.items():
+                bid = self.balances.price.spot.bid[coin]
+                self.balances.loc[coin, ('account', 'current', 'value')] = exp * bid
+
+            # Iterate through target coins and calculate delta
+            for coin in target.index.tolist():
+
+                # Coins already in account ?
+                if coin in self.balances.index.tolist():
+                    qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
+                    self.balances.loc[coin, ('account', 'target', 'delta')] = qty - target[coin]
+
+                # Coins not in account ?
+                else:
+                    self.balances.loc[coin, ('account', 'target', 'delta')] = -target[coin]
+
+            # Iterate through coins in account and calculate delta
+            for coin in self.balances.index.tolist():
+
+                # Coin not in target ?
+                if coin not in target.index.tolist():
+                    qty = self.balances.loc[coin, ('account', 'current', 'exposure')]
+                    self.balances.loc[coin, ('account', 'target', 'delta')] = qty
+                    self.balances.loc[coin, ('account', 'target', 'quantity')] = 0
+                    self.balances.loc[coin, ('account', 'target', 'percent')] = 0
+                    self.balances.loc[coin, ('account', 'target', 'value')] = 0
+
+            self.save()
+        else:
+            raise Exception('Dataframe does not has a column for account data, please run get_delta()')
 
     # Return a list of codes to sell
     def codes_to_sell(self):

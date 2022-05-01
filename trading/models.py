@@ -366,21 +366,25 @@ class Account(models.Model):
 
         if self.has_opened_short():
             log.info('-> Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
+        
+        # Determine synthetic cash of each coin
+        spot = self.balances.spot.total.quantity.fillna(0)
+        posi = self.balances.position.open.quantity.fillna(0)
+        self.balances.loc[:, ('account', 'current', 'synthetic_cash')] = (posi - (posi + spot)).drop(self.quote)
 
-        #  Select columns with assets quantities
+        # Determine the total exposure of each coin
         mask = self.balances.columns.isin([('spot', 'total', 'quantity'),
                                            ('future', 'total', 'quantity'),
                                            ('position', 'open', 'quantity')])
-        # Determine total exposure
-        exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
 
+        exposure = self.balances.loc[:, mask].dropna(axis=1, how='all').sum(axis=1)
         if self.has_opened_short():
             pos_value = self.balances.position.open.value.dropna().sum()
             exposure[self.quote] = max(0, exposure[self.quote] - abs(pos_value))
 
         self.balances.loc[:, ('account', 'current', 'exposure')] = exposure
 
-        # Calculate percentage for each coin
+        # Determine the percentage allocated to each coin
         for coin, exp in self.balances.account.current.exposure.items():
             bid = self.balances.price.spot.bid[coin]
             exposure_value = exp * bid
@@ -392,7 +396,7 @@ class Account(models.Model):
 
             self.balances.loc[coin, ('account', 'current', 'percent')] = percent
 
-        # Calculate value allocated to each coin
+        # Determine the net value allocated to each coin
         for coin, exp in self.balances.account.current.exposure.items():
             bid = self.balances.price.spot.bid[coin]
             self.balances.loc[coin, ('account', 'current', 'value')] = exp * bid

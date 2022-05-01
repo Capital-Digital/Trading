@@ -479,8 +479,7 @@ def rebalance(account_id, reload=False, release=True):
     #########################
 
     # Open short
-    for code in account.codes_to_sell():
-        # if not account.has_spot_asset('total', code):
+    for code in account.codes_to_open_short():
 
         log.info(' ')
         log.bind(action='open_short')

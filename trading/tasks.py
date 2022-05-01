@@ -868,6 +868,10 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         kwargs['params']['reduceOnly'] = True
         log.info('Set reduceOnly to True')
 
+    if action == 'close_short':
+        kwargs['params']['closePosition'] = True
+        log.info('Set closePosition to True')
+
     try:
         log.info(' ')
         log.info('Place order {0} to {1} {2} {3}'.format(clientid, action.replace('_', ' '), qty, code))

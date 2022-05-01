@@ -658,15 +658,22 @@ def market_close(account_id):
                 log.info('Close position {0}'.format(code))
 
                 amount = account.balances.position.open.quantity[code]
+                if amount > 0:
+                    side = 'sell'
+                    action = 'close_long'
+                else:
+                    side = 'buy'
+                    action = 'close_short'
+
                 qty = abs(amount)
                 price = account.balances.price.spot.bid[code]
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('future', side, code, qty, price)
                 if valid:
                     # Create object, place order and apply offset
-                    clientid = account.create_object('future', code, 'buy', 'close_short', qty, price)
-                    send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty,
+                    clientid = account.create_object('future', code, side, action, qty, price)
+                    send_create_order(account.id, clientid, action, side, 'future', code, qty,
                                       reduce_only=True,
                                       market_order=True
                                       )

@@ -820,6 +820,15 @@ class Account(models.Model):
                 self.balances.loc[code, ('position', 'open', 'value')] = 0
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = 0
 
+        if action == 'close_long':
+            # Offset position size and value
+            offset.loc[code, ('position', 'open', 'quantity')] = -filled
+            offset.loc[code, ('position', 'open', 'value')] = -filled_value
+
+            offset.loc[code, ('account', 'current', 'exposure')] = -filled
+            offset.loc[code, ('account', 'current', 'value')] = -filled_value
+            offset.loc[code, ('account', 'target', 'delta')] = -filled
+
         pct = self.balances.account.current.percent[code] * 100
         exp = self.balances.account.current.exposure[code]
         val = self.balances.account.current.value[code]
@@ -883,7 +892,7 @@ class Account(models.Model):
             offset.loc[code, ('spot', 'used', 'value')] = val
 
         if action == 'close_short':
-            pass
+            return
 
         if action == 'open_short':
             margin_value = val / 20
@@ -893,6 +902,9 @@ class Account(models.Model):
             offset.loc[self.quote, ('future', 'free', 'value')] = -margin_value
             offset.loc[self.quote, ('future', 'used', 'quantity')] = margin_value
             offset.loc[self.quote, ('future', 'used', 'value')] = margin_value
+
+        if action == 'close_long':
+            return
 
         # Create offset and update dataframe
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')

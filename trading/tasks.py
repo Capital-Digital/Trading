@@ -516,12 +516,11 @@ def rebalance(account_id, reload=False, release=True):
                 if transfer_id:
                     account.offset_transfer('spot', 'future', amount, transfer_id)
                     val += amount
-                    math.floor(val)
 
                     log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
             # Determine quantity from available resources
-            qty = val / price
+            qty = math.floor(val) / price
             log.info('Maximum order quantity is {0} {1}'.format(round(qty, 4), code))
 
             # Format decimal and validate order
@@ -576,12 +575,10 @@ def rebalance(account_id, reload=False, release=True):
                 if transfer_id:
                     account.offset_transfer('future', 'spot', amount, transfer_id)
                     val += amount
-                    math.floor(val)
-
                     log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
             # Determine quantity from available resources
-            qty = val / price
+            qty = math.floor(val) / price
             log.info('Maximum order quantity is {0} {1}'.format(round(qty, 4), code))
 
             # Format decimal and validate order

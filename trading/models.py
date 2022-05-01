@@ -168,10 +168,6 @@ class Account(models.Model):
 
     # Insert bid/ask of assets in spot wallet
     def get_spot_prices(self, update=False):
-        #
-        action = 'Update' if update else 'Get'
-        log.info(' ')
-        log.info('{0} spot prices'.format(action))
 
         codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
@@ -199,13 +195,9 @@ class Account(models.Model):
                     self.balances.loc[code, ('price', 'spot', 'ask')] = ask
 
         self.save()
-        log.info('{0} spot prices complete'.format(action))
 
     # Insert bid/ask of assets in future wallet
     def get_futu_prices(self, update=False):
-        #
-        action = 'Update' if update else 'Get'
-        log.info('{0} future prices'.format(action))
 
         codes = self.balances.spot.total.quantity.index.tolist()
         for code in codes:
@@ -214,12 +206,9 @@ class Account(models.Model):
             self.balances.loc[code, ('price', 'future', 'last')] = price
 
         self.save()
-        log.info('{0} future prices complete'.format(action))
 
     # Convert quantity in dollar in balances dataframe
     def calculate_assets_value(self):
-        #
-        log.info('Calculate assets value')
 
         # Iterate through wallets, free, used and total quantities
         for wallet in self.exchange.get_wallets():
@@ -236,7 +225,6 @@ class Account(models.Model):
                     self.balances.loc[coin, (wallet, tp, 'value')] = value
 
         self.save()
-        log.info('Calculate assets value complete')
 
     # Drop dust coins
     def drop_dust_coins(self):
@@ -304,8 +292,6 @@ class Account(models.Model):
 
     # Create columns with targets
     def get_target(self):
-        #
-        log.info('Get target weights')
 
         try:
 
@@ -350,8 +336,6 @@ class Account(models.Model):
     def calculate_delta(self):
         #
         if 'account' in self.balances.columns.get_level_values(0):
-
-            log.info('Calculate delta')
 
             target = self.balances.account.target.quantity.dropna()
             assets_v = self.assets_value()
@@ -455,12 +439,12 @@ class Account(models.Model):
     # Return a list of codes to long
     def codes_long(self):
         target = self.balances.account.target.quantity
-        return target.loc[target > 0].index.values.tolist()
+        return [c for c in target.loc[target > 0].index.values.tolist() if c != self.quote]
 
     # Return a list of codes to short
     def codes_short(self):
         target = self.balances.account.target.quantity
-        return target.loc[target < 0].index.values.tolist()
+        return [c for c in target.loc[target < 0].index.values.tolist() if c != self.quote]
 
     # Return a list of codes with simultaneous spot and short exposure
     def codes_synthetic_cash(self):

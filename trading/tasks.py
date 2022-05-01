@@ -81,7 +81,7 @@ def bulk_rebalance(strategy_id, reload=False):
     for account in accounts:
 
         while not account.is_tradable():
-            log.warning('Wait all {0} markets are updated before synchronisation of the account'.format(account.quote))
+            log.warning('Wait {0} markets update before sync. the account'.format(account.quote))
             time.sleep(0.1)
 
         rebalance.delay(account.id, reload)
@@ -312,11 +312,11 @@ def rebalance(account_id, reload=False, release=True):
 
     if reload:
 
-        log.info('Synchronize account with a fresh dataframe...')
+        log.info('Synchronize (fetch data)')
         create_balances(account_id)
 
     else:
-        log.info('Synchronize...')
+        log.info('Synchronize (select data from df)')
 
     # Add missing codes
     account.add_missing_coin()
@@ -412,17 +412,18 @@ def rebalance(account_id, reload=False, release=True):
 
             free = account.balances.spot.free.quantity[code]
             delta = max(0, account.balances.account.target.delta[code] - (open_spot + open_futu))
+            need = min(free, delta)
 
-            if delta:
+            if need:
 
                 log.info('Total free assets in spot is {0} {1}'.format(round(free, 4), code))
-                log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
+                log.info('Desired quantity to sell spot {1} is {0}'.format(round(need, 4), code))
 
                 # Determine order size and value
                 price = account.balances.price['spot']['bid'][code]
-                qty = min(free, delta)
+                qty = min(free, need)  # limit sell to what is actually available
 
-                log.info('Maximum quantity to sell is {0} {1}'.format(round(qty, 4), code))
+                log.info('Quantity sellable is {0} {1}'.format(round(qty, 4), code))
 
                 # Format decimal and validate order
                 valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price, 'sell_spot')
@@ -449,19 +450,19 @@ def rebalance(account_id, reload=False, release=True):
                 open_futu = account.get_open_orders_futu(code, side='buy', action='close_short')
 
                 opened = abs(account.balances.position.open.quantity[code])
-                delta = account.balances.account.target.delta[code]
-                delta_new = max(0, abs(delta) - (open_spot + open_futu))
+                delta = max(0, abs(account.balances.account.target.delta[code]) - (open_spot + open_futu))
+                need = min(opened, delta)  # limit close to what is actually opened
 
-                if delta_new:
+                if need:
 
                     log.info('Opened short position is {0} {1}'.format(round(-opened, 4), code))
-                    log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
+                    log.info('Desired quantity to close short {1} is {0}'.format(round(-delta, 4), code))
 
                     # Determine order size and value
                     price = account.balances.price['future']['last'][code]
-                    qty = min(opened, delta_new)
+                    qty = min(opened, need)
 
-                    log.info('Maximum quantity to close is {0} {1}'.format(round(qty, 4), code))
+                    log.info('Quantity closable is {0} {1}'.format(round(qty, 4), code))
 
                     # Format decimal and validate order
                     valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price, 'close_short')
@@ -592,7 +593,7 @@ def rebalance(account_id, reload=False, release=True):
     account.save()
 
     log.info(' ')
-    log.info('Trading complete')
+    log.info('Synchronization complete for {0}'.format(account.name))
     log.unbind('account')
 
 
@@ -601,13 +602,40 @@ def rebalance(account_id, reload=False, release=True):
 def update_orders(account_id):
     #
     account = Account.objects.get(id=account_id)
-    orders = Order.objects.filter(account=account,
-                                  status__in=['open', 'unknown']
-                                  )
+    orders = Order.objects.filter(account=account, status__in=['open', 'unknown'])
 
     if orders.exists():
         for order in orders:
-            send_fetch_orderid.delay(account_id, order.orderid)
+
+            log.bind(clientid=order.clientid)
+            log.info('Fetch order {0}'.format(order.clientid))
+
+            try:
+                response = send_fetch_orderid(account_id, order.orderid)
+            except ccxt.OrderNotFound:
+                pass
+
+            else:
+                log.info('Update order object {0}'.format(order.clientid))
+
+                account.refresh_from_db()
+                filled, average = account.update_order_object(order.market.wallet, response)
+
+                if filled:
+
+                    code = order.market.base.code
+                    account.offset_order_filled(order.clientid, code, order.action, filled, average)
+
+                    t = 0
+                    while account.busy:
+                        log.info('Wait account is ready before allocating free resources')
+                        time.sleep(1)
+                        t += 1
+                        if t == 10:
+                            raise Exception('Account is still busy after 10s')
+
+                    log.info('Sync. account after a trade')
+                    rebalance.delay(account_id, reload=False)
     else:
         pass
 
@@ -918,7 +946,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
             account.offset_order_filled(clientid, code, action, filled, average)
 
 
-# Send fetch orderid
+# Fetch an order by its orderid
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_orderid')
 def send_fetch_orderid(account_id, order_id):
     #
@@ -927,15 +955,12 @@ def send_fetch_orderid(account_id, order_id):
     if hasattr(current_process, 'index'):
         log.bind(worker=current_process().index)
 
-    client = account.exchange.get_ccxt_client(account)
     order = Order.objects.get(orderid=order_id)
-
-    # Set options
+    client = account.exchange.get_ccxt_client(account)
     client.options['defaultType'] = order.market.wallet
 
     try:
         response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
-
     except ccxt.OrderNotFound:
         log.error('Unknown order {}'.format(order.clientid), id=order_id)
 
@@ -943,45 +968,15 @@ def send_fetch_orderid(account_id, order_id):
         log.error('Unknown exception when fetching order {}'.format(order.clientid), id=order_id, e=str(e))
 
     else:
-
-        log.info('Update order object {0}'.format(order_id[:6]))
-
-        # Update instance
-        account.refresh_from_db()
-
-        # Update dataframe
-        filled, average = account.update_order_object(order.market.wallet, response)
-        if filled:
-
-            code = order.market.base.code
-
-            # Offset trade
-            account.offset_order_filled(order.clientid, code, order.action, filled, average)
-
-            t = 0
-            while account.busy:
-                log.info(' ')
-                log.info('Wait account is ready before allocating free resources')
-                time.sleep(1)
-                t += 1
-                if t == 10:
-                    raise Exception('Account is still busy after 10s')
-
-            # Rebalance
-            log.info(' ')
-            log.info('Launch rebalancing after a new trade is detected')
-
-            rebalance.delay(account_id, reload=False)
+        return response
 
 
-# Send fetch all open orders
+# Fetch all open orders of an account
 @app.task(base=BaseTaskWithRetry, name='Trading_____Send_fetch_all_open_orders')
 def send_fetch_all_open_orders(account_id):
-    #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    # Iterate through wallets
     for wallet in account.exchange.get_wallets():
 
         log.info('Fetch all open orders (user n app')

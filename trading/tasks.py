@@ -662,7 +662,7 @@ def market_close(account_id):
                 price = account.balances.price.spot.bid[code]
 
                 # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', 'buy', code, qty, price)
+                valid, qty, reduce_only = account.validate_order('future', 'buy', code, qty, price)
                 if valid:
                     # Create object, place order and apply offset
                     clientid = account.create_object('future', code, 'buy', 'close_short', qty, price)
@@ -864,7 +864,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         del kwargs['price']
 
     # Set parameters
-    if reduce_only or action == 'close_short':
+    if reduce_only:
         kwargs['params']['reduceOnly'] = True
         log.info('Set reduceOnly to True')
 

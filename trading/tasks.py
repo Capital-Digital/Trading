@@ -398,6 +398,7 @@ def rebalance(account_id, reload=False, release=True):
                     send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only)
 
             log.unbind('action')
+        account.refresh_from_db(fields='balances')
 
         # Close short
         for code in account.codes_to_buy():
@@ -435,6 +436,7 @@ def rebalance(account_id, reload=False, release=True):
                         send_create_order(account.id, clientid, 'close_short', 'buy', 'future', code, qty, reduce_only)
 
                 log.unbind('action')
+        account.refresh_from_db(fields='balances')
 
     # Allocate free resources
     #########################
@@ -492,6 +494,7 @@ def rebalance(account_id, reload=False, release=True):
                 send_create_order(account.id, clientid, 'open_short', 'sell', 'future', code, qty)
 
         log.unbind('action')
+    account.refresh_from_db(fields='balances')
 
     # Buy spot
     for code in account.codes_to_buy():
@@ -501,6 +504,8 @@ def rebalance(account_id, reload=False, release=True):
         log.bind(action='buy_spot')
         log.info('Buy spot {0}'.format(code))
         log.info('************')
+
+        account.refresh_from_db(fields='balances')
 
         # Return amount of open orders
         open_spot = account.get_open_orders_spot(code, side='buy', action='buy_spot')
@@ -548,6 +553,7 @@ def rebalance(account_id, reload=False, release=True):
                 send_create_order(account.id, clientid, 'buy_spot', 'buy', 'spot', code, qty, reduce_only)
 
         log.unbind('action')
+    account.refresh_from_db(fields='balances')
 
     account.busy = False
     account.save()

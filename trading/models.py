@@ -712,6 +712,9 @@ class Account(models.Model):
     # Offset transfer
     def offset_transfer(self, source, destination, amount, transfer_id):
 
+        # Refresh dataframe
+        self.refresh_from_db(fields='balances')
+
         log.bind(id=transfer_id, account=self.name)
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
         log.info('Offset transfer amount is {0} {1}'.format(round(amount, 1), self.quote))
@@ -741,6 +744,10 @@ class Account(models.Model):
     def offset_order_filled(self, clientid, code, action, filled, average):
 
         log.info('Offset trade for order {0}'.format(clientid))
+
+        # Refresh dataframe
+        self.refresh_from_db(fields='balances')
+
         offset = self.balances.copy()
 
         for col in offset.columns.get_level_values(0).unique().tolist():
@@ -830,7 +837,6 @@ class Account(models.Model):
 
         # Restore nan
         self.balances.replace(0, np.nan, inplace=True)
-        self.save()
 
         # Update new percentage
         account_value = self.account_value()
@@ -846,10 +852,15 @@ class Account(models.Model):
                 log.info('Value___ for {0} is now {1}'.format(c, round(exp, 1)))
                 log.info('Delta___ for {0} is now {1}'.format(c, round(dta, 4)))
 
+        self.save()
+
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
 
         log.info('Offset used and free resources')
+
+        # Refresh dataframe
+        self.refresh_from_db(fields='balances')
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():

@@ -433,7 +433,8 @@ class Account(models.Model):
     # Return a list of codes to sell
     def codes_to_sell(self):
         delta = self.balances.account.target.delta
-        return [i for i in delta.loc[delta > 0].index.values.tolist() if i != self.quote]
+        sell = delta.loc[delta > 0].index.values.tolist()
+        return [i for i in sell if i != self.quote]
 
     # Return a list of codes to sell in spot
     def codes_to_sell_spot(self):
@@ -447,7 +448,8 @@ class Account(models.Model):
     # Return a list of codes to buy
     def codes_to_buy(self):
         delta = self.balances.account.target.delta
-        return [i for i in delta.loc[delta < 0].index.values.tolist() if i != self.quote]
+        buy = delta.loc[delta < 0].index.values.tolist()
+        return [i for i in buy if i != self.quote]
 
     # Return a list of codes with simultaneous spot and short exposure
     def codes_synthetic_cash(self):
@@ -660,7 +662,7 @@ class Account(models.Model):
                 log.info(' ')
                 log.info('Update order {0}'.format(order.clientid))
                 log.info('------------------')
-    
+
             # Get traded amount
             filled_prev = order.filled
             filled_total = response['filled']
@@ -811,40 +813,28 @@ class Account(models.Model):
         log.info('Value___ for {0} was {1}'.format(code, round(val, 1)))
         log.info('Delta___ for {0} was {1}'.format(code, round(dta, 4)))
 
+        # Create offset and update dataframe
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
-        try:
-            # Apply offset
-            updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
+        updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
+        self.balances.loc[offset.index, offset.columns] = updated
 
-        except KeyError:
-            log.info(filled)
-            log.info(average)
-            log.info('action {0}'.format(action))
-            log.info(offset.index)
-            log.info(offset.columns)
-            raise Exception('Unable to offset trade')
+        # Restore nan
+        self.balances.replace(0, np.nan, inplace=True)
+        self.save()
 
-        else:
-
-            updated = updated.replace(0, np.nan)
-
-            # Update dataframe
-            self.balances.loc[offset.index, offset.columns] = updated
-            self.save()
-
-            # Update new percentage
-            account_value = self.account_value()
-            for c in [code, self.quote]:
-                exp = self.balances.account.current.value[c]
-                dta = self.balances.account.target.delta[c]
-                qty = self.balances.account.current.exposure[c]
-                pct = exp / account_value
-                self.balances.loc[c, ('account', 'current', 'percent')] = pct
-                if c is not self.quote:
-                    log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
-                    log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
-                    log.info('Value___ for {0} is now {1}'.format(c, round(exp, 1)))
-                    log.info('Delta___ for {0} is now {1}'.format(c, round(dta, 4)))
+        # Update new percentage
+        account_value = self.account_value()
+        for c in [code, self.quote]:
+            exp = self.balances.account.current.value[c]
+            dta = self.balances.account.target.delta[c]
+            qty = self.balances.account.current.exposure[c]
+            pct = exp / account_value
+            self.balances.loc[c, ('account', 'current', 'percent')] = pct
+            if c is not self.quote:
+                log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
+                log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
+                log.info('Value___ for {0} is now {1}'.format(c, round(exp, 1)))
+                log.info('Delta___ for {0} is now {1}'.format(c, round(dta, 4)))
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):
@@ -883,9 +873,13 @@ class Account(models.Model):
             offset.loc[self.quote, ('future', 'used', 'quantity')] = margin_value
             offset.loc[self.quote, ('future', 'used', 'value')] = margin_value
 
+        # Create offset and update dataframe
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
+
+        # Restore nan
+        self.balances.replace(0, np.nan, inplace=True)
         self.save()
 
     # Offset a cancelled order

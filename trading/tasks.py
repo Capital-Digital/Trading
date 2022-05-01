@@ -273,11 +273,11 @@ def rebalance(account_id, reload=False, release=True):
 
     if reload:
 
-        log.info('Rebalance with a fresh dataframe...')
+        log.info('Synchronize account with a fresh dataframe...')
         create_balances(account_id)
 
     else:
-        log.info('Rebalance...')
+        log.info('Synchronize...')
 
     # Add missing codes
     account.add_missing_coin()
@@ -548,7 +548,7 @@ def rebalance(account_id, reload=False, release=True):
     account.save()
 
     log.info(' ')
-    log.info('Rebalancing complete')
+    log.info('Trading complete')
     log.unbind('account')
 
 
@@ -851,7 +851,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 
         log.info('Order placement success')
 
-        # Offset resources used and free
+        # Offset resources released and used
         val = qty * price
         account.offset_order_new(code, action, qty, val)
 

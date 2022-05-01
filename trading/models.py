@@ -784,10 +784,12 @@ class Account(models.Model):
         pct = self.balances.account.current.percent[code] * 100
         exp = self.balances.account.current.exposure[code]
         val = self.balances.account.current.value[code]
+        dta = self.balances.account.target.delta[code]
         log.info('')
         log.info('Percenta for {0} was {1}%'.format(code, round(pct, 1)))
         log.info('Quantity for {0} was {1}'.format(code, round(exp, 3)))
         log.info('Value___ for {0} was {1}'.format(code, round(val, 1)))
+        log.info('Delta___ for {0} was {1}'.format(code, round(dta, 3)))
 
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         try:
@@ -814,6 +816,7 @@ class Account(models.Model):
             account_value = self.account_value()
             for c in [code, self.quote]:
                 exposure_value = self.balances.account.current.value[c]
+                delta = self.balances.account.target.delta[c]
                 qty = self.balances.account.current.exposure[c]
                 pct = exposure_value / account_value
                 self.balances.loc[c, ('account', 'current', 'percent')] = pct
@@ -821,6 +824,7 @@ class Account(models.Model):
                     log.info('Percenta for {0} is now {1}%'.format(c, round(pct * 100, 1)))
                     log.info('Quantity for {0} is now {1}'.format(code, round(qty, 1)))
                     log.info('Value___ for {0} is now {1}'.format(c, round(exposure_value, 1)))
+                    log.info('Delta___ for {0} is now {1}'.format(c, round(delta, 3)))
 
     # Offset used resources after an order is opened
     def offset_order_new(self, code, action, qty, val):

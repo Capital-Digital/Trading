@@ -904,7 +904,6 @@ def send_fetch_orderid(account_id, order_id):
             # Rebalance
             log.info(' ')
             log.info('Launch rebalancing after a new trade is detected')
-            log.unbind('worker', 'account')
 
             rebalance.delay(account_id, reload=False)
 

@@ -905,16 +905,14 @@ class Account(models.Model):
             log.info('Found {0} open orders in {1} spot'.format(qs.count(), market.symbol))
 
             for order in qs:
-                log.info('-> order {0} to {1} {2}. {3}/{4} filled'.format(order.clientid,
-                                                                          order.action.replace('_', ' '),
-                                                                          market.base.code,
-                                                                          order.filled,
-                                                                          order.amount))
+                log.info('-> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
+                                                          market.base.code))
+                log.info('-> Filled {0}/{1}'.format(order.filled, order.amount))
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
 
-            log.info('-> Total order amount is {0} {1}'.format(qs_amount, market.base.code))
+            log.info('-> Total order size is {0} {1}'.format(qs_amount, market.base.code))
 
             if flip:
                 return qs_amount / qs_price

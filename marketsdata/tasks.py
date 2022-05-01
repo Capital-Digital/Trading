@@ -227,8 +227,6 @@ def update_prices(exid, wallet=None):
 
     for symbol in symbols:
 
-        print(symbol)
-        
         if wallet == 'spot':
             keys = ['bid', 'ask', 'last', 'bidVolume', 'askVolume', 'quoteVolume', 'baseVolume']
         elif wallet == 'future':

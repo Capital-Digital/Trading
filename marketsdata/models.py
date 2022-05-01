@@ -228,7 +228,7 @@ class Exchange(models.Model):
     # Return a list of symbols of our strategies
     def get_strategies_symbols(self):
         from strategy.models import Strategy
-        strategies = Strategy.objects.filter(exchange__exid=self.exid)
+        strategies = Strategy.objects.filter(exchange__exid=self.exid, production=True)
 
         # Count number of codes so that codes from strategies
         # with the lowest codes length are updated first

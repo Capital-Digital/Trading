@@ -348,10 +348,10 @@ class Account(models.Model):
 
             log.info(' ')
             log.info('Total value of account is {0} {1}'.format(round(acc_value, 1), self.quote))
-            log.info('-> Assets is {0} {1}'.format(round(assets_v, 1), self.quote))
+            log.info('*** Assets is {0} {1}'.format(round(assets_v, 1), self.quote))
 
             if self.has_opened_short():
-                log.info('-> Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
+                log.info('*** Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
 
             # Determine synthetic cash of each coin
             if 'position' in self.balances.columns.get_level_values(0):
@@ -555,29 +555,29 @@ class Account(models.Model):
                                 if action == 'close_short':
                                     return True, size, True
                                 else:
-                                    log.info('-> Cost not satisfied for {2} {1} {0}'
+                                    log.info('Cost not satisfied for {2} {1} {0}'
                                              .format(wallet, market.base.code, size), action=action)
                                     return False, size, False
                             else:
-                                log.info('-> Cost not satisfied for {2} {1} {0}'
+                                log.info('Cost not satisfied for {2} {1} {0}'
                                          .format(wallet, market.base.code, size), margined=market.margined.code)
                                 return False, size, False
                         else:
-                            log.info('-> Cost not satisfied for {2} {1} {0}'
+                            log.info('Cost not satisfied for {2} {1} {0}'
                                      .format(wallet, market.base.code, size), type=market.type)
                             return False, size, False
                     else:
-                        log.info('-> Cost not satisfied for {2} {1} {0}'
+                        log.info('Cost not satisfied for {2} {1} {0}'
                                  .format(wallet, market.base.code, size), exid=market.exchange.exid)
                         return False, size, False
                 else:
                     return True, size, reduce_only
             else:
-                log.info('-> Condition not satisfied ({0} {1})'.format(size, code))
+                log.info('Condition not satisfied ({0} {1})'.format(size, code))
                 return False, size, False
 
         else:
-            log.error('-> Unable to validate order, market {0}/{1} not found'.format(code, self.quote))
+            log.error('Unable to validate order, market {0}/{1} not found'.format(code, self.quote))
             return False, qty, False
 
     # Create order object
@@ -669,12 +669,12 @@ class Account(models.Model):
             if filled_total > filled_prev:
 
                 filled_new = filled_total - filled_prev
-                log.info('-> Trade of {0} {1} detected'.format(round(filled_new, 4), order.market.base.code))
+                log.info('> Trade of {0} {1} detected'.format(round(filled_new, 4), order.market.base.code))
 
                 if filled_total < order.amount:
-                    log.info('-> Order {0} is partially filled'.format(order.clientid))
+                    log.info('> Order {0} is partially filled'.format(order.clientid))
                 else:
-                    log.info('-> Order {0} is filled'.format(order.clientid))
+                    log.info('> Order {0} is filled'.format(order.clientid))
 
             else:
                 filled_new = 0
@@ -691,7 +691,7 @@ class Account(models.Model):
             order.save()
 
             if filled_new:
-                log.info('-> Update status to {0}'.format(status))
+                log.info('> Update status to {0}'.format(status))
                 return filled_new, order.average
 
             else:
@@ -926,14 +926,14 @@ class Account(models.Model):
             log.info('Found {0} open orders in {1} spot'.format(qs.count(), market.symbol))
 
             for order in qs:
-                log.info('-> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
+                log.info('> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
                                                           market.base.code))
-                log.info('-> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
+                log.info('> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
 
-            log.info('-> Total order size is {0} {1}'.format(qs_amount, market.base.code))
+            log.info('> Total order size is {0} {1}'.format(qs_amount, market.base.code))
 
             if flip:
                 return qs_amount / qs_price
@@ -959,14 +959,14 @@ class Account(models.Model):
             log.info('Found {0} open orders in {1} future'.format(qs.count(), market.symbol))
 
             for order in qs:
-                log.info('-> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
+                log.info('> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
                                                           market.base.code))
-                log.info('-> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
+                log.info('> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
             qs_price = qs.aggregate(Avg('price'))['price__avg']
 
-            log.info('-> Total order amount is {0} {1}'.format(qs_amount, market.base.code))
+            log.info('> Total order amount is {0} {1}'.format(qs_amount, market.base.code))
 
             if flip:
                 return qs_amount / qs_price

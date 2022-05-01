@@ -713,7 +713,7 @@ class Account(models.Model):
     def offset_transfer(self, source, destination, amount, transfer_id):
 
         # Refresh dataframe
-        self.refresh_from_db(fields='balances')
+        self.refresh_from_db()
 
         log.bind(id=transfer_id, account=self.name)
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
@@ -746,7 +746,7 @@ class Account(models.Model):
         log.info('Offset trade for order {0}'.format(clientid))
 
         # Refresh dataframe
-        self.refresh_from_db(fields='balances')
+        self.refresh_from_db()
 
         offset = self.balances.copy()
 
@@ -860,7 +860,7 @@ class Account(models.Model):
         log.info('Offset used and free resources')
 
         # Refresh dataframe
-        self.refresh_from_db(fields='balances')
+        self.refresh_from_db()
 
         offset = self.balances.copy()
         for col in offset.columns.get_level_values(0).unique().tolist():

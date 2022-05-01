@@ -370,9 +370,10 @@ class Account(models.Model):
                 log.info('-> Position PnL is {0} {1}'.format(round(position_v, 1), self.quote))
 
             # Determine synthetic cash of each coin
-            spot = self.balances.spot.total.quantity
-            posi = abs(self.balances.position.open.quantity)
-            self.balances.loc[:, ('account', 'current', 'synthetic_cash')] = ((posi + spot) - posi).drop(self.quote)
+            if 'position' in self.balances.columns.get_level_values(0):
+                spot = self.balances.spot.total.quantity
+                posi = abs(self.balances.position.open.quantity)
+                self.balances.loc[:, ('account', 'current', 'synthetic_cash')] = ((posi + spot) - posi).drop(self.quote)
 
             # Determine the total exposure of each coin
             mask = self.balances.columns.isin([('spot', 'total', 'quantity'),

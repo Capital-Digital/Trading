@@ -123,6 +123,31 @@ def prepare_accounts(account_id):
     chord(cancel_orders.s(account.id))(create_balances.s())
 
 
+# Synchronize open orders
+@app.task(name='Trading_____Sync_orders')
+def synchronize_orders(account_id, user_orders=False):
+    #
+    account = Account.objects.get(id=account_id)
+    log.bind(account=account.name)
+    if hasattr(current_process, 'index'):
+        log.bind(worker=current_process().index)
+
+    if user_orders:
+        wallet, dic = send_fetch_all_open_orders.delay(account_id)
+        for order in dic:
+            orderid = order['id']
+            try:
+                Order.objects.get(account=account, orderid=orderid)
+            except ObjectDoesNotExist:
+                code = order['symbol']
+                qty = order['amount']
+                price = order['price']
+                side = order['side']
+
+                log.info('Synchronize order {0}'.format(orderid))
+                account.create_object(wallet, code, side, None, qty, price)
+
+
 # Cancel open orders of an account
 @app.task(name='Trading_____Cancel_orders')
 def cancel_orders(account_id, user_orders=False):
@@ -134,22 +159,21 @@ def cancel_orders(account_id, user_orders=False):
     if hasattr(current_process, 'index'):
         log.bind(worker=current_process().index)
 
-    log.info('Cancel orders')
-
     orders = Order.objects.filter(account=account,
                                   status__in=['new',
                                               'partially_filled',
                                               'open']).exclude(orderid__isnull=True)
     if orders.exists():
         for order in orders:
-            send_cancel_order.delay(account_id, order.orderid)
+            log.info('Cancel order {0}'.format(order.clientid))
+            send_cancel_order(account_id, order.orderid)
 
     if user_orders:
-        orders = send_fetch_all_open_orders.delay(account_id)
+        orders = send_fetch_all_open_orders(account_id)
         for order in orders:
-            order_id = order['id']
-            log.info('Cancel user order {0}'.format(order_id))
-            send_cancel_order.delay(account_id, order_id)
+            orderid = order['id']
+            log.info('Cancel order {0}'.format(orderid))
+            send_cancel_order(account_id, orderid)
 
     log.info('Cancel orders complete')
     log.unbind('worker', 'account')
@@ -944,11 +968,14 @@ def send_fetch_all_open_orders(account_id):
 
     # Iterate through wallets
     for wallet in account.exchange.get_wallets():
+
+        log.info('Fetch all open orders (user n app')
+
         client.options['defaultType'] = wallet
         client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
         response = client.fetchOpenOrders()
-        return response
+        return wallet, response
 
 
 # Send transfer order

@@ -927,7 +927,7 @@ class Account(models.Model):
 
             for order in qs:
                 log.info('> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
-                                                          market.base.code))
+                                                         market.base.code))
                 log.info('> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']
@@ -960,7 +960,7 @@ class Account(models.Model):
 
             for order in qs:
                 log.info('> Order {0} to {1} {2}'.format(order.clientid, order.action.replace('_', ' '),
-                                                          market.base.code))
+                                                         market.base.code))
                 log.info('> Order {0} filled {1}/{2}'.format(order.clientid, order.filled, order.amount), flip=flip)
 
             qs_amount = qs.aggregate(Sum('amount'))['amount__sum']

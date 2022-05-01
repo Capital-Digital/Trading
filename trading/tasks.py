@@ -810,7 +810,6 @@ def fetch_positions(account_id, wallet='future'):
                 obj.response = opened
                 obj.save()
 
-        log.info('Fetch positions complete')
     else:
         log.info('No position opened')
 

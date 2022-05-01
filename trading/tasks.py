@@ -28,6 +28,7 @@ from trading.methods import *
 from trading.models import Account, Order, Fund, Position, Asset, Stat
 import threading
 import random
+import math
 
 log = structlog.get_logger(__name__)
 
@@ -515,6 +516,7 @@ def rebalance(account_id, reload=False, release=True):
                 if transfer_id:
                     account.offset_transfer('spot', 'future', amount, transfer_id)
                     val += amount
+                    math.floor(val)
 
                     log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
@@ -574,6 +576,7 @@ def rebalance(account_id, reload=False, release=True):
                 if transfer_id:
                     account.offset_transfer('future', 'spot', amount, transfer_id)
                     val += amount
+                    math.floor(val)
 
                     log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 

@@ -336,7 +336,7 @@ def rebalance(account_id, reload=False, release=True):
                                                           round(account.balances.account.target.quantity[coin], 4)))
         log.info('-------------------------')
 
-    if account.codes_sell():
+    if account.codes_short():
 
         log.info('')
         log.info('Short coins')

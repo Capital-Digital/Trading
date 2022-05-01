@@ -916,7 +916,7 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 def send_fetch_orderid(account_id, order_id):
     #
     account = Account.objects.get(id=account_id)
-    log.bin(account=account.name)
+    log.bind(account=account.name)
     if hasattr(current_process, 'index'):
         log.bind(worker=current_process().index)
 

@@ -608,7 +608,7 @@ def update_orders(account_id):
         for order in orders:
 
             log.bind(clientid=order.clientid)
-            log.info('Fetch order {0}'.format(order.clientid))
+            # log.info('Fetch order {0}'.format(order.clientid))
 
             try:
                 response = send_fetch_orderid(account_id, order.orderid)
@@ -616,7 +616,7 @@ def update_orders(account_id):
                 pass
 
             else:
-                log.info('Update order object {0}'.format(order.clientid))
+                # log.info('Update order object {0}'.format(order.clientid))
 
                 account.refresh_from_db()
                 filled, average = account.update_order_object(order.market.wallet, response)

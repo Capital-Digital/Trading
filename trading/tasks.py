@@ -956,9 +956,9 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
         del kwargs['price']
 
     # Set parameters
-    # if reduce_only:
-    #     kwargs['params']['reduceOnly'] = True
-    #     log.info('Set reduceOnly to True')
+    if reduce_only:
+        kwargs['params']['reduceOnly'] = True
+        log.info('Set reduceOnly to True')
 
     # if action == 'close_short':
     #     kwargs['params']['closePosition'] = True

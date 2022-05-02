@@ -19,8 +19,8 @@ log = structlog.get_logger(__name__)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials',)
     readonly_fields = ('valid_credentials',)
-    actions = ['check_credentials', 'rebalance_account', 'market_sell_spot', 'market_close_positions', 'fetch_assets',
-               'fetch_positions']
+    actions = ['check_credentials', 'rebalance_account', 'fetch_assets',
+               'fetch_positions', 'market_sell_spot', 'market_close_positions', 'transfer_to_spot']
     save_as = True
     save_on_top = True
 
@@ -39,18 +39,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     fetch_positions.short_description = "Fetch positions"
 
-    def market_sell_spot(self, request, queryset):
-        for account in queryset:
-            market_sell.delay(account.id)
-
-    market_sell_spot.short_description = "Market sell"
-
-    def market_close_positions(self, request, queryset):
-        for account in queryset:
-            market_close.delay(account.id)
-
-    market_close_positions.short_description = "Market close"
-
     def rebalance_account(self, request, queryset):
         for account in queryset:
             rebalance.delay(account.id, reload=True, release=True)
@@ -62,6 +50,24 @@ class CustomerAdmin(admin.ModelAdmin):
             check_credentials.delay(account.id)
 
     check_credentials.short_description = "Check credentials"
+
+    def market_sell_spot(self, request, queryset):
+        for account in queryset:
+            market_sell.delay(account.id)
+
+    market_sell_spot.short_description = "Market sell assets"
+
+    def market_close_positions(self, request, queryset):
+        for account in queryset:
+            market_close.delay(account.id)
+
+    market_close_positions.short_description = "Market close positions"
+
+    def transfer_to_spot(self, request, queryset):
+        for account in queryset:
+            transfer_to_spot.delay(account.id)
+
+    transfer_to_spot.short_description = "Transfer assets to spot"
 
 
 @admin.register(Asset)

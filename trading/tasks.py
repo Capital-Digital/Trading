@@ -836,13 +836,14 @@ def market_sell(account_id):
                 if limit_amount(market, amount):
                     if limit_cost(market, amount):
 
+                        log.info('')
                         log.info('Sell asset {0}'.format(asset.currency.code))
 
                         if flip:
                             side = 'buy'
                         else:
                             side = 'sell'
-                            
+
                         kwargs = dict(
                             symbol=market.symbol,
                             type='market',
@@ -851,6 +852,8 @@ def market_sell(account_id):
                         )
                         if flip:
                             kwargs['params'] = dict(quoteOrderQty=True)
+
+                        log.info(kwargs)
 
                         try:
                             log.info('Trade {0}'.format(market.symbol))

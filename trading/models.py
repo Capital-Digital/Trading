@@ -703,7 +703,6 @@ class Account(models.Model):
         # Refresh dataframe
         self.refresh_from_db()
 
-        log.bind(id=transfer_id, account=self.name)
         log.info('Offset transfer from {0} to {1}'.format(source, destination))
         log.info('Offset transfer amount is {0} {1}'.format(round(amount, 1), self.quote))
 

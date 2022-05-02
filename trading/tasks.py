@@ -1019,10 +1019,10 @@ def send_fetch_orderid(self, account_id, order_id):
     try:
         response = client.fetchOrder(id=order_id, symbol=order.market.symbol)
     except ccxt.OrderNotFound:
-        log.error('Unknown order {}'.format(order.clientid), id=order_id)
+        log.error('Unknown order {}'.format(order.clientid), orderid=order_id)
 
     except Exception as e:
-        log.error('Unknown exception when fetching order {}'.format(order.clientid), id=order_id, e=str(e))
+        log.error('Unknown exception when fetching order {}'.format(order.clientid), orderid=order_id, e=str(e))
 
     else:
         return response

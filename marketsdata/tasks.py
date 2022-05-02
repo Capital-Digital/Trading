@@ -131,7 +131,7 @@ def update_dataframe(exid, tickers=None):
     df = pd.DataFrame()
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    
+
     # Select codes of our strategies
     codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
 
@@ -140,11 +140,13 @@ def update_dataframe(exid, tickers=None):
         log.info('Exchange dataframe loaded with code {0}'.format(code))
 
     if not tickers:
-        log.info('Download tickers...')
+        log.info('Dictionary of tickers not provided, download it...')
         client = exchange.get_ccxt_client()
         tickers = client.fetch_tickers()
+    else:
+        log.info('Dictionary of tickers received from update_prices()')
 
-    log.info('Select market symbols from exchange response')
+    log.info('Select USDT market from exchange response')
 
     for code in codes:
         try:
@@ -166,7 +168,7 @@ def update_dataframe(exid, tickers=None):
     exchange.data = df
     exchange.save()
 
-    log.info('Update dataframe')
+    log.info('Update rows of the dataframe')
     log.unbind('worker', 'exid')
 
 
@@ -195,13 +197,20 @@ def update_prices(exid, wallet=None):
     if wallet:
         client.options['defaultType'] = wallet
 
+    log.info('Download snapshot of {0} markets'.format(wallet))
+
     # Download snapshot
     tickers = client.fetch_tickers()
+
+    log.info('Build a list of symbols for our strategies')
 
     # Create a list of high priority symbols for our strategies.
     # Drop symbols not in tickers (derivatives) and select dictionaries.
     symbols_strategies = exchange.get_strategies_symbols()
     symbols_strategies = [i for i in symbols_strategies if i in tickers.keys()]
+
+    log.info('Select desired dictionaries from the snapshot')
+
     t = {symbol: tickers[symbol] for symbol in symbols_strategies}
 
     # Update exchange.data async
@@ -210,6 +219,9 @@ def update_prices(exid, wallet=None):
 
     # Select symbols of markets supported by the exchange
     symbols = []
+
+    log.info('Reorder desired markets first and insert new prices')
+
     for quote in exchange.get_supported_quotes():
 
         markets = [i for i in tickers.keys() if '/' + quote in i]
@@ -220,8 +232,8 @@ def update_prices(exid, wallet=None):
     symbols = list(set(itertools.chain.from_iterable(symbols)))
     symbols.sort()
 
-    log.info('High priority symbols for price update')
-    log.info(symbols_strategies)
+    for s in symbols_strategies:
+        log.info('Market {0} is high priority')
 
     # Insert high priority symbols first
     # and drop duplicate whilst preserving order

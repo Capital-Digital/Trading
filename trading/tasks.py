@@ -569,6 +569,8 @@ def rebalance(self, account_id, reload=False, release=True):
 
             # Transfer is needed ?
             if val < desired_val:
+                free_margin = account.free_margin()
+                log.info('Free margin in future is {0} {1}'.format(round(free_margin, 1), account.quote))
                 amount = min(desired_val - val, account.free_margin())
                 transfer_id = send_transfer(account.id, 'future', 'spot', amount)
                 if transfer_id:

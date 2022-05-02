@@ -822,47 +822,45 @@ def market_sell(account_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    for asset in Asset.objects.filter(account=account):
+    for asset in Asset.objects.filter(account=account, wallet='spot'):
 
         if asset.currency.code != account.quote:
 
-            if asset.currency.code != account.quote:
-                market, flip = account.exchange.get_spot_market(asset.currency.code, account.quote)
+            market, flip = account.exchange.get_spot_market(asset.currency.code, account.quote)
+            amount = format_decimal(counting_mode=account.exchange.precision_mode,
+                                    precision=market.precision['amount'],
+                                    n=asset.free)
 
-                amount = format_decimal(counting_mode=account.exchange.precision_mode,
-                                        precision=market.precision['amount'],
-                                        n=asset.free)
+            if limit_amount(market, amount):
+                if limit_cost(market, amount):
 
-                if limit_amount(market, amount):
-                    if limit_cost(market, amount):
+                    log.info('')
+                    log.info('Sell asset {0}'.format(asset.currency.code))
 
-                        log.info('')
-                        log.info('Sell asset {0}'.format(asset.currency.code))
+                    if flip:
+                        side = 'buy'
+                    else:
+                        side = 'sell'
 
-                        if flip:
-                            side = 'buy'
-                        else:
-                            side = 'sell'
+                    kwargs = dict(
+                        symbol=market.symbol,
+                        type='market',
+                        side=side,
+                        amount=amount
+                    )
+                    # if flip:
+                    #     kwargs['amount'] = None
+                    #     kwargs['params'] = dict(quoteOrderQty=amount)
 
-                        kwargs = dict(
-                            symbol=market.symbol,
-                            type='market',
-                            side=side,
-                            amount=amount
-                        )
-                        # if flip:
-                        #     kwargs['amount'] = None
-                        #     kwargs['params'] = dict(quoteOrderQty=amount)
+                    log.info(kwargs)
 
-                        log.info(kwargs)
-
-                        try:
-                            log.info('Trade {0}'.format(market.symbol))
-                            client.create_order(**kwargs)
-                        except ccxt.InsufficientFunds:
-                            log.error('Trade error, insufficient fund')
-                        else:
-                            log.info('Trade complete')
+                    try:
+                        log.info('Trade {0}'.format(market.symbol))
+                        client.create_order(**kwargs)
+                    except ccxt.InsufficientFunds:
+                        log.error('Trade error, insufficient fund')
+                    else:
+                        log.info('Trade complete')
 
 
 # REST API

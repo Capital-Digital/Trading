@@ -851,7 +851,6 @@ def market_sell(account_id):
                             amount=amount
                         )
                         if flip:
-                            del kwargs['amount']
                             kwargs['params'] = dict(quoteOrderQty=amount)
 
                         log.info(kwargs)

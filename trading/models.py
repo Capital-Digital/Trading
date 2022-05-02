@@ -912,13 +912,17 @@ class Account(models.Model):
     # Return sum of open orders size
     def get_open_orders_spot(self, code, side, action):
 
+        now = dt_aware_now()
+        start = dt_aware_now(0)
+
         # Test if a close_spot or a buy_spot order is open
         market, flip = self.exchange.get_spot_market(code, self.quote)
         qs = Order.objects.filter(account=self,
                                   status__in=['open', 'preparation'],
                                   market=market,
                                   side=side,
-                                  action=action
+                                  action=action,
+                                  dt_created__range=[start, now]
                                   )
         if not qs.exists():
             # log.info('No pending order found for {0} in spot'.format(code))
@@ -945,13 +949,17 @@ class Account(models.Model):
     # Return sum of open orders size
     def get_open_orders_futu(self, code, side, action):
 
+        now = dt_aware_now()
+        start = dt_aware_now(0)
+
         # Test if a close_spot or a buy_spot order is open
         market, flip = self.exchange.get_perp_market(code, self.quote)
         qs = Order.objects.filter(account=self,
                                   status__in=['open', 'preparation'],
                                   market=market,
                                   side=side,
-                                  action=action
+                                  action=action,
+                                  dt_created__range=[start, now]
                                   )
         if not qs.exists():
             # log.info('No pending order found for {0} in future'.format(code))

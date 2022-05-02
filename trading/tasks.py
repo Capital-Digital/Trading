@@ -562,7 +562,7 @@ def rebalance(self, account_id, reload=False, release=True):
 
             val = min(free, desired_val)
 
-            log.info('Delta quantity for {1} is {0}'.format(round(delta, 4), code))
+            log.info('Desired quantity for {1} is {0}'.format(round(delta, 4), code))
             log.info('Desired order value is {0} {1}'.format(round(desired_val, 1), account.quote))
             log.info('Available resources is {1} {0}'.format(account.quote, round(free, 1)))
             log.info('Maximum order value is {0} {1}'.format(round(val, 1), account.quote))
@@ -843,6 +843,10 @@ def market_sell(account_id):
     assets = Asset.objects.filter(account=account, wallet='spot')
 
     log.info('{0} assets found in spot'.format(len(assets)))
+    for asset in assets:
+        log.info('{0}, {1}'.format(asset.total, asset.currency.code))
+
+    log.info('')
 
     for asset in assets:
 

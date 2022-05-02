@@ -124,7 +124,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
     readonly_fields = ('clientid', 'account', 'market', 'status', 'action', 'type', 'amount', 'side',
                        'cost', 'filled', 'average', 'remaining', 'timestamp', 'max_qty', 'trades',
-                       'last_trade_timestamp', 'price', 'fee', 'datetime', 'response', 'orderid', 'owner', 'sender')
+                       'last_trade_timestamp', 'price', 'fee', 'datetime', 'response', 'orderid', 'owner', 'sender',
+                       'dt_created', 'dt_modified', )
     actions = ['place_order', 'refresh', 'cancel_order']
 
     list_filter = (

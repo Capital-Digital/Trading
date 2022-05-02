@@ -136,15 +136,14 @@ def update_dataframe(exid, tickers=None):
     codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
 
     for code in codes:
-
-        log.info('Exchange dataframe loaded with code {0}'.format(code))
+        log.info('Dataframe loaded with {0}'.format(code))
 
     if not tickers:
-        log.info('Dictionary of tickers not provided, download it...')
+        log.info('Dict. of tickers not provided, download it...')
         client = exchange.get_ccxt_client()
         tickers = client.fetch_tickers()
     else:
-        log.info('Dictionary of tickers received from update_prices()')
+        log.info('Dict. of tickers received from update_prices()')
 
     log.info('Select USDT market from exchange response')
 
@@ -205,7 +204,7 @@ def update_prices(self, exid, wallet=None):
     # Download snapshot
     tickers = client.fetch_tickers()
 
-    log.info('Build a list of symbols for our strategies')
+    log.info('Create a list of symbols for strategies')
 
     # Create a list of high priority symbols for our strategies.
     # Drop symbols not in tickers (derivatives) and select dictionaries.
@@ -235,8 +234,11 @@ def update_prices(self, exid, wallet=None):
     symbols = list(set(itertools.chain.from_iterable(symbols)))
     symbols.sort()
 
-    for s in symbols_strategies:
-        log.info('Market {0} is high priority'.format(s))
+    if wallet == 'spot':
+        log.info('')
+        for s in symbols_strategies:
+            log.info('Market {0}'.format(s))
+        log.info('')
 
     # Insert high priority symbols first
     # and drop duplicate whilst preserving order

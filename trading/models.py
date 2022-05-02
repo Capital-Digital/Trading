@@ -1072,6 +1072,7 @@ class Fund(models.Model):
 class Order(models.Model):
     objects = models.Manager()
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='order', null=True)
+    strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='order', null=True)
     market = models.ForeignKey(Market, on_delete=models.SET_NULL, related_name='order', null=True)
     orderid = models.CharField(max_length=150, null=True)  # order exchange's ID
     clientid = models.CharField(max_length=150, null=True)  # order exchange's ID

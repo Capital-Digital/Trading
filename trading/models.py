@@ -336,7 +336,7 @@ class Account(models.Model):
     def calculate_delta(self):
         #
         if 'account' in self.balances.columns.get_level_values(0):
-            
+
             # Refresh instance
             self.refresh_from_db()
 
@@ -1105,6 +1105,7 @@ class Order(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk:
             self.dt_created = timezone.now()
+
         self.dt_modified = timezone.now()
         return super(Order, self).save(*args, **kwargs)
 

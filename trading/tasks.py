@@ -622,27 +622,31 @@ def update_orders(self, account_id):
                 pass
 
             else:
-                account.refresh_from_db()
-                filled, average = account.update_order_object(order.market.wallet, response)
+                if response:
 
-                if filled:
+                    account.refresh_from_db()
+                    filled, average = account.update_order_object(order.market.wallet, response)
 
-                    code = order.market.base.code
-                    account.offset_order_filled(order.clientid, code, order.action, filled, average)
+                    if filled:
 
-                    t = 0
-                    while account.busy:
+                        code = order.market.base.code
+                        account.offset_order_filled(order.clientid, code, order.action, filled, average)
 
-                        account.refresh_from_db()
-                        log.info('Account {0} is busy...'.format(account.name))
-                        time.sleep(1)
+                        t = 0
+                        while account.busy:
 
-                        t += 1
-                        if t > 10:
-                            raise Exception('Account {0} is busy after more than 10s'.format(account.name))
+                            account.refresh_from_db()
+                            log.info('Account {0} is busy...'.format(account.name))
+                            time.sleep(1)
 
-                    log.info('Sync. account after a trade')
-                    rebalance.delay(account_id, reload=False)
+                            t += 1
+                            if t > 10:
+                                raise Exception('Account {0} is busy after more than 10s'.format(account.name))
+
+                        log.info('Sync. account after a trade')
+                        rebalance.delay(account_id, reload=False)
+                else:
+                    log.error('fetchOrder() failed, exchange replied with None for order {0}'.format(order.clientid))
 
         # log.info('Open order update complete in account {0}'.format(account.name))
 
@@ -993,17 +997,24 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 
     else:
 
-        log.info('Order placement success')
+        if response:
 
-        # Offset resources released and used
-        val = qty * price
-        account.offset_order_new(code, action, qty, val)
+            log.info('Order placement success')
 
-        # Update object status
-        filled, average = account.update_order_object(wallet, response, new=True)
-        if filled:
-            # Offset trade
-            account.offset_order_filled(clientid, code, action, filled, average)
+            # Offset resources released and used
+            val = qty * price
+            account.offset_order_new(code, action, qty, val)
+
+            # Update object status
+            filled, average = account.update_order_object(wallet, response, new=True)
+            if filled:
+                # Offset trade
+                account.offset_order_filled(clientid, code, action, filled, average)
+        else:
+            log.error('createOrder() failed, exchange replied with None for order {0}'.format(clientid))
+            log.info('Delete object for order {0}'.format(clientid))
+            obj = Order.objects.get(clientid=clientid, status='preparation')
+            obj.delete()
 
 
 # Fetch an order by its orderid

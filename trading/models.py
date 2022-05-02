@@ -645,9 +645,9 @@ class Account(models.Model):
                     status=status
                 )
 
-                log.warning('Cancel user order')
-                from trading.tasks import send_cancel_order
-                send_cancel_order.delay(self.id, orderid)
+                log.warning('Unknown order')
+                #from trading.tasks import send_cancel_order
+                #send_cancel_order.delay(self.id, orderid)
                 return
 
             else:

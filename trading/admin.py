@@ -17,7 +17,7 @@ log = structlog.get_logger(__name__)
 
 @admin.register(Account)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'pseudonym', 'owner', 'exchange', 'quote', 'active', 'valid_credentials',)
+    list_display = ('name', 'pseudonym', 'owner', 'exchange', 'busy', 'quote', 'active', 'valid_credentials',)
     readonly_fields = ('valid_credentials',)
     actions = ['check_credentials', 'rebalance_account', 'fetch_assets',
                'fetch_positions', 'market_sell_spot', 'market_close_positions', 'transfer_to_spot']

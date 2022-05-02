@@ -154,7 +154,7 @@ def update_dataframe(exid, tickers=None):
             d = {k: tickers[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
 
         except KeyError:
-            log.warning('Market {0} not found in dictionary'.format(code + '/USDT'))
+            log.warning('Market {0} not found in dictionary'.format(str(code + '/USDT')))
             continue
 
         tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)

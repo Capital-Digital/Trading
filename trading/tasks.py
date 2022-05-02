@@ -298,8 +298,6 @@ def rebalance(self, account_id, reload=False, release=True):
     #
     account = Account.objects.get(id=account_id)
 
-    log.info('Task id is {0}'.format(self.request.id))
-
     # Mark the account as busy to avoid concurrent
     # rebalancing after a new trade is detected
     account.busy = True
@@ -601,14 +599,17 @@ def rebalance(self, account_id, reload=False, release=True):
 
 
 # Update open orders of an account
-@app.task(name='Trading_____Update_orders')
-def update_orders(account_id):
+@app.task(bind=True, name='Trading_____Update_orders')
+def update_orders(self, account_id):
     #
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account, status__in=['open', 'unknown'])
 
     if orders.exists():
         for order in orders:
+
+            if self.request.id:
+                log.bind(worker=current_process().index)
 
             log.bind(clientid=order.clientid)
             # log.info('Fetch order {0}'.format(order.clientid))
@@ -631,11 +632,11 @@ def update_orders(account_id):
 
                     t = 0
                     while account.busy:
-                        log.info('Account is busy, wait before new sync.')
+                        log.info('Account  {0} is busy, wait before new sync.'.format(account.name))
                         time.sleep(1)
                         t += 1
                         if t > 10:
-                            raise Exception('Account is busy after more than 10s')
+                            raise Exception('Account {0} is busy after more than 10s'.format(account.name))
 
                     log.info('Sync. account after a trade')
                     rebalance.delay(account_id, reload=False)

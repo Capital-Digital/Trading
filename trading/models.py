@@ -726,6 +726,9 @@ class Account(models.Model):
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
+
+        # Restore nan
+        self.balances.replace(0, np.nan, inplace=True)
         self.save()
 
     # Offset quantity after a trade

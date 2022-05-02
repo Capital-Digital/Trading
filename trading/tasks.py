@@ -628,6 +628,7 @@ def update_orders(self, account_id):
 
                     if filled:
 
+                        # Offset trade when account is not busy
                         code = order.market.base.code
                         account.offset_order_filled(order.clientid, code, order.action, filled, average)
 

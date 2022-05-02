@@ -336,6 +336,9 @@ class Account(models.Model):
     def calculate_delta(self):
         #
         if 'account' in self.balances.columns.get_level_values(0):
+            
+            # Refresh instance
+            self.refresh_from_db()
 
             target = self.balances.account.target.quantity.dropna()
             assets_v = self.assets_value()
@@ -736,9 +739,6 @@ class Account(models.Model):
 
         log.info('Offset trade for order {0}'.format(clientid))
 
-        # Refresh dataframe
-        self.refresh_from_db()
-
         offset = self.balances.copy()
 
         for col in offset.columns.get_level_values(0).unique().tolist():
@@ -832,6 +832,9 @@ class Account(models.Model):
 
         # Create offset and update dataframe
         offset = offset.dropna(axis=0, how='all').dropna(axis=1, how='all')
+
+        # Refresh dataframe
+        self.refresh_from_db()
         updated = self.balances.loc[offset.index, offset.columns].fillna(0) + offset
         self.balances.loc[offset.index, offset.columns] = updated
 

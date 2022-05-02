@@ -821,7 +821,6 @@ def market_sell(account_id):
 
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
-    client.options['defaultType'] = 'future'
 
     for asset in Asset.objects.filter(account=account):
 
@@ -829,14 +828,14 @@ def market_sell(account_id):
 
         if asset.currency.code != account.quote:
             market, flip = account.exchange.get_spot_market(asset.currency.code, account.quote)
-            
+
             if flip:
                 side = 'buy'
 
             kwargs = dict(
                 symbol=market.symbol,
                 type='market',
-                side='sell',
+                side=side,
                 amount=asset.free
             )
             log.info(kwargs)

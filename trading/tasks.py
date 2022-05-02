@@ -839,7 +839,10 @@ def market_sell(account_id):
                         log.info('')
                         log.info('Sell asset {0}'.format(asset.currency.code))
 
-                        side = 'sell'
+                        if flip:
+                            side = 'buy'
+                        else:
+                            side = 'sell'
 
                         kwargs = dict(
                             symbol=market.symbol,
@@ -847,9 +850,9 @@ def market_sell(account_id):
                             side=side,
                             amount=amount
                         )
-                        if flip:
-                            kwargs['amount'] = None
-                            kwargs['params'] = dict(quoteOrderQty=amount)
+                        # if flip:
+                        #     kwargs['amount'] = None
+                        #     kwargs['params'] = dict(quoteOrderQty=amount)
 
                         log.info(kwargs)
 

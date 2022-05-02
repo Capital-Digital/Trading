@@ -833,6 +833,7 @@ def market_sell(account_id):
                                         type='spot'
                                         )
         except ObjectDoesNotExist:
+            log.warning('Market {0}/{1} not found'.format(asset.currency, account.quote))
             quote = 'USDT' if account.quote == 'BUSD' else 'BUSD'
             market = Market.objects.get(exchange=account.exchange,
                                         base=asset.currency,
@@ -848,6 +849,7 @@ def market_sell(account_id):
         )
         log.info(kwargs)
         try:
+            log.info('Sell spot {0} in {1} market'.format(asset.currency.code, market.quote.code))
             client.create_order(**kwargs)
         except ccxt.InsufficientFunds:
             log.error('Insufficient funds')

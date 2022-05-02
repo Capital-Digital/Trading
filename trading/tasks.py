@@ -849,7 +849,9 @@ def market_sell(account_id):
                             side=side,
                             amount=amount
                         )
-                        log.info(kwargs)
+                        if flip:
+                            kwargs['params'] = dict(quoteOrderQty=True)
+
                         try:
                             log.info('Trade {0}'.format(market.symbol))
                             client.create_order(**kwargs)

@@ -851,12 +851,12 @@ def market_sell(account_id):
                         )
                         log.info(kwargs)
                         try:
-                            log.info('{0} in market {1}'.format(side.title(), market.symbol))
+                            log.info('Trade {0}'.format(market.symbol))
                             client.create_order(**kwargs)
                         except ccxt.InsufficientFunds:
-                            log.error('Insufficient funds')
+                            log.error('Trade error, insufficient fund')
                         else:
-                            pass
+                            log.info('Trade complete')
 
 
 # REST API

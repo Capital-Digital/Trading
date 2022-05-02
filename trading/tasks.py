@@ -682,36 +682,28 @@ def market_close(account_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
-    if 'position' in account.balances.columns.get_level_values(0).tolist():
+    for pos in Position.objects.filter(account=account):
 
-        opened = account.balances.position.open.quantity.dropna()
-        if len(opened) > 0:
-            for code in opened.index.tolist():
+        log.info('Close position {0}'.format(pos.market.symbol))
 
-                log.info('Close position {0}'.format(code))
-
-                amount = account.balances.position.open.quantity[code]
-                if amount > 0:
-                    side = 'sell'
-                else:
-                    side = 'buy'
-
-                qty = abs(amount)
-
-                kwargs = dict(
-                    symbol=code + '/' + account.quote,
-                    type='market',
-                    side=side,
-                    amount=qty,
-                    # params=dict(reduceOnly=True)
-                )
-                pprint(kwargs)
-
-                client.create_order(**kwargs)
+        amount = pos.amount
+        if amount > 0:
+            side = 'sell'
         else:
-            log.info('No position found')
-    else:
-        log.info('No position found')
+            side = 'buy'
+
+        qty = abs(amount)
+
+        kwargs = dict(
+            symbol=pos.market.symbol,
+            type='market',
+            side=side,
+            amount=qty,
+            # params=dict(reduceOnly=True)
+        )
+        pprint(kwargs)
+
+        client.create_order(**kwargs)
 
 
 # Fetch assets

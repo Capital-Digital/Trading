@@ -595,6 +595,7 @@ class Account(models.Model):
 
         Order.objects.create(
             account=self,
+            strategy=self.strategy,
             market=market,
             clientid=clientid,
             type=self.order_type,

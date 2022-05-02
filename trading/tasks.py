@@ -832,15 +832,19 @@ def market_sell(account_id):
             if flip:
                 side = 'buy'
 
+            amount = format_decimal(counting_mode=account.exchange.precision_mode,
+                                    precision=market.precision['amount'],
+                                    n=asset.free)
+
             kwargs = dict(
                 symbol=market.symbol,
                 type='market',
                 side=side,
-                amount=asset.free
+                amount=amount
             )
             log.info(kwargs)
             try:
-                log.info('Sell spot {0} in {1} market'.format(asset.currency.code, market.quote.code))
+                log.info('{0} in market {1}'.format(side.title(), market.symbol))
                 client.create_order(**kwargs)
             except ccxt.InsufficientFunds:
                 log.error('Insufficient funds')

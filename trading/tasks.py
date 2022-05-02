@@ -840,8 +840,11 @@ def market_sell(account_id):
 
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
+    assets = Asset.objects.filter(account=account, wallet='spot')
 
-    for asset in Asset.objects.filter(account=account, wallet='spot'):
+    log.info('{0} assets found in spot'.format(len(assets)))
+
+    for asset in assets:
 
         if asset.currency.code != account.quote:
 
@@ -880,7 +883,10 @@ def market_sell(account_id):
                         log.error('Trade error, insufficient fund')
                     else:
                         log.info('Trade complete')
-
+                else:
+                    log.info('Cost not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
+            else:
+                log.info('Limit not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
 
 # REST API
 ##########

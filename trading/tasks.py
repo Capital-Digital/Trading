@@ -831,6 +831,8 @@ def market_sell(account_id):
 
             if flip:
                 side = 'buy'
+            else:
+                side = 'sell'
 
             amount = format_decimal(counting_mode=account.exchange.precision_mode,
                                     precision=market.precision['amount'],

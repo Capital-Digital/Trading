@@ -693,10 +693,8 @@ def market_close(account_id):
                 amount = account.balances.position.open.quantity[code]
                 if amount > 0:
                     side = 'sell'
-                    action = 'close_long'
                 else:
                     side = 'buy'
-                    action = 'close_short'
 
                 qty = abs(amount)
 
@@ -707,6 +705,7 @@ def market_close(account_id):
                     amount=qty,
                     # params=dict(reduceOnly=True)
                 )
+                pprint(kwargs)
 
                 client.create_order(**kwargs)
         else:

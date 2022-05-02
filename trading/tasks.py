@@ -814,6 +814,25 @@ def fetch_positions(account_id, wallet='future'):
     log.unbind('account')
 
 
+# Transfer assets from future to spot
+@app.task(name='Trading_____Transfer_to_spot')
+def transfer_to_spot(account_id):
+    #
+
+    account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = 'future'
+
+    pos = Position.objects.filter(account=account)
+    if not pos:
+
+        for asset in Asset.objects.filter(account=account, wallet='future'):
+            log.info('Transfer asset {0}'.format(asset.currency.code))
+            client.transfer(asset.currency.code, 'future', 'spot', asset.free)
+    else:
+        log.warning('Close all position before transferring assets')
+
+
 # Market sell
 @app.task(name='Trading_____Market_sell')
 def market_sell(account_id):

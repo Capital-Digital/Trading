@@ -686,7 +686,7 @@ def market_close(account_id):
 
         log.info('Close position {0}'.format(pos.market.symbol))
 
-        amount = pos.amount
+        amount = pos.size
         if amount > 0:
             side = 'sell'
         else:

@@ -99,7 +99,7 @@ def bulk_update_stats():
 @app.task(name='Trading_____Bulk_update_orders')
 def bulk_update_orders():
     #
-    for account in Account.objects.filter(active=True, busy=False):
+    for account in Account.objects.filter(active=True):
         update_orders.delay(account.id)
 
 

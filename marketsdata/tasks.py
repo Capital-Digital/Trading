@@ -126,29 +126,33 @@ def preload_dataframe(exid):
 def update_dataframe(exid, tickers=None):
     #
     log.bind(worker=current_process().index, exid=exid)
-    log.info('Dataframe update')
 
     exchange = Exchange.objects.get(exid=exid)
     df = pd.DataFrame()
     dt = timezone.now().replace(minute=0, second=0, microsecond=0)
     dt_string = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
+    
     # Select codes of our strategies
     codes = list(set(exchange.data.columns.get_level_values(1).tolist()))
+
+    for code in codes:
+
+        log.info('Exchange dataframe loaded with code {0}'.format(code))
 
     if not tickers:
         log.info('Download tickers...')
         client = exchange.get_ccxt_client()
         tickers = client.fetch_tickers()
 
-    for code in codes:
+    log.info('Select market symbols from exchange response')
 
+    for code in codes:
         try:
             # Select dictionary (drop alternative quote .i.e BUSD)
             d = {k: tickers[code + '/USDT'][k] for k in ['last', 'quoteVolume']}
 
         except KeyError:
-            log.warning('Market {0} not found in dictionary')
+            log.warning('Market {0} not found in dictionary'.format(code + '/USDT'))
             continue
 
         tmp = pd.DataFrame(index=[pd.to_datetime(dt_string)], data=d)
@@ -162,7 +166,7 @@ def update_dataframe(exid, tickers=None):
     exchange.data = df
     exchange.save()
 
-    log.info('Dataframe update complete')
+    log.info('Update dataframe')
     log.unbind('worker', 'exid')
 
 

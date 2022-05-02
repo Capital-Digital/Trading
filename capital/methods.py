@@ -17,7 +17,7 @@ directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
 # Get current time as an aware datetime object in Python 3.3+
 def dt_aware_now(minute=None):
     dt = datetime.now(timezone.utc)
-    if minute:
+    if minute >= 0:
         dt = dt.replace(minute=minute, second=0, microsecond=0)
     return dt
 

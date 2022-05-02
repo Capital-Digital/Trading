@@ -511,10 +511,9 @@ def rebalance(self, account_id, reload=False, release=True):
                 amount = min(desired_val - val, account.balances.spot.free.quantity[account.quote])
                 transfer_id = send_transfer(account.id, 'spot', 'future', amount)
                 if transfer_id:
+                    log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
                     account.offset_transfer('spot', 'future', amount, transfer_id)
                     val += amount
-
-                    log.info('Order value after transfer is {0} {1}'.format(round(val, 1), account.quote))
 
             # Determine quantity from available resources
             qty = math.floor(val) / price
@@ -1088,6 +1087,8 @@ def send_transfer(account_id, source, dest, quantity):
 
             log.info('Transfer success')
             return transfer_id
+    else:
+        log.info('Transfer limit not satisfied')
 
 
 # Send cancellation order

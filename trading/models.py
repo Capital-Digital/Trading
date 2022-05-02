@@ -865,9 +865,11 @@ class Account(models.Model):
         for col in offset.columns.get_level_values(0).unique().tolist():
             offset.loc[:, col] = np.nan
 
-        log.info('Offset resources {0} {1}'.format(round(qty, 4), code))
-
         if action == 'buy_spot':
+
+            log.info('Offset used and free quantity of {0} {1}'.format(round(qty, 1), self.quote))
+            log.info('Offset used and free value of {0} {1}'.format(round(val, 1), self.quote))
+
             # Offset order value from free and used quote
             offset.loc[self.quote, ('spot', 'free', 'quantity')] = -val
             offset.loc[self.quote, ('spot', 'free', 'value')] = -val
@@ -875,6 +877,10 @@ class Account(models.Model):
             offset.loc[self.quote, ('spot', 'used', 'value')] = val
 
         if action == 'sell_spot':
+
+            log.info('Offset used and free quantity of {0} {1}'.format(round(qty, 4), code))
+            log.info('Offset used and free value of {0} {1}'.format(round(val, 1), self.quote))
+
             # Offset order quantity and value from free and used code
             offset.loc[code, ('spot', 'free', 'quantity')] = -qty
             offset.loc[code, ('spot', 'free', 'value')] = -val
@@ -886,6 +892,8 @@ class Account(models.Model):
 
         if action == 'open_short':
             margin_value = val / 20
+
+            log.info('Offset margin used of {0} {1}'.format(round(margin_value, 4), self.quote))
 
             # Offset margin value from used and free quote
             offset.loc[self.quote, ('future', 'free', 'quantity')] = -margin_value

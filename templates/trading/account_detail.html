@@ -45,16 +45,6 @@
               An order is currently open.
             </div>
           {% endif %}
-          {% if orders_canceled %}
-            <div class="alert alert-warning" role="alert">
-              An order was canceled recently.
-            </div>
-          {% endif %}
-          {% if orders_error %}
-            <div class="alert alert-danger" role="alert">
-              An order error was detected recently.
-            </div>
-          {% endif %}
 
         {% else %}
           <p>You are not authorized to view this account</p>

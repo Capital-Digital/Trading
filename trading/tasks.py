@@ -169,7 +169,6 @@ def cancel_orders(self, account_id, user_orders=False):
     if user_orders:
         wallet, response = send_fetch_all_open_orders(account_id)
         for dic in response:
-
             orderid = dic['id']
             symbol = dic['symbol']
 
@@ -819,25 +818,41 @@ def fetch_positions(account_id, wallet='future'):
 @app.task(name='Trading_____Market_sell')
 def market_sell(account_id):
     #
+
     account = Account.objects.get(id=account_id)
-    if account.has_spot_asset('free'):
-        for code, qty in account.balances.spot.free.quantity.dropna().items():
+    client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = 'future'
 
-            if code != account.quote:
+    for asset in Asset.objects.filter(account=account):
 
-                # Determine order size and value
-                price = account.balances.price['spot']['bid'][code]
+        log.info('Sell asset {0}'.format(asset.currency.code))
+        try:
+            market = Market.objects.get(exchange=account.exchange,
+                                        base=asset.currency,
+                                        quote__code=account.quote,
+                                        type='spot'
+                                        )
+        except ObjectDoesNotExist:
+            quote = 'USDT' if account.quote == 'BUSD' else 'BUSD'
+            market = Market.objects.get(exchange=account.exchange,
+                                        base=asset.currency,
+                                        quote__code=quote,
+                                        type='spot'
+                                        )
 
-                # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('spot', 'sell', code, qty, price)
-                if valid:
-                    # Create object, place order and apply offset
-                    clientid = account.create_object('spot', code, 'sell', 'sell_spot', qty, price)
-                    send_create_order(account.id, clientid, 'sell_spot', 'sell', 'spot', code, qty, reduce_only,
-                                      market_order=True
-                                      )
-    else:
-        log.info('No free asset found', account=account.name)
+        kwargs = dict(
+            symbol=market.symbol,
+            type='market',
+            side='sell',
+            amount=asset.free
+        )
+        log.info(kwargs)
+        try:
+            client.create_order(**kwargs)
+        except ccxt.InsufficientFunds:
+            log.error('Insufficient funds')
+        else:
+            continue
 
 
 # REST API
@@ -980,7 +995,6 @@ def send_fetch_all_open_orders(account_id):
     client = account.exchange.get_ccxt_client(account)
 
     for wallet in account.exchange.get_wallets():
-
         log.info('Fetch all open orders (user n app')
 
         client.options['defaultType'] = wallet

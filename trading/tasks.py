@@ -702,9 +702,12 @@ def market_close(account_id):
             # params=dict(reduceOnly=True)
         )
         pprint(kwargs)
-
-        client.create_order(**kwargs)
-
+        try:
+            client.create_order(**kwargs)
+        except ccxt.InsufficientFunds:
+            log.error('Insufficient funds')
+        else:
+            continue
 
 # Fetch assets
 @app.task(base=BaseTaskWithRetry, name='Trading_____Fetch_assets')

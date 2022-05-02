@@ -828,7 +828,7 @@ def transfer_to_spot(account_id):
 
         for asset in Asset.objects.filter(account=account, wallet='future'):
             log.info('Transfer asset {0}'.format(asset.currency.code))
-            client.transfer(asset.currency.code, 'future', 'spot', asset.free)
+            client.transfer(asset.currency.code, asset.free, 'future', 'spot')
     else:
         log.warning('Close all position before transferring assets')
 

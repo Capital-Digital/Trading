@@ -637,25 +637,24 @@ class Account(models.Model):
                 log.info('Create user order')
 
                 # Create object
-                order = Order.objects.create(
+                Order.objects.create(
                     account=self,
                     sender='user',
                     market=market,
                     orderid=orderid,
-                    clientid=None,
                     status=status
                 )
 
-                log.warning('Unknown order')
-                # from trading.tasks import send_cancel_order
-                # send_cancel_order.delay(self.id, orderid)
+                log.warning('Cancel user order')
+                from trading.tasks import send_cancel_order
+                send_cancel_order.delay(self.id, orderid)
                 return
 
             else:
                 # Set orderID assigned by exchange
                 order.orderid = orderid
 
-        else:
+        finally:
 
             if new:
                 log.info(' ')

@@ -680,6 +680,8 @@ def check_credentials(account_id):
 def market_close(account_id):
     #
     account = Account.objects.get(id=account_id)
+    client = account.exchange.get_ccxt_client(account)
+
     if 'position' in account.balances.columns.get_level_values(0).tolist():
 
         opened = account.balances.position.open.quantity.dropna()
@@ -697,17 +699,16 @@ def market_close(account_id):
                     action = 'close_short'
 
                 qty = abs(amount)
-                price = account.balances.price.spot.bid[code]
 
-                # Format decimal and validate order
-                valid, qty, reduce_only = account.validate_order('future', side, code, qty, price)
-                if valid:
-                    # Create object, place order and apply offset
-                    clientid = account.create_object('future', code, side, action, qty, price)
-                    send_create_order(account.id, clientid, action, side, 'future', code, qty,
-                                      reduce_only=True,
-                                      market_order=True
-                                      )
+                kwargs = dict(
+                    symbol=code + '/' + account.quote,
+                    type='market',
+                    side=side,
+                    amount=qty,
+                    # params=dict(reduceOnly=True)
+                )
+
+                client.create_order(**kwargs)
         else:
             log.info('No position found')
     else:

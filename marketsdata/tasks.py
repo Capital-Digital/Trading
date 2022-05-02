@@ -173,12 +173,15 @@ def update_dataframe(exid, tickers=None):
 
 
 # Insert prices and volumes for all tickers
-@app.task(base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
-def update_prices(exid, wallet=None):
+@app.task(bin=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
+def update_prices(self, exid, wallet=None):
     #
     exchange = Exchange.objects.get(exid=exid)
 
-    log.bind(worker=current_process().index, wallet=wallet)
+    log.bind(exchange=exid, wallet=wallet)
+    if self.request.id:
+        log.bind(worker=current_process().index)
+
     log.info('Update prices')
 
     # Check exchange
@@ -209,7 +212,7 @@ def update_prices(exid, wallet=None):
     symbols_strategies = exchange.get_strategies_symbols()
     symbols_strategies = [i for i in symbols_strategies if i in tickers.keys()]
 
-    log.info('Select desired dictionaries from the snapshot')
+    log.info('Select desired dictionaries from snapshot')
 
     t = {symbol: tickers[symbol] for symbol in symbols_strategies}
 
@@ -220,7 +223,7 @@ def update_prices(exid, wallet=None):
     # Select symbols of markets supported by the exchange
     symbols = []
 
-    log.info('Reorder desired markets first and insert new prices')
+    log.info('Reorder desired markets first')
 
     for quote in exchange.get_supported_quotes():
 
@@ -233,7 +236,7 @@ def update_prices(exid, wallet=None):
     symbols.sort()
 
     for s in symbols_strategies:
-        log.info('Market {0} is high priority')
+        log.info('Market {0} is high priority'.format(s))
 
     # Insert high priority symbols first
     # and drop duplicate whilst preserving order
@@ -241,6 +244,8 @@ def update_prices(exid, wallet=None):
     symbols = list(dict.fromkeys(symbols))
 
     insert = 0
+
+    log.info('Insert latest prices and volumes')
 
     for symbol in symbols:
 

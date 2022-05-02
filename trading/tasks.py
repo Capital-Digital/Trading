@@ -681,6 +681,7 @@ def market_close(account_id):
     #
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
+    client.options['defaultType'] = 'future'
 
     for pos in Position.objects.filter(account=account):
 

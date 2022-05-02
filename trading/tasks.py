@@ -838,20 +838,23 @@ def market_sell(account_id):
                                     precision=market.precision['amount'],
                                     n=asset.free)
 
-            kwargs = dict(
-                symbol=market.symbol,
-                type='market',
-                side=side,
-                amount=amount
-            )
-            log.info(kwargs)
-            try:
-                log.info('{0} in market {1}'.format(side.title(), market.symbol))
-                client.create_order(**kwargs)
-            except ccxt.InsufficientFunds:
-                log.error('Insufficient funds')
-            else:
-                pass
+            if limit_amount(market, amount):
+                if limit_cost(market, amount):
+                    
+                    kwargs = dict(
+                        symbol=market.symbol,
+                        type='market',
+                        side=side,
+                        amount=amount
+                    )
+                    log.info(kwargs)
+                    try:
+                        log.info('{0} in market {1}'.format(side.title(), market.symbol))
+                        client.create_order(**kwargs)
+                    except ccxt.InsufficientFunds:
+                        log.error('Insufficient funds')
+                    else:
+                        pass
 
 
 # REST API

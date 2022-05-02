@@ -851,11 +851,8 @@ def market_sell(account_id):
                             amount=amount
                         )
                         if flip:
-                            kwargs['params'] = {
-                                                  'amount': None,
-                                                  'quoteOrderQty': account.exchange.costToPrecision(market.symbol,
-                                                                                                    amount),
-                                                }
+                            del kwargs['amount']
+                            kwargs['params'] = dict(quoteOrderQty=amount)
 
                         log.info(kwargs)
 

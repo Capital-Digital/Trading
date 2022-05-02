@@ -590,12 +590,14 @@ def rebalance(self, account_id, reload=False, release=True):
             account.refresh_from_db()
         log.unbind('action')
 
-    account.busy = False
-    account.save()
-
     log.info(' ')
     log.info('Synchronization complete for {0}'.format(account.name))
+
+    log.info('Set busy=False')
     log.unbind('account')
+
+    account.busy = False
+    account.save()
 
 
 # Update open orders of an account
@@ -620,8 +622,6 @@ def update_orders(self, account_id):
                 pass
 
             else:
-                # log.info('Update order object {0}'.format(order.clientid))
-
                 account.refresh_from_db()
                 filled, average = account.update_order_object(order.market.wallet, response)
 
@@ -632,8 +632,11 @@ def update_orders(self, account_id):
 
                     t = 0
                     while account.busy:
-                        log.info('Account  {0} is busy, wait before new sync.'.format(account.name))
+
+                        account.refresh_from_db()
+                        log.info('Account {0} is busy...'.format(account.name))
                         time.sleep(1)
+
                         t += 1
                         if t > 10:
                             raise Exception('Account {0} is busy after more than 10s'.format(account.name))

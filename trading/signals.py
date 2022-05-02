@@ -22,10 +22,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
 
     if task.name == 'Trading_____Rebalance_account':
 
-        print(args)
-        log.info(args)
-
-        account_id = args
+        account_id = args[0]
         account = Account.objects.get(id=account_id)
         log.info('signal received, sync. complete', account=account.name)
 
@@ -35,6 +32,7 @@ def task_postrun_handler(task_id=None, task=None, args=None, state=None, retval=
             log.info('Account {0} update successful'.format(account.name))
         else:
             log.info('Account {0} update failure'.format(account.name))
+            log.info('Set busy=False for {0}'.format(account.name))
             account.busy = False
             account.save()
 

@@ -826,15 +826,8 @@ def market_sell(account_id):
 
         if asset.currency.code != account.quote:
 
-            log.info('Sell asset {0}'.format(asset.currency.code))
-
             if asset.currency.code != account.quote:
                 market, flip = account.exchange.get_spot_market(asset.currency.code, account.quote)
-
-                if flip:
-                    side = 'buy'
-                else:
-                    side = 'sell'
 
                 amount = format_decimal(counting_mode=account.exchange.precision_mode,
                                         precision=market.precision['amount'],
@@ -843,6 +836,13 @@ def market_sell(account_id):
                 if limit_amount(market, amount):
                     if limit_cost(market, amount):
 
+                        log.info('Sell asset {0}'.format(asset.currency.code))
+
+                        if flip:
+                            side = 'buy'
+                        else:
+                            side = 'sell'
+                            
                         kwargs = dict(
                             symbol=market.symbol,
                             type='market',

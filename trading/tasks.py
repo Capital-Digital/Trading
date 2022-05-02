@@ -826,35 +826,27 @@ def market_sell(account_id):
     for asset in Asset.objects.filter(account=account):
 
         log.info('Sell asset {0}'.format(asset.currency.code))
-        try:
-            market = Market.objects.get(exchange=account.exchange,
-                                        base=asset.currency,
-                                        quote__code=account.quote,
-                                        type='spot'
-                                        )
-        except ObjectDoesNotExist:
-            log.warning('Market {0}/{1} not found'.format(asset.currency, account.quote))
-            quote = 'USDT' if account.quote == 'BUSD' else 'BUSD'
-            market = Market.objects.get(exchange=account.exchange,
-                                        base=asset.currency,
-                                        quote__code=quote,
-                                        type='spot'
-                                        )
 
-        kwargs = dict(
-            symbol=market.symbol,
-            type='market',
-            side='sell',
-            amount=asset.free
-        )
-        log.info(kwargs)
-        try:
-            log.info('Sell spot {0} in {1} market'.format(asset.currency.code, market.quote.code))
-            client.create_order(**kwargs)
-        except ccxt.InsufficientFunds:
-            log.error('Insufficient funds')
-        else:
-            continue
+        if asset.currency.code != account.quote:
+            market, flip = account.exchange.get_spot_market(asset.currency.code, account.quote)
+            
+            if flip:
+                side = 'buy'
+
+            kwargs = dict(
+                symbol=market.symbol,
+                type='market',
+                side='sell',
+                amount=asset.free
+            )
+            log.info(kwargs)
+            try:
+                log.info('Sell spot {0} in {1} market'.format(asset.currency.code, market.quote.code))
+                client.create_order(**kwargs)
+            except ccxt.InsufficientFunds:
+                log.error('Insufficient funds')
+            else:
+                pass
 
 
 # REST API

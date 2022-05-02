@@ -173,7 +173,7 @@ def update_dataframe(exid, tickers=None):
 
 
 # Insert prices and volumes for all tickers
-@app.task(bin=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
+@app.task(bind=True, base=BaseTaskWithRetry, name='Markets_____Update_exchange_prices')
 def update_prices(self, exid, wallet=None):
     #
     exchange = Exchange.objects.get(exid=exid)

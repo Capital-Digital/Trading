@@ -884,7 +884,7 @@ def market_sell(account_id):
                 amount = format_decimal(counting_mode=account.exchange.precision_mode,
                                         precision=market.precision['amount'],
                                         n=asset.free)
-    
+
                 if limit_amount(market, amount):
                     if limit_cost(market, amount):
 

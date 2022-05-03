@@ -807,9 +807,13 @@ class Account(models.Model):
 
             # Create columns if needed
             if ('position', 'open', 'quantity') not in self.balances.columns:
+
+                log.info('Create missing columns in position header')
+
                 self.balances.loc[code, ('position', 'open', 'quantity')] = 0
                 self.balances.loc[code, ('position', 'open', 'value')] = 0
                 self.balances.loc[code, ('position', 'open', 'unrealized_pnl')] = 0
+                self.save()
 
         if action == 'close_long':
             # Offset position size and value

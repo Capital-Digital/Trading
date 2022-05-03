@@ -880,44 +880,45 @@ def market_sell(account_id):
         if asset.currency.code != account.quote:
 
             market, flip = account.exchange.get_spot_market(asset.currency.code, account.quote)
-            amount = format_decimal(counting_mode=account.exchange.precision_mode,
-                                    precision=market.precision['amount'],
-                                    n=asset.free)
+            if market:
+                amount = format_decimal(counting_mode=account.exchange.precision_mode,
+                                        precision=market.precision['amount'],
+                                        n=asset.free)
+    
+                if limit_amount(market, amount):
+                    if limit_cost(market, amount):
 
-            if limit_amount(market, amount):
-                if limit_cost(market, amount):
+                        log.info('')
+                        log.info('Sell asset {0}'.format(asset.currency.code))
 
-                    log.info('')
-                    log.info('Sell asset {0}'.format(asset.currency.code))
+                        if flip:
+                            side = 'buy'
+                        else:
+                            side = 'sell'
 
-                    if flip:
-                        side = 'buy'
+                        kwargs = dict(
+                            symbol=market.symbol,
+                            type='market',
+                            side=side,
+                            amount=amount
+                        )
+                        # if flip:
+                        #     kwargs['amount'] = None
+                        #     kwargs['params'] = dict(quoteOrderQty=amount)
+
+                        log.info(kwargs)
+
+                        try:
+                            log.info('Trade {0}'.format(market.symbol))
+                            client.create_order(**kwargs)
+                        except ccxt.InsufficientFunds:
+                            log.error('Trade error, insufficient fund')
+                        else:
+                            log.info('Trade complete')
                     else:
-                        side = 'sell'
-
-                    kwargs = dict(
-                        symbol=market.symbol,
-                        type='market',
-                        side=side,
-                        amount=amount
-                    )
-                    # if flip:
-                    #     kwargs['amount'] = None
-                    #     kwargs['params'] = dict(quoteOrderQty=amount)
-
-                    log.info(kwargs)
-
-                    try:
-                        log.info('Trade {0}'.format(market.symbol))
-                        client.create_order(**kwargs)
-                    except ccxt.InsufficientFunds:
-                        log.error('Trade error, insufficient fund')
-                    else:
-                        log.info('Trade complete')
+                        log.info('Cost not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
                 else:
-                    log.info('Cost not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
-            else:
-                log.info('Limit not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
+                    log.info('Limit not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
 
 
 # REST API

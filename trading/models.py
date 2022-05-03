@@ -1028,7 +1028,7 @@ class Asset(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='asset', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.SET_NULL, related_name='asset', null=True)
     currency = models.ForeignKey(Currency, on_delete=models.SET_NULL, related_name='asset', null=True)
-    wallet = models.CharField(null=True, blank=True)
+    wallet = models.CharField(null=True, max_length=10, blank=True)
     total = models.FloatField(null=True)
     free = models.FloatField(null=True)
     used = models.FloatField(null=True)

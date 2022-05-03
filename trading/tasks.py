@@ -745,33 +745,41 @@ def fetch_assets(account_id, wallet=None):
 
     # Update objects
     for k, v in total.items():
-        currency = Currency.objects.get(code=k)
-        price = currency.get_latest_price(exchange=account.exchange, quote=account.quote, key='last')
-
         try:
-            obj = Asset.objects.get(currency=currency,
-                                    exchange=account.exchange,
-                                    account=account,
-                                    wallet=wallet
-                                    )
+            currency = Currency.objects.get(code=k)
         except ObjectDoesNotExist:
-            obj = Asset.objects.create(currency=currency,
-                                       exchange=account.exchange,
-                                       account=account,
-                                       wallet=wallet
-                                       )
-        finally:
-            obj.total = v
-            obj.total_value = v * price
-            obj.weight = obj.total_value / assets_value
+            log.error('Can not create new asset, code {0} not in database'.format(k))
 
-            if k in free.keys():
-                obj.free = free[k]
-            if k in used.keys():
-                obj.used = used[k]
+        else:
+            price = currency.get_latest_price(exchange=account.exchange, quote=account.quote, key='last')
 
-            obj.dt_returned = response['datetime']
-            obj.save()
+            try:
+                obj = Asset.objects.get(currency=currency,
+                                        exchange=account.exchange,
+                                        account=account,
+                                        wallet=wallet
+                                        )
+            except ObjectDoesNotExist:
+                log.info('Create new asset {0}'.format(currency.code))
+                obj = Asset.objects.create(currency=currency,
+                                           exchange=account.exchange,
+                                           account=account,
+                                           wallet=wallet
+                                           )
+            else:
+                pass
+            finally:
+                obj.total = v
+                obj.total_value = v * price
+                obj.weight = obj.total_value / assets_value
+
+                if k in free.keys():
+                    obj.free = free[k]
+                if k in used.keys():
+                    obj.used = used[k]
+
+                obj.dt_returned = response['datetime']
+                obj.save()
 
     log.unbind('account')
 

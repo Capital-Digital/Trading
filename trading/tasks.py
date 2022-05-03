@@ -754,11 +754,6 @@ def fetch_assets(account_id, wallet=None):
             price = currency.get_latest_price(exchange=account.exchange, quote=account.quote, key='last')
 
             try:
-                print(dict(currency=currency,
-                          exchange=account.exchange,
-                          account=account,
-                          wallet=wallet))
-
                 obj = Asset.objects.get(currency=currency,
                                         exchange=account.exchange,
                                         account=account,
@@ -815,6 +810,7 @@ def fetch_positions(account_id, wallet='future'):
                                            account=account
                                            )
             except ObjectDoesNotExist:
+                log.info('Create new position for {0}'.format(market.symbol))
                 obj = Position.objects.create(market=market,
                                               exchange=account.exchange,
                                               account=account

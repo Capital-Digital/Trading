@@ -1045,8 +1045,10 @@ class Asset(models.Model):
         if self.pk is None:
             self.dt_created = timezone.now()
         self.dt_modified = timezone.now()
-        self.total_value = round(self.total_value, 1)
-        self.weight = round(self.weight, 3)
+        if self.total_value:
+            self.total_value = round(self.total_value, 1)
+        if self.weight:
+            self.weight = round(self.weight, 3)
         super(Asset, self).save(*args, **kwargs)
 
     def __str__(self):

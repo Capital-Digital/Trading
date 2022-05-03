@@ -762,7 +762,8 @@ def fetch_assets(account_id, wallet=None):
                                        )
         finally:
             obj.total = v
-            obj.weight = v /assets_value
+            obj.total_value = v * price
+            obj.weight = obj.total_value / assets_value
 
             if k in free.keys():
                 obj.free = free[k]

@@ -73,9 +73,10 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Asset)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('get_owner', 'account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used',
-                    'dt_modified',
+                    'total_value', 'weight', 'dt_modified',
                     )
-    readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'dt_created',
+    readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'total_value', 'weight',
+                       'dt_created',
                        'dt_modified', 'dt_response',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
@@ -92,17 +93,20 @@ class CustomerAdmin(admin.ModelAdmin):
     get_owner.short_description = 'Owner'
 
     def get_total(self, obj):
-        return round(obj.total, 3)
+        if obj.total:
+            return round(obj.total, 3)
 
     get_total.short_description = 'Total'
 
     def get_free(self, obj):
-        return round(obj.free, 3)
+        if obj.free:
+            return round(obj.free, 3)
 
     get_free.short_description = 'Free'
 
     def get_used(self, obj):
-        return round(obj.used, 3)
+        if obj.used:
+            return round(obj.used, 3)
 
     get_used.short_description = 'Reserved'
 

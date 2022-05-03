@@ -1044,6 +1044,8 @@ class Asset(models.Model):
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         self.dt_modified = timezone.now()
+        self.total_value = round(self.total_value, 1)
+        self.weight = round(self.weight, 3)
         super(Asset, self).save(*args, **kwargs)
         if is_new:
             self.dt_created = timezone.now()

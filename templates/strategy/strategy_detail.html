@@ -18,13 +18,14 @@
     <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
 
       <h4>Historical Weights</h4>
-
+        <p>Last update {{last_update}}.</p>
         {% autoescape off %}
         {{ plot_div_1 }}
         {% endautoescape %}
 
-      <p>Last update {{last_update}}.</p>
-      {% render_table table_2 %}
+      <h4>Asset Weights</h4>
+          <p>Historical weights of the strategy.</p>
+          {% render_table table_2 %}
 
     </div>
     <div class="tab-pane fade" id="nav-strategy-performance" role="tabpanel" aria-labelledby="nav-strategy-performance-tab">

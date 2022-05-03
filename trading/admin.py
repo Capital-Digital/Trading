@@ -112,9 +112,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def get_weight(self, obj):
         if obj.weight:
-            print(obj.weight)
-            print(str(obj.weight * 100) + '%')
-            return str(obj.weight * 100) + '%'
+            return str(round(obj.weight * 100, 1)) + '%'
 
     get_weight.short_description = 'Weight'
 

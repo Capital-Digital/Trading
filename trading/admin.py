@@ -73,7 +73,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Asset)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('get_owner', 'account', 'exchange', 'currency', 'wallet', 'get_total', 'get_free', 'get_used',
-                    'total_value', 'weight', 'dt_modified',
+                    'total_value', 'get_weight', 'dt_modified',
                     )
     readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'total_value', 'weight',
                        'dt_created',
@@ -109,6 +109,12 @@ class CustomerAdmin(admin.ModelAdmin):
             return round(obj.used, 3)
 
     get_used.short_description = 'Reserved'
+
+    def get_weight(self, obj):
+        if obj.weight:
+            return str(obj.weight * 100) + '%'
+
+    get_weight.short_description = 'Weight'
 
 
 @admin.register(Stat)

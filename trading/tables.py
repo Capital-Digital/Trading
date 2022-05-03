@@ -16,6 +16,9 @@ class OrderTable(tables.Table):
     def render_cost(self, **kwargs):
         return round(kwargs['value'], 2)
 
+    def render_average(self, **kwargs):
+        return round(kwargs['value'], 3)
+
     class Meta:
         model = Order
         fields = ('clientid', 'market__symbol', 'market__type', 'status', 'side', 'action', 'amount', 'price',

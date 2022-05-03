@@ -17,13 +17,13 @@
   <div class="tab-content" id="nav-tabContent">
     <div class="tab-pane fade show active" id="nav-strategy-summary" role="tabpanel" aria-labelledby="nav-strategy-summary-tab">
 
-      <h4>Historical Weights</h4>
-      <p>Last update {{last_update}}.</p>
-
         {% autoescape off %}
         {{ plot_div_1 }}
         {% endautoescape %}
 
+      <h4>Historical Weights</h4>
+      <p>Last update {{last_update}}.</p>
+        
       {% render_table table_2 %}
 
     </div>

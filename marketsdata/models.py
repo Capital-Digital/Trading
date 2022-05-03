@@ -642,7 +642,9 @@ class Exchange(models.Model):
                                             exchange=self
                                             )
             except ObjectDoesNotExist:
-                raise Exception('Unable to select spot market {0}/{1}'.format(quote, base))
+                log.error('Unable to select a spot market for {0}'.format(base))
+                return None, None
+
             else:
                 flip = True
         else:
@@ -703,45 +705,51 @@ class Currency(models.Model):
 
             # Select market
             market, flip = exchange.get_spot_market(self.code, quote)
-
-            try:
-                # Select ticker object
-                tickers = Tickers.objects.get(market=market, year=get_year(), semester=get_semester())
-
-            except ObjectDoesNotExist:
-                log.error('Unable to select tickers object for spot market {0}'.format(market.symbol))
-
-            else:
-                dt = datetime.now().replace(minute=0, second=0, microsecond=0)
-                now = dt.strftime(datetime_directive_ISO_8601)
-
+            if market:
                 try:
-                    dic = tickers.data[now]
+                    # Select ticker object
+                    tickers = Tickers.objects.get(market=market, year=get_year(), semester=get_semester())
 
-                except KeyError:
-                    base = quote if flip else self.code
-                    quote = self.code if flip else quote
-
-                    log.error('Key {0} not found'.format(now),
-                              key=key,
-                              base=base,
-                              now=now,
-                              wallet='spot',
-                              quote=quote
-                              )
+                except ObjectDoesNotExist:
+                    log.error('Unable to select tickers object for spot market {0}'.format(market.symbol))
 
                 else:
-                    if isinstance(key, list):
-                        # Select multiple keys
-                        bid, ask = [dic[k] for k in key]
+                    dt = datetime.now().replace(minute=0, second=0, microsecond=0)
+                    now = dt.strftime(datetime_directive_ISO_8601)
 
-                        if flip:
-                            return ask, bid
-                        else:
-                            return bid, ask
+                    try:
+                        dic = tickers.data[now]
+
+                    except KeyError:
+                        base = quote if flip else self.code
+                        quote = self.code if flip else quote
+
+                        log.error('Key {0} not found'.format(now),
+                                  key=key,
+                                  base=base,
+                                  now=now,
+                                  wallet='spot',
+                                  quote=quote
+                                  )
+
                     else:
-                        # Return a single key
-                        return dic[key]
+                        if isinstance(key, list):
+                            # Select multiple keys
+                            bid, ask = [dic[k] for k in key]
+
+                            if flip:
+                                return ask, bid
+                            else:
+                                return bid, ask
+                        else:
+                            # Return a single key
+                            return dic[key]
+            else:
+                log.error('No price found for {0}'.format(self.code))
+                if isinstance(key, list):
+                    return 0, 0
+                else:
+                    return 0
         else:
             if isinstance(key, list):
                 return 1, 1

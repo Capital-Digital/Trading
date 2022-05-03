@@ -41,7 +41,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context = super().get_context_data(**kwargs)
         orders = Order.objects.filter(account=self.object)
 
-        table_asset = AssetTable(Asset.objects.filter(account=self.object).order_by('wallet'))
+        table_asset = AssetTable(Asset.objects.filter(account=self.object, total_value__gte=1).order_by('wallet'))
         table_position = PositionTable(Position.objects.filter(account=self.object).order_by('market__symbol'))
 
         table_order = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_created'))

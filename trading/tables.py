@@ -25,7 +25,7 @@ class OrderTable(tables.Table):
 
 class PercentColumn(tables.Column):
     def render(self, value):
-        return str(value * 100) + '%'
+        return str(round(value * 100, 1)) + '%'
 
 
 class AssetTable(tables.Table):

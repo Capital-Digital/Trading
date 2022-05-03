@@ -749,11 +749,16 @@ def fetch_assets(account_id, wallet=None):
             currency = Currency.objects.get(code=k)
         except ObjectDoesNotExist:
             log.error('Can not create new asset, code {0} not in database'.format(k))
-
         else:
+
             price = currency.get_latest_price(exchange=account.exchange, quote=account.quote, key='last')
 
             try:
+                print(dict(currency=currency,
+                          exchange=account.exchange,
+                          account=account,
+                          wallet=wallet))
+
                 obj = Asset.objects.get(currency=currency,
                                         exchange=account.exchange,
                                         account=account,
@@ -915,6 +920,7 @@ def market_sell(account_id):
                     log.info('Cost not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
             else:
                 log.info('Limit not satisfied to sell {0} {1}'.format(round(amount, 3), asset.currency.code))
+
 
 # REST API
 ##########

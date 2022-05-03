@@ -33,11 +33,14 @@
         <div class="col">
         <h4>Historical Return</h4>
 
+            <p>Performance of the strategy over the last 30 days.</p>
+
             {% autoescape off %}
             {{ plot_div_2 }}
             {% endautoescape %}
 
-            <h4>Returns</h4>
+        <h4>Returns</h4>
+
             {% render_table table_1 %}
 
         </div>

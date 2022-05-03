@@ -23,6 +23,11 @@ class OrderTable(tables.Table):
         exclude = ('ID',)
 
 
+class PercentColumn(tables.Column):
+    def render(self, value):
+        return str(value * 100) + '%'
+
+
 class AssetTable(tables.Table):
 
     currency = tables.Column(verbose_name='Asset')
@@ -31,7 +36,7 @@ class AssetTable(tables.Table):
     free = tables.Column(verbose_name='Free')
     used = tables.Column(verbose_name='Reserved')
     total_value = tables.Column(verbose_name='Value')
-    weight = tables.Column(verbose_name='Weight')
+    weight = PercentColumn(verbose_name='Weight')
 
     dt_modified = tables.DateTimeColumn(format='M d Y, h:i:s')
     dt_modified = tables.Column(verbose_name='Last update')

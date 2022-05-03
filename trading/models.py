@@ -1030,6 +1030,7 @@ class Asset(models.Model):
     currency = models.ForeignKey(Currency, on_delete=models.SET_NULL, related_name='asset', null=True)
     wallet = models.CharField(null=True, max_length=10, blank=True)
     total = models.FloatField(null=True)
+    total_value = models.FloatField(null=True)
     free = models.FloatField(null=True)
     used = models.FloatField(null=True)
     weight = models.FloatField(null=True)

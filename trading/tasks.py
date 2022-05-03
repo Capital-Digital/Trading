@@ -741,9 +741,13 @@ def fetch_assets(account_id, wallet=None):
     Asset.objects.filter(exchange=account.exchange, account=account, wallet=wallet
                          ).exclude(currency__code__in=[list(total.keys())]).delete()
 
+    assets_value = account.assets_value()
+
     # Update objects
     for k, v in total.items():
         currency = Currency.objects.get(code=k)
+        price = currency.get_latest_price(exchange=account.exchange, quote=account.quote, key='last')
+
         try:
             obj = Asset.objects.get(currency=currency,
                                     exchange=account.exchange,
@@ -758,6 +762,7 @@ def fetch_assets(account_id, wallet=None):
                                        )
         finally:
             obj.total = v
+            obj.weight = v /assets_value
 
             if k in free.keys():
                 obj.free = free[k]

@@ -737,9 +737,11 @@ def fetch_assets(account_id, wallet=None):
     free = {k: v for k, v in response['free'].items() if v > 0 and k != 'LDBTC'}
     used = {k: v for k, v in response['used'].items() if v > 0 and k != 'LDBTC'}
 
+    lst_total = list(total.keys())
+
     # Delete obsolete objects
     Asset.objects.filter(exchange=account.exchange, account=account, wallet=wallet
-                         ).exclude(currency__code__in=[list(total.keys())]).delete()
+                         ).exclude(currency__code__in=lst_total).delete()
 
     assets_value = account.assets_value()
 

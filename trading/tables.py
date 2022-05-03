@@ -30,6 +30,8 @@ class AssetTable(tables.Table):
     total = tables.Column(verbose_name='Total')
     free = tables.Column(verbose_name='Free')
     used = tables.Column(verbose_name='Reserved')
+    total_value = tables.Column(verbose_name='Value')
+    weight = tables.Column(verbose_name='Weight')
 
     dt_modified = tables.DateTimeColumn(format='M d Y, h:i:s')
     dt_modified = tables.Column(verbose_name='Last update')
@@ -43,9 +45,15 @@ class AssetTable(tables.Table):
     def render_used(self, **kwargs):
         return round(kwargs['value'], 3)
 
+    def render_total_value(self, **kwargs):
+        return round(kwargs['value'], 3)
+
+    def render_weight(self, **kwargs):
+        return round(kwargs['value'], 3)
+
     class Meta:
         model = Asset
-        fields = ('currency', 'wallet', 'total', 'free', 'used', 'dt_modified')
+        fields = ('currency', 'wallet', 'total', 'free', 'used', 'total_value', 'weight', 'dt_modified')
         exclude = ('ID',)
 
 

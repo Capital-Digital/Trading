@@ -15,10 +15,10 @@ directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
-def json_to_df(json):
+def json_to_df(json, cols):
     df = pd.DataFrame(json).T
     df.index = pd.to_datetime(pd.DataFrame(df).index)
-    return df
+    return df[cols]
 
 
 # Get current time as an aware datetime object in Python 3.3+

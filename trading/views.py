@@ -111,8 +111,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         layout = {
             'height': 520,
             'width': 1100,
-            'title_text': "Double Y Axis Example",
             'plot_bgcolor': "#f8f9fa",
+            # 'title_text': "Double Y Axis Example",
             # 'yaxis': yaxis,
             # 'yaxis2': yaxis2
         }

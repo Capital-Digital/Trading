@@ -93,3 +93,12 @@ class PositionTable(tables.Table):
         fields = ('market__symbol', 'size', 'notional_value', 'side',  'unrealized_pnl', 'entry_price',
                   'liquidation_price', 'last', 'dt_modified')
 
+
+class ReturnTable(tables.Table):
+    ret_1 = tables.Column('1h')
+    ret_24 = tables.Column('24h')
+    ret_7d = tables.Column('7d')
+    Datetime = tables.Column()
+
+    class Meta:
+        sequence = ('Datetime', 'ret_1', 'ret_24', 'ret_7d')

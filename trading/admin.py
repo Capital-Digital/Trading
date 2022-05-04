@@ -21,6 +21,7 @@ class CustomerAdmin(admin.ModelAdmin):
     readonly_fields = ('valid_credentials',)
     actions = ['check_credentials', 'rebalance_account', 'fetch_assets',
                'fetch_positions', 'market_sell_spot', 'market_close_positions', 'transfer_to_spot']
+    ordering = ('active',)
     save_as = True
     save_on_top = True
 
@@ -78,6 +79,7 @@ class CustomerAdmin(admin.ModelAdmin):
     readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'total_value', 'weight',
                        'dt_created',
                        'dt_modified', 'dt_response',)
+    ordering = ('weight',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         'wallet',

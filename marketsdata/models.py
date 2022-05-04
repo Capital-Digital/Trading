@@ -30,6 +30,7 @@ class Exchange(models.Model):
     is_spot_inserted = models.BooleanField(default=False)
     is_futu_inserted = models.BooleanField(default=False)
 
+    df = PickledObjectField(null=True)
     data = PickledObjectField(null=True)
     timeout = models.IntegerField(default=3000)
     rate_limit = models.IntegerField(default=1000)

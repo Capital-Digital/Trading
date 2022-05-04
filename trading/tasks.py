@@ -93,6 +93,7 @@ def bulk_update_stats():
     accounts = Account.objects.filter(active=True)
     for account in accounts:
         update_stats.delay(account.id)
+        update_metrics.delay(account.id)
 
 
 # Bulk update open orders of all accounts
@@ -250,9 +251,39 @@ def update_stats(account_id):
         else:
             log.info('Account value is already present')
 
-            # btc = Currency.objects.get(code='BTC').get_latest_price(account.exchange, 'BUSD', 'last')
-            # eth = Currency.objects.get(code='ETH').get_latest_price(account.exchange, 'BUSD', 'last')
-            #
+
+# Update metrics
+@app.task(name='Trading_____Update_metrics')
+def update_metrics(account_id):
+    account = Account.objects.get(id=account_id)
+
+    try:
+        stat = Stat.objects.get(account=account, exchange=account.exchange, strategy=account.strategy)
+
+    except ObjectDoesNotExist:
+        stat = Stat.objects.create(account=account, exchange=account.exchange, strategy=account.strategy)
+
+    finally:
+
+        dt = dt_aware_now(0).strftime(datetime_directive_ISO_8601)
+
+        if not isinstance(stat.metrics, dict):
+            stat.metrics = dict()
+
+        assets = round(account.assets_value(), 1)
+        positions = round(account.positions_pnl(), 1)
+        account_value = assets + positions
+
+        if dt not in stat.metrics:
+            stat.metrics[dt] = dict(acc_val=account_value)
+        else:
+            if 'acc_val' not in stat.metrics[dt]:
+                stat.metrics[dt]['acc_val'] = account_value
+            else:
+                log.info("Metric 'acc_val' is already in the dictionary")
+
+        log.info("Metric 'acc_val' updated")
+        stat.save()
 
 
 # Compare return with Bitcoin and Ethereum

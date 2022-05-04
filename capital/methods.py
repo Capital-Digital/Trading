@@ -2,6 +2,7 @@ from django.utils import timezone
 from datetime import timedelta, datetime
 import structlog
 import pytz
+import pandas as pd
 
 log = structlog.get_logger(__name__)
 
@@ -12,6 +13,12 @@ datetime_directive_ms = "%Y-%m-%d %H:%M:%S.%f"
 datetime_directive_ISO_8601 = "%Y-%m-%dT%H:%M:%SZ"
 directive_ccxt = '%Y-%m-%dT%H:%M:%S.%fZ'
 directive_binance = '%Y-%m-%dT%H:%M:%S.%fZ'
+
+
+def json_to_df(json):
+    df = pd.DataFrame(json).T
+    df.index = pd.to_datetime(pd.DataFrame(df).index)
+    return df
 
 
 # Get current time as an aware datetime object in Python 3.3+

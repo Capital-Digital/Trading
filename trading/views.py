@@ -2,7 +2,8 @@ from django.http import HttpResponse
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.response import TemplateResponse
-from trading.models import Account, Order, Fund, Position, Asset
+from capital.methods import json_to_df
+from trading.models import Account, Order, Position, Asset, Stat
 from django.views import generic
 from django.shortcuts import get_object_or_404
 from trading.tables import OrderTable, AssetTable, PositionTable
@@ -41,24 +42,21 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context = super().get_context_data(**kwargs)
         orders = Order.objects.filter(account=self.object)
 
+        # Create tables
         table_asset = AssetTable(Asset.objects.filter(account=self.object, total_value__gte=1).order_by('wallet'))
         table_position = PositionTable(Position.objects.filter(account=self.object).order_by('market__symbol'))
-
         table_order = OrderTable(Order.objects.filter(account=self.object).order_by('-dt_created'))
+
+        # Configure pagination
         table_order.paginate(page=self.request.GET.get("page", 1), per_page=10)
         table_order.paginator_class = LazyPaginator
         table_order.localize = True
 
+        stats = Stat.objects.get(account=self.object, strategy=self.object.strategy)
+        df = json_to_df(stats.metrics)
+
         now = timezone.now()
         last_24h = now - timedelta(hours=6)
-
-        # Account historical balance
-        # data_assets_hist = []
-        # assets = self.object.stats.get().assets_value_history
-        # data = [assets[k]['balance'] for k in assets.keys()]
-        #
-        # data_assets_hist.append(go.Line(x=x, y=data, yaxis='y1', name='Balance', line=dict(color='#a9a9a9', width=2)))
-        # data_assets_hist.append(go.Line(x=x, y=bench, yaxis='y2', name='Bitcoin', line=dict(color='#ff8c00', width=2)))
 
         yaxis = dict(title='Balance')
         yaxis2 = dict(title='Bitcoin',

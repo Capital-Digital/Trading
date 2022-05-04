@@ -255,6 +255,7 @@ def update_stats(account_id):
 @app.task(name='Trading_____Update_metrics')
 def update_metrics(account_id):
     account = Account.objects.get(id=account_id)
+    log.bind(account=account.name)
 
     try:
         stat = Stat.objects.get(account=account, exchange=account.exchange, strategy=account.strategy)
@@ -283,6 +284,7 @@ def update_metrics(account_id):
 
         log.info("Metric 'acc_val' updated")
         stat.save()
+        log.unbind('account')
 
 
 # Compare return with Bitcoin and Ethereum

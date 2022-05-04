@@ -69,7 +69,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                       year=get_year(),
                                       semester=get_semester()
                                       )
-        acc_val = json_to_df(stats.metrics)['acc_val']
+        acc_val = json_to_df(stats.metrics)['acc_val'].tail(7 * 24)
         btcusdt = json_to_df(btcusdt.data)['last']
         btcusdt = btcusdt.loc[acc_val.index]
         ethusdt = json_to_df(ethusdt.data)['last']

@@ -53,7 +53,7 @@ class BaseTaskWithRetry(Task):
 @app.task(name='Trading_____Bulk_fetch_assets')
 def bulk_fetch_assets():
     for exchange in Exchange.objects.all():
-        for account in Account.objects.filter(exchange=exchange, active=True):
+        for account in Account.objects.filter(exchange=exchange, active=True, busy=False):
             for wallet in exchange.get_wallets():
                 fetch_assets.delay(account.id, wallet)
 
@@ -62,7 +62,7 @@ def bulk_fetch_assets():
 @app.task(name='Trading_____Bulk_fetch_positions')
 def bulk_fetch_positions():
     for exchange in Exchange.objects.all():
-        for account in Account.objects.filter(exchange=exchange, active=True):
+        for account in Account.objects.filter(exchange=exchange, active=True, busy=False):
             fetch_positions.delay(account.id)
 
 

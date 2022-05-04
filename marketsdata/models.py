@@ -605,6 +605,90 @@ class Exchange(models.Model):
         else:
             raise Exception('List of codes is empty')
 
+    # Create dataframes from tickers
+    def load_data_long(self, length, codes_long):
+
+        log.info('Load long into dataframe', length=len(codes_long))
+
+        now = datetime.now().replace(minute=0, second=0, microsecond=0)
+        start = now - timedelta(hours=length)
+
+        self.df = pd.DataFrame()
+
+        # Query tickers objects
+        qs = Tickers.objects.filter(year__in=get_years(start),
+                                    semester__in=get_semesters(start),
+                                    market__base__code__in=codes_long,
+                                    market__type='spot',
+                                    market__quote__code='USDT',
+                                    market__exchange=self
+                                    )
+
+        for ticker in qs.iterator(10):
+
+            # Select dictionaries
+            dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
+
+            df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
+            df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
+            df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
+            self.df = pd.concat([self.df, df], axis=1)
+
+        # Group by columns
+        self.df = self.df.groupby(self.df.columns, axis=1).sum()
+        self.df.columns = pd.MultiIndex.from_tuples(self.df.columns)
+
+        # Check and fix rows
+        self.df = fix(self.df)
+        self.save()
+
+        # log.info('Preload dataframe complete')
+
+        log.info('Dataframe ready with {0}h for {1} code(s)'.format(len(self.df), len(codes_long)))
+        return self.df
+
+    # Create dataframes from tickers
+    def load_data_short(self, length, codes_short):
+
+        log.info('Load short into dataframe', length=len(codes_short))
+
+        now = datetime.now().replace(minute=0, second=0, microsecond=0)
+        start = now - timedelta(hours=length)
+
+        # Query tickers objects
+        qs = Tickers.objects.filter(year__in=get_years(start),
+                                    semester__in=get_semesters(start),
+                                    market__base__code__in=codes_short,
+                                    market__type='future',
+                                    market__contract_type='perpetual',
+                                    market__quote__code='USDT',
+                                    market__exchange=self
+                                    )
+
+        for ticker in qs.iterator(10):
+
+            # Select dictionaries
+            dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
+
+            df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
+            df['last'] = 1 / df['last']
+            df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code + 's']])
+            df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
+            self.df = pd.concat([self.df, df], axis=1)
+
+        # Group by columns
+        self.df = self.df.groupby(self.df.columns, axis=1).sum()
+        self.df.columns = pd.MultiIndex.from_tuples(self.df.columns)
+
+        # Check and fix rows
+        self.df = fix(self.df)
+        self.save()
+
+        # log.info('Preload dataframe complete')
+
+        log.info('Short loaded {0}h for {1} code(s)'.format(len(self.df), len(codes_short)))
+        return self.df
+
     # Return True if the dataframe is updated
     def is_data_updated(self):
         if hasattr(self, 'data'):

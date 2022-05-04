@@ -79,7 +79,7 @@ class CustomerAdmin(admin.ModelAdmin):
     readonly_fields = ('account', 'exchange', 'currency', 'wallet', 'total', 'free', 'used', 'total_value', 'weight',
                        'dt_created',
                        'dt_modified', 'dt_response',)
-    ordering = ('weight',)
+    ordering = ('-weight',)
     list_filter = (
         ('account', admin.RelatedOnlyFieldListFilter),
         'wallet',

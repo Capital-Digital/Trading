@@ -14,6 +14,7 @@ from plotly.offline import plot
 import plotly.graph_objects as go
 from marketsdata.models import Tickers
 from capital.methods import get_year, get_semester
+import numpy as np
 
 
 class HomePage(generic.TemplateView):
@@ -64,13 +65,25 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         btcusdt = json_to_df(btcusdt.data)['last']
         btcusdt = btcusdt.loc[acc_val.index]
 
-        chart_returns = [go.Line(x=acc_val.index.tolist(),
-                                 y=acc_val.squeeze().values.tolist(),
+        ret_acc = acc_val.pct_change(1)
+        ret_btc = btcusdt.pct_change(1)
+
+        # Data for line chart
+        acc_line = np.exp(np.log1p(ret_acc).cumsum())
+        btc_line = np.exp(np.log1p(ret_btc).cumsum())
+
+        chart_returns = [go.Line(x=acc_line.index.tolist(),
+                                 y=acc_line.squeeze().values.tolist(),
                                  name='Account',
-                                 line=dict(width=2)), go.Line(x=btcusdt.index.tolist(),
-                                                              y=btcusdt.squeeze().values.tolist(),
+                                 line=dict(width=2)), go.Line(x=btc_line.index.tolist(),
+                                                              y=btc_line.squeeze().values.tolist(),
                                                               name='BTC/USDT',
                                                               line=dict(width=2))]
+
+        # Data for the table
+        acc_1h = round(ret_acc * 100, 2).dropna()[::-1]
+        acc_24h = round(acc_val.pct_change(24) * 100, 2).dropna()[::-1]
+        acc_7d = round(acc_val.pct_change(24 * 7) * 100, 2).dropna()[::-1]
 
         yaxis = dict(title='Balance')
         yaxis2 = dict(title='Bitcoin',

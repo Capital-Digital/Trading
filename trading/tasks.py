@@ -272,7 +272,7 @@ def update_metrics(account_id):
 
         assets = round(account.assets_value(), 1)
         positions = round(account.positions_pnl(), 1)
-        account_value = assets + positions
+        account_value = round(assets + positions, 1)
 
         if dt not in stat.metrics:
             stat.metrics[dt] = dict(acc_val=account_value)

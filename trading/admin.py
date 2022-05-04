@@ -122,7 +122,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Stat)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('account', 'exchange', 'strategy', 'dt_modified')
-    readonly_fields = ('account', 'account_value', )
+    readonly_fields = ('account', 'account_value', 'metrics')
 
 
 @admin.register(Order)

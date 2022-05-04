@@ -73,9 +73,9 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         ethusdt = json_to_df(ethusdt.data)['last']
         ethusdt = ethusdt.loc[acc_val.index]
 
-        ret_acc = acc_val.pct_change(1)
-        ret_btc = btcusdt.pct_change(1)
-        ret_eth = ethusdt.pct_change(1)
+        ret_acc = acc_val.pct_change(1) * 100
+        ret_btc = btcusdt.pct_change(1) * 100
+        ret_eth = ethusdt.pct_change(1) * 100
 
         # Data for line chart
         # acc_line = np.exp(np.log1p(ret_acc).cumsum())
@@ -99,7 +99,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                          ]
 
         # Data for the table
-        acc_1h = round(ret_acc * 100, 2).dropna()[::-1]
+        acc_1h = round(ret_acc, 2).dropna()[::-1]
         acc_24h = round(acc_val.pct_change(24) * 100, 2).dropna()[::-1]
         acc_7d = round(acc_val.pct_change(24 * 7) * 100, 2).dropna()[::-1]
 
@@ -109,6 +109,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                       side='right')
 
         layout = {
+            'yaxis_title': 'Return (%)',
             'height': 520,
             'width': 1100,
             'plot_bgcolor': "#f8f9fa",

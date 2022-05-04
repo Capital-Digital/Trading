@@ -1105,14 +1105,16 @@ def send_fetch_all_open_orders(account_id):
     account = Account.objects.get(id=account_id)
     client = account.exchange.get_ccxt_client(account)
 
+    orders = []
     for wallet in account.exchange.get_wallets():
         log.info('Fetch all open orders (user n app')
 
         client.options['defaultType'] = wallet
         client.options["warnOnFetchOpenOrdersWithoutSymbol"] = False
 
-        response = client.fetchOpenOrders()
-        return wallet, response
+        orders.append([wallet, client.fetchOpenOrders()])
+
+    return orders
 
 
 # Send transfer order

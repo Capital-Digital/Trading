@@ -90,7 +90,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         strateg = strat.returns['Returns']
         strateg = strateg.loc[acc_val.index]
         strateg.iloc[0] = 1
-        str_line = ((1 + strateg).cumprod() - 1) * 100
+        str_line = ((1 + strateg).cumprod() - 1)
 
         chart_returns = [go.Line(x=acc_line.index.tolist(),
                                  y=acc_line.squeeze().values.tolist(),

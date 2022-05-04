@@ -119,7 +119,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         acc_1h = round(ret_acc, 2).dropna()[::-1].squeeze().tolist()
         acc_24h = round(acc_val.pct_change(24) * 100, 2)[::-1].squeeze().tolist()
         acc_7d = round(acc_val.pct_change(24 * 7) * 100, 2)[::-1].squeeze().tolist()
-        dt = ret_acc.index.strftime(datetime_directive_s).tolist()
+        dt = ret_acc[::-1].index.strftime(datetime_directive_s).tolist()
         dic = [{"Datetime": c0, "ret_1h": c1, "ret_24h": c2, "ret_7d": c3} for c0, c1, c2, c3 in zip(dt, acc_1h, acc_24h, acc_7d)]
 
         # Table of returns

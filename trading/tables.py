@@ -101,4 +101,4 @@ class ReturnTable(tables.Table):
     # Datetime = tables.Column()
 
     class Meta:
-        sequence = ('ret_1', 'ret_24', 'ret_7d')
+        sequence = ('ret_1h', 'ret_24h', 'ret_7d')

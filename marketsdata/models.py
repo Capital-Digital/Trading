@@ -660,7 +660,7 @@ class Exchange(models.Model):
         qs = Tickers.objects.filter(year__in=get_years(start),
                                     semester__in=get_semesters(start),
                                     market__base__code__in=codes_short,
-                                    market__type='future',
+                                    market__type='derivative',
                                     market__contract_type='perpetual',
                                     market__quote__code='USDT',
                                     market__exchange=self

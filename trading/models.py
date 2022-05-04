@@ -1160,19 +1160,9 @@ class Stat(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='stats', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='stats', null=True)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='stats', null=True)
-    order_execution_success_rate = models.FloatField(null=True)
-    order_execution_time_avg = models.FloatField(null=True)
-    order_executed = models.FloatField(null=True)
-    trade_total_value = models.FloatField(null=True)
-    positions_notional_value = models.FloatField(null=True)
-    fee_avg_spot = models.FloatField(null=True)
-    fee_avg_future = models.FloatField(null=True)
-    funding_rate_avg = models.FloatField(null=True)
-    assets_distribution = PickledObjectField(null=True)
+    
     account_value = PickledObjectField(null=True)
-    benchmark = models.FloatField(null=True)
-    assets_value_history = PickledObjectField(null=True)
-    assets_return = PickledObjectField(null=True)
+
     dt_created = models.DateTimeField(null=True)
     dt_modified = models.DateTimeField(null=True)
 

@@ -639,15 +639,15 @@ def update_orders(self, account_id):
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account, status__in=['open', 'unknown'])
 
+    if self.request.id:
+        log.bind(worker=current_process().index)
+
     log.info('Update order of {0}'.format(account.name))
-    
+
     if orders.exists():
         for order in orders:
 
             log.info('Update order {0}'.format(order.clientid))
-
-            if self.request.id:
-                log.bind(worker=current_process().index)
 
             log.bind(clientid=order.clientid)
             # log.info('Fetch order {0}'.format(order.clientid))

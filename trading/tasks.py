@@ -639,6 +639,8 @@ def update_orders(self, account_id):
     account = Account.objects.get(id=account_id)
     orders = Order.objects.filter(account=account, status__in=['open', 'unknown'])
 
+    log.info('Update order of {0}'.format(account.name))
+    
     if orders.exists():
         for order in orders:
 

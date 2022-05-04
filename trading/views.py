@@ -121,6 +121,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         acc_7d = round(acc_val.pct_change(24 * 7) * 100, 2).dropna()[::-1].squeeze().tolist()
         dic = [{"ret_1h": c1, "ret_24h": c2, "ret_7d": c3} for c1, c2, c3 in zip(acc_1h, acc_24h, acc_7d)]
 
+        print(dic)
+
         # Table of returns
         table_returns = ReturnTable(dic)
 

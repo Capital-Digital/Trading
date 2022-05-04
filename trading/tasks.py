@@ -641,13 +641,13 @@ def update_orders(self, account_id):
 
     if self.request.id:
         log.bind(worker=current_process().index)
-    log.info('Update order of {0}'.format(account.name))
+    # log.info('Update order of {0}'.format(account.name))
 
     if orders.exists():
         for order in orders:
 
             log.bind(clientid=order.clientid)
-            log.info('Update order {0}'.format(order.clientid))
+            # log.info('Update order {0}'.format(order.clientid))
 
             try:
                 response = send_fetch_orderid(account_id, order.orderid)
@@ -682,7 +682,8 @@ def update_orders(self, account_id):
                         log.info('Sync. account after a trade')
                         rebalance.delay(account_id, reload=False)
                     else:
-                        log.info('Update order {0} done. No trade'.format(order.clientid))
+                        pass
+                        # log.info('Update order {0} done. No trade'.format(order.clientid))
                 else:
                     log.error('fetchOrder() failed, exchange replied with None for order {0}'.format(order.clientid))
 

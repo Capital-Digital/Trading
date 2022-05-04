@@ -73,16 +73,16 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         ethusdt = json_to_df(ethusdt.data)['last']
         ethusdt = ethusdt.loc[acc_val.index]
 
-        ret_acc = acc_val.pct_change(1) * 100
-        ret_btc = btcusdt.pct_change(1) * 100
-        ret_eth = ethusdt.pct_change(1) * 100
+        ret_acc = acc_val.pct_change(1)
+        ret_btc = btcusdt.pct_change(1)
+        ret_eth = ethusdt.pct_change(1)
 
         # Data for line chart
         # acc_line = np.exp(np.log1p(ret_acc).cumsum())
         # btc_line = np.exp(np.log1p(ret_btc).cumsum())
-        acc_line = ((1 + ret_acc).cumprod() - 1).fillna(0)
-        btc_line = ((1 + ret_btc).cumprod() - 1).fillna(0)
-        eth_line = ((1 + ret_eth).cumprod() - 1).fillna(0)
+        acc_line = ((1 + ret_acc).cumprod() - 1).fillna(0) * 100
+        btc_line = ((1 + ret_btc).cumprod() - 1).fillna(0) * 100
+        eth_line = ((1 + ret_eth).cumprod() - 1).fillna(0) * 100
 
         chart_returns = [go.Line(x=acc_line.index.tolist(),
                                  y=acc_line.squeeze().values.tolist(),

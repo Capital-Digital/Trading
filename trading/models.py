@@ -1161,9 +1161,6 @@ class Stat(models.Model):
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='stats', null=True)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='stats', null=True)
     metrics = models.JSONField(null=True)
-
-    account_value = PickledObjectField(null=True)
-
     dt_created = models.DateTimeField(null=True)
     dt_modified = models.DateTimeField(null=True)
 

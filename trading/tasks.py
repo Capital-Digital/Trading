@@ -92,7 +92,6 @@ def bulk_rebalance(strategy_id, reload=False):
 def bulk_update_stats():
     accounts = Account.objects.filter(active=True)
     for account in accounts:
-        update_stats.delay(account.id)
         update_metrics.delay(account.id)
 
 

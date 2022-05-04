@@ -3,6 +3,7 @@ from django.db.models import Sum
 from django.shortcuts import render
 from django.template.response import TemplateResponse
 from capital.methods import *
+from strategy.models import Strategy
 from trading.models import Account, Order, Position, Asset, Stat
 from django.views import generic
 from django.shortcuts import get_object_or_404
@@ -55,6 +56,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
 
         # Create chart
         stats = Stat.objects.get(account=self.object, strategy=self.object.strategy)
+        strat = Strategy.objects.get(id=self.object.strategy.id)
         btcusdt = Tickers.objects.get(market__symbol='BTC/USDT',
                                       market__type='spot',
                                       market__exchange__exid='binance',
@@ -68,12 +70,15 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                       semester=get_semester()
                                       )
         acc_val = json_to_df(stats.metrics)['acc_val']
+        strateg = strat.returns['Returns']
+        strateg = strateg.loc[acc_val.index]
         btcusdt = json_to_df(btcusdt.data)['last']
         btcusdt = btcusdt.loc[acc_val.index]
         ethusdt = json_to_df(ethusdt.data)['last']
         ethusdt = ethusdt.loc[acc_val.index]
 
         ret_acc = acc_val.pct_change(1)
+        strateg = strateg.pct_change(1)
         ret_btc = btcusdt.pct_change(1)
         ret_eth = ethusdt.pct_change(1)
 
@@ -81,6 +86,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         # acc_line = np.exp(np.log1p(ret_acc).cumsum())
         # btc_line = np.exp(np.log1p(ret_btc).cumsum())
         acc_line = ((1 + ret_acc).cumprod() - 1).fillna(0) * 100
+        str_line = ((1 + strateg).cumprod() - 1).fillna(0) * 100
         btc_line = ((1 + ret_btc).cumprod() - 1).fillna(0) * 100
         eth_line = ((1 + ret_eth).cumprod() - 1).fillna(0) * 100
 
@@ -95,6 +101,10 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                          go.Line(x=eth_line.index.tolist(),
                                  y=eth_line.squeeze().values.tolist(),
                                  name='ETH/USDT',
+                                 line=dict(width=2)),
+                         go.Line(x=str_line.index.tolist(),
+                                 y=str_line.squeeze().values.tolist(),
+                                 name='Strategy',
                                  line=dict(width=2))
                          ]
 

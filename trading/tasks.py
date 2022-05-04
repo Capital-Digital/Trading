@@ -1006,9 +1006,9 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
 
     # Apply tolerance
     if side == 'buy':
-        price = price - (account.limit_price_tolerance * price)
+        price = price - float(account.limit_price_tolerance) * price
     elif side == 'sell':
-        price = price + (account.limit_price_tolerance * price)
+        price = price + float(account.limit_price_tolerance) * price
 
     # Change qty
     if flip:

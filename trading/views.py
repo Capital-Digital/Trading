@@ -112,6 +112,4 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context['has_position'] = self.object.has_opened_short()
         context['positions_pnl'] = round(self.object.positions_pnl(), 2)
         context['orders_open'] = orders.filter(status='open')
-        context['orders_canceled'] = orders.filter(status='canceled').filter(dt_modified__range=(last_24h, now))
-        context['orders_error'] = orders.filter(status='error').filter(dt_modified__range=(last_24h, now))
         return context

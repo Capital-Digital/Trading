@@ -41,7 +41,6 @@
           {% block sidebar %}
            <ul class="sidebar-nav">
                {% if user.is_superuser %}
-               <li><a href="{% url 'home' %}">Home</a></li>
                {% endif %}
                <li><a href="{% url 'strategies' %}">Strategies</a></li>
                <li><a href="{% url 'trading_accounts' %}">Accounts</a></li>

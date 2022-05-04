@@ -70,17 +70,17 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                       semester=get_semester()
                                       )
         acc_val = json_to_df(stats.metrics)['acc_val']
-        strateg = strat.returns['Returns']
-        strateg = strateg.loc[acc_val.index]
         btcusdt = json_to_df(btcusdt.data)['last']
         btcusdt = btcusdt.loc[acc_val.index]
         ethusdt = json_to_df(ethusdt.data)['last']
         ethusdt = ethusdt.loc[acc_val.index]
-
+        
+        # Calculate hourly returns
         ret_acc = acc_val.pct_change(1)
-        strateg = strateg.pct_change(1)
         ret_btc = btcusdt.pct_change(1)
         ret_eth = ethusdt.pct_change(1)
+        strateg = strat.returns['Returns']
+        strateg = strateg.loc[acc_val.index]
 
         # Data for line chart
         # acc_line = np.exp(np.log1p(ret_acc).cumsum())

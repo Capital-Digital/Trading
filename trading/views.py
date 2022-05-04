@@ -80,17 +80,17 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         ret_btc = btcusdt.pct_change(1)
         ret_eth = ethusdt.pct_change(1)
 
+        strateg = strat.returns['Returns']
+        strateg = strateg.loc[acc_val.index]
+        strateg.iloc[0] = 0
+
         # Data for line chart
         # acc_line = np.exp(np.log1p(ret_acc).cumsum())
         # btc_line = np.exp(np.log1p(ret_btc).cumsum())
         acc_line = ((1 + ret_acc).cumprod() - 1).fillna(0) * 100
         btc_line = ((1 + ret_btc).cumprod() - 1).fillna(0) * 100
         eth_line = ((1 + ret_eth).cumprod() - 1).fillna(0) * 100
-
-        strateg = strat.returns['Returns']
-        strateg = strateg.loc[acc_val.index]
-        strateg.iloc[0] = 1
-        str_line = ((1 + strateg).cumprod() - 1)
+        str_line = ((1 + strateg).cumprod() - 1) * 100
 
         chart_returns = [go.Line(x=acc_line.index.tolist(),
                                  y=acc_line.squeeze().values.tolist(),

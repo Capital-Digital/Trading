@@ -116,10 +116,11 @@
     <div class="tab-pane fade" id="nav-account-performance" role="tabpanel" aria-labelledby="nav-account-performance-tab">
 
         <h4>Performance</h4>
-
+        {% if user.is_superuser %}
         {% autoescape off %}
         {{ plot_div_1 }}
         {% endautoescape %}
+      {% endif %}
 
     </div>
   </div>

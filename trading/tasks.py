@@ -815,8 +815,13 @@ def fetch_assets(account_id, wallet=None):
 
                 if k in free.keys():
                     obj.free = free[k]
+                else:
+                    obj.free = 0
+
                 if k in used.keys():
                     obj.used = used[k]
+                else:
+                    obj.used = 0
 
                 obj.dt_returned = response['datetime']
                 obj.save()

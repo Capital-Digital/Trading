@@ -61,26 +61,42 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                       year=get_year(),
                                       semester=get_semester()
                                       )
+        ethusdt = Tickers.objects.get(market__symbol='ETH/USDT',
+                                      market__type='spot',
+                                      market__exchange__exid='binance',
+                                      year=get_year(),
+                                      semester=get_semester()
+                                      )
         acc_val = json_to_df(stats.metrics)['acc_val']
         btcusdt = json_to_df(btcusdt.data)['last']
         btcusdt = btcusdt.loc[acc_val.index]
+        ethusdt = json_to_df(ethusdt.data)['last']
+        ethusdt = ethusdt.loc[acc_val.index]
 
         ret_acc = acc_val.pct_change(1)
         ret_btc = btcusdt.pct_change(1)
+        ret_eth = ethusdt.pct_change(1)
 
         # Data for line chart
         # acc_line = np.exp(np.log1p(ret_acc).cumsum())
         # btc_line = np.exp(np.log1p(ret_btc).cumsum())
         acc_line = ((1 + ret_acc).cumprod() - 1).fillna(0)
         btc_line = ((1 + ret_btc).cumprod() - 1).fillna(0)
+        eth_line = ((1 + ret_eth).cumprod() - 1).fillna(0)
 
         chart_returns = [go.Line(x=acc_line.index.tolist(),
                                  y=acc_line.squeeze().values.tolist(),
                                  name='Account',
-                                 line=dict(width=2)), go.Line(x=btc_line.index.tolist(),
-                                                              y=btc_line.squeeze().values.tolist(),
-                                                              name='BTC/USDT',
-                                                              line=dict(width=2))]
+                                 line=dict(width=2)),
+                         go.Line(x=btc_line.index.tolist(),
+                                 y=btc_line.squeeze().values.tolist(),
+                                 name='BTC/USDT',
+                                 line=dict(width=2)),
+                         go.Line(x=eth_line.index.tolist(),
+                                 y=eth_line.squeeze().values.tolist(),
+                                 name='ETH/USDT',
+                                 line=dict(width=2))
+                         ]
 
         # Data for the table
         acc_1h = round(ret_acc * 100, 2).dropna()[::-1]
@@ -97,8 +113,8 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'width': 1100,
             'title_text': "Double Y Axis Example",
             'plot_bgcolor': "#f8f9fa",
-            'yaxis': yaxis,
-            'yaxis2': yaxis2
+            # 'yaxis': yaxis,
+            # 'yaxis2': yaxis2
         }
 
         plot_div_1 = plot({'data': chart_returns, 'layout': layout},

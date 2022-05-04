@@ -69,8 +69,10 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         ret_btc = btcusdt.pct_change(1)
 
         # Data for line chart
-        acc_line = np.exp(np.log1p(ret_acc).cumsum())
-        btc_line = np.exp(np.log1p(ret_btc).cumsum())
+        # acc_line = np.exp(np.log1p(ret_acc).cumsum())
+        # btc_line = np.exp(np.log1p(ret_btc).cumsum())
+        acc_line = ((1 + ret_acc).cumprod() - 1).fillna(0)
+        btc_line = ((1 + ret_btc).cumprod() - 1).fillna(0)
 
         chart_returns = [go.Line(x=acc_line.index.tolist(),
                                  y=acc_line.squeeze().values.tolist(),

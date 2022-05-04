@@ -675,7 +675,6 @@ class Exchange(models.Model):
             df['last'] = 1 / df['last']
             df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code + 's']])
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-            print(df)
             self.df = pd.concat([self.df, df], axis=1)
 
         # Group by columns

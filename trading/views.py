@@ -6,7 +6,7 @@ from capital.methods import *
 from trading.models import Account, Order, Position, Asset, Stat
 from django.views import generic
 from django.shortcuts import get_object_or_404
-from trading.tables import OrderTable, AssetTable, PositionTable # ReturnTable
+from trading.tables import OrderTable, AssetTable, PositionTable, ReturnTable
 from django_tables2 import SingleTableMixin, LazyPaginator
 from django.utils import timezone
 from datetime import timedelta, datetime
@@ -122,13 +122,13 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         dic = [{"ret_1h": c1, "ret_24h": c2, "ret_7d": c3} for c1, c2, c3 in zip(acc_1h, acc_24h, acc_7d)]
 
         # Table of returns
-        #table_returns = ReturnTable(dic)
+        table_returns = ReturnTable(dic)
 
         context['plot_div_1'] = plot_div_1
         context['table_asset'] = table_asset
         context['table_position'] = table_position
         context['table_order'] = table_order
-        #context['table_returns'] = table_returns
+        context['table_returns'] = table_returns
         context['last_update'] = stats.dt_modified.strftime(datetime_directive_literal)
         context['owner'] = self.object.owner
         context['assets_value'] = round(self.object.assets_value(), 2)

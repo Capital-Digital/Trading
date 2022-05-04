@@ -52,11 +52,25 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         table_order.paginator_class = LazyPaginator
         table_order.localize = True
 
+        # Create chart
         stats = Stat.objects.get(account=self.object, strategy=self.object.strategy)
-        df = json_to_df(stats.metrics)
+        btcusdt = Tickers.objects.get(market__symbol='BTC/USDT',
+                                      market__type='spot',
+                                      market__exchange__exid='binance',
+                                      year=get_year(),
+                                      semester=get_semester()
+                                      )
+        acc_val = json_to_df(stats.metrics)['acc_val']
+        btcusdt = json_to_df(btcusdt.data)['last']
+        btcusdt = btcusdt.loc[acc_val.index]
 
-        now = timezone.now()
-        last_24h = now - timedelta(hours=6)
+        chart_returns = [go.Line(x=acc_val.index.tolist(),
+                                 y=acc_val.squeeze().values.tolist(),
+                                 name='Account',
+                                 line=dict(width=2)), go.Line(x=btcusdt.index.tolist(),
+                                                              y=btcusdt.squeeze().values.tolist(),
+                                                              name='BTC/USDT',
+                                                              line=dict(width=2))]
 
         yaxis = dict(title='Balance')
         yaxis2 = dict(title='Bitcoin',
@@ -72,11 +86,11 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
             'yaxis2': yaxis2
         }
 
-        # plot_div_1 = plot({'data': data_assets_hist, 'layout': layout},
-        #                   output_type='div',
-        #                   )
+        plot_div_1 = plot({'data': chart_returns, 'layout': layout},
+                          output_type='div',
+                          )
 
-        # context['plot_div_1'] = plot_div_1
+        context['plot_div_1'] = plot_div_1
         context['table_asset'] = table_asset
         context['table_position'] = table_position
         context['table_order'] = table_order

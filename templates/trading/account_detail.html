@@ -115,15 +115,17 @@
     </div>
     <div class="tab-pane fade" id="nav-account-performance" role="tabpanel" aria-labelledby="nav-account-performance-tab">
 
-        <h4>Performance</h4>
         {% if user.is_superuser %}
-        {% autoescape off %}
-        {{ plot_div_1 }}
-        {% endautoescape %}
-      {% endif %}
+
+          <h4>Performance</h4>
+          {% autoescape off %}
+          {{ plot_div_1 }}
+          {% endautoescape %}
 
           <p>Last update {{last_update}}.</p>
           {% render_table table_returns %}
+
+      {% endif %}
 
     </div>
   </div>

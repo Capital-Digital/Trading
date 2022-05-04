@@ -6,7 +6,7 @@ from capital.methods import *
 from trading.models import Account, Order, Position, Asset, Stat
 from django.views import generic
 from django.shortcuts import get_object_or_404
-from trading.tables import OrderTable, AssetTable, PositionTable, ReturnTable
+from trading.tables import OrderTable, AssetTable, PositionTable # ReturnTable
 from django_tables2 import SingleTableMixin, LazyPaginator
 from django.utils import timezone
 from datetime import timedelta, datetime

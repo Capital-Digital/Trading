@@ -979,10 +979,10 @@ def send_create_order(account_id, clientid, action, side, wallet, code, qty, red
     client.options['defaultType'] = wallet
 
     # Select market
-    if wallet == 'spot':
-        market, flip = account.exchange.get_spot_market(code, account.quote)
-    else:
-        market, flip = account.exchange.get_perp_market(code, account.quote)
+    # if wallet == 'spot':
+    market, flip = account.exchange.get_spot_market(code, account.quote)
+    # else:
+    #    market, flip = account.exchange.get_perp_market(code, account.quote)
 
     # Determine price
     if wallet == 'future':

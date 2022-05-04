@@ -653,7 +653,7 @@ def update_orders(self, account_id):
             try:
                 response = send_fetch_orderid(account_id, order.orderid)
             except ccxt.OrderNotFound:
-                pass
+                log.error('Update order {0} failed. Order not found'.format(order.clientid))
 
             else:
                 if response:
@@ -664,7 +664,7 @@ def update_orders(self, account_id):
                     if filled:
 
                         log.info('Trade detected {0}'.format(order.clientid))
-                        
+
                         # Offset trade when account is not busy
                         code = order.market.base.code
                         account.offset_order_filled(order.clientid, code, order.action, filled, average)
@@ -682,6 +682,8 @@ def update_orders(self, account_id):
 
                         log.info('Sync. account after a trade')
                         rebalance.delay(account_id, reload=False)
+                    else:
+                        log.info('Update order {0} done. No trade'.format(order.clientid))
                 else:
                     log.error('fetchOrder() failed, exchange replied with None for order {0}'.format(order.clientid))
 

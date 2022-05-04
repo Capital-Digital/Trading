@@ -100,8 +100,5 @@ class ReturnTable(tables.Table):
     ret_7d = tables.Column('7d')
     Datetime = tables.Column()
 
-    def render_Datetime(self, **kwargs):
-        return kwargs['value'] + ' UTC'
-
     class Meta:
         sequence = ('Datetime', 'ret_1h', 'ret_24h', 'ret_7d')

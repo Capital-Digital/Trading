@@ -130,7 +130,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         context['table_position'] = table_position
         context['table_order'] = table_order
         context['table_returns'] = table_returns
-        context['last_update'] = stats.dt_modified.strftime(datetime_directive_literal)
+        context['last_update'] = stats.dt_modified.strftime(datetime_directive_literal) + ' UTC'
         context['owner'] = self.object.owner
         context['assets_value'] = round(self.object.assets_value(), 2)
         context['has_position'] = self.object.has_opened_short()

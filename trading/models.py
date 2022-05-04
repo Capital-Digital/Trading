@@ -1160,6 +1160,7 @@ class Stat(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='stats', null=True)
     exchange = models.ForeignKey(Exchange, on_delete=models.CASCADE, related_name='stats', null=True)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='stats', null=True)
+    metrics = models.JSONField(null=True)
 
     account_value = PickledObjectField(null=True)
 

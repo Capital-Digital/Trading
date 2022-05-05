@@ -623,7 +623,6 @@ class Exchange(models.Model):
                       )
         if source == 'tickers':
             qs = Tickers.objects.filter(**kwargs)
-
         elif source == 'candles':
             qs = Candles.objects.filter(**kwargs)
 
@@ -640,7 +639,7 @@ class Exchange(models.Model):
 
             elif source == 'candles':
                 df = pd.DataFrame(obj.data)
-                df.columns = ['index', 'open', 'high', 'low', 'last', 'quoteVolume']
+                df.columns = ['index', 'last', 'high', 'low', 'close', 'quoteVolume']
                 df['quoteVolume'] *= df['last']
                 df = df[['index', 'quoteVolume', 'last']]
                 df = df.set_index('index', drop=True)

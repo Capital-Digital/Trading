@@ -663,10 +663,10 @@ class Exchange(models.Model):
             else:
                 axis = 1 if col not in self.df.columns.get_level_values(2).tolist() else 0
 
-            print(df)
-            print(self.df)
             self.df = self.df.groupby(self.df.columns, axis=1).sum()
             self.df = pd.concat([self.df, df], axis=axis)
+            print(self.df.columns)
+            print(self.df.index)
 
         # Group by columns
         self.df = self.df.groupby(self.df.columns, axis=1).sum()

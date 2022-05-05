@@ -71,9 +71,10 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                       )
         acc_val = json_to_df(stats.metrics)['acc_val'].tail(7 * 24)
         btcusdt = json_to_df(btcusdt.data)['last']
-        btcusdt = fix(btcusdt)
+        btcusdt = btcusdt.resample('H').fillna('ffill')
         btcusdt = btcusdt.loc[acc_val.index]
         ethusdt = fix(json_to_df(ethusdt.data)['last'])
+        ethusdt = ethusdt.resample('H').fillna('ffill')
         ethusdt = ethusdt.loc[acc_val.index]
 
         # Calculate hourly returns

@@ -641,7 +641,7 @@ class Exchange(models.Model):
             elif side == 'long':
                 col = ticker.market.base.code
 
-            df.columns = pd.MultiIndex.from_product([market, df.columns, [col]])
+            df.columns = pd.MultiIndex.from_product([[market], df.columns, [col]])
 
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
             self.df = pd.concat([self.df, df], axis=1)

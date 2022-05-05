@@ -634,7 +634,13 @@ class Exchange(models.Model):
 
             dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
             df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
-            col = ticker.market.base.code + 's' if side == 'short' else ticker.market.base.code
+
+            if side == 'short':
+                col = ticker.market.base.code + 's'
+                df['last'] = 1 / df['last']
+            elif side == 'long':
+                col = ticker.market.base.code
+
             df.columns = pd.MultiIndex.from_product([df.columns, [col]])
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
             self.df = pd.concat([self.df, df], axis=1)

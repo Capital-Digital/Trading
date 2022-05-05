@@ -88,3 +88,6 @@ bt~=0.2.9
 ffn~=0.3.6
 tqdm~=4.62.3
 graphene~=2.1.9
+channels~=3.0.4
+plotly~=5.7.0
+gibberish~=0.4.0

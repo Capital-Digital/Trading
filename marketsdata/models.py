@@ -637,7 +637,7 @@ class Exchange(models.Model):
         for obj in qs.iterator(10):
 
             if source == 'tickers':
-                dic = {k: v for k, v in obj.data.items() if v['timestamp'] > start.timestamp()}
+                dic = {k: v for k, v in obj.data.items() if v['timestamp'] > since.timestamp()}
                 df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
 
             elif source == 'candles':
@@ -647,7 +647,7 @@ class Exchange(models.Model):
                 df = df[['index', 'quoteVolume', 'last']]
                 df = df.set_index('index', drop=True)
                 df.index = pd.to_datetime(df.index)
-                df = df[df.index > start]
+                df = df[df.index > since]
 
             if short:
                 col = obj.market.base.code + 's'

@@ -611,6 +611,7 @@ class Exchange(models.Model):
 
         if start:
             since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
+            end = since + timedelta(hours=length)
         else:
             now = dt_aware_now(0)
             since = now - timedelta(hours=length)
@@ -618,8 +619,8 @@ class Exchange(models.Model):
         if clear:
             self.df = pd.DataFrame()
 
-        kwargs = dict(year__in=get_years(since),
-                      semester__in=get_semesters(since),
+        kwargs = dict(year__in=get_list_years(since, end),
+                      semester__in=get_list_semesters(since, end),
                       market__exchange=self,
                       market__base__code__in=codes,
                       market__quote__code=quote

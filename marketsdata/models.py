@@ -607,9 +607,9 @@ class Exchange(models.Model):
             raise Exception('List of codes is empty')
 
     # Create dataframes from tickers
-    def load_df(self, length, quote, codes, market, short=None, clear=False):
+    def load_df(self, length, quote, codes, market_type, short=False, clear=False):
 
-        log.info('Load {0} codes {1} into dataframe'.format(len(codes), market))
+        log.info('Load {0} codes {1} into dataframe'.format(len(codes), market_type))
 
         now = datetime.now().replace(minute=0, second=0, microsecond=0)
         start = now - timedelta(hours=length)
@@ -623,7 +623,7 @@ class Exchange(models.Model):
                                     market__base__code__in=codes,
                                     market__quote__code=quote
                                     )
-        if short == 'future':
+        if market_type == 'future':
             qs = qs.filter(market__type='derivative',
                            market__contract_type='perpetual'
                            )
@@ -641,7 +641,7 @@ class Exchange(models.Model):
             else:
                 col = ticker.market.base.code
 
-            df.columns = pd.MultiIndex.from_product([[market], df.columns, [col]])
+            df.columns = pd.MultiIndex.from_product([[market_type], df.columns, [col]])
 
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
             self.df = pd.concat([self.df, df], axis=1)

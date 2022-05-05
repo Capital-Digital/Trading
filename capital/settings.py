@@ -23,6 +23,7 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
 INSTALLED_APPS = [
+    'channels',
     'marketsdata.apps.MarketsdataConfig',
     'trading.apps.TradingConfig',
     'strategy.apps.StrategyConfig',
@@ -37,15 +38,11 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'reset_migrations',
     'prettyjson',
-    "social_django",
     "bootstrap4",
     'guardian',
     "graphene_django",
     "django_tables2",
     "users",
-    "crispy_forms",
-    'chartjs',
-    'django_bootstrap_icons'
 ]
 
 MIDDLEWARE = [
@@ -280,4 +277,4 @@ GRAPHENE = {
 
 DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap.html"
 
-CRISPY_TEMPLATE_PACK = 'bootstrap4'
+ASGI_APPLICATION = 'capital.asgi.application'

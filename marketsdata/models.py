@@ -625,7 +625,7 @@ class Exchange(models.Model):
             qs = Tickers.objects.filter(**kwargs)
 
         elif source == 'candles':
-            qs = Candle.objects.filter(**kwargs)
+            qs = Candles.objects.filter(**kwargs)
 
         if market_type == 'future':
             qs = qs.filter(market__type='derivative', market__contract_type='perpetual')

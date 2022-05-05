@@ -642,6 +642,7 @@ class Exchange(models.Model):
                 df = pd.DataFrame(obj.data)
                 df.columns = ['index', 'last', 'high', 'low', 'close', 'quoteVolume']
                 df['quoteVolume'] *= df['last']
+                df = df[['quoteVolume', 'last']]
                 df = df.set_index('index', drop=True)
                 df.index = pd.to_datetime(df.index)
                 df = df[df.index > start]

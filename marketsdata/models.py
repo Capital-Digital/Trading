@@ -653,9 +653,12 @@ class Exchange(models.Model):
 
             df.columns = pd.MultiIndex.from_product([[market_type], df.columns, [col]])
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-            axis = 1 if col not in self.df.columns.get_level_values(2).tolist() else 0
-            print(self.df.columns.get_level_values(2).tolist())
-            print(col, axis)
+            if self.df.nlevels == 3:
+                axis = 1 if col not in self.df.columns.get_level_values(2).tolist() else 0
+                print(self.df.columns.get_level_values(2).tolist())
+                print(col, axis)
+            else:
+                axis = 1
             self.df = pd.concat([self.df, df], axis=axis)
 
         # Group by columns

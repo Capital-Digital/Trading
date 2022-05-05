@@ -100,7 +100,7 @@ def bulk_update_stats():
 def bulk_update_orders():
     #
     for account in Account.objects.filter(active=True, busy__in=[False]):
-        log.info('Bulk order update for {0}'.format(account.name))
+        # log.info('Bulk order update for {0}'.format(account.name))
         update_orders.delay(account.id)
 
 

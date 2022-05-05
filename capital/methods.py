@@ -59,9 +59,12 @@ def get_semesters(dt):
 
 
 def get_list_semesters(start, end):
-    semester_start = 1 if start.month < 6 else 2
-    semester_current = 1 if end.month < 6 else 2
-    return list({semester_start, semester_current})
+    if start.year > end.year:
+        return [1, 2]
+    else:
+        semester_start = 1 if start.month < 6 else 2
+        semester_current = 1 if end.month < 6 else 2
+        return list({semester_start, semester_current})
 
 
 # Return a list of years

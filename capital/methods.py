@@ -58,6 +58,26 @@ def get_semesters(dt):
     return list({semester_start, semester_current})
 
 
+def get_list_semesters(start, end):
+    semester_start = 1 if start.month < 6 else 2
+    semester_current = 1 if end.month < 6 else 2
+    return list({semester_start, semester_current})
+
+
+# Return a list of years
+def get_list_years(start, end):
+    if isinstance(start, datetime):
+        if isinstance(end, datetime):
+            years = list(range(start.year, end.year + 1))
+    elif isinstance(start, str):
+        if isinstance(end, str):
+            start = datetime.strptime(start, datetime_directive_ISO_8601).replace(tzinfo=pytz.UTC)
+            end = datetime.strptime(end, datetime_directive_ISO_8601).replace(tzinfo=pytz.UTC)
+            years = list(range(start.year, end.year + 1))
+
+    return years
+
+
 def get_year():
     return datetime.now().year
 

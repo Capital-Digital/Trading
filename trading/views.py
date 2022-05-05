@@ -70,10 +70,9 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
                                       semester=get_semester()
                                       )
         acc_val = json_to_df(stats.metrics)['acc_val'].tail(7 * 24)
-        print(acc_val.index)
-        btcusdt = json_to_df(btcusdt.data)['last']
+        btcusdt = fix(json_to_df(btcusdt.data)['last'])
         btcusdt = btcusdt.loc[acc_val.index]
-        ethusdt = json_to_df(ethusdt.data)['last']
+        ethusdt = fix(json_to_df(ethusdt.data)['last'])
         ethusdt = ethusdt.loc[acc_val.index]
 
         # Calculate hourly returns

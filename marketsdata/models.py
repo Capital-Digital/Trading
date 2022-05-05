@@ -609,7 +609,7 @@ class Exchange(models.Model):
 
         log.info('Load {0} codes {1} into dataframe'.format(len(codes), market_type))
 
-        now = datetime.now().replace(minute=0, second=0, microsecond=0)
+        now = dt_aware_now(0)
         start = now - timedelta(hours=length)
 
         if clear:

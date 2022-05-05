@@ -547,7 +547,6 @@ class Exchange(models.Model):
                 print('ACA\n', len(ts))
 
             if data:
-
                 temp = pd.DataFrame(data, index=ts, columns=[i.market.base.code])
                 temp.index = pd.to_datetime(temp.index)
                 axis = 0 if i.market.base.code in df.columns else 1
@@ -581,7 +580,6 @@ class Exchange(models.Model):
                                         )
 
             for ticker in qs.iterator(10):
-
                 # Select dictionaries
                 dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
 
@@ -607,7 +605,7 @@ class Exchange(models.Model):
             raise Exception('List of codes is empty')
 
     # Create dataframes from tickers
-    def load_df(self, length, quote, codes, market_type, short=False, clear=False):
+    def load_df(self, length, quote, codes, market_type, source, short=False, clear=False):
 
         log.info('Load {0} codes {1} into dataframe'.format(len(codes), market_type))
 
@@ -617,34 +615,46 @@ class Exchange(models.Model):
         if clear:
             self.df = pd.DataFrame()
 
-        qs = Tickers.objects.filter(year__in=get_years(start),
-                                    semester__in=get_semesters(start),
-                                    market__exchange=self,
-                                    market__base__code__in=codes,
-                                    market__quote__code=quote
-                                    )
+        kwargs = dict(year__in=get_years(start),
+                      semester__in=get_semesters(start),
+                      market__exchange=self,
+                      market__base__code__in=codes,
+                      market__quote__code=quote
+                      )
+        if source == 'tickers':
+            qs = Tickers.objects.filter(**kwargs)
+
+        elif source == 'candles':
+            qs = Candle.objects.filter(**kwargs)
+
         if market_type == 'future':
-            qs = qs.filter(market__type='derivative',
-                           market__contract_type='perpetual'
-                           )
+            qs = qs.filter(market__type='derivative', market__contract_type='perpetual')
         else:
             qs = qs.filter(market__type='spot')
 
-        for ticker in qs.iterator(10):
+        for obj in qs.iterator(10):
 
-            dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
-            df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
+            if source == 'tickers':
+                dic = {k: v for k, v in obj.data.items() if v['timestamp'] > start.timestamp()}
+                df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
+
+            elif source == 'candles':
+                df = pd.DataFrame(obj.data)
+                df.columns = ['index', 'open', 'high', 'low', 'close', 'volume']
+                df = df.set_index('index', drop=True)
+                df.index = pd.to_datetime(df.index)
+                df = df[df.index > start]
 
             if short:
-                col = ticker.market.base.code + 's'
+                col = obj.market.base.code + 's'
                 df['last'] = 1 / df['last']
             else:
-                col = ticker.market.base.code
+                col = obj.market.base.code
 
             df.columns = pd.MultiIndex.from_product([[market_type], df.columns, [col]])
-
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-            self.df = pd.concat([self.df, df], axis=1)
+            axis = 1 if col not in df.columns.get_level_values(2) else 0
+            self.df = pd.concat([self.df, df], axis=axis)
 
         # Group by columns
         self.df = self.df.groupby(self.df.columns, axis=1).sum()
@@ -653,52 +663,8 @@ class Exchange(models.Model):
         # Check and fix rows
         self.df = fix(self.df)
         self.save()
-
-        # log.info('Preload dataframe complete')
 
         log.info('Dataframe ready with {0}h for {1} code(s)'.format(len(self.df), len(codes)))
-        return self.df
-
-    # Create dataframes from tickers
-    def load_data_short(self, length, codes_short):
-
-        log.info('Load short into dataframe', length=len(codes_short))
-
-        now = datetime.now().replace(minute=0, second=0, microsecond=0)
-        start = now - timedelta(hours=length)
-
-        # Query tickers objects
-        qs = Tickers.objects.filter(year__in=get_years(start),
-                                    semester__in=get_semesters(start),
-                                    market__base__code__in=codes_short,
-                                    market__type='derivative',
-                                    market__contract_type='perpetual',
-                                    market__quote__code='USDT',
-                                    market__exchange=self
-                                    )
-
-        for ticker in qs.iterator(10):
-
-            # Select dictionaries
-            dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
-
-            df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
-            df['last'] = 1 / df['last']
-            df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code + 's']])
-            df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
-            self.df = pd.concat([self.df, df], axis=1)
-
-        # Group by columns
-        self.df = self.df.groupby(self.df.columns, axis=1).sum()
-        self.df.columns = pd.MultiIndex.from_tuples(self.df.columns)
-
-        # Check and fix rows
-        self.df = fix(self.df)
-        self.save()
-
-        # log.info('Preload dataframe complete')
-
-        log.info('Short loaded {0}h for {1} code(s)'.format(len(self.df), len(codes_short)))
         return self.df
 
     # Return True if the dataframe is updated

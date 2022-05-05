@@ -605,18 +605,21 @@ class Exchange(models.Model):
             raise Exception('List of codes is empty')
 
     # Create dataframes from tickers
-    def load_df(self, length, quote, codes, market_type, source, short=False, clear=False):
+    def load_df(self, length, quote, codes, market_type, source, short=False, clear=False, start=None):
 
         log.info('Load {0} codes {1} into dataframe'.format(len(codes), market_type))
 
-        now = dt_aware_now(0)
-        start = now - timedelta(hours=length)
+        if start:
+            since = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
+        else:
+            now = dt_aware_now(0)
+            since = now - timedelta(hours=length)
 
         if clear:
             self.df = pd.DataFrame()
 
-        kwargs = dict(year__in=get_years(start),
-                      semester__in=get_semesters(start),
+        kwargs = dict(year__in=get_years(since),
+                      semester__in=get_semesters(since),
                       market__exchange=self,
                       market__base__code__in=codes,
                       market__quote__code=quote
@@ -666,6 +669,10 @@ class Exchange(models.Model):
 
         # Check and fix rows
         self.df = fix(self.df)
+
+        if start:
+            self.df = self.df.head(length)
+
         self.save()
 
         log.info('Dataframe ready with {0}h for {1} code(s)'.format(len(self.df), len(codes)))

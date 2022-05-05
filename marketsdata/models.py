@@ -658,15 +658,7 @@ class Exchange(models.Model):
             df.columns = pd.MultiIndex.from_product([[market_type], df.columns, [col]])
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
 
-            if self.df.columns.nlevels == 1:
-                axis = 1
-            else:
-                axis = 1 if col not in self.df.columns.get_level_values(2).tolist() else 0
-
-            self.df = self.df.groupby(self.df.columns, axis=1).sum()
-            self.df = pd.concat([self.df, df], axis=axis)
-            print(self.df.columns)
-            print(self.df.index)
+            self.df = pd.concat([self.df, df], axis=1)
 
         # Group by columns
         self.df = self.df.groupby(self.df.columns, axis=1).sum()

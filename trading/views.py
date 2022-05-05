@@ -74,7 +74,7 @@ class AccountDetailView(SingleTableMixin, generic.DetailView):
         btcusdt = json_to_df(btcusdt.data)['last']
         btcusdt = btcusdt.resample('H').fillna('ffill')
         btcusdt = btcusdt.loc[acc_val.index]
-        
+
         ethusdt = json_to_df(ethusdt.data)['last']
         ethusdt = ethusdt.resample('H').fillna('ffill')
         ethusdt = ethusdt.loc[acc_val.index]

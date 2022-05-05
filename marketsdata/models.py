@@ -640,7 +640,7 @@ class Exchange(models.Model):
 
             elif source == 'candles':
                 df = pd.DataFrame(obj.data)
-                df.columns = ['index', 'open', 'high', 'low', 'close', 'volume']
+                df.columns = ['index', 'last', 'high', 'low', 'close', 'volume']
                 df = df.set_index('index', drop=True)
                 df.index = pd.to_datetime(df.index)
                 df = df[df.index > start]

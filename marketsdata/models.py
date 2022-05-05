@@ -665,7 +665,7 @@ class Exchange(models.Model):
 
             print(df)
             print(self.df)
-
+            self.df = self.df.groupby(self.df.index).sum()
             self.df = pd.concat([self.df, df], axis=axis)
 
         # Group by columns

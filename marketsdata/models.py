@@ -607,31 +607,35 @@ class Exchange(models.Model):
             raise Exception('List of codes is empty')
 
     # Create dataframes from tickers
-    def load_data_long(self, length, codes_long):
+    def load_df(self, length, quote, codes, side, market, clear=False):
 
-        log.info('Load long into dataframe', length=len(codes_long))
+        log.info('Load {0} codes {1} {2} into dataframe'.format(len(codes), side, market))
 
         now = datetime.now().replace(minute=0, second=0, microsecond=0)
         start = now - timedelta(hours=length)
 
-        self.df = pd.DataFrame()
+        if clear:
+            self.df = pd.DataFrame()
 
-        # Query tickers objects
         qs = Tickers.objects.filter(year__in=get_years(start),
                                     semester__in=get_semesters(start),
-                                    market__base__code__in=codes_long,
-                                    market__type='spot',
-                                    market__quote__code='USDT',
-                                    market__exchange=self
+                                    market__exchange=self,
+                                    market__base__code__in=codes,
+                                    market__quote__code=quote
                                     )
+        if market == 'spot':
+            qs = qs.filter(market__type='spot')
+        elif market == 'future':
+            qs = qs.filter(market__type='derivative',
+                           market__contract_type='perpetual'
+                           )
 
         for ticker in qs.iterator(10):
 
-            # Select dictionaries
             dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
-
             df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
-            df.columns = pd.MultiIndex.from_product([df.columns, [ticker.market.base.code]])
+            col = ticker.market.base.code + 's' if side == 'short' else ticker.market.base.code
+            df.columns = pd.MultiIndex.from_product([df.columns, [col]])
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%SZ", utc=True)
             self.df = pd.concat([self.df, df], axis=1)
 
@@ -645,7 +649,7 @@ class Exchange(models.Model):
 
         # log.info('Preload dataframe complete')
 
-        log.info('Dataframe ready with {0}h for {1} code(s)'.format(len(self.df), len(codes_long)))
+        log.info('Dataframe ready with {0}h for {1} code(s)'.format(len(self.df), len(codes)))
         return self.df
 
     # Create dataframes from tickers

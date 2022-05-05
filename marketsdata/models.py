@@ -607,9 +607,9 @@ class Exchange(models.Model):
             raise Exception('List of codes is empty')
 
     # Create dataframes from tickers
-    def load_df(self, length, quote, codes, side, market, clear=False):
+    def load_df(self, length, quote, codes, market, short=None, clear=False):
 
-        log.info('Load {0} codes {1} {2} into dataframe'.format(len(codes), side, market))
+        log.info('Load {0} codes {1} into dataframe'.format(len(codes), market))
 
         now = datetime.now().replace(minute=0, second=0, microsecond=0)
         start = now - timedelta(hours=length)
@@ -623,22 +623,22 @@ class Exchange(models.Model):
                                     market__base__code__in=codes,
                                     market__quote__code=quote
                                     )
-        if market == 'spot':
-            qs = qs.filter(market__type='spot')
-        elif market == 'future':
+        if short == 'future':
             qs = qs.filter(market__type='derivative',
                            market__contract_type='perpetual'
                            )
+        else:
+            qs = qs.filter(market__type='spot')
 
         for ticker in qs.iterator(10):
 
             dic = {k: v for k, v in ticker.data.items() if v['timestamp'] > start.timestamp()}
             df = pd.DataFrame(dic).T[['last', 'quoteVolume']]
 
-            if side == 'short':
+            if short:
                 col = ticker.market.base.code + 's'
                 df['last'] = 1 / df['last']
-            elif side == 'long':
+            else:
                 col = ticker.market.base.code
 
             df.columns = pd.MultiIndex.from_product([[market], df.columns, [col]])
